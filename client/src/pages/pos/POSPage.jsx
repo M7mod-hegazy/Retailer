@@ -30,14 +30,41 @@ import {
   DEFAULT_WAREHOUSE,
 } from "./posPageUtils";
 import { todayCairo } from "../../utils/dateHelpers";
+import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from "../../utils/bodyFlags";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
-  { type: "bank_transfer", label: "بنك / فيزا", desc: "مدى / فيزا / تحويل", Icon: CreditCard },
   { type: "credit",        label: "آجل",        desc: "تسجيل دين على العميل", Icon: Wallet     },
   { type: "installments",  label: "أقساط",      desc: "دفعات أقساط مجدولة", Icon: Calendar   },
-  { type: "multi",         label: "متعدد",      desc: "تجزئة على عدة طرق", Icon: Layers     },
+  { type: "multi",         label: "متعدد",      desc: "تجزئة على عدة طرق (نقدي / فيزا / آجل)", Icon: Layers     },
 ];
+
+const paymentMethodText = (method) => [method?.name, method?.category, method?.type, method?.description, method?.icon]
+  .filter(Boolean)
+  .join(" ")
+  .toLowerCase();
+
+const isCreditPaymentMethod = (method) => {
+  const category = String(method?.category || "").toLowerCase();
+  const type = String(method?.type || "").toLowerCase();
+  return category === "credit" || type === "credit";
+};
+
+const isVisaLikePaymentMethod = (method) => {
+  if (!method || isCreditPaymentMethod(method)) return false;
+  const text = paymentMethodText(method);
+  const category = String(method.category || "").toLowerCase();
+  const type = String(method.type || "").toLowerCase();
+  return category === "card" || type === "card" || text.includes("visa") || text.includes("فيزا") || text.includes("بطاقة") || text.includes("💳");
+};
+
+const pickVisaMethod = (methods = []) => {
+  const candidates = methods.filter(isVisaLikePaymentMethod);
+  return candidates.find((m) => String(m.category || "").toLowerCase() === "card")
+    || candidates.find((m) => paymentMethodText(m).includes("visa") || paymentMethodText(m).includes("فيزا"))
+    || candidates[0]
+    || null;
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -192,7 +219,6 @@ export default function POSPage() {
   const [installmentFrequency, setInstallmentFrequency] = useState("monthly");
   const [installmentCustomDays, setInstallmentCustomDays] = useState("30");
   const [installmentRows, setInstallmentRows] = useState([]);
-  const [selectedBankId, setSelectedBankId]         = useState("");
   const [selectedTreasuryId, setSelectedTreasuryId] = useState("");
   const [activeMultiPayments, setActiveMultiPayments] = useState([]);
   const [multiModalOpen, setMultiModalOpen] = useState(false);
@@ -238,7 +264,7 @@ export default function POSPage() {
     panelResizingRef.current = true;
     const startX = e.clientX;
     const startW = panelWidth;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMove = (mv) => {
       if (!panelResizingRef.current) return;
       const raw = mv.clientX - startX;
@@ -247,7 +273,7 @@ export default function POSPage() {
     };
     const onUp = () => {
       panelResizingRef.current = false;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -255,9 +281,14 @@ export default function POSPage() {
     document.addEventListener("mouseup", onUp);
   }, [panelWidth]);
   const [multiCash, setMultiCash] = useState("");
+  const [multiVisa, setMultiVisa] = useState("");
   const [multiCredit, setMultiCredit] = useState("");
   const [customPayMethods, setCustomPayMethods] = useState([]);
   const [multiCustomAmounts, setMultiCustomAmounts] = useState({});
+  // The permanent, record-only Visa method (seeded is_system, category='card').
+  // Resolved from the bootstrap method list; used as a fixed متعدد input alongside
+  // cash and credit. Money is recorded but moves no balance (target_id NULL).
+  const visaMethod = useMemo(() => pickVisaMethod(paymentMethods), [paymentMethods]);
 
   // Modals
   const [profitModalOpen, setProfitModalOpen]           = useState(false);
@@ -379,7 +410,7 @@ export default function POSPage() {
     );
   }, []);
 
-  useEffect(() => () => { if (rafRef.current) window.cancelAnimationFrame(rafRef.current); }, []);
+  useEffect(() => () => { resetBodyFlags(); if (rafRef.current) window.cancelAnimationFrame(rafRef.current); }, []);
 
   // Restore active cart and held invoices from DB on mount.
   // Skip cart restore when entering edit mode — the edit prefill owns the cart.
@@ -462,7 +493,8 @@ export default function POSPage() {
       setPaymentMethods(all);
       // Bank/visa is its own isolated channel (the top-level "بنك / فيزا" payment type),
       // never a configurable method — keep bank-category methods out of the multi-pay list.
-      setCustomPayMethods(all.filter(m => !m.is_system && m.category !== 'bank' && m.type !== 'bank'));
+      const primaryVisa = pickVisaMethod(all);
+      setCustomPayMethods(all.filter((m) => !m.is_system && !isCreditPaymentMethod(m) && (!primaryVisa || m.id !== primaryVisa.id)));
     }).catch(() => { setStockLoaded(true); });
   }, [mergeStockRows]);
 
@@ -579,12 +611,14 @@ export default function POSPage() {
     if (prefill.payment_type === "installments") {
       if (prefill.amount_received > 0) setAmountPaid(String(prefill.amount_received));
     } else if (prefill.payment_type === "multi" && prefill.allocations?.length) {
-      let cash = 0, credit = 0;
+      let cash = 0, credit = 0, visa = 0;
       const customAmts = {};
       for (const alloc of prefill.allocations) {
         if (alloc.method === "cash") cash = Number(alloc.amount);
         else if (alloc.method === "credit") credit = Number(alloc.amount);
-        else {
+        else if (visaMethod && (alloc.method === visaMethod.name || alloc.method_name === visaMethod.name)) {
+          visa = Number(alloc.amount);
+        } else {
           const match = customPayMethods.find(m =>
             m.name === alloc.method || m.name === alloc.method_name
           );
@@ -592,12 +626,12 @@ export default function POSPage() {
         }
       }
       if (cash > 0) setMultiCash(String(cash));
+      if (visa > 0) setMultiVisa(String(visa));
       if (credit > 0) setMultiCredit(String(credit));
       if (Object.keys(customAmts).length) setMultiCustomAmounts(customAmts);
     }
     if (prefill.treasury_id) setSelectedTreasuryId(String(prefill.treasury_id));
-    if (prefill.bank_id) setSelectedBankId(String(prefill.bank_id));
-  }, [amendContext, customPayMethods]);
+  }, [amendContext, customPayMethods, visaMethod]);
 
   // Reset the payment prefill guard when edit context clears
   useEffect(() => { if (!amendContext) paymentPrefillApplied.current = false; }, [amendContext]);
@@ -686,7 +720,7 @@ export default function POSPage() {
     detailedResizingCol.current = key;
     detailedStartX.current = e.clientX;
     detailedStartWidth.current = detailedColWidths[key] || 100;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMouseMove = (mv) => {
       if (!detailedResizingCol.current) return;
       const diff = detailedStartX.current - mv.clientX;
@@ -695,7 +729,7 @@ export default function POSPage() {
     };
     const onMouseUp = () => {
       detailedResizingCol.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
@@ -708,7 +742,7 @@ export default function POSPage() {
     cartResizingCol.current = key;
     cartStartX.current = e.clientX;
     cartStartWidth.current = cartColWidths[key] || 100;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMouseMove = (mv) => {
       if (!cartResizingCol.current) return;
       const diff = cartStartX.current - mv.clientX;
@@ -717,7 +751,7 @@ export default function POSPage() {
     };
     const onMouseUp = () => {
       cartResizingCol.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
@@ -1121,11 +1155,11 @@ export default function POSPage() {
   function resetPaymentFields() {
     setAmountPaid("");
     setAmountReceived("");
-    setSelectedBankId("");
     setSelectedTreasuryId("");
     setActiveMultiPayments([]);
     setInstallmentRows([]);
     setMultiCash("");
+    setMultiVisa("");
     setMultiCredit("");
     setMultiCustomAmounts({});
   }
@@ -1339,13 +1373,10 @@ export default function POSPage() {
         setTimeout(() => setSaveMessage(""), 5000); return;
       }
     }
-    if (paymentType === "bank_transfer" && !selectedBankId && banks.length > 0) {
-      setSaveMessage("يرجى اختيار البنك."); setTimeout(() => setSaveMessage(""), 4000); return;
-    }
     if (paymentType === "multi") {
       const filteredCustomTotal = customPayMethods
         .reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0);
-      const multiTotal = (Number(multiCash)||0) + filteredCustomTotal + (Number(multiCredit)||0);
+      const multiTotal = (Number(multiCash)||0) + (Number(multiVisa)||0) + filteredCustomTotal + (Number(multiCredit)||0);
       if (Math.abs(totals.total - multiTotal) > 0.005) {
         setSaveMessage(`مجموع الدفع المتعدد لا يساوي الإجمالي (${formatMoney(totals.total)}).`);
         setTimeout(() => setSaveMessage(""), 5000); return;
@@ -1392,10 +1423,10 @@ export default function POSPage() {
         installment_plan: paymentType === "installments"
           ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0) }))
           : undefined,
-        bank_id:      selectedBankId  ? Number(selectedBankId)  : null,
         treasury_id:  selectedTreasuryId ? Number(selectedTreasuryId) : null,
         payments:     paymentType === "multi" ? [
           ...(Number(multiCash) > 0 ? [{ method_id: null, method: "cash", amount: Number(multiCash) }] : []),
+          ...(Number(multiVisa) > 0 && visaMethod ? [{ method_id: visaMethod.id, amount: Number(multiVisa) }] : []),
           ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, amount: Number(multiCustomAmounts[m.id]) })),
           ...(Number(multiCredit) > 0 && customer?.id ? [{ method_id: null, method: "credit", amount: Number(multiCredit) }] : []),
         ] : [],
@@ -1454,6 +1485,7 @@ export default function POSPage() {
         if (paymentType === "multi") {
           return [
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+            ...(Number(multiVisa) > 0 && visaMethod ? [{ method_id: visaMethod.id, method_name: visaMethod.name, amount: Number(multiVisa) }] : []),
             ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ];
@@ -1702,8 +1734,8 @@ export default function POSPage() {
     installmentCustomDays, setInstallmentCustomDays,
     installmentRows, handleInstallmentRowChange,
     installmentRemaining, installmentAllocated, installmentBalanced,
-    selectedBankId, setSelectedBankId,
     multiCash, setMultiCash,
+    multiVisa, setMultiVisa, visaMethod,
     multiCredit, setMultiCredit,
     customPayMethods, multiCustomAmounts, setMultiCustomAmounts,
     customerQuery, setCustomerQuery,

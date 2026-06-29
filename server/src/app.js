@@ -64,6 +64,20 @@ const { licenseEnforce } = require("./middleware/licenseEnforce");
 const logger = require("./config/logger");
 const { getDb } = require("./config/database");
 
+function isLoopbackAddress(address) {
+  if (!address) return false;
+  const normalized = String(address).replace(/^::ffff:/, "");
+  return normalized === "::1" || normalized === "127.0.0.1" || normalized.startsWith("127.");
+}
+
+function isLocalTransportRequest(req) {
+  const remoteAddress = req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress;
+  // Requests forwarded by electron/protocolBridge.js arrive over a named pipe
+  // instead of TCP, so Express has no remote address to rate-limit by.
+  if (!remoteAddress) return true;
+  return isLoopbackAddress(remoteAddress);
+}
+
 function createApp() {
   const app = express();
 
@@ -84,7 +98,6 @@ function createApp() {
     credentials: true,
   }));
 
-  app.use(rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
   app.use(express.json({ limit: "10mb" }));
 
   // Health check. Stays a 200 even if the DB probe fails (a momentary lock must NOT be
@@ -111,6 +124,14 @@ function createApp() {
     }
     res.json({ ok: true });
   });
+
+  app.use(rateLimit({
+    windowMs: 60 * 1000,
+    max: Number(process.env.API_RATE_LIMIT_MAX || 300),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: isLocalTransportRequest,
+  }));
 
   // License enforcement (packaged app only; no-op in dev/web/tests). Mounted
   // AFTER /health and the diag sink above so those always work, and on /api so
@@ -203,4 +224,4 @@ function createApp() {
   return app;
 }
 
-module.exports = { createApp };
+module.exports = { createApp, isLocalTransportRequest, isLoopbackAddress };

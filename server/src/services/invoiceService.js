@@ -43,7 +43,7 @@ function recalculateInvoiceStatus(db, invoiceId) {
 
   const becomesPaid = status === "paid" && invoice.status !== "paid";
   if (becomesPaid) {
-    db.prepare("UPDATE invoices SET status = ?, paid_at = datetime('now', 'localtime') WHERE id = ?").run(status, invoiceId);
+    db.prepare("UPDATE invoices SET status = ?, paid_at = ? WHERE id = ?").run(status, nowSql(), invoiceId);
   } else {
     db.prepare("UPDATE invoices SET status = ? WHERE id = ?").run(status, invoiceId);
   }
@@ -281,7 +281,7 @@ function createInvoice(payload) {
 
     const inv = db
       .prepare(
-        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         invoiceNo,
@@ -300,6 +300,7 @@ function createInvoice(payload) {
         taxResult.tax_rate,
         taxResult.tax_amount,
         taxResult.tax_type,
+        nowSql(),
       );
 
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
@@ -430,6 +431,14 @@ function createInvoice(payload) {
       }
     } else if (paymentType === "multi") {
       if (payload.payments && Array.isArray(payload.payments)) {
+        // The distributed amounts must reconcile to the invoice total, otherwise
+        // the credit portion (and the customer's owed balance) would be wrong.
+        const paySum = payload.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+          const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي الفاتورة (${total})`);
+          e.status = 400;
+          throw e;
+        }
         for (const p of payload.payments) {
           const amount = Number(p.amount || 0);
           if (amount <= 0) continue;
@@ -916,26 +925,33 @@ function editInvoice(invoiceId, payload, userId) {
     }
 
     // ── 3. Fully reverse OLD financial effects ───────────────────────────
+    // 3a. Uniformly reverse any customer-balance debt tied to this invoice.
+    //     credit, installments AND partial-cash all may carry an ajal_debt, so
+    //     this must run for every payment type (the old per-type logic missed
+    //     partial-cash entirely and over-reversed credit by the gross total).
+    //     Mirrors cancelInvoice/voidInvoice: reverse only the still-OUTSTANDING
+    //     amount (original − paid), never the gross total.
+    if (oldCustomerId) {
+      const oldDebt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice' AND status != 'voided'").get(invoiceId);
+      if (oldDebt) {
+        const rem = Number(oldDebt.original_amount) - Number(oldDebt.paid_amount || 0);
+        if (rem > 0) db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(rem, oldCustomerId);
+        db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(oldDebt.id);
+        db.prepare("UPDATE ajal_schedules SET status = 'voided' WHERE debt_id = ? AND status = 'pending'").run(oldDebt.id);
+      }
+    }
+    // 3b. Reverse physical money (treasury / bank) per old payment type.
     if (oldPaymentType === 'cash') {
       const tId = invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
       const amt = invoice.amount_received ?? invoice.total;
       if (tId && amt > 0) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amt, tId);
-    } else if (oldPaymentType === 'credit' && oldCustomerId) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(invoice.total, oldCustomerId);
-      try { db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE invoice_id = ? AND source_type = 'invoice'").run(invoiceId); } catch (_) {}
+    } else if (oldPaymentType === 'credit') {
+      // ajal_debt reversed uniformly in 3a; no physical cash to undo
     } else if (oldPaymentType === 'bank_transfer') {
       const amt = invoice.amount_received ?? invoice.total;
       if (invoice.bank_id && amt > 0) recordBankMovement(db, { bankId: invoice.bank_id, type: "withdrawal", amount: amt, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no} (عكس)`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
     } else if (oldPaymentType === 'installments') {
-      if (oldCustomerId) {
-        const debt = db.prepare("SELECT * FROM ajal_debts WHERE invoice_id = ? AND source_type = 'invoice'").get(invoiceId);
-        if (debt) {
-          const rem = Number(debt.original_amount) - Number(debt.paid_amount || 0);
-          if (rem > 0) db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(rem, oldCustomerId);
-          db.prepare("UPDATE ajal_debts SET status = 'voided' WHERE id = ?").run(debt.id);
-          db.prepare("UPDATE ajal_schedules SET status = 'voided' WHERE debt_id = ? AND status = 'pending'").run(debt.id);
-        }
-      }
+      // ajal_debt + schedules reversed uniformly in 3a
       // When switching to 'credit' (full credit conversion), reverse all cash
       // payments so the ENTIRE amount becomes debt.
       if (newPaymentType === 'credit') {
@@ -984,13 +1000,14 @@ function editInvoice(invoiceId, payload, userId) {
     const newStatus = remainingAmount > 0 ? (amountReceived > 0 ? 'partial' : 'unpaid') : 'paid';
     db.prepare(`
       UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
-        payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = datetime('now', 'localtime'),
+        payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = ?,
         updated_by = ?, notes = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?
       WHERE id = ?
     `).run(
       newCustomerId, subtotal, discount, increase, newTotal,
       newPaymentType, amountReceived, newStatus,
       payload.seller_id ? Number(payload.seller_id) : invoice.seller_id,
+      nowSql(),
       userId || null,
       payload.notes !== undefined ? (payload.notes || null) : (invoice.notes || null),
       taxResult.tax_enabled,
@@ -1006,6 +1023,12 @@ function editInvoice(invoiceId, payload, userId) {
       if (bankId && amountReceived > 0) recordBankMovement(db, { bankId, type: "deposit", amount: amountReceived, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
     } else if (newPaymentType === 'multi') {
       if (payload.payments && Array.isArray(payload.payments)) {
+        const paySum = payload.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        if (Math.abs(paySum - Number(newTotal || 0)) > 0.01) {
+          const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي الفاتورة (${newTotal})`);
+          e.status = 400;
+          throw e;
+        }
         for (const p of payload.payments) {
           const amt = Number(p.amount || 0); if (amt <= 0) continue;
           let method = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
@@ -1019,6 +1042,28 @@ function editInvoice(invoiceId, payload, userId) {
             VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
           `).run(newCustomerId || 0, amt, method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category), `Invoice ${invoice.invoice_no}`, method.type === 'cash' ? method.target_id : null, method.type === 'bank' ? method.target_id : null, amt, invoiceId);
           db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)").run(payment.lastInsertRowid, invoiceId, amt);
+        }
+        // Credit portion → customer debt + correct amount_received/status.
+        // (Mirrors createInvoice multi; was missing here, which orphaned the
+        //  customer balance on edit — leaving a phantom "opening balance" and a
+        //  0-impact invoice when the credit total changed.)
+        let creditSum = 0;
+        for (const p of payload.payments) {
+          const amt = Number(p.amount || 0);
+          if (amt <= 0) continue;
+          let m = p.method_id ? db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(p.method_id) : null;
+          if (!m && p.method === 'credit') m = { type: 'credit' };
+          if (m && (m.type === 'credit' || m.category === 'credit')) creditSum += amt;
+        }
+        if (creditSum > 0 && newCustomerId) {
+          const actualReceived = Math.max(0, paySum - creditSum);
+          db.prepare("UPDATE invoices SET amount_received = ?, status = ? WHERE id = ?")
+            .run(actualReceived, actualReceived > 0 ? 'partial' : 'unpaid', invoiceId);
+          db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(creditSum, newCustomerId);
+          db.prepare(`
+            INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+            VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+          `).run(invoiceId, newCustomerId, creditSum, payload.due_date || null, payload.notes || null);
         }
       }
     } else if (newPaymentType === 'installments') {
@@ -1058,11 +1103,20 @@ function editInvoice(invoiceId, payload, userId) {
       db.prepare(`INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
         VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
       `).run(invoiceId, newCustomerId, debtAmount, payload.due_date || null, payload.notes || null);
-    } else if (amountReceived > 0) {
-      // cash / default fallback — subtract preserved installment payments
+    } else {
+      // cash / default fallback — deposit received cash (subtract preserved
+      // installment payments), AND book any unpaid remainder as a customer debt
+      // (partial-cash sale). Mirrors createInvoice's debt branch so editing the
+      // total correctly moves the customer's owed balance.
       const netCash = oldPaymentType === 'installments' ? Math.max(0, amountReceived - existingPaid) : amountReceived;
       const tId = payload.treasury_id || invoice.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
       if (tId && netCash > 0) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(netCash, tId);
+      if (remainingAmount > 0 && newCustomerId) {
+        db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(remainingAmount, newCustomerId);
+        db.prepare(`INSERT INTO ajal_debts (invoice_id, customer_id, party_type, source_type, original_amount, paid_amount, due_date, status, notes)
+          VALUES (?, ?, 'customer', 'invoice', ?, 0, ?, 'open', ?)
+        `).run(invoiceId, newCustomerId, remainingAmount, payload.due_date || null, payload.notes || null);
+      }
     }
 
     return db.prepare("SELECT * FROM invoices WHERE id = ?").get(invoiceId);

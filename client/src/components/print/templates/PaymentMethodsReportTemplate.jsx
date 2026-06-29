@@ -1,10 +1,10 @@
-﻿import React from "react";
+import React from "react";
 import { formatNumber } from "../../../utils/currency";
 import { resolveImageUrl } from "../../../utils/resolveImageUrl";
 
 const fmt = (n) => formatNumber(n);
 
-export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, totalIn = 0, totalOut = 0, settings = {} }) {
+export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, totalIn = 0, totalOut = 0, byMethod = [], settings = {} }) {
   const {
     company_name = "",
     accent_color = "#7c3aed",
@@ -43,6 +43,32 @@ export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, 
         ))}
       </div>
 
+      {byMethod.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>ملخص حسب وسيلة الدفع</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9", color: "#334155" }}>
+                {["وسيلة الدفع", "عدد الحركات", "داخل", "خارج", "صافي"].map((h) => (
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "right", fontWeight: 900, border: "1px solid #e2e8f0" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {byMethod.map((m, i) => (
+                <tr key={m.method_id || m.method_name || i}>
+                  <td style={{ padding: "7px 10px", border: "1px solid #e2e8f0", fontWeight: 900 }}>{m.method_name || "-"}</td>
+                  <td style={{ padding: "7px 10px", border: "1px solid #e2e8f0" }}>{m.transaction_count || 0}</td>
+                  <td style={{ padding: "7px 10px", border: "1px solid #e2e8f0", color: "#16a34a", fontWeight: 900 }}>{fmt(m.total_in)} ج.م</td>
+                  <td style={{ padding: "7px 10px", border: "1px solid #e2e8f0", color: "#dc2626", fontWeight: 900 }}>{fmt(m.total_out)} ج.م</td>
+                  <td style={{ padding: "7px 10px", border: "1px solid #e2e8f0", fontWeight: 900 }}>{fmt(m.net_amount)} ج.م</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
         <thead>
           <tr style={{ background: accent_color, color: "white" }}>
@@ -55,7 +81,7 @@ export default function PaymentMethodsReportTemplate({ rows = [], filters = {}, 
           {rows.map((row, i) => (
             <tr key={row.id || i} style={{ background: i % 2 === 0 ? "#f8fafc" : "white", borderBottom: "1px solid #e2e8f0" }}>
               <td style={{ padding: "8px 12px", fontFamily: "monospace" }}>{row.doc_no || `#${row.id}`}</td>
-              <td style={{ padding: "8px 12px" }}>{row.doc_type || "-"}</td>
+              <td style={{ padding: "8px 12px" }}>{row.doc_type_label || row.doc_type || "-"}</td>
               <td style={{ padding: "8px 12px", fontWeight: 900 }}>{fmt(row.amount)} ج.م</td>
               <td style={{ padding: "8px 12px" }}>
                 <span style={{ background: row.direction === "out" ? "#fee2e2" : "#dcfce7", color: row.direction === "out" ? "#dc2626" : "#16a34a", borderRadius: 12, padding: "2px 8px", fontWeight: 900 }}>

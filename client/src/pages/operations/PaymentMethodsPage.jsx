@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   CreditCard, Plus, Pencil, Trash2, X, Lock, ArrowUpCircle, ArrowDownCircle,
   BookOpen, RefreshCw, Search, Printer, Settings2, Wallet, Banknote, ShieldCheck
@@ -15,11 +16,13 @@ import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
 
-// Bank/visa is a separate isolated channel managed on the Bank Operations page
-// ("البنوك والفيزا"), not a configurable payment method here. Hence no "bank" category.
+// "فيزا" is a permanent, record-only system method (category 'card') seeded by
+// migration 156 — it shows here read-only alongside نقدي/أجل and is selected from
+// POS متعدد. The 'card' category is not offered in the create dialog (system-only).
 const CATEGORIES = [
   { value: "cash", label: "نقدي", icon: "💵" },
   { value: "credit", label: "أجل", icon: "📋" },
+  { value: "card", label: "فيزا / بطاقة", icon: "💳" },
   { value: "digital_wallet", label: "محفظة رقمية", icon: "📱" },
   { value: "other", label: "أخرى", icon: "🔄" },
 ];
@@ -28,6 +31,7 @@ const CAT_COLORS = {
   cash: "bg-emerald-50 text-emerald-700",
   credit: "bg-amber-50 text-amber-700",
   bank: "bg-blue-50 text-blue-700",
+  card: "bg-blue-50 text-blue-700",
   digital_wallet: "bg-violet-50 text-violet-700",
   other: "bg-slate-50 text-slate-600",
 };
@@ -232,7 +236,7 @@ function MethodsTab() {
                   <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">التصنيف المحاسبي</label>
                   <select ref={catRef} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, { nextRef: descRef, prevRef: iconRef })}
                     className="w-full text-xl font-bold text-slate-900 outline-none border-b-2 border-slate-100 focus:border-slate-900 pb-3 transition-colors bg-transparent appearance-none cursor-pointer">
-                    {CATEGORIES.filter(c => c.value !== "cash" && c.value !== "credit").map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
+                    {CATEGORIES.filter(c => c.value !== "cash" && c.value !== "credit" && c.value !== "card").map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
                   </select>
                 </div>
 
@@ -283,6 +287,7 @@ function TransactionsTab() {
   const typeRef = useRef(null);
   const refreshBtnRef = useRef(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [flowSummary, setFlowSummary] = useState({ totals: null, by_method: [] });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -298,14 +303,29 @@ function TransactionsTab() {
         api.get("/api/payment-methods"),
       ]);
       setRows(txR.data.data || []);
+      setFlowSummary({ totals: txR.data.totals || null, by_method: txR.data.by_method || [] });
       setMethods(mR.data.data || []);
-    } catch { setRows([]); } finally { setLoading(false); }
+    } catch { setRows([]); setFlowSummary({ totals: null, by_method: [] }); } finally { setLoading(false); }
   }, [filters]);
 
   useEffect(() => { load(); }, [load]);
 
-  const totalIn = rows.filter(r => r.direction !== "out").reduce((s, r) => s + Number(r.amount || 0), 0);
-  const totalOut = rows.filter(r => r.direction === "out").reduce((s, r) => s + Number(r.amount || 0), 0);
+  const visibleTotalIn = rows.filter(r => r.direction !== "out").reduce((s, r) => s + Number(r.amount || 0), 0);
+  const visibleTotalOut = rows.filter(r => r.direction === "out").reduce((s, r) => s + Number(r.amount || 0), 0);
+  const totalIn = Number(flowSummary.totals?.total_in ?? visibleTotalIn);
+  const totalOut = Number(flowSummary.totals?.total_out ?? visibleTotalOut);
+  const netTotal = Number(flowSummary.totals?.net_amount ?? (totalIn - totalOut));
+  const topMethods = useMemo(() => [...(flowSummary.by_method || [])].sort((a, b) => Math.abs(Number(b.net_amount || 0)) - Math.abs(Number(a.net_amount || 0))).slice(0, 6), [flowSummary.by_method]);
+  const reportHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filters.from) params.set("start_date", filters.from);
+    if (filters.to) params.set("end_date", filters.to);
+    if (filters.method) params.set("method_id", filters.method);
+    if (filters.type) params.set("direction", filters.type);
+    if (filters.search) params.set("q", filters.search);
+    const qs = params.toString();
+    return `/reports/source/treasury/payment-flow-ledger/detailed${qs ? `?${qs}` : ""}`;
+  }, [filters]);
   const isFiltered = filters.search || filters.from || filters.to || filters.method || filters.type;
 
   return (
@@ -316,7 +336,7 @@ function TransactionsTab() {
         {[
           { label: "المقبوضات", val: totalIn, color: "text-emerald-600", dot: "bg-emerald-400" },
           { label: "المدفوعات", val: totalOut, color: "text-rose-600", dot: "bg-rose-400" },
-          { label: "الصافي", val: totalIn - totalOut, color: "text-slate-900", dot: "bg-slate-400" },
+          { label: "الصافي", val: netTotal, color: netTotal < 0 ? "text-rose-700" : "text-slate-900", dot: "bg-slate-400" },
         ].map(({ label, val, color, dot }) => (
           <div key={label} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-full px-5 py-2.5">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
@@ -368,6 +388,36 @@ function TransactionsTab() {
           </div>
         </div>
 
+        <div className="flex justify-end">
+          <Link to={reportHref} className="inline-flex h-12 items-center gap-2 rounded-full bg-slate-950 px-5 text-xs font-black text-white shadow-sm transition-colors hover:bg-slate-800">
+            <BookOpen className="h-4 w-4" /> التقرير التفصيلي
+          </Link>
+        </div>
+
+        {topMethods.length > 0 && (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {topMethods.map((m) => (
+              <div key={m.method_id || m.method_name} className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-base">{m.method_icon || methods.find(x => x.id === m.method_id)?.icon || "💳"}</span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-black text-slate-900">{m.method_name || "غير محدد"}</div>
+                      <div className="text-[10px] font-bold text-slate-400">{Number(m.transaction_count || 0)} حركة</div>
+                    </div>
+                  </div>
+                  {Number(m.excludes_from_treasury || 0) ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700">خارج الخزينة</span> : null}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-emerald-50 px-2 py-2"><div className="text-[10px] font-black text-emerald-700">داخل</div><div className="number-fmt text-sm font-black text-emerald-800">{fmt(m.total_in)}</div></div>
+                  <div className="rounded-xl bg-rose-50 px-2 py-2"><div className="text-[10px] font-black text-rose-700">خارج</div><div className="number-fmt text-sm font-black text-rose-800">{fmt(m.total_out)}</div></div>
+                  <div className="rounded-xl bg-slate-50 px-2 py-2"><div className="text-[10px] font-black text-slate-500">صافي</div><div className={`number-fmt text-sm font-black ${Number(m.net_amount || 0) < 0 ? "text-rose-700" : "text-slate-900"}`}>{fmt(m.net_amount)}</div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Transactions Table */}
         <div className="relative" style={{ minHeight: '400px' }}>
           {loading && rows.length === 0 ? (
@@ -407,7 +457,7 @@ function TransactionsTab() {
                         <span className="font-mono text-sm font-bold text-slate-400 group-hover:text-slate-900 transition-colors">{r.doc_no || `#${r.id}`}</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="text-sm font-black text-slate-800 tracking-tight">{r.doc_type || "—"}</span>
+                        <span className="text-sm font-black text-slate-800 tracking-tight">{r.doc_type_label || r.doc_type || "—"}</span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="number-fmt-primary text-[18px] text-slate-900 tracking-tighter">{fmt(r.amount)}</span>
@@ -424,7 +474,7 @@ function TransactionsTab() {
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm text-[16px]">{methods.find(m => m.id === r.method_id)?.icon || "💳"}</span>
+                          <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm text-[16px]">{r.method_icon || methods.find(m => m.id === r.method_id)?.icon || "💳"}</span>
                           <span className="text-sm font-black text-slate-900">{r.method_name || "—"}</span>
                         </div>
                       </td>
@@ -453,6 +503,7 @@ function TransactionsTab() {
               filters={filters}
               totalIn={totalIn}
               totalOut={totalOut}
+              byMethod={flowSummary.by_method || []}
               settings={settings}
             />
           )}

@@ -76,8 +76,8 @@ const ProductSearchField = forwardRef(function ProductSearchField({
         closeDropdown();
       }
     };
-    document.addEventListener("mousedown", handler, true);
-    return () => document.removeEventListener("mousedown", handler, true);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   return (

@@ -405,7 +405,7 @@ describe("saveInvoice pre-validation", () => {
   });
 
   it("rejects credit payment when customer has no id (walk-in object)", () => {
-    const walkIn = { id: null, name: "زبون نقدي" };
+    const walkIn = { id: null, name: "عميل نقدي" };
     const result = saveInvoiceValidation({
       lines: goodLines, paymentType: "credit", customer: walkIn,
       selectedBankId: "", banks: [], activeMultiPayments: [], total: 20,

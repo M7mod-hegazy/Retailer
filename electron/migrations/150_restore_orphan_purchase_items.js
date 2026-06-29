@@ -57,7 +57,7 @@ module.exports = {
     const existsStmt = db.prepare("SELECT 1 FROM items WHERE id = ?");
     const insertStmt = db.prepare(
       `INSERT INTO items (id, name, name_en, barcode, code, is_active, deleted_at, item_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 0, datetime('now','localtime'), 'product', datetime('now','localtime'), datetime('now','localtime'))`
+       VALUES (?, ?, ?, ?, ?, 0, datetime('now'), 'product', datetime('now'), datetime('now'))`
     );
 
     let restored = 0;

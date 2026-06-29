@@ -4,6 +4,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { partyTxnSum } = require("../services/partyBalanceService");
 const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -21,7 +22,7 @@ function ensureNotesSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
       note TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now', 'localtime')),
+      created_at TEXT DEFAULT (datetime('now')),
       created_by INTEGER REFERENCES users(id)
     )`);
   } catch (_) {}
@@ -166,8 +167,8 @@ router.post("/:id/adjust", requirePagePermission("suppliers", "add"), (req, res)
     ensureNotesSchema(db);
     db.transaction(() => {
       db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
-      db.prepare("INSERT INTO supplier_notes (supplier_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
-        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null);
+      db.prepare("INSERT INTO supplier_notes (supplier_id, note, type, amount, created_by, created_at) VALUES (?, ?, 'adjustment', ?, ?, ?)")
+        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null, nowSql());
     })();
     res.json({ success: true, data: db.prepare("SELECT * FROM suppliers WHERE id = ?").get(req.params.id) });
   } catch (e) {
@@ -190,8 +191,8 @@ router.get("/:id/notes", requirePagePermission("suppliers", "view"), (req, res) 
 router.post("/:id/notes", requirePagePermission("suppliers", "add"), (req, res) => {
   const { note } = req.body || {};
   if (!note) return res.status(400).json({ success: false, message: "الملاحظة مطلوبة" });
-  const result = getDb().prepare("INSERT INTO supplier_notes (supplier_id, note, created_by) VALUES (?, ?, ?)")
-    .run(req.params.id, note, req.user?.id || null);
+  const result = getDb().prepare("INSERT INTO supplier_notes (supplier_id, note, created_by, created_at) VALUES (?, ?, ?, ?)")
+    .run(req.params.id, note, req.user?.id || null, nowSql());
   const newNote = getDb().prepare("SELECT n.*, u.username as user_name FROM supplier_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
   res.status(201).json({ success: true, data: newNote });
 });
@@ -317,8 +318,8 @@ router.post("/import/batches/:id/undo", requirePagePermission("suppliers", "impo
       for (const id of insertedIds) {
         db.prepare("DELETE FROM suppliers WHERE id = ?").run(id);
       }
-      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=datetime('now', 'localtime'), undone_by=? WHERE id=?")
-        .run(req.user?.id || null, batchId);
+      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=?, undone_by=? WHERE id=?")
+        .run(nowSql(), req.user?.id || null, batchId);
     })();
 
     res.json({ success: true, data: { batch_id: batchId, status: "undone" } });

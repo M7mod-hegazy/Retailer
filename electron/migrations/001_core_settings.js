@@ -5,7 +5,7 @@ function up(db) {
       company_name TEXT,
       vat_number TEXT,
       tax_rate INTEGER DEFAULT 0,
-      wizard_completed INTEGER DEFAULT 1,
+      wizard_completed INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -38,7 +38,7 @@ function up(db) {
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
 
-    INSERT OR IGNORE INTO settings (id, wizard_completed) VALUES (1, 1);
+    INSERT OR IGNORE INTO settings (id, wizard_completed) VALUES (1, 0);
   `);
 }
 

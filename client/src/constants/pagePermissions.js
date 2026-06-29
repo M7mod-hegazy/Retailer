@@ -22,6 +22,12 @@ export const ACTION_LABELS = {
   edit_tax_rate: "تعديل نسبة الضريبة",
   view_sensitive: "رؤية البيانات المالية الحساسة",
   backdate_records: "تعديل التواريخ السابقة",
+  salary_view: "عرض الراتب",
+  salary_edit: "تعديل الراتب",
+  manage_advances: "إدارة السلف",
+  manage_deductions: "إدارة الخصومات",
+  manage_bonuses: "إدارة المكافئات",
+  settle_payroll: "صرف الرواتب",
 };
 
 export const ACTION_DESCRIPTIONS = {
@@ -48,6 +54,12 @@ export const ACTION_DESCRIPTIONS = {
   edit_tax_rate: "تعديل نسبة الضريبة على الفواتير",
   view_sensitive: "مشاهدة البيانات المالية الحساسة (الأرباح، الهوامش، التكاليف)",
   backdate_records: "إضافة أو تعديل أو حذف سجلات بتواريخ أيام سابقة",
+  salary_view: "مشاهدة بيانات الراتب",
+  salary_edit: "تعديل الراتب وفترة الدفع",
+  manage_advances: "إدارة السلفيات (إضافة، تعديل، حذف)",
+  manage_deductions: "إدارة الخصومات",
+  manage_bonuses: "إدارة المكافئات",
+  settle_payroll: "صرف الرواتب وإنشاء مصروفات",
 };
 
 export const PAGE_PERMISSIONS = {
@@ -67,7 +79,6 @@ export const PAGE_PERMISSIONS = {
   expenses: { label: 'تسجيل المصروفات', actions: ['view', 'add', 'edit', 'delete', 'print', 'backdate_records'] },
   withdrawals: { label: 'تسجيل المسحوبات', actions: ['view', 'add', 'edit', 'delete', 'print', 'backdate_records'] },
   payment_methods: { label: 'وسائل الدفع', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  bank_operations: { label: 'البنوك والفيزا', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   cheques: { label: 'إدارة الشيكات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   items: { label: 'قاعدة الأصناف', actions: ['view', 'add', 'edit', 'delete', 'print', 'import_undo'] },
   categories: { label: 'أقسام الأصناف', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -79,12 +90,11 @@ export const PAGE_PERMISSIONS = {
   customers: { label: 'العملاء', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   suppliers: { label: 'الموردين', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   warehouses: { label: 'المخازن', actions: ['view', 'add', 'edit', 'delete', 'print'] },
-  banks: { label: 'البنوك', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   units: { label: 'وحدات القياس', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   financial_categories: { label: 'أقسام الحركات المالية', actions: ['view', 'add', 'edit', 'delete', 'print'] },
   reports: { label: 'مركز التقارير', actions: ['view', 'export'] },
   users: { label: 'المستخدمين', actions: ['view', 'add', 'edit', 'delete', 'manage_permissions', 'print'] },
-  employees: { label: 'الموظفين', actions: ['view', 'add', 'edit', 'delete', 'print'] },
+  employees: { label: 'الموظفين', actions: ['view', 'add', 'edit', 'delete', 'print', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'] },
   settings: { label: 'الإعدادات العامة', actions: ['view', 'edit_general', 'edit_security'] },
   dashboard: { label: 'لوحة التحكم', actions: ['view'] },
   stock: { label: 'المخزون', actions: ['view', 'add', 'edit', 'delete', 'adjust', 'transfer', 'print'] },
@@ -109,5 +119,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

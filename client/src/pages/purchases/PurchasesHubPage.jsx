@@ -288,37 +288,29 @@ function PreviewDrawer({ purchaseId, onClose }) {
                   <span className={`number-fmt text-xs font-black ${remaining > 0.005 ? "text-amber-700" : "text-zinc-600"}`}>{formatMoney(remaining)}</span>
                 </div>
               </div>
-              {/* Discount & Increase row */}
-              {Number(d.discount) > 0 && Number(d.increase) > 0 && (
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    خصم الفاتورة
-                  </span>
-                  <span className="number-fmt text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
-                  <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1 mr-auto">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    إضافة / رسوم
-                  </span>
-                  <span className="number-fmt text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
-                </div>
-              )}
-              {Number(d.discount) > 0 && !(Number(d.increase) > 0) && (
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[11px] font-black text-rose-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    خصم الفاتورة
-                  </span>
-                  <span className="number-fmt text-[11px] font-black text-rose-600">{formatMoney(d.discount)} ج.م</span>
-                </div>
-              )}
-              {Number(d.increase) > 0 && !(Number(d.discount) > 0) && (
-                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-zinc-100">
-                  <span className="text-[11px] font-black text-emerald-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    إضافة / رسوم
-                  </span>
-                  <span className="number-fmt text-[11px] font-black text-emerald-600">{formatMoney(d.increase)} ج.م</span>
+              {/* Before → adjustments → after (only shown when a discount or increase is applied) */}
+              {(Number(d.discount) > 0 || Number(d.increase) > 0) && (
+                <div className="mt-2 pt-2 border-t border-zinc-100 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-zinc-500">المجموع قبل الخصم/الزيادة</span>
+                    <span className="number-fmt text-zinc-700">{formatMoney(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))} ج.م</span>
+                  </div>
+                  {Number(d.discount) > 0 && (
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-black text-rose-600 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> خصم الفاتورة</span>
+                      <span className="number-fmt font-black text-rose-600">− {formatMoney(d.discount)} ج.م</span>
+                    </div>
+                  )}
+                  {Number(d.increase) > 0 && (
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-black text-emerald-600 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> إضافة / رسوم</span>
+                      <span className="number-fmt font-black text-emerald-600">+ {formatMoney(d.increase)} ج.م</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-zinc-100">
+                    <span className="font-black text-zinc-800">الإجمالي بعد التعديل</span>
+                    <span className="number-fmt-primary font-black text-zinc-900">{formatMoney(d.total)} ج.م</span>
+                  </div>
                 </div>
               )}
               {d.payment_method === "multi" && d.payments?.length > 0 && (

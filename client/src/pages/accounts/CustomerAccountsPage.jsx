@@ -500,16 +500,23 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
         else if (item.impactDir === "subtract") runBal += (item.impactAmount || 0);
         item.balanceBefore = runBal;
       }
-      // runBal = balance before any of these transactions (the "opening")
-      if (Math.abs(runBal) > 0.005) {
+      // The opening row reflects the FROZEN base opening balance (set once at
+      // customer creation), never a back-computed artifact: a customer created
+      // with no opening balance never shows this row; one created with an opening
+      // balance always shows exactly that figure, unaffected by transactions.
+      // Fall back to the computed runBal only if the column isn't populated yet.
+      const baseBalance = party.base_opening_balance !== null && party.base_opening_balance !== undefined
+        ? Number(party.base_opening_balance)
+        : runBal;
+      if (Math.abs(baseBalance) > 0.005) {
         items.push({
           id: "opening",
           type: "opening",
           date: null,
-          impactAmount: Math.abs(runBal),
-          impactDir: runBal > 0 ? "add" : "subtract",
+          impactAmount: Math.abs(baseBalance),
+          impactDir: baseBalance > 0 ? "add" : "subtract",
           balanceBefore: 0,
-          balanceAfter: runBal,
+          balanceAfter: baseBalance,
         });
       }
 
@@ -752,11 +759,22 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                             )}
                           </div>
                           
-                          <div className="mt-2.5 flex items-center gap-1">
+                          <div className="mt-2.5 flex items-center gap-1.5">
                             <span className="text-[9.5px] font-bold text-slate-400 select-none">المرجع:</span>
-                            <span className="text-[11px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
-                              {isOpening ? "سجل افتتاحي" : ev.ref}
-                            </span>
+                            {ev.type === "ajal_payment" && ev.invoiceNo ? (
+                              <button
+                                onClick={() => onOpenInvoice({ id: ev.invoiceId, invoice_no: ev.invoiceNo })}
+                                className="inline-flex items-center gap-1 text-[11px] font-black text-blue-650 font-mono bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-[6px] hover:bg-blue-100 transition-all cursor-pointer shadow-sm select-none"
+                                title="عرض الفاتورة"
+                              >
+                                {ev.invoiceNo}
+                                <ExternalLink className="h-3 w-3 stroke-[2.2px]" />
+                              </button>
+                            ) : (
+                              <span className="text-[11px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
+                                {isOpening ? "سجل افتتاحي" : ev.ref}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -781,6 +799,23 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                               </span>
                             );
                           })}
+                        </div>
+                      )}
+                      {/* Invoice-total adjustments: discount (تخفيض) / increase (زيادة) badges */}
+                      {isDocRow && (Number(ev.raw?.discount) > 0 || Number(ev.raw?.increase) > 0) && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Number(ev.raw?.discount) > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-lg border bg-rose-50 text-rose-700 border-rose-200/70 shadow-sm select-none" title="خصم على إجمالي الفاتورة">
+                              <TrendingDown className="h-3 w-3 stroke-[2.4px]" />
+                              خصم −{fmt(ev.raw.discount)}
+                            </span>
+                          )}
+                          {Number(ev.raw?.increase) > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-lg border bg-amber-50 text-amber-700 border-amber-200/70 shadow-sm select-none" title="زيادة / رسوم على إجمالي الفاتورة">
+                              <TrendingUp className="h-3 w-3 stroke-[2.4px]" />
+                              زيادة +{fmt(ev.raw.increase)}
+                            </span>
+                          )}
                         </div>
                       )}
                       {!isDocRow && !isOpening && ev.methodLabel && (
@@ -813,6 +848,19 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                         ) : (
                           <span className="text-[11.5px] text-slate-455 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
                             {ev.description}
+                          </span>
+                        )
+                      )}
+                      {ev.type === "ajal_payment" && ev.debtRemaining !== undefined && (
+                        ev.debtRemaining > 0.005 ? (
+                          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border bg-violet-50 border-violet-200/70 text-violet-700 shadow-sm select-none">
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                            المتبقي: {fmt(ev.debtRemaining)}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border bg-emerald-50 border-emerald-200/70 text-emerald-700 shadow-sm select-none">
+                            <Check className="h-3 w-3 stroke-[2.5px]" />
+                            تم السداد بالكامل
                           </span>
                         )
                       )}
@@ -891,6 +939,15 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                           onClick={() => onOpenReturn(ev.raw)}
                           className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
                           title="عرض تفاصيل المرتجع"
+                        >
+                          <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                        </button>
+                      )}
+                      {ev.type === "ajal_payment" && ev.invoiceId && (
+                        <button
+                          onClick={() => onOpenInvoice({ id: ev.invoiceId })}
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-violet-50 text-slate-400 hover:text-violet-600 border border-slate-200/80 hover:border-violet-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          title="عرض الفاتورة الأصلية"
                         >
                           <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                         </button>

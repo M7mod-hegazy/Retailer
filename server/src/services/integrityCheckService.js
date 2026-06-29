@@ -10,6 +10,7 @@
  *
  * Results are stored in integrity_check_runs / integrity_check_issues tables.
  */
+const { nowSql } = require("../utils/datetime");
 const { roundMoney } = require("../utils/money");
 const { recomputeWACCForItem } = require("./waccService");
 
@@ -178,9 +179,9 @@ function resolveIssue(issueId, action, userId, db) {
 
   db.prepare(`
     UPDATE integrity_check_issues
-    SET resolved_at = datetime('now', 'localtime'), resolved_by = ?, resolution = ?
+    SET resolved_at = ?, resolved_by = ?, resolution = ?
     WHERE id = ?
-  `).run(userId ?? null, action, issueId);
+  `).run(nowSql(), userId ?? null, action, issueId);
 
   // Update parent run's unresolved count
   db.prepare(`

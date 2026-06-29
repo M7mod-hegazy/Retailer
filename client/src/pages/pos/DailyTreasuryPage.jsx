@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
+import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import { formatNumber } from "../../utils/currency";
@@ -355,6 +356,7 @@ export default function DailyTreasuryPage() {
   const [withdrawalNote, setWithdrawalNote] = useState("");
   const [withdrawalCategoryId, setWithdrawalCategoryId] = useState("");
   const [withdrawalPaymentMethod, setWithdrawalPaymentMethod] = useState("cash");
+  const recordMethods = useRecordOnlyMethods();
   const [withdrawalSubmitting, setWithdrawalSubmitting] = useState(false);
   const [withdrawalCategories, setWithdrawalCategories] = useState([]);
 
@@ -2603,9 +2605,8 @@ export default function DailyTreasuryPage() {
                     onKeyDown={e => handleKeyDown(e, { nextRef: withdrawalSubmitRef, prevRef: withdrawalCategoryRef })}
                     className="w-full h-12 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-normal)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-900/5 transition-all appearance-none"
                   >
-                    <option value="cash">نقدي</option>
-                    <option value="bank_transfer">تحويل بنكي</option>
-                    <option value="InstaPay">إنستاباي</option>
+                    <option value="cash">💵 نقدي</option>
+                    {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
                   </select>
                 </div>
                 <div className="pt-4">

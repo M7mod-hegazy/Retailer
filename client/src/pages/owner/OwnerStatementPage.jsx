@@ -547,6 +547,9 @@ export default function OwnerStatementPage() {
   const [snapshots, setSnapshots] = useState([]);
   const [activeSnapshot, setActiveSnapshot] = useState(null);
   const [selectedMetric, setSelectedMetric] = useState(null);
+  const [selectedPaymentFlow, setSelectedPaymentFlow] = useState(null);
+  const [paymentFlowDetails, setPaymentFlowDetails] = useState([]);
+  const [paymentFlowDetailsLoading, setPaymentFlowDetailsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [leftCompare, setLeftCompare] = useState("");
@@ -563,6 +566,21 @@ export default function OwnerStatementPage() {
   const display = activeSnapshot || data;
   const canSave = usePermission("owner_statement", "save");
   const canLock = usePermission("owner_statement", "lock");
+  const paymentFlowRows = Array.isArray(display?.rows?.payment_flow) ? display.rows.payment_flow : [];
+  const paymentFlowTotals = useMemo(() => paymentFlowRows.reduce((acc, row) => {
+    acc.totalIn += Number(row.total_in || 0);
+    acc.totalOut += Number(row.total_out || 0);
+    acc.net += Number(row.net_amount || 0);
+    acc.count += Number(row.transaction_count || 0);
+    return acc;
+  }, { totalIn: 0, totalOut: 0, net: 0, count: 0 }), [paymentFlowRows]);
+  const ownerPaymentFlowHref = useMemo(() => {
+    const params = new URLSearchParams({
+      start_date: display?.period_start || range.from,
+      end_date: display?.period_end || range.to,
+    });
+    return `/reports/source/payment-flow/payment-flow-summary/summary?${params.toString()}`;
+  }, [display?.period_start, display?.period_end, range.from, range.to]);
 
   useEffect(() => {
     const nextRange = rangeFromSearch(searchParams);
@@ -664,6 +682,29 @@ export default function OwnerStatementPage() {
     setCompareData(res.data?.data || null);
   }
 
+  async function openPaymentFlowDetails(row) {
+    setSelectedPaymentFlow(row);
+    setPaymentFlowDetails([]);
+    setPaymentFlowDetailsLoading(true);
+    try {
+      const params = {
+        start_date: display?.period_start || range.from,
+        end_date: display?.period_end || range.to,
+        pageSize: 500,
+      };
+      if (row?.method_id) params.method_id = row.method_id;
+      const res = await api.get("/api/reports/run/payment-flow-ledger", { params });
+      let rows = res.data?.data || [];
+      if (!row?.method_id && row?.method_name) {
+        rows = rows.filter((item) => String(item.method_name || "") === String(row.method_name || ""));
+      }
+      setPaymentFlowDetails(rows);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل وسيلة الدفع");
+    } finally {
+      setPaymentFlowDetailsLoading(false);
+    }
+  }
   return (
     <div className="min-h-screen bg-[var(--bg-base)] p-6 text-slate-900 font-sans selection:bg-indigo-100" dir="rtl">
       {/* Visual Mesh Glow Top Overlay */}
@@ -922,6 +963,152 @@ export default function OwnerStatementPage() {
           </div>
         )}
 
+        <section data-help="owner-payment-flow" className="rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-2.5 text-emerald-700">
+                <Wallet size={18} />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-black text-slate-900">تدفقات وسائل الدفع</h3>
+                <p className="text-[10px] font-bold text-slate-500">
+                  من <span dir="ltr" className="font-mono">{display?.period_start || range.from}</span> إلى <span dir="ltr" className="font-mono">{display?.period_end || range.to}</span>
+                </p>
+              </div>
+            </div>
+            <Link
+              to={ownerPaymentFlowHref}
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-950 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-colors hover:bg-slate-800"
+            >
+              فتح التقرير الكامل <ChevronLeft size={13} />
+            </Link>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+              <div className="mb-2 flex items-center justify-between text-emerald-700">
+                <span className="text-[11px] font-black">إجمالي الداخل</span>
+                <ArrowDownRight size={15} />
+              </div>
+              <div className="font-mono text-xl font-black text-emerald-900" dir="ltr">{money(paymentFlowTotals.totalIn)} ج.م</div>
+            </div>
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+              <div className="mb-2 flex items-center justify-between text-rose-700">
+                <span className="text-[11px] font-black">إجمالي الخارج</span>
+                <ArrowUpRight size={15} />
+              </div>
+              <div className="font-mono text-xl font-black text-rose-900" dir="ltr">{money(paymentFlowTotals.totalOut)} ج.م</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-2 flex items-center justify-between text-slate-600">
+                <span className="text-[11px] font-black">الصافي</span>
+                <Activity size={15} />
+              </div>
+              <div className={`font-mono text-xl font-black ${paymentFlowTotals.net < 0 ? "text-rose-700" : "text-slate-950"}`} dir="ltr">{money(paymentFlowTotals.net)} ج.م</div>
+            </div>
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <div className="mb-2 flex items-center justify-between text-indigo-700">
+                <span className="text-[11px] font-black">عدد الحركات</span>
+                <FileText size={15} />
+              </div>
+              <div className="font-mono text-xl font-black text-indigo-900" dir="ltr">{formatNumber(paymentFlowTotals.count)}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-4">
+            {paymentFlowRows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center text-xs font-bold text-slate-400 lg:col-span-4">
+                لا توجد تدفقات وسائل دفع في الفترة المحددة
+              </div>
+            ) : paymentFlowRows.map((row) => (
+              <button type="button" onClick={() => openPaymentFlowDetails(row)} key={`${row.method_id || row.method_name}-${row.method_type}`} className="rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition-all hover:border-emerald-300 hover:shadow-md">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-black text-slate-900">{row.method_name || "وسيلة غير محددة"}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">{formatNumber(row.transaction_count || 0)}</span>
+                </div>
+                <div className="space-y-2 text-[11px] font-bold text-slate-500">
+                  <div className="flex items-center justify-between"><span>داخل</span><span className="font-mono text-emerald-700" dir="ltr">{money(row.total_in)} ج.م</span></div>
+                  <div className="flex items-center justify-between"><span>خارج</span><span className="font-mono text-rose-700" dir="ltr">{money(row.total_out)} ج.م</span></div>
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2"><span>الصافي</span><span className={`font-mono ${Number(row.net_amount || 0) < 0 ? "text-rose-700" : "text-slate-900"}`} dir="ltr">{money(row.net_amount)} ج.م</span></div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <AnimatePresence>
+          {selectedPaymentFlow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+              onClick={() => setSelectedPaymentFlow(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.96, y: 16 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.96, y: 16 }}
+                onClick={(event) => event.stopPropagation()}
+                className="max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">{selectedPaymentFlow.method_name || "وسيلة دفع"}</h3>
+                    <p className="mt-1 text-[11px] font-bold text-slate-500">
+                      داخل {money(selectedPaymentFlow.total_in)} ج.م · خارج {money(selectedPaymentFlow.total_out)} ج.م · صافي {money(selectedPaymentFlow.net_amount)} ج.م
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`${ownerPaymentFlowHref}${selectedPaymentFlow.method_id ? `&method_id=${selectedPaymentFlow.method_id}` : ""}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800"
+                    >
+                      فتح التقرير الكامل <ChevronLeft size={13} />
+                    </Link>
+                    <button onClick={() => setSelectedPaymentFlow(null)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-[62vh] overflow-auto p-5">
+                  {paymentFlowDetailsLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-16 text-xs font-black text-slate-400"><Loader2 className="animate-spin" size={18} /> جاري تحميل التفاصيل...</div>
+                  ) : paymentFlowDetails.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-xs font-bold text-slate-400">لا توجد تفاصيل لهذه الوسيلة في الفترة</div>
+                  ) : (
+                    <table className="w-full min-w-[760px] text-right text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] font-black text-slate-400">
+                          <th className="px-3 py-2">التاريخ</th>
+                          <th className="px-3 py-2">المستند</th>
+                          <th className="px-3 py-2">النوع</th>
+                          <th className="px-3 py-2">الاتجاه</th>
+                          <th className="px-3 py-2">الطرف</th>
+                          <th className="px-3 py-2">المبلغ</th>
+                          <th className="px-3 py-2">الصافي</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {paymentFlowDetails.map((row, index) => (
+                          <tr key={`${row.id || row.doc_no || index}-${index}`} className="hover:bg-slate-50/70">
+                            <td className="px-3 py-3 font-mono text-slate-600" dir="ltr">{row.created_at || row.date || "-"}</td>
+                            <td className="px-3 py-3 font-black text-slate-800">{row.doc_no || "-"}</td>
+                            <td className="px-3 py-3 text-slate-600">{row.doc_type_label || row.doc_type || "-"}</td>
+                            <td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black ${row.direction === "out" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{row.direction_label || row.direction}</span></td>
+                            <td className="px-3 py-3 text-slate-600">{row.party || "-"}</td>
+                            <td className="px-3 py-3 font-mono font-black text-slate-900" dir="ltr">{money(row.amount)} ج.م</td>
+                            <td className={`px-3 py-3 font-mono font-black ${Number(row.net_amount || 0) < 0 ? "text-rose-700" : "text-emerald-700"}`} dir="ltr">{money(row.net_amount)} ج.م</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Saved Snapshots and Periodic Comparisons Workspace */}
         <div className="grid gap-6 lg:grid-cols-2">
 

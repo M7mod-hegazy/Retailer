@@ -1,4 +1,4 @@
-const { today: cairoToday } = require("../utils/datetime");
+const { today: cairoToday, nowSql } = require("../utils/datetime");
 
 // Cairo wall-clock timestamp. Uses Date methods directly (not Intl) so it
 // works reliably even when the Intl timeZone option is not available.
@@ -593,7 +593,7 @@ function ensureCashCountSchema(db) {
       expected_cash REAL NOT NULL,
       discrepancy   REAL NOT NULL,
       note          TEXT,
-      created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT,
       created_by    INTEGER REFERENCES users(id)
     )

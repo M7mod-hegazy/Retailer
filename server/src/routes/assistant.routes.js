@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { addDateFilter, getCostColumn, stockCostJoin, itemsCostJoin } = require("../reports/helpers");
+const { nowSql, today } = require("../utils/datetime");
 
 const router = express.Router();
 router.use(authRequired);
@@ -19,8 +20,8 @@ const QUERY_INTENTS = [
     label: "مبيعات اليوم",
     labelEn: "Today's Sales",
     sql: (p) => ({
-      sql: `SELECT COALESCE(SUM(total), 0) AS value, COUNT(*) AS count FROM invoices WHERE status != 'cancelled' AND date(created_at) = date('now', 'localtime')`,
-      params: [],
+      sql: `SELECT COALESCE(SUM(total), 0) AS value, COUNT(*) AS count FROM invoices WHERE status != 'cancelled' AND date(created_at) = date(?)`,
+      params: [today()],
     }),
   },
   {
@@ -236,11 +237,11 @@ const QUERY_INTENTS = [
     label: "مقارنة المبيعات",
     labelEn: "Sales Comparison",
     sql: (p) => {
-      const bindsA = []; const bindsB = [];
-      const a_start = p.start_date || "date('now', 'localtime', '-7 day')";
-      const a_end = p.end_date || "date('now', 'localtime')";
-      const b_start = p.compare_start || "date('now', 'localtime', '-14 day')";
-      const b_end = p.compare_end || "date('now', 'localtime', '-7 day')";
+      const d = today();
+      const a_start = p.start_date || d;
+      const a_end = p.end_date || d;
+      const b_start = p.compare_start || a_start;
+      const b_end = p.compare_end || a_start;
       return {
         isComparison: true,
         queries: [
@@ -275,11 +276,11 @@ const QUERY_INTENTS = [
     sql: () => ({
       isComposite: true,
       queries: [
-        { id: "sales", sql: `SELECT COALESCE(SUM(total), 0) AS v, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) = date('now', 'localtime')` },
-        { id: "expenses", sql: `SELECT COALESCE(SUM(amount), 0) AS v, COUNT(*) AS c FROM expenses WHERE date(created_at) = date('now', 'localtime')` },
-        { id: "returns", sql: `SELECT COALESCE(SUM(total), 0) AS v, COUNT(*) AS c FROM sales_returns WHERE status = 'active' AND date(created_at) = date('now', 'localtime')` },
-        { id: "customers", sql: `SELECT COUNT(*) AS c FROM customers WHERE date(created_at) = date('now', 'localtime')` },
-        { id: "invoices_count", sql: `SELECT COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) = date('now', 'localtime')` },
+        { id: "sales", sql: (d) => ({ sql: `SELECT COALESCE(SUM(total), 0) AS v, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) = date(?)`, params: [d] }) },
+        { id: "expenses", sql: (d) => ({ sql: `SELECT COALESCE(SUM(amount), 0) AS v, COUNT(*) AS c FROM expenses WHERE date(created_at) = date(?)`, params: [d] }) },
+        { id: "returns", sql: (d) => ({ sql: `SELECT COALESCE(SUM(total), 0) AS v, COUNT(*) AS c FROM sales_returns WHERE status = 'active' AND date(created_at) = date(?)`, params: [d] }) },
+        { id: "customers", sql: (d) => ({ sql: `SELECT COUNT(*) AS c FROM customers WHERE date(created_at) = date(?)`, params: [d] }) },
+        { id: "invoices_count", sql: (d) => ({ sql: `SELECT COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) = date(?)`, params: [d] }) },
       ],
     }),
   },
@@ -404,8 +405,10 @@ function execQuery(db, intent, params) {
   }
   if (result.isComposite) {
     const parts = {};
+    const d = today();
     for (const q of result.queries) {
-      const r = db.prepare(q.sql).get();
+      const def = q.sql ? q.sql(d) : q;
+      const r = db.prepare(def.sql).get(...(def.params || []));
       parts[q.id] = { value: Number(r?.v || 0), count: Number(r?.c || 0) };
     }
     return { type: "summary", label: intent.label, labelEn: intent.labelEn, parts };
@@ -425,8 +428,9 @@ function execQuery(db, intent, params) {
 function detectAnomalies(db) {
   const anomalies = [];
   // Check if today's sales dropped > 40% vs yesterday
-  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM invoices WHERE status != 'cancelled' AND date(created_at) = date('now', 'localtime')").get().v;
-  const yesterdaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM invoices WHERE status != 'cancelled' AND date(created_at) = date('now', 'localtime', '-1 day')").get().v;
+  const d = today();
+  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM invoices WHERE status != 'cancelled' AND date(created_at) = date(?)").get(d).v;
+  const yesterdaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS v FROM invoices WHERE status != 'cancelled' AND date(created_at) = date(?, '-1 day')").get(d).v;
   if (Number(yesterdaySales) > 0) {
     const drop = (Number(yesterdaySales) - Number(todaySales)) / Number(yesterdaySales) * 100;
     if (drop > 40) {
@@ -434,8 +438,8 @@ function detectAnomalies(db) {
     }
   }
   // Check for abnormal expense spike
-  const todayExp = db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE date(created_at) = date('now', 'localtime')").get().v;
-  const weekAvg = db.prepare("SELECT COALESCE(AVG(daily), 0) AS avg FROM (SELECT SUM(amount) AS daily FROM expenses WHERE date(created_at) >= date('now', 'localtime', '-7 day') AND date(created_at) <= date('now', 'localtime') GROUP BY date(created_at))").get().avg;
+  const todayExp = db.prepare("SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE date(created_at) = date(?)").get(d).v;
+  const weekAvg = db.prepare("SELECT COALESCE(AVG(daily), 0) AS avg FROM (SELECT SUM(amount) AS daily FROM expenses WHERE date(created_at) >= date(?, '-7 day') AND date(created_at) <= date(?) GROUP BY date(created_at))").get(d, d).avg;
   if (Number(weekAvg) > 0 && Number(todayExp) > Number(weekAvg) * 2) {
     anomalies.push({ type: "expense_spike", severity: "info", message: `مصروفات اليوم أعلى من متوسط الأسبوع`, messageEn: "Today's expenses are higher than weekly average" });
   }
@@ -656,7 +660,7 @@ router.patch("/briefings/:id/toggle", (req, res, next) => {
 router.get("/briefings/today", (req, res, next) => {
   try {
     const db = getDb();
-    const briefings = db.prepare("SELECT * FROM assistant_scheduled_briefings WHERE user_id = ? AND active = 1 AND (last_sent_at IS NULL OR date(last_sent_at) < date('now', 'localtime'))").all(req.user.id);
+    const briefings = db.prepare("SELECT * FROM assistant_scheduled_briefings WHERE user_id = ? AND active = 1 AND (last_sent_at IS NULL OR date(last_sent_at) < date(?))").all(req.user.id, today());
     const results = [];
     for (const b of briefings) {
       const intent = matchQuery(b.query_text);
@@ -664,7 +668,7 @@ router.get("/briefings/today", (req, res, next) => {
         const dateRange = extractDateRange(b.query_text);
         const result = execQuery(db, intent, dateRange);
         results.push({ briefing: b, result });
-        db.prepare("UPDATE assistant_scheduled_briefings SET last_sent_at = datetime('now', 'localtime') WHERE id = ?").run(b.id);
+        db.prepare("UPDATE assistant_scheduled_briefings SET last_sent_at = ? WHERE id = ?").run(nowSql(), b.id);
       }
     }
     res.json({ success: true, data: results });
@@ -691,7 +695,7 @@ router.post("/training/progress", (req, res, next) => {
       if (completed !== undefined) { sets.push("completed = ?"); binds.push(completed ? 1 : 0); }
       if (score !== undefined) { sets.push("score = ?"); binds.push(score); }
       if (quiz_answers) { sets.push("quiz_answers_json = ?"); binds.push(JSON.stringify(quiz_answers)); }
-      if (completed) { sets.push("completed_at = datetime('now', 'localtime')"); }
+      if (completed) { sets.push("completed_at = ?"); binds.push(nowSql()); }
       if (sets.length) {
         binds.push(existing.id);
         db.prepare(`UPDATE training_progress SET ${sets.join(", ")} WHERE id = ?`).run(...binds);
@@ -725,11 +729,11 @@ router.post("/training/quiz", (req, res, next) => {
     // Save progress
     const existing = db.prepare("SELECT id FROM training_progress WHERE user_id = ? AND track = ? AND module_key = ?").get(req.user.id, track, module_key);
     if (existing) {
-      db.prepare("UPDATE training_progress SET completed = 1, score = ?, quiz_answers_json = ?, completed_at = datetime('now', 'localtime') WHERE id = ?")
-        .run(score, JSON.stringify(answers), existing.id);
+      db.prepare("UPDATE training_progress SET completed = 1, score = ?, quiz_answers_json = ?, completed_at = ? WHERE id = ?")
+        .run(score, JSON.stringify(answers), nowSql(), existing.id);
     } else {
-      db.prepare("INSERT INTO training_progress (user_id, track, module_key, completed, score, quiz_answers_json, completed_at) VALUES (?, ?, ?, 1, ?, ?, datetime('now', 'localtime'))")
-        .run(req.user.id, track, module_key, score, JSON.stringify(answers));
+      db.prepare("INSERT INTO training_progress (user_id, track, module_key, completed, score, quiz_answers_json, completed_at) VALUES (?, ?, ?, 1, ?, ?, ?)")
+        .run(req.user.id, track, module_key, score, JSON.stringify(answers), nowSql());
     }
 
     // Log weaknesses

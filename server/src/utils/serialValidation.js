@@ -1,8 +1,4 @@
-/**
- * Serial/IMEI validation helpers.
- * All functions are synchronous (better-sqlite3 API).
- * Guards are only active when feature_serials = 1 in settings.
- */
+const { nowSql } = require("./datetime");
 
 function isFeatureOn(db) {
   try { return Boolean(db.prepare("SELECT feature_serials FROM settings WHERE id = 1").get()?.feature_serials); } catch { return false; }
@@ -56,7 +52,7 @@ function validateAndSellSerials(db, line, invoiceId, invoiceLineId) {
         throw err;
       }
       warnings.push(`السيريال ${serial} غير موجود — تم تسجيله كبيع دون مخزون`);
-      db.prepare("INSERT OR IGNORE INTO item_serials (item_id, serial, status, invoice_id, invoice_line_id, sold_at) VALUES (?, ?, 'sold', ?, ?, datetime('now', 'localtime'))").run(line.item_id, serial, invoiceId, invoiceLineId);
+      db.prepare("INSERT OR IGNORE INTO item_serials (item_id, serial, status, invoice_id, invoice_line_id, sold_at) VALUES (?, ?, 'sold', ?, ?, ?)").run(line.item_id, serial, invoiceId, invoiceLineId, nowSql());
       continue;
     }
     if (row.status !== "in_stock") {
@@ -65,7 +61,7 @@ function validateAndSellSerials(db, line, invoiceId, invoiceLineId) {
       throw err;
     }
     const warranty = db.prepare("SELECT default_warranty_months FROM items WHERE id = ?").get(line.item_id)?.default_warranty_months || null;
-    db.prepare("UPDATE item_serials SET status='sold', invoice_id=?, invoice_line_id=?, sold_at=datetime('now', 'localtime'), warranty_months=? WHERE id=?").run(invoiceId, invoiceLineId, warranty, row.id);
+    db.prepare("UPDATE item_serials SET status='sold', invoice_id=?, invoice_line_id=?, sold_at=?, warranty_months=? WHERE id=?").run(invoiceId, invoiceLineId, nowSql(), warranty, row.id);
   }
   return { warnings };
 }
@@ -86,7 +82,7 @@ function validateAndReturnSerials(db, line, invoiceId) {
       err.status = 400;
       throw err;
     }
-    db.prepare("UPDATE item_serials SET status='returned', returned_at=datetime('now', 'localtime') WHERE id=?").run(row.id);
+    db.prepare("UPDATE item_serials SET status='returned', returned_at=? WHERE id=?").run(nowSql(), row.id);
   }
 }
 

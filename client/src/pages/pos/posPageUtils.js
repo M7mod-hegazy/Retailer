@@ -29,7 +29,7 @@ export function toDateInput(date = new Date()) {
   return todayCairo(date);
 }
 
-export const WALK_IN_CUSTOMER = { id: null, name: "زبون نقدي", phone: "", opening_balance: 0 };
+export const WALK_IN_CUSTOMER = { id: null, name: "عميل نقدي", phone: "", opening_balance: 0 };
 export const DEFAULT_WAREHOUSE = { id: "default", name: "المخزن الرئيسي" };
 
 export const PAYMENT_STATUS_LABELS = {

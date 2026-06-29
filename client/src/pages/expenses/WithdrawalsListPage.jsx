@@ -12,6 +12,7 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { fuzzyFilterRows } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
+import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -111,6 +112,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
 function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
   const EMPTY = { amount: "", category_id: "", note: "", payment_method: "cash", created_at: today() };
   const [form, setForm] = useState(EMPTY);
+  const recordMethods = useRecordOnlyMethods();
   const amountRef = useRef(null);
   const categoryRef = useRef(null);
   const noteRef = useRef(null);
@@ -187,9 +189,8 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
               onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}
               className={`${fieldCls} appearance-none pr-3 pl-8 min-w-[110px]`}
             >
-              <option value="cash">نقدي</option>
-              <option value="bank_transfer">تحويل بنكي</option>
-              <option value="InstaPay">إنستا باي</option>
+              <option value="cash">💵 نقدي</option>
+              {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
             </select>
             <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           </div>
@@ -243,6 +244,7 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
   const [form, setForm] = useState(initialData || {
     amount: "", category_id: "", note: "", payment_method: "cash"
   });
+  const recordMethods = useRecordOnlyMethods();
 
   const inputRef = useRef(null);
   const categoryRef = useRef(null);
@@ -333,9 +335,8 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
                 onKeyDown={e => handleKeyDown(e, { nextRef: noteRef, prevRef: categoryRef })}
                 className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 appearance-none"
               >
-                <option value="cash">نقدي (Cash)</option>
-                <option value="bank_transfer">تحويل بنكي</option>
-                <option value="InstaPay">إنستا باي</option>
+                <option value="cash">💵 نقدي (Cash)</option>
+                {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
               </select>
             </div>
           </div>

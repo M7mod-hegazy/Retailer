@@ -205,6 +205,15 @@ function applyPurchaseFinancials(db, opts) {
       VALUES (?, ?, 'supplier', 'purchase', ?, 0, ?, 'open', ?)
     `).run(purchaseId, supplierId, total, paymentMethod === "future_due" ? dueDate : (dueDate || null), notes);
   } else if (paymentMethod === "multi") {
+    // The distributed amounts must reconcile to the invoice total, otherwise the
+    // credit portion (and the supplier's owed balance) is wrong. Reject an
+    // unbalanced split instead of silently persisting a bad debt.
+    const paySum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+    if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+      const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي الفاتورة (${total})`);
+      e.status = 400;
+      throw e;
+    }
     for (const pmt of payments) {
       const amount = Number(pmt.amount || 0);
       if (amount <= 0) continue;
@@ -213,7 +222,7 @@ function applyPurchaseFinancials(db, opts) {
       if (isCreditMethod(pm)) { /* credit portion handled below — no cash/bank movement */ }
       else if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
       else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: notes || "دفع مشتريات", userId: opts.userId || 1, source: "purchase", refType: "purchase", refId: purchaseId });
-      try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount); } catch (_) {}
+      try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount, nowSql()); } catch (_) {}
     }
     let creditSum = 0;
     for (const pmt of payments) {
@@ -635,6 +644,15 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         try { db.prepare("UPDATE purchases SET treasury_id = ? WHERE id = ?").run(tid, purchaseId); } catch (_) {}
 
       } else if (paymentMethod === "multi") {
+        // Distributed amounts must reconcile to the invoice total (otherwise the
+        // credit portion added to the supplier balance is wrong). Reject an
+        // unbalanced split rather than persisting a bad debt.
+        const paySum = multiPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+          const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي الفاتورة (${total})`);
+          e.status = 400;
+          throw e;
+        }
         for (const pmt of multiPayments) {
           const amount = Number(pmt.amount || 0);
           if (amount <= 0) continue;
@@ -648,7 +666,7 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
             recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: "دفع مشتريات", userId: req.user?.id || 1, source: "purchase", refType: "purchase", refId: purchaseId });
           }
           try {
-            db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(purchaseId, Number(pmt.method_id), amount);
+            db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, ?)").run(purchaseId, Number(pmt.method_id), amount, nowSql());
           } catch (_) {}
         }
 
@@ -958,8 +976,8 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       const newTotal = Math.max(0, lineSum - editDiscount + editIncrease);
 
       // 4. Update purchase header (incl. payment_method + supplier) BEFORE applying financials
-      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = datetime('now', 'localtime'), updated_by = ?, notes = ? WHERE id = ?")
-        .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, userId,
+      db.prepare("UPDATE purchases SET total = ?, discount = ?, increase = ?, payment_method = ?, supplier_id = ?, updated_at = ?, updated_by = ?, notes = ? WHERE id = ?")
+        .run(newTotal, editDiscount, editIncrease, newPaymentMethod, newSupplierId, nowSql(), userId,
              req.body.notes !== undefined ? (req.body.notes || null) : (purchase.notes || null),
              purchase.id);
 
@@ -1203,7 +1221,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
           if (!pm) continue;
           if (pm.type === "cash" && pm.target_id) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
           else if (pm.type === "bank" && pm.target_id) recordBankMovement(db, { bankId: pm.target_id, type: "withdrawal", amount, notes: "دفع مشتريات (تعديل)", userId: payload.user_id || 1, source: "purchase", refType: "purchase", refId: newPurchaseId });
-          try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(newPurchaseId, Number(pmt.method_id), amount); } catch (_) {}
+          try { db.prepare("INSERT INTO purchase_payments (purchase_id, method_id, amount, created_at) VALUES (?, ?, ?, ?)").run(newPurchaseId, Number(pmt.method_id), amount, nowSql()); } catch (_) {}
         }
       }
 
@@ -1452,8 +1470,8 @@ function editPurchaseReturn(db, returnId, payload) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
-    ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, returnId);
+      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = ? WHERE id = ?"
+    ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, nowSql(), returnId);
 
     return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(returnId);
   })();

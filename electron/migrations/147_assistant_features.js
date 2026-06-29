@@ -10,7 +10,7 @@ module.exports = {
         query_type TEXT DEFAULT 'text',
         pinned INTEGER DEFAULT 1,
         sort_order INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now','localtime')),
+        created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -22,7 +22,7 @@ module.exports = {
         schedule TEXT NOT NULL DEFAULT 'daily',
         active INTEGER DEFAULT 1,
         last_sent_at TEXT,
-        created_at TEXT DEFAULT (datetime('now','localtime')),
+        created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -33,7 +33,7 @@ module.exports = {
         name TEXT NOT NULL,
         queries_json TEXT NOT NULL DEFAULT '[]',
         layout_json TEXT,
-        created_at TEXT DEFAULT (datetime('now','localtime')),
+        created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -46,7 +46,7 @@ module.exports = {
         completed INTEGER DEFAULT 0,
         score INTEGER DEFAULT NULL,
         quiz_answers_json TEXT,
-        started_at TEXT DEFAULT (datetime('now','localtime')),
+        started_at TEXT DEFAULT (datetime('now')),
         completed_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
@@ -61,7 +61,7 @@ module.exports = {
         track TEXT NOT NULL,
         deadline TEXT,
         status TEXT DEFAULT 'pending',
-        created_at TEXT DEFAULT (datetime('now','localtime')),
+        created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (assigned_by) REFERENCES users(id),
         FOREIGN KEY (assigned_to) REFERENCES users(id)
       );
@@ -85,7 +85,7 @@ module.exports = {
         question TEXT NOT NULL,
         wrong_answer TEXT,
         correct_answer TEXT,
-        failed_at TEXT DEFAULT (datetime('now','localtime')),
+        failed_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -95,7 +95,7 @@ module.exports = {
         user_id INTEGER NOT NULL,
         query_text TEXT NOT NULL,
         result_summary TEXT,
-        executed_at TEXT DEFAULT (datetime('now','localtime')),
+        executed_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);

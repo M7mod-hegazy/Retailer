@@ -5,7 +5,7 @@ import {
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
   Search, ArrowLeftRight, Package, X, Loader2,
   SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  AlertTriangle,
+  AlertTriangle, TrendingUp, BadgeCheck, Layers,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -59,6 +59,35 @@ function fmtMoney(v) {
   return formatNumber(v);
 }
 
+function PriceDeltaIndicator({ value, original }) {
+  const v = Number(value) || 0;
+  const o = Number(original) || 0;
+  if (!v) return <span className="text-[11px] text-slate-400">—</span>;
+  const changed = o > 0 && Math.abs(v - o) > 0.001;
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className={`text-[11px] number-fmt font-bold ${changed ? (v > o ? "text-rose-600" : "text-emerald-600") : "text-slate-700"}`}>{fmtMoney(v)}</span>
+      {changed && (
+        <div className="flex items-center gap-1">
+          <span className="text-[8px] text-slate-400 line-through number-fmt">{fmtMoney(o)}</span>
+          <span className={`text-[8px] font-black ${v > o ? "text-rose-500" : "text-emerald-500"}`}>
+            {v > o ? "▲" : "▼"} {Math.abs(((v - o) / o) * 100).toFixed(1)}%
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PriceUpdateBadge({ flag, label }) {
+  const willUpdate = flag !== false && flag !== 0;
+  return (
+    <span className={`text-[7px] font-black px-1 py-0.5 rounded-full ${willUpdate ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+      {label}: {willUpdate ? "يحدّث" : "مستند"}
+    </span>
+  );
+}
+
 function TransferDetailModal({ transfer, onClose, onEdit }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +104,23 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
   if (!transfer) return null;
   const d = detail || transfer;
   const isReceive = d.type === "receive";
+
+  const lines = d.lines || [];
+  const totalQty = lines.reduce((s, l) => s + Number(l.quantity || 0), 0);
+  const totalCost = lines.reduce((s, l) => s + Number(l.unit_cost || 0) * Number(l.quantity || 0), 0);
+  const changedCount = isReceive ? lines.filter(l => {
+    return (Number(l.original_purchase_price) > 0 && Math.abs(Number(l.unit_cost) - Number(l.original_purchase_price)) > 0.001) ||
+           (Number(l.original_sale_price) > 0 && Math.abs(Number(l.selling_price) - Number(l.original_sale_price)) > 0.001) ||
+           (Number(l.original_wholesale_price) > 0 && Math.abs(Number(l.wholesale_price) - Number(l.original_wholesale_price)) > 0.001);
+  }).length : 0;
+
+  const headerCols = isReceive
+    ? ["الكود", "الصنف", "الوحدة", "الكمية", "التكلفة", "سعر البيع", "الجملة", "تحديث", "الإجمالي"]
+    : ["الكود", "الصنف", "الوحدة", "الكمية", "السعر", "الإجمالي"];
+
+  const gridCols = isReceive
+    ? "grid-cols-[90px_1fr_55px_55px_80px_80px_80px_75px_95px]"
+    : "grid-cols-[100px_1fr_90px_90px_90px_110px]";
 
   return (
     <div className="space-y-6 p-2">
@@ -109,36 +155,78 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
           )}
 
           <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col max-h-[400px]">
-            <div className="grid grid-cols-[100px_1fr_90px_90px_90px_110px] bg-slate-50 border-b border-slate-200 px-2">
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest border-l border-slate-200/50 text-center">الكود</div>
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest border-l border-slate-200/50">الصنف</div>
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest border-l border-slate-200/50 text-center">الوحدة</div>
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest border-l border-slate-200/50 text-center">الكمية</div>
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest border-l border-slate-200/50 text-center">السعر</div>
-              <div className="px-4 py-4 text-[11px] font-black uppercase text-slate-900 tracking-widest text-center">الإجمالي</div>
+            <div className={`${gridCols} bg-slate-50 border-b border-slate-200 px-2`}>
+              {headerCols.map((h, i) => (
+                <div key={i} className={`px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center ${i < headerCols.length - 1 ? "border-l border-slate-200/50" : ""} ${i === headerCols.length - 1 ? "text-slate-900" : ""}`}>
+                  {h}
+                </div>
+              ))}
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {(d.lines || []).length === 0 ? (
+              {lines.length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-slate-400 text-sm font-black">القائمة خالية</div>
               ) : (
-                (d.lines || []).map(l => (
-                  <div key={l.id} className="grid grid-cols-[100px_1fr_90px_90px_90px_110px] items-center rounded-xl hover:bg-slate-50 p-3 transition-colors">
-                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400">{l.item_code || l.barcode || "—"}</div>
-                    <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900">{l.item_name}</div>
+                lines.map(l => (
+                  <div key={l.id} className={`${gridCols} items-center rounded-xl hover:bg-slate-50 p-3 transition-colors`}>
+                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400 truncate">{l.item_code || l.barcode || "—"}</div>
+                    <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900 truncate">{l.item_name}</div>
                     <div className="px-2 text-center border-l border-slate-100 text-2sm font-bold text-slate-500">{l.unit_name || "—"}</div>
-                    <div className="px-2 text-center border-l border-slate-100 number-fmt-primary text-[15px] text-slate-900">{formatQty(l.quantity)}</div>
-                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-600">{fmtMoney(l.unit_cost)}</div>
-                    <div className="px-2 text-center number-fmt-primary text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                    <div className="px-2 text-center border-l border-slate-100 number-fmt-primary text-[13px] text-slate-900">{formatQty(l.quantity)}</div>
+                    {isReceive ? (
+                      <>
+                        <div className="px-1 text-center border-l border-slate-100">
+                          <PriceDeltaIndicator value={l.unit_cost} original={l.original_purchase_price} />
+                        </div>
+                        <div className="px-1 text-center border-l border-slate-100">
+                          <PriceDeltaIndicator value={l.selling_price} original={l.original_sale_price} />
+                        </div>
+                        <div className="px-1 text-center border-l border-slate-100">
+                          <PriceDeltaIndicator value={l.wholesale_price} original={l.original_wholesale_price} />
+                        </div>
+                        <div className="px-1 text-center border-l border-slate-100 flex flex-col items-center gap-0.5">
+                          {l.original_purchase_price > 0 && Math.abs(Number(l.unit_cost) - Number(l.original_purchase_price)) > 0.001 && (
+                            <PriceUpdateBadge flag={l.update_master_purchase_price} label="تكلفة" />
+                          )}
+                          {l.original_sale_price > 0 && Math.abs(Number(l.selling_price) - Number(l.original_sale_price)) > 0.001 && (
+                            <PriceUpdateBadge flag={l.update_master_sale_price} label="بيع" />
+                          )}
+                          {l.original_wholesale_price > 0 && Math.abs(Number(l.wholesale_price) - Number(l.original_wholesale_price)) > 0.001 && (
+                            <PriceUpdateBadge flag={l.update_master_wholesale_price} label="جملة" />
+                          )}
+                          {!(l.original_purchase_price > 0 && Math.abs(Number(l.unit_cost) - Number(l.original_purchase_price)) > 0.001) &&
+                           !(l.original_sale_price > 0 && Math.abs(Number(l.selling_price) - Number(l.original_sale_price)) > 0.001) &&
+                           !(l.original_wholesale_price > 0 && Math.abs(Number(l.wholesale_price) - Number(l.original_wholesale_price)) > 0.001) && (
+                            <span className="text-[8px] text-slate-400">—</span>
+                          )}
+                        </div>
+                        <div className="px-2 text-center number-fmt-primary text-sm font-black text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-600">{fmtMoney(l.unit_cost)}</div>
+                        <div className="px-2 text-center number-fmt-primary text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                      </>
+                    )}
                   </div>
                 ))
               )}
             </div>
 
             <div className="flex items-center justify-between bg-slate-950 px-8 py-6 text-white">
-              <span className="text-[11px] font-black uppercase tracking-widest opacity-60">الكمية الكلية</span>
-              <span className="text-[2.5rem] number-fmt-primary tracking-tighter leading-none">
-                {formatQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-[11px] font-black uppercase tracking-widest opacity-60">الكمية الكلية</span>
+                <span className="text-[1.8rem] number-fmt-primary tracking-tighter leading-none">{formatQty(totalQty)}</span>
+              </div>
+              {isReceive && changedCount > 0 && (
+                <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2">
+                  <TrendingUp className="h-4 w-4 text-amber-300" />
+                  <span className="text-[11px] font-bold text-amber-200">{changedCount} صنف تغير سعره</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-widest opacity-60">إجمالي التكلفة</span>
+                <span className="text-[1.4rem] number-fmt-primary tracking-tighter leading-none">{fmtMoney(totalCost)}</span>
+              </div>
             </div>
           </div>
 
@@ -555,6 +643,33 @@ export default function BranchTransferPage() {
                 <p className="text-sm font-medium text-zinc-500 max-w-sm">لم يتم العثور على حركات نقل مطابقة للمعايير المحددة.</p>
               </div>
             ) : (
+              <>
+              {/* Stats summary strip */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-6 py-3.5 bg-gradient-to-r from-emerald-50/40 to-blue-50/40 border-b border-zinc-100">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-zinc-400" />
+                  <span className="text-[11px] font-bold text-zinc-500">إجمالي الحركات</span>
+                  <span className="text-sm font-black text-zinc-900">{rows.length}</span>
+                </div>
+                <div className="h-5 w-px bg-zinc-200" />
+                <div className="flex items-center gap-2">
+                  <ArrowDownToLine className="h-4 w-4 text-emerald-500" />
+                  <span className="text-[11px] font-bold text-zinc-500">استلام</span>
+                  <span className="text-sm font-black text-emerald-700">{stats.receiveCount}</span>
+                </div>
+                <div className="h-5 w-px bg-zinc-200" />
+                <div className="flex items-center gap-2">
+                  <ArrowUpFromLine className="h-4 w-4 text-blue-500" />
+                  <span className="text-[11px] font-bold text-zinc-500">تسليم</span>
+                  <span className="text-sm font-black text-blue-700">{stats.sendCount}</span>
+                </div>
+                <div className="h-5 w-px bg-zinc-200" />
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-zinc-400" />
+                  <span className="text-[11px] font-bold text-zinc-500">إجمالي الكميات</span>
+                  <span className="text-sm font-black text-zinc-900">{formatQty(stats.totalQty)}</span>
+                </div>
+              </div>
               <div data-help="main-table" className="p-4 flex flex-col gap-4">
                 <motion.div variants={STAGGER_CONTAINER} initial="hidden" animate="visible" className="flex flex-col gap-4">
                   <AnimatePresence mode="popLayout">
@@ -639,6 +754,7 @@ export default function BranchTransferPage() {
                   </div>
                 )}
               </div>
+              </>
             )
           ) : (
             /* Items tab results */

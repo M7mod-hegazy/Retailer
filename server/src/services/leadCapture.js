@@ -1,4 +1,5 @@
 const { normalizeDigits } = require("../utils/phone");
+const { nowSql } = require("../utils/datetime");
 
 // Capture a lead from a completing sale. Runs INSIDE the invoice transaction.
 // Only fires for anonymous sales (no customer_id) where the cashier typed a WhatsApp number.
@@ -34,8 +35,8 @@ function captureLeadFromSale(db, payload, normalizedLines) {
         name = COALESCE(leads.name, excluded.name),
         last_purchase_item = excluded.last_purchase_item,
         last_purchase_category = excluded.last_purchase_category,
-        updated_at = datetime('now', 'localtime')
-    `).run(norm, String(cap.phone), name, lastItem, lastCategory);
+        updated_at = ?
+    `).run(norm, String(cap.phone), name, lastItem, lastCategory, nowSql());
   } catch (_) {
     // swallow — lead capture must never break invoice creation
   }

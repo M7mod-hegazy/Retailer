@@ -678,38 +678,45 @@ export default function BranchTransferFormPage() {
   const extraColumns = [
     {
       id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
-      render: (l, i) => {
-        const changed = isReceive && Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0 && Number(l.original_purchase_price) > 0;
-        const willUpdate = l.update_master_purchase_price !== false && l.update_master_purchase_price !== 0;
-        return (
-          <div className="relative w-full h-full flex flex-col">
-            <input
-              type="number" step="any"
-              value={l.unit_cost}
-              onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-              className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
-            />
-            {changed && (
-              <div className="flex flex-col items-center gap-0.5 pb-0.5">
-                <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                  <span className="text-slate-400 number-fmt">{Number(l.original_purchase_price).toFixed(2)}</span>
-                  <span className="text-slate-300">→</span>
-                  <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.unit_cost).toFixed(2)}</span>
-                </span>
-                <span className={`text-[7px] font-black px-1 py-0 rounded-full ${willUpdate ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                  {willUpdate ? "يحدّث" : "مستند بس"}
-                </span>
-              </div>
-            )}
-          </div>
-        );
+        render: (l, i) => {
+          const changed = isReceive && Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0;
+          const willUpdate = l.update_master_purchase_price !== false && l.update_master_purchase_price !== 0;
+          return (
+            <div className="relative w-full h-full flex flex-col">
+              <input
+                type="number" step="any"
+                value={l.unit_cost}
+                onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
+                className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+              />
+              {changed && (
+                <div className="flex flex-col items-center gap-0.5 pb-0.5">
+                  <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
+                    <span className="text-slate-400 number-fmt">{Number(l.original_purchase_price).toFixed(2)}</span>
+                    <span className="text-slate-300">→</span>
+                    <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.unit_cost).toFixed(2)}</span>
+                  </span>
+                  <button type="button"
+                    title={willUpdate ? "تكلفة: هيحدّث سعر بطاقة الصنف — اضغط عشان متغيرش" : "تكلفة: للمستند ده بس — اضغط عشان تحدّث بطاقة الصنف"}
+                    onClick={() => updateLineField(i, "update_master_purchase_price", !willUpdate)}
+                    className={`inline-flex items-center gap-1 text-[7px] font-black px-1.5 py-0.5 rounded-full transition-all ${
+                      willUpdate ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    }`}
+                  >
+                    <Lock size={7} className={willUpdate ? "" : "opacity-50"} />
+                    {willUpdate ? "يحدّث" : "مستند بس"}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        },
       },
-    },
     ...(isReceive ? [
       {
         id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
         render: (l, i) => {
-          const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0 && Number(l.original_sale_price) > 0;
+          const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
           const willUpdate = l.update_master_sale_price !== false && l.update_master_sale_price !== 0;
           return (
             <div className="relative w-full h-full flex flex-col">
@@ -726,9 +733,16 @@ export default function BranchTransferFormPage() {
                     <span className="text-slate-300">→</span>
                     <span className={`number-fmt ${Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.selling_price).toFixed(2)}</span>
                   </span>
-                  <span className={`text-[7px] font-black px-1 py-0 rounded-full ${willUpdate ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                  <button type="button"
+                    title={willUpdate ? "بيع: هيحدّث سعر بطاقة الصنف — اضغط عشان متغيرش" : "بيع: للمستند ده بس — اضغط عشان تحدّث بطاقة الصنف"}
+                    onClick={() => updateLineField(i, "update_master_sale_price", !willUpdate)}
+                    className={`inline-flex items-center gap-1 text-[7px] font-black px-1.5 py-0.5 rounded-full transition-all ${
+                      willUpdate ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    }`}
+                  >
+                    <Lock size={7} className={willUpdate ? "" : "opacity-50"} />
                     {willUpdate ? "يحدّث" : "مستند بس"}
-                  </span>
+                  </button>
                 </div>
               )}
             </div>
@@ -758,7 +772,7 @@ export default function BranchTransferFormPage() {
       {
         id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
         render: (l, i) => {
-          const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0 && Number(l.original_wholesale_price) > 0;
+          const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
           const willUpdate = l.update_master_wholesale_price !== false && l.update_master_wholesale_price !== 0;
           return (
             <div className="relative w-full h-full flex flex-col">
@@ -775,9 +789,16 @@ export default function BranchTransferFormPage() {
                     <span className="text-slate-300">→</span>
                     <span className={`number-fmt ${Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.wholesale_price).toFixed(2)}</span>
                   </span>
-                  <span className={`text-[7px] font-black px-1 py-0 rounded-full ${willUpdate ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                  <button type="button"
+                    title={willUpdate ? "جملة: هيحدّث سعر بطاقة الصنف — اضغط عشان متغيرش" : "جملة: للمستند ده بس — اضغط عشان تحدّث بطاقة الصنف"}
+                    onClick={() => updateLineField(i, "update_master_wholesale_price", !willUpdate)}
+                    className={`inline-flex items-center gap-1 text-[7px] font-black px-1.5 py-0.5 rounded-full transition-all ${
+                      willUpdate ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    }`}
+                  >
+                    <Lock size={7} className={willUpdate ? "" : "opacity-50"} />
                     {willUpdate ? "يحدّث" : "مستند بس"}
-                  </span>
+                  </button>
                 </div>
               )}
             </div>
@@ -787,9 +808,9 @@ export default function BranchTransferFormPage() {
       {
         id: "locks", header: "تحديث السعر", width: 100, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-slate-100",
         render: (l, i) => {
-          const costChanged = Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0 && Number(l.original_purchase_price) > 0;
-          const saleChanged = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0 && Number(l.original_sale_price) > 0;
-          const whslChanged = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0 && Number(l.original_wholesale_price) > 0;
+          const costChanged = Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0;
+          const saleChanged = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
+          const whslChanged = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
           if (!costChanged && !saleChanged && !whslChanged) return <div className="h-[40px]" />;
           return (
             <div className="flex flex-col gap-0.5 py-0.5 px-1">
@@ -1248,7 +1269,7 @@ export default function BranchTransferFormPage() {
                 <div className="flex flex-col gap-1 w-[110px] shrink-0">
                   <div className="flex items-center gap-1">
                     <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">{isReceive ? "التكلفة" : "السعر"}</label>
-                    {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(selectedItem.purchase_price) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
+                    {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                       <button type="button"
                         onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
                         title={stagingLocks.purchase ? "هيتحدّث سعر التكلفة — اضغط عشان متغيرش" : "للمستند ده بس — اضغط عشان تحدّث السعر"}
@@ -1278,14 +1299,23 @@ export default function BranchTransferFormPage() {
                           ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
                           : `border-slate-200 bg-slate-50/50 focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10`
                     }`}
-                  />
+                    />
+                    {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
+                      <div className="flex flex-col items-center gap-0.5 -mt-1">
+                        <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
+                          <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`number-fmt ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.unitCost).toFixed(2)}</span>
+                        </span>
+                      </div>
+                    )}
                 </div>
 
                 {/* Selling price */}
                 <div className="flex flex-col gap-1.5 w-[110px] shrink-0">
                   <div className="flex items-center gap-1">
                     <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">{isReceive ? "سعر البيع" : "مستهلك"}</label>
-                    {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(selectedItem.sale_price) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                    {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
                       <button type="button"
                         onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
                         title={stagingLocks.sale ? "هيتحدّث سعر البيع — اضغط عشان متغيرش" : "للمستند ده بس — اضغط عشان تحدّث السعر"}
@@ -1310,7 +1340,16 @@ export default function BranchTransferFormPage() {
                           ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
                           : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
                     }`}
-                  />
+                    />
+                    {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
+                      <div className="flex flex-col items-center gap-0.5 -mt-1">
+                        <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
+                          <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price).toFixed(2)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`number-fmt ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.sellingPrice).toFixed(2)}</span>
+                        </span>
+                      </div>
+                    )}
                 </div>
 
                 {/* Wholesale price — receive only */}
@@ -1318,7 +1357,7 @@ export default function BranchTransferFormPage() {
                   <div className="flex flex-col gap-1 w-[110px] shrink-0">
                     <div className="flex items-center gap-1">
                       <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">جملة</label>
-                      {selectedItem && Number(staging.wholesalePrice) > 0 && Number(selectedItem.wholesale_price) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                      {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
                         <button type="button"
                           onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
                           title={stagingLocks.wholesale ? "هيتحدّث سعر الجملة — اضغط عشان متغيرش" : "للمستند ده بس — اضغط عشان تحدّث السعر"}
@@ -1341,9 +1380,18 @@ export default function BranchTransferFormPage() {
                           ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                           : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
                             ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                            : "border-slate-200 bg-slate-50/50 focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-400/10"
+                            : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
                       }`}
                     />
+                    {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
+                      <div className="flex flex-col items-center gap-0.5 -mt-1">
+                        <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
+                          <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price).toFixed(2)}</span>
+                          <span className="text-slate-300">→</span>
+                          <span className={`number-fmt ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.wholesalePrice).toFixed(2)}</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1383,15 +1431,6 @@ export default function BranchTransferFormPage() {
           </section>
 
           {/* Lines table */}
-          {priceChangedLines.length > 0 && (
-            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 text-[11px] text-amber-700 font-bold shrink-0 border border-amber-200 rounded-md">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              سيتم تحديث أسعار البيع لـ {priceChangedLines.map(l => l.item_name).join("، ")}
-              <Link to="/operations/bulk-price-update" className="mr-auto flex items-center gap-1 text-amber-600 hover:underline">
-                <ExternalLink className="h-3 w-3" /> سجل الأسعار
-              </Link>
-            </div>
-          )}
           {hasStockErrors && !isReceive && (
             <div className="flex items-center gap-2 bg-rose-50 px-4 py-2 text-[11px] text-rose-700 font-bold shrink-0 border border-rose-200 rounded-md">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -1445,6 +1484,19 @@ export default function BranchTransferFormPage() {
             columns={columns}
           />
           </div>
+
+          {priceChangedLines.length > 0 && (
+            <div className="flex items-center gap-2.5 bg-amber-50 px-4 py-2 text-[11px] font-bold text-amber-700 shrink-0 mt-2 border border-amber-200 rounded-md">
+              <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+              <span>سيتم تحديث أسعار <strong>{priceChangedLines.length}</strong> صنف عند الحفظ</span>
+              <button
+                onClick={() => setPriceReportOpen(true)}
+                className="mr-auto flex items-center gap-1 text-amber-600 hover:text-amber-800 underline underline-offset-2 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> تفاصيل التغييرات
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

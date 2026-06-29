@@ -265,7 +265,7 @@ export default function InvoiceDetailPage() {
           <section className="grid grid-cols-5 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">العميل</span>
-              <span className="text-sm font-black text-slate-800">{invoice.customer_name || "زبون نقدي"}</span>
+              <span className="text-sm font-black text-slate-800">{invoice.customer_name || "عميل نقدي"}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>

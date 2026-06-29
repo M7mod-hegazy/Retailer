@@ -3,6 +3,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const router = express.Router();
 const { getDb } = require("../config/database");
 const { authRequired } = require('../middleware/auth');
+const { paymentFlowPayload } = require("../services/paymentFlowService");
 router.use(authRequired);
 
 let _cashSeeded = false;
@@ -69,105 +70,36 @@ router.get("/", requirePagePermission("payment_methods", "view"), (_req, res) =>
 
 router.get("/transactions", requirePagePermission("payment_methods", "view"), (req, res) => {
   try {
-    const db = getDb();
-    const { from, to, method_id, type, search } = req.query;
-    const filters = [];
-    const params = [];
-
-    if (from) { filters.push("date(created_at) >= ?"); params.push(from); }
-    if (to) { filters.push("date(created_at) <= ?"); params.push(to); }
-    if (method_id) { filters.push("method_id = ?"); params.push(Number(method_id)); }
-    if (type) { filters.push("direction = ?"); params.push(type); }
-    if (search) {
-      filters.push("(COALESCE(doc_no, '') LIKE ? OR COALESCE(party, '') LIKE ? OR COALESCE(description, '') LIKE ?)");
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-    }
-
-    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-    const rows = db.prepare(`
-      SELECT *
-      FROM (
-        SELECT
-          p.id,
-          COALESCE(p.reference_number, '#' || p.id) AS doc_no,
-          'payment' AS doc_type,
-          p.amount,
-          CASE WHEN p.party_type = 'supplier' THEN 'out' ELSE 'in' END AS direction,
-          COALESCE(c.name, s.name) AS party,
-          p.notes AS description,
-          p.created_at,
-          pm.name AS method_name,
-          pm.id AS method_id
-        FROM payments p
-        LEFT JOIN customers c ON p.party_type = 'customer' AND c.id = p.party_id
-        LEFT JOIN suppliers s ON p.party_type = 'supplier' AND s.id = p.party_id
-        LEFT JOIN payment_methods pm ON pm.type = p.method OR pm.category = p.method OR pm.name = p.method
-
-        UNION ALL
-
-        SELECT
-          ap.id,
-          'AJAL-' || ap.debt_id AS doc_no,
-          'ajal_payment' AS doc_type,
-          ap.amount,
-          CASE WHEN COALESCE(d.party_type, 'customer') = 'supplier' THEN 'out' ELSE 'in' END AS direction,
-          COALESCE(c.name, s.name) AS party,
-          ap.notes AS description,
-          COALESCE(ap.payment_date, ap.created_at) AS created_at,
-          pm.name AS method_name,
-          pm.id AS method_id
-        FROM ajal_payments ap
-        LEFT JOIN ajal_debts d ON d.id = ap.debt_id
-        LEFT JOIN customers c ON c.id = d.customer_id
-        LEFT JOIN suppliers s ON s.id = d.supplier_id
-        LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id
-
-        UNION ALL
-
-        SELECT
-          i.id,
-          i.invoice_no AS doc_no,
-          'pos_invoice' AS doc_type,
-          i.total AS amount,
-          'in' AS direction,
-          COALESCE(c.name, 'زبون نقدي') AS party,
-          i.payment_type AS description,
-          i.created_at,
-          pm.name AS method_name,
-          pm.id AS method_id
-        FROM invoices i
-        LEFT JOIN customers c ON c.id = i.customer_id
-        LEFT JOIN payment_methods pm ON pm.type = i.payment_type OR pm.category = i.payment_type OR pm.name = i.payment_type
-        WHERE i.status != 'cancelled'
-
-        UNION ALL
-
-        SELECT
-          e.id,
-          e.doc_no,
-          'expense' AS doc_type,
-          e.amount,
-          'out' AS direction,
-          ec.name AS party,
-          e.description,
-          e.created_at,
-          pm.name AS method_name,
-          pm.id AS method_id
-        FROM expenses e
-        LEFT JOIN expense_categories ec ON ec.id = e.category_id
-        LEFT JOIN payment_methods pm ON pm.type = e.payment_method OR pm.category = e.payment_method OR pm.name = e.payment_method
-      ) tx
-      ${where}
-      ORDER BY created_at DESC
-      LIMIT 500
-    `).all(...params);
-
-    res.json({ success: true, data: rows });
+    const { from, to, method_id, type, search, doc_type, party_type, amount_min, amount_max, page = 1, pageSize = 500 } = req.query;
+    const payload = paymentFlowPayload(from, to, {
+      method_id,
+      direction: type,
+      search,
+      doc_type,
+      party_type,
+      amount_min,
+      amount_max,
+    });
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const ps = Math.min(2000, Math.max(1, parseInt(pageSize, 10) || 500));
+    const start = (p - 1) * ps;
+    const visibleRows = payload.rows.slice(start, start + ps);
+    res.json({
+      success: true,
+      data: visibleRows,
+      rows: visibleRows,
+      total: payload.rows.length,
+      page: p,
+      pageSize: ps,
+      totals: payload.totals,
+      by_method: payload.by_method,
+      by_doc_type: payload.by_doc_type,
+      by_direction: payload.by_direction,
+    });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
 });
-
 router.post("/", requirePagePermission("payment_methods", "add"), (req, res) => {
   try {
     const db = getDb();

@@ -18,7 +18,7 @@ function buildOpts(query = {}) {
   const {
     cost_method, q, status, payment_type, movement_type, action, resource, user_id,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
-    category_id, item_id, cashier_id, treasury_id, bank_id,
+    category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
   } = query;
 
   // If caller didn't specify a cost method, fall back to the active setting
@@ -36,7 +36,7 @@ function buildOpts(query = {}) {
   return {
     q, status, payment_type, movement_type, action, resource, user_id,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
-    category_id, item_id, cashier_id, treasury_id, bank_id,
+    category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
     cost_method: activeCostMethod,
   };
 }

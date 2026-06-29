@@ -62,7 +62,7 @@ function recalcDebt(db, debtId) {
   if (remaining <= 0) status = "paid";
   else if (d.due_date && new Date(d.due_date) < new Date()) status = "overdue";
   else if (d.paid_amount > 0) status = "partial";
-  db.prepare("UPDATE ajal_debts SET status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?").run(status, debtId);
+  db.prepare("UPDATE ajal_debts SET status = ?, updated_at = ? WHERE id = ?").run(status, nowSql(), debtId);
 }
 
 // GET /api/ajal-debts/summary
@@ -487,7 +487,8 @@ router.patch("/schedules/:id", requirePagePermission("installments", "edit"), (r
     if (updates.length === 0) return res.status(400).json({ success: false, message: "لا توجد تغييرات" });
 
     params.push(req.params.id);
-    db.prepare(`UPDATE ajal_schedules SET ${updates.join(", ")}, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(...params);
+    params.push(nowSql(), req.params.id);
+    db.prepare(`UPDATE ajal_schedules SET ${updates.join(", ")}, updated_at = ? WHERE id = ?`).run(...params);
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

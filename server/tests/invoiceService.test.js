@@ -2,7 +2,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { initDb, getDb, setDb } = require("../src/config/database");
-const { createInvoice } = require("../src/services/invoiceService");
+const { createInvoice, editInvoice } = require("../src/services/invoiceService");
 
 describe("invoice service", () => {
   beforeEach(() => {
@@ -116,5 +116,57 @@ describe("invoice service", () => {
     const clientSubtotal = lines.reduce((s, l) => s + l.quantity * l.unit_price - (l.discount || 0), 0);
     const clientTotal = Math.max(0, clientSubtotal - (discount + promotion_discount) + increase);
     expect(inv.total).toBe(clientTotal); // 275 - 25 + 5 = 255
+  });
+
+  test("editing a partial-cash invoice's total updates the customer's owed balance", () => {
+    const db = getDb();
+    const custId = db.prepare("INSERT INTO customers (name) VALUES ('C')").run().lastInsertRowid;
+    db.prepare("UPDATE stock_levels SET quantity = 100000 WHERE item_id = 1").run();
+
+    // total 1000, paid 600 → owes 400
+    const inv = createInvoice({
+      customer_id: custId, payment_type: "cash", amount_paid: 600,
+      lines: [{ item_id: 1, quantity: 1, unit_price: 1000 }],
+    });
+    const owes = () => db.prepare("SELECT opening_balance AS b FROM customers WHERE id = ?").get(custId).b;
+    expect(owes()).toBe(400);
+
+    // edit total → 1500 (still paid 600) → owed must move to 900 (was a no-op bug)
+    editInvoice(inv.id, {
+      customer_id: custId, payment_type: "cash", amount_paid: 600,
+      lines: [{ item_id: 1, quantity: 1, unit_price: 1500 }],
+    });
+    expect(owes()).toBe(900);
+
+    // active debt reflects the new outstanding; old one voided
+    const active = db.prepare("SELECT original_amount, paid_amount FROM ajal_debts WHERE invoice_id = ? AND source_type='invoice' AND status != 'voided'").get(inv.id);
+    expect(active.original_amount).toBe(900);
+  });
+
+  test("editing a multi invoice's discount reconciles the customer's credit balance (no orphaned balance)", () => {
+    const db = getDb();
+    const custId = db.prepare("INSERT INTO customers (name) VALUES ('M')").run().lastInsertRowid;
+    db.prepare("UPDATE stock_levels SET quantity = 100000 WHERE item_id = 1").run();
+    const tre = db.prepare("SELECT id FROM treasuries LIMIT 1").get()?.id;
+    if (tre) db.prepare("UPDATE settings SET default_treasury_id = ? WHERE id = 1").run(tre);
+    const owes = () => db.prepare("SELECT opening_balance AS b FROM customers WHERE id = ?").get(custId).b;
+
+    // multi: subtotal 15450, no discount → total 15450 = cash 10000 + credit 5450
+    const inv = createInvoice({
+      customer_id: custId, payment_type: "multi",
+      payments: [{ method: "cash", amount: 10000 }, { method: "credit", amount: 5450 }],
+      lines: [{ item_id: 1, quantity: 1, unit_price: 15450 }],
+    });
+    expect(owes()).toBe(5450);
+
+    // edit: add 1450 discount → total 14000 = cash 10000 + credit 4000 → owes 4000
+    editInvoice(inv.id, {
+      customer_id: custId, payment_type: "multi", discount: 1450,
+      payments: [{ method: "cash", amount: 10000 }, { method: "credit", amount: 4000 }],
+      lines: [{ item_id: 1, quantity: 1, unit_price: 15450 }],
+    });
+    expect(owes()).toBe(4000); // not 5450 (orphaned) and not 0 (lost)
+    const active = db.prepare("SELECT original_amount FROM ajal_debts WHERE invoice_id = ? AND source_type='invoice' AND status != 'voided'").get(inv.id);
+    expect(active.original_amount).toBe(4000);
   });
 });

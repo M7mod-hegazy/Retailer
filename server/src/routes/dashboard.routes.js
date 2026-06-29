@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
 const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../reports/helpers");
+const { today } = require("../utils/datetime");
 
 const SENSITIVE = Symbol("redacted");
 
@@ -107,19 +108,18 @@ router.use(authRequired);
 router.get("/", requirePagePermission("analytics", "view"), (req, res) => {
   const db = getDb();
   const canView = userHasPagePermission(req.user, "analytics", "view_sensitive");
-  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total FROM invoices WHERE status != 'cancelled' AND date(created_at)=date('now', 'localtime')").get().total;
-  const weekSales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date('now', 'localtime', '-7 day')").get().total;
+  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total FROM invoices WHERE status != 'cancelled' AND date(created_at)=?").get(today()).total;
+  const weekSales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date(?, '-7 day')").get(today()).total;
   const itemsCount = db.prepare("SELECT COUNT(*) AS c FROM items WHERE deleted_at IS NULL").get().c;
   const customersCount = db.prepare("SELECT COUNT(*) AS c FROM customers").get().c;
   const openShift = db.prepare("SELECT * FROM shifts WHERE status='open' ORDER BY id DESC LIMIT 1").get() || null;
-  const today = require("../utils/datetime").today();
   const schedBase = `FROM ajal_schedules sch
     JOIN ajal_debts d ON d.id = sch.debt_id
     JOIN invoices inv ON inv.id = d.invoice_id AND inv.payment_type = 'installments'
     WHERE sch.status != 'paid' AND d.status NOT IN ('paid','voided') AND COALESCE(d.party_type,'customer') = 'customer'`;
-  const overdueInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) < date(?)`).get(today).c;
-  const dueTodayInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) = date(?)`).get(today).c;
-  const upcomingInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) >= date(?)`).get(today).c;
+  const overdueInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) < date(?)`).get(today()).c;
+  const dueTodayInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) = date(?)`).get(today()).c;
+  const upcomingInstallments = db.prepare(`SELECT COUNT(*) AS c ${schedBase} AND date(sch.due_date) >= date(?)`).get(today()).c;
   let data = { todaySales, weekSales, itemsCount, customersCount, openShift, upcomingInstallments, overdueInstallments, dueTodayInstallments };
   if (!canView) redactSensitive(data, ["todaySales", "weekSales"]);
   res.json({ success: true, data });
@@ -128,10 +128,11 @@ router.get("/", requirePagePermission("analytics", "view"), (req, res) => {
 router.get("/comparison", requirePagePermission("analytics", "view"), (req, res) => {
   const db = getDb();
   const canView = userHasPagePermission(req.user, "analytics", "view_sensitive");
-  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at)=date('now', 'localtime')").get();
-  const yesterdaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at)=date('now', 'localtime', '-1 day')").get();
-  const thisWeek = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date('now', 'localtime', '-7 day') AND date(created_at) <= date('now', 'localtime')").get();
-  const lastWeek = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date('now', 'localtime', '-14 day') AND date(created_at) < date('now', 'localtime', '-7 day')").get();
+  const d = today();
+  const todaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at)=?").get(d);
+  const yesterdaySales = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at)=date(?, '-1 day')").get(d);
+  const thisWeek = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date(?, '-7 day') AND date(created_at) <= date(?)").get(d, d);
+  const lastWeek = db.prepare("SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS c FROM invoices WHERE status != 'cancelled' AND date(created_at) >= date(?, '-14 day') AND date(created_at) < date(?, '-7 day')").get(d, d);
   let data = {
     today: { sales: canView ? todaySales.total : null, count: todaySales.c },
     yesterday: { sales: canView ? yesterdaySales.total : null, count: yesterdaySales.c },
@@ -147,11 +148,20 @@ router.get("/cash-flow", requirePagePermission("analytics", "view"), (req, res) 
   const { start_date, end_date } = req.query;
   // Period-aware: when the analytics period selector passes dates, the cash-flow chart
   // follows it; otherwise it falls back to the legacy trailing 14-day window.
-  const startSql = start_date ? "date(?)" : "date('now', 'localtime', '-13 day')";
-  const endSql = end_date ? "date(?)" : "date('now', 'localtime')";
   const cteParams = [];
-  if (start_date) cteParams.push(start_date);
-  if (end_date) cteParams.push(end_date);
+  if (start_date) {
+    cteParams.push(start_date);
+  } else {
+    const d = new Date(); d.setDate(d.getDate() - 13);
+    cteParams.push(d.toISOString().slice(0, 10));
+  }
+  if (end_date) {
+    cteParams.push(end_date);
+  } else {
+    cteParams.push(today());
+  }
+  const startSql = "date(?)";
+  const endSql = "date(?)";
   const days = db.prepare(`
     WITH RECURSIVE dates(d) AS (
       SELECT ${startSql}

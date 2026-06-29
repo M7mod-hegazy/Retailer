@@ -85,7 +85,7 @@ export function formatDateTime(value, opts = {}) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
     ...opts,
   }).format(d);
 }
@@ -98,7 +98,7 @@ export function formatTime(value, opts = {}) {
   return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
     ...opts,
   }).format(d);
 }

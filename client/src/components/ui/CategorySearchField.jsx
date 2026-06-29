@@ -35,8 +35,8 @@ const CategorySearchField = forwardRef(function CategorySearchField({
     const handler = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) closeDropdown();
     };
-    document.addEventListener("mousedown", handler, true);
-    return () => document.removeEventListener("mousedown", handler, true);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   const displayPrefix = value ? (value.sku_prefix ?? value.id ?? "") : "";

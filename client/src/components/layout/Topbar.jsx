@@ -74,6 +74,17 @@ function useBreadcrumbs(pathname, dynamicBreadcrumb) {
       }
     }
 
+    const reportsCenter = allItems.find((item) => item.path === "/reports/center");
+    if (pathname.startsWith("/reports/") && pathname !== "/reports/center" && reportsCenter) {
+      const crumbs = [root, { label: reportsCenter.label, path: reportsCenter.path }];
+      if (dynamicBreadcrumb) {
+        crumbs.push({ label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path });
+      } else if (best && best.path !== reportsCenter.path) {
+        crumbs.push({ label: best.label, path: best.path });
+      }
+      return crumbs;
+    }
+
     if (!best) return dynamicBreadcrumb ? [root, { label: dynamicBreadcrumb.label, path: dynamicBreadcrumb.path }] : [root];
     const crumbs = [root];
     crumbs.push({ label: best.label, path: best.path });

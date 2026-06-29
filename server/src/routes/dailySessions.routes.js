@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
+const { nowSql } = require("../utils/datetime");
 const {
   calculateDailySummary,
   closeDailySession,
@@ -118,7 +119,8 @@ router.get("/today/payment-methods", requirePagePermission("daily_treasury", "vi
     const methods = db.prepare(`
       SELECT id, name, icon, category, type
       FROM payment_methods
-      WHERE is_system = 0 AND is_active = 1
+      WHERE (is_system = 0 OR category = 'card') AND is_active = 1
+        AND category != 'bank' AND COALESCE(type, '') != 'bank'
       ORDER BY id ASC
     `).all();
     if (!methods.length) return res.json({ success: true, data: [] });
@@ -867,9 +869,9 @@ router.post("/:date/reopen", requirePagePermission("daily_treasury", "add"), (re
       UPDATE daily_sessions
       SET status = 'open', closed_at = NULL, closed_by = NULL,
           closing_balance = NULL, actual_cash = NULL, discrepancy = NULL,
-          reopened_at = datetime('now', 'localtime'), reopened_by = ?, reopen_reason = ?
+          reopened_at = ?, reopened_by = ?, reopen_reason = ?
       WHERE id = ?
-    `).run(req.user?.id || 1, req.body?.reason || null, session.id);
+    `).run(nowSql(), req.user?.id || 1, req.body?.reason || null, session.id);
 
     res.json({ success: true, data: db.prepare("SELECT * FROM daily_sessions WHERE id = ?").get(session.id) });
   } catch (err) {
@@ -891,9 +893,9 @@ router.patch("/:date/opening-balance", requirePagePermission("daily_treasury", "
 
     db.prepare(`
       UPDATE daily_sessions
-      SET opening_balance = ?, opening_adjusted_at = datetime('now', 'localtime'), opening_adjusted_by = ?, opening_adjust_reason = ?
+      SET opening_balance = ?, opening_adjusted_at = ?, opening_adjusted_by = ?, opening_adjust_reason = ?
       WHERE id = ?
-    `).run(Number(opening_balance), req.user?.id || 1, String(reason).trim(), session.id);
+    `).run(Number(opening_balance), nowSql(), req.user?.id || 1, String(reason).trim(), session.id);
 
     res.json({ success: true, data: db.prepare("SELECT * FROM daily_sessions WHERE id = ?").get(session.id) });
   } catch (err) {

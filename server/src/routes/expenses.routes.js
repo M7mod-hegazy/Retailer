@@ -7,7 +7,7 @@ const { auditMutation } = require("../middleware/audit");
 const { countSafe, buildImpact } = require("../utils/relatedRecords");
 const { recordBankMovement } = require("../services/bankService");
 const NotificationModel = require("../models/notification.model");
-const { toSql } = require("../utils/datetime");
+const { toSql, nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -112,20 +112,10 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
           req.user?.id || null,
         );
       const amount = Number(payload.amount || 0);
+      // Only cash reduces the treasury drawer. Record-only methods (فيزا / محافظ
+      // رقمية) are stored under their method name and move no balance.
       if ((payload.payment_method || "cash") === "cash") {
         db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = 1").run(amount);
-      }
-      if ((payload.payment_method || "cash") === "bank_transfer" && payload.bank_id) {
-        recordBankMovement(db, {
-          bankId: payload.bank_id,
-          type: "withdrawal",
-          amount,
-          notes: payload.description || payload.notes || "مصروف",
-          userId: req.user?.id || 1,
-          source: "manual",
-          refType: "expense",
-          refId: created.lastInsertRowid,
-        });
       }
       return created;
     })();
@@ -160,8 +150,8 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
         return res.status(403).json({ error: "permission_denied", page: "expenses", action: "backdate_records" });
       }
     }
-    db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = datetime('now', 'localtime') WHERE id = ?`)
-      .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, req.params.id);
+    db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = ? WHERE id = ?`)
+      .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, nowSql(), req.params.id);
     req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`, `/expenses`);
     res.json({ success: true, data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }

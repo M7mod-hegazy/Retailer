@@ -39,7 +39,7 @@ export default function HeldDropdown({ heldInvoices, onResume, onDiscard, onClos
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "زبون نقدي"}</span>
+                      <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "عميل نقدي"}</span>
                       <span className="number-fmt-primary text-sm text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -70,7 +70,7 @@ export default function HeldDropdown({ heldInvoices, onResume, onDiscard, onClos
         open={!!discardTarget}
         title="حذف الفاتورة المعلقة"
         message={discardTarget
-          ? `سيتم حذف فاتورة ${discardTarget.customer?.name || "زبون نقدي"} بمبلغ ${formatMoney(discardTarget.heldTotal)} ج.م بشكل نهائي.`
+          ? `سيتم حذف فاتورة ${discardTarget.customer?.name || "عميل نقدي"} بمبلغ ${formatMoney(discardTarget.heldTotal)} ج.م بشكل نهائي.`
           : ""}
         onConfirm={() => { onDiscard(discardTarget.id); setDiscardTarget(null); }}
         onCancel={() => setDiscardTarget(null)}

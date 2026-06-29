@@ -31,7 +31,7 @@ const PAGE_PERMISSIONS = {
   financial_categories: { label: 'أقسام الحركات المالية', actions: ['view','add','edit','delete','print'] },
   reports: { label: 'مركز التقارير', actions: ['view','export'] },
   users: { label: 'المستخدمين', actions: ['view','add','edit','delete','print'] },
-  employees: { label: 'الموظفين', actions: ['view','add','edit','delete','print'] },
+  employees: { label: 'الموظفين', actions: ['view','add','edit','delete','print','salary_view','salary_edit','manage_advances','manage_deductions','manage_bonuses','settle_payroll'] },
   settings: { label: 'الإعدادات العامة', actions: ['view','edit_general','edit_security'] },
   dashboard: { label: 'لوحة التحكم', actions: ['view'] },
   stock: { label: 'المخزون', actions: ['view','add','edit','delete','adjust','transfer','print'] },

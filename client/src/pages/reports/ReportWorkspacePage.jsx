@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
@@ -277,7 +277,7 @@ function ExportPill({ format, onExport }) {
 function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
   const opts = dynamicOptions || filter.options || [];
   if (filter.type === "lookup") {
-    const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن" }[filter.entity] || filter.entity;
+    const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن", payment_method: "وسيلة دفع" }[filter.entity] || filter.entity;
     return (
       <div className="space-y-1.5">
         <label className="text-[11px] font-bold text-zinc-500">{t(filter.label_key) || entityLabel}</label>
@@ -952,7 +952,8 @@ export default function ReportWorkspacePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-6"
+            transition={{ duration: 0.2 }}
+            className="mb-6"
           >
             <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1140,31 +1141,8 @@ export default function ReportWorkspacePage() {
                         },
                   }))}
                   rowKey={(row) => row.id || JSON.stringify(row)}
+                  totals={columnTotals}
                 />
-              </div>
-            )}
-
-            {/* Totals Bar */}
-            {rows.length > 0 && Object.keys(columnTotals).length > 0 && (
-              <div className="flex items-stretch border-t-2 border-emerald-500 bg-emerald-50/50">
-                {visibleColumns.map((col) => {
-                  const val = columnTotals[col.id];
-                  const hasVal = val != null && !isNaN(Number(val));
-                  return (
-                    <div key={col.id}
-                      style={{ minWidth: SKU_COLUMN_KEYS.has(col.id) ? 140 : Math.max(120, Math.min(200, 80 + col.header.length * 8)), flex: 1 }}
-                      className="flex items-center justify-center px-3 py-2.5 text-center border-l border-emerald-100 last:border-l-0"
-                    >
-                      {hasVal ? (
-                        <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
-                          {formatNumber(val)}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             )}
 

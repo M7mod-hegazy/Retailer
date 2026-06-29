@@ -37,7 +37,7 @@ export default function CustomerSelector() {
         onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = 'var(--shadow-focus)'; }}
         onBlur={(e) => { e.target.style.borderColor = 'var(--border-normal)'; e.target.style.boxShadow = 'none'; }}
       >
-        <option value="">-- زبون نقدي عام --</option>
+        <option value="">-- عميل نقدي عام --</option>
         {customers.map((entry) => (
           <option key={entry.id} value={entry.id}>
             {entry.name} {entry.phone ? `| ${entry.phone}` : ''}

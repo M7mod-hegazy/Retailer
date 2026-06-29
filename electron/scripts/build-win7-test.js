@@ -162,6 +162,19 @@ function copyIntoWin7Test(artifact, arch) {
   log(`${arch}: installer copied to ${path.relative(ROOT, dest)}`);
 }
 
+
+function copyPublishArtifacts(arch, outputDir) {
+  if (outputDir === ARCHS[arch].outputDir) return;
+  fs.mkdirSync(ARCHS[arch].outputDir, { recursive: true });
+  const installer = newestArtifact(arch, outputDir);
+  const files = [installer, `${installer}.blockmap`, path.join(outputDir, 'latest.yml')];
+  for (const src of files) {
+    if (!fs.existsSync(src)) throw new Error(`expected build artifact missing: ${path.relative(ROOT, src)}`);
+    const dest = path.join(ARCHS[arch].outputDir, path.basename(src));
+    fs.copyFileSync(src, dest);
+    log(`${arch}: publish artifact copied to ${path.relative(ROOT, dest)}`);
+  }
+}
 function buildArch(arch, fast, outputDir) {
   ensureNativeBinary(arch);
   const args = ['electron-builder', '--win', '--config', ARCHS[arch].config];
@@ -170,6 +183,7 @@ function buildArch(arch, fast, outputDir) {
   }
   if (fast) args.push('-c.compression=store');
   run('npx', args, `electron-builder (${arch})`);
+  copyPublishArtifacts(arch, outputDir);
   copyIntoWin7Test(newestArtifact(arch, outputDir), arch);
 }
 

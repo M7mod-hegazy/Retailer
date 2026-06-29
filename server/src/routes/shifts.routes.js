@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
+const { nowSql } = require("../utils/datetime");
 const { requirePagePermission } = require("../middleware/permission");
 const NotificationModel = require("../models/notification.model");
 const { auditMutation } = require("../middleware/audit");
@@ -52,7 +53,8 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
       throw error;
     }
     const closingCash = Number(req.body?.closing_cash || 0);
-    db.prepare("UPDATE shifts SET status='closed', closed_at=datetime('now', 'localtime'), closing_cash=? WHERE id=?").run(
+    db.prepare("UPDATE shifts SET status='closed', closed_at=?, closing_cash=? WHERE id=?").run(
+      nowSql(),
       closingCash,
       shiftId,
     );

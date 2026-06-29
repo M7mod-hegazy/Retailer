@@ -1,5 +1,12 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const {
+  paymentFlowLedger,
+  paymentFlowSummary,
+  paymentFlowByDocType,
+  paymentFlowByDirection,
+  paymentFlowRunning,
+} = require("../../services/paymentFlowService");
 
 function cashFlow(startDate, endDate, opts = {}) {
   const db = getDb();
@@ -110,6 +117,26 @@ function paymentMethodFlow(startDate, endDate, opts = {}) {
   return rows.sort((a, b) => b.date.localeCompare(a.date) || b.total_amount - a.total_amount);
 }
 
+
+function paymentFlowSummaryReport(startDate, endDate, opts = {}) {
+  return paymentFlowSummary(startDate, endDate, opts);
+}
+
+function paymentFlowLedgerReport(startDate, endDate, opts = {}) {
+  return paymentFlowLedger(startDate, endDate, opts);
+}
+
+function paymentFlowByDocTypeReport(startDate, endDate, opts = {}) {
+  return paymentFlowByDocType(startDate, endDate, opts);
+}
+
+function paymentFlowByDirectionReport(startDate, endDate, opts = {}) {
+  return paymentFlowByDirection(startDate, endDate, opts);
+}
+
+function paymentFlowRunningReport(startDate, endDate, opts = {}) {
+  return paymentFlowRunning(startDate, endDate, opts);
+}
 function bankCashSplit(startDate, endDate, opts = {}) {
   const db = getDb();
   const rows = [
@@ -186,6 +213,11 @@ module.exports = {
   treasury,
   cashConsistency,
   paymentMethodFlow,
+  paymentFlowSummaryReport,
+  paymentFlowLedgerReport,
+  paymentFlowByDocTypeReport,
+  paymentFlowByDirectionReport,
+  paymentFlowRunningReport,
   bankCashSplit,
   reconciliationExceptions,
   dailySessionsReport,

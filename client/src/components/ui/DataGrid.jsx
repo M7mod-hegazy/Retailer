@@ -2,6 +2,8 @@ import React, { useState, useRef, useMemo, useCallback } from "react";
 import { List } from "react-window";
 import { usePerformanceStore } from "../../stores/performanceStore";
 import SortTh from "./SortTh";
+import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
+import { formatNumber } from "../../utils/currency";
 
 const ROW_HEIGHT = 45;
 const VIRTUALIZE_THRESHOLD = 100;
@@ -43,6 +45,7 @@ export default function DataGrid({
   containerClass = "flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-200",
   virtualized = false,
   height = 500,
+  totals = null,
 }) {
   const getRowKey = useCallback((row, idx) => {
     if (typeof rowKey === "function") return rowKey(row, idx);
@@ -60,6 +63,7 @@ export default function DataGrid({
   const [internalSortConfig, setInternalSortConfig] = useState({ key: null, dir: "asc" });
   const listRef = useRef(null);
   const scrollRef = useRef(null);
+  const footerScrollRef = useRef(null);
 
   const currentSort = externalSortConfig !== undefined ? externalSortConfig : internalSortConfig;
 
@@ -72,7 +76,7 @@ export default function DataGrid({
     resizingCol.current = key;
     startX.current = e.clientX;
     startWidth.current = colWidths[key] || 100;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMouseMove = (moveEvent) => {
       if (!resizingCol.current) return;
       const diff = startX.current - moveEvent.clientX;
@@ -81,7 +85,7 @@ export default function DataGrid({
     };
     const onMouseUp = () => {
       resizingCol.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
@@ -124,10 +128,12 @@ export default function DataGrid({
   // Sync horizontal scroll between header and list
   const handleScroll = useCallback(({ scrollOffset }) => {
     if (scrollRef.current) scrollRef.current.scrollLeft = scrollOffset;
+    if (footerScrollRef.current) footerScrollRef.current.scrollLeft = scrollOffset;
   }, []);
 
   const handleHeaderScroll = useCallback((e) => {
     if (listRef.current) listRef.current.scrollTo(e.target.scrollLeft);
+    if (footerScrollRef.current) footerScrollRef.current.scrollLeft = e.target.scrollLeft;
   }, []);
 
   if (sortedData.length === 0) {
@@ -182,6 +188,33 @@ export default function DataGrid({
           {VirtualRow}
         </List>
         {renderExpandedRow && <div style={{ display: "none" }} />}
+        {totals && Object.keys(totals).length > 0 && (
+          <div
+            ref={footerScrollRef}
+            className="overflow-x-auto border-t-2 border-emerald-500 bg-emerald-50/95"
+            style={{ overflowX: "hidden", overflowY: "hidden" }}
+          >
+            <div className="flex text-emerald-800" style={{ width: totalWidth, minWidth: "100%" }}>
+              {columns.map((c, colIdx) => {
+                const val = totals[c.id];
+                const hasVal = val != null && !isNaN(Number(val));
+                return (
+                  <div
+                    key={c.id}
+                    className={`px-1.5 py-2.5 text-center border-l border-emerald-200/60 last:border-l-0 flex items-center justify-center overflow-hidden ${c.cellClass || ""}`}
+                    style={{ width: colWidths[c.id], minWidth: Math.min(colWidths[c.id], colMinWidths[c.id] || 40), maxWidth: colWidths[c.id] }}
+                  >
+                    {hasVal ? (
+                      <span className="text-sm font-black tabular-nums" dir="ltr">{formatNumber(val)}</span>
+                    ) : (
+                      colIdx === 0 ? <span className="text-[11px] font-bold text-emerald-700">الإجمالي</span> : null
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -229,7 +262,33 @@ export default function DataGrid({
             </React.Fragment>
           ))}
         </tbody>
+        {totals && Object.keys(totals).length > 0 && (
+          <tfoot className="sticky bottom-0 z-10 border-t-2 border-emerald-500 bg-emerald-50/95 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+            <tr>
+              {columns.map((c, colIdx) => {
+                const val = totals[c.id];
+                const hasVal = val != null && !isNaN(Number(val));
+                return (
+                  <td
+                    key={c.id}
+                    className={`px-1.5 py-2.5 text-center border-l border-emerald-200/60 last:border-l-0 align-middle ${c.cellClass || ""}`}
+                    style={{ maxWidth: colWidths[c.id], minWidth: Math.min(colWidths[c.id], colMinWidths[c.id] || 40) }}
+                  >
+                    {hasVal ? (
+                      <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
+                        {formatNumber(val)}
+                      </span>
+                    ) : (
+                      colIdx === 0 ? <span className="text-[11px] font-bold text-emerald-700">الإجمالي</span> : null
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
 }
+

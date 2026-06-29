@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const { getDb } = require("../config/database");
+const { nowSql } = require("../utils/datetime");
 
 class UserModel {
   static findByUsername(username) {
@@ -27,8 +28,8 @@ class UserModel {
     const role = patch.role ?? existing.role;
     const isActive = patch.is_active ?? existing.is_active;
 
-    db.prepare("UPDATE users SET username = ?, role = ?, is_active = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
-      .run(username, role, isActive, id);
+    db.prepare("UPDATE users SET username = ?, role = ?, is_active = ?, updated_at = ? WHERE id = ?")
+      .run(username, role, isActive, nowSql(), id);
 
     return this.findById(id);
   }

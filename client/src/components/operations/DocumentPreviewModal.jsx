@@ -226,12 +226,16 @@ function infoBarFields(doc, docType, config) {
 function financialBreakdown(doc, docType) {
   if (!doc || docType === "branch_transfer") return [];
   const out = [];
-  const subtotal = Number(doc.subtotal || 0);
   const discount = Number(doc.discount || 0);
   const increase = Number(doc.increase || 0);
   const taxAmount = Number(doc.tax_amount || 0);
   const total = Number(doc.total || 0);
-  if (subtotal > 0 && subtotal !== total) out.push({ label: "المجموع قبل الخصم", value: money(subtotal) });
+  // Some documents (e.g. purchases) don't persist a subtotal — derive the
+  // pre-adjustment total so the "before → after" flow always renders when a
+  // discount/increase is applied.
+  const rawSubtotal = Number(doc.subtotal || 0);
+  const subtotal = rawSubtotal > 0 ? rawSubtotal : (total + discount - increase);
+  if ((discount > 0 || increase > 0) && subtotal !== total) out.push({ label: "المجموع قبل الخصم/الزيادة", value: money(subtotal) });
   if (discount > 0) out.push({ label: "خصم الفاتورة", value: money(discount), tone: "amber" });
   if (increase > 0) out.push({ label: "زيادة الفاتورة", value: money(increase) });
   if (taxAmount > 0) out.push({ label: `ضريبة (${doc.tax_rate || 0}%)`, value: money(taxAmount), tone: "indigo" });

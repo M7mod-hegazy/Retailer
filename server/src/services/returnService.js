@@ -252,8 +252,8 @@ function createGeneralReturn(payload) {
       : 0;
 
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, datetime('now', 'localtime'), ?, ?, ?, ?)"
-    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null, taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)"
+    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null, nowSql(), taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
 
     const returnId = ret.lastInsertRowid;
 
@@ -570,8 +570,8 @@ function editSalesReturn(returnId, payload, userId) {
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
-    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, returnId);
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = ? WHERE id = ?"
+    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, nowSql(), returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {

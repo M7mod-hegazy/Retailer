@@ -4,6 +4,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 const { partyTxnSum } = require("../services/partyBalanceService");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -21,7 +22,7 @@ function ensureNotesSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
       note TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now', 'localtime')),
+      created_at TEXT DEFAULT (datetime('now')),
       created_by INTEGER REFERENCES users(id)
     )`);
   } catch (_) {}
@@ -72,8 +73,8 @@ router.post("/", requirePagePermission("customers", "add"), (req, res) => {
   const info = getDb()
     .prepare(
       `INSERT INTO customers
-       (name, phone, additional_phones, addresses, notes, code, opening_balance, credit_limit, is_blacklisted, blacklist_reason, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, phone, additional_phones, addresses, notes, code, opening_balance, base_opening_balance, credit_limit, is_blacklisted, blacklist_reason, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       payload.name,
@@ -83,6 +84,7 @@ router.post("/", requirePagePermission("customers", "add"), (req, res) => {
       payload.notes || null,
       payload.code || null,
       Number(payload.opening_balance || 0),
+      Number(payload.opening_balance || 0), // base_opening_balance — frozen at creation, never mutated by transactions
       Number(payload.credit_limit || 0),
       payload.is_blacklisted ? 1 : 0,
       payload.blacklist_reason || null,
@@ -197,8 +199,8 @@ router.post("/:id/adjust", requirePagePermission("customers", "add"), (req, res)
     ensureNotesSchema(db);
     db.transaction(() => {
       db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(delta, req.params.id);
-      db.prepare("INSERT INTO customer_notes (customer_id, note, type, amount, created_by) VALUES (?, ?, 'adjustment', ?, ?)")
-        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null);
+      db.prepare("INSERT INTO customer_notes (customer_id, note, type, amount, created_by, created_at) VALUES (?, ?, 'adjustment', ?, ?, ?)")
+        .run(req.params.id, `تسوية رصيد بقيمة ${delta > 0 ? '+' : ''}${delta}: ${reason || 'بدون سبب'}`, delta, req.user?.id || null, nowSql());
     })();
     res.json({ success: true, data: db.prepare("SELECT * FROM customers WHERE id = ?").get(req.params.id) });
   } catch (e) {
@@ -221,8 +223,8 @@ router.get("/:id/notes", requirePagePermission("customers", "view"), (req, res) 
 router.post("/:id/notes", requirePagePermission("customers", "add"), (req, res) => {
   const { note } = req.body || {};
   if (!note) return res.status(400).json({ success: false, message: "الملاحظة مطلوبة" });
-  const result = getDb().prepare("INSERT INTO customer_notes (customer_id, note, created_by) VALUES (?, ?, ?)")
-    .run(req.params.id, note, req.user?.id || null);
+  const result = getDb().prepare("INSERT INTO customer_notes (customer_id, note, created_by, created_at) VALUES (?, ?, ?, ?)")
+    .run(req.params.id, note, req.user?.id || null, nowSql());
   const newNote = getDb().prepare("SELECT n.*, u.username as user_name FROM customer_notes n LEFT JOIN users u ON u.id = n.created_by WHERE n.id = ?").get(result.lastInsertRowid);
   res.status(201).json({ success: true, data: newNote });
 });
@@ -349,8 +351,8 @@ router.post("/import/batches/:id/undo", requirePagePermission("customers", "impo
       for (const id of insertedIds) {
         db.prepare("DELETE FROM customers WHERE id = ?").run(id);
       }
-      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=datetime('now', 'localtime'), undone_by=? WHERE id=?")
-        .run(req.user?.id || null, batchId);
+      db.prepare("UPDATE account_import_batches SET status='undone', undone_at=?, undone_by=? WHERE id=?")
+        .run(nowSql(), req.user?.id || null, batchId);
     })();
 
     res.json({ success: true, data: { batch_id: batchId, status: "undone" } });

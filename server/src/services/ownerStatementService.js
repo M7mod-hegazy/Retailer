@@ -1,7 +1,9 @@
+const { nowSql } = require("../utils/datetime");
 const { getDb } = require("../config/database");
 const { arTotalBalance, apTotalBalance, customerBalanceList, supplierBalanceList } = require("../reports/queries/accounts");
 const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin } = require("../reports/helpers");
 const { calculateDailySummary, localDate } = require("./dailySessionService");
+const { paymentFlowSummary } = require("./paymentFlowService");
 
 const COST_METHODS = new Set(["wacc", "fifo", "lifo", "last_purchase"]);
 const COST_METHOD_LABELS = {
@@ -334,6 +336,7 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
   const expenseRows = getExpenseRows(db, startDate, endDate);
   const revenueRows = getRevenueRows(db, startDate, endDate);
   const withdrawalRows = getWithdrawalRows(db, startDate, endDate);
+  const paymentFlowRows = paymentFlowSummary(startDate, endDate);
 
   const expenses = rowsTotal(expenseRows, "amount");
   const revenues = rowsTotal(revenueRows, "amount");
@@ -367,6 +370,7 @@ function computeOwnerStatement(startDate, endDate, costMethod = "wacc") {
       revenues: revenueRows,
       withdrawals: withdrawalRows,
       net_profit: profitRows,
+      payment_flow: paymentFlowRows,
     },
   };
 }
@@ -390,9 +394,9 @@ function saveOwnerStatement({ id, period_start, period_end, cost_method, notes, 
       }
       db.prepare(`
         UPDATE owner_statements
-        SET period_start = ?, period_end = ?, cost_method = ?, notes = ?, updated_at = datetime('now', 'localtime')
+        SET period_start = ?, period_end = ?, cost_method = ?, notes = ?, updated_at = ?
         WHERE id = ?
-      `).run(period_start, period_end, payload.cost_method, notes || null, statementId);
+      `).run(period_start, period_end, payload.cost_method, notes || null, nowSql(), statementId);
       db.prepare("DELETE FROM owner_statement_values WHERE statement_id = ?").run(statementId);
       db.prepare("DELETE FROM owner_statement_rows WHERE statement_id = ?").run(statementId);
     } else {
@@ -470,8 +474,8 @@ function lockOwnerStatement(id, userId) {
     throw err;
   }
   if (existing.status !== "locked") {
-    db.prepare("UPDATE owner_statements SET status = 'locked', locked_at = datetime('now', 'localtime'), locked_by = ? WHERE id = ?")
-      .run(userId || null, id);
+    db.prepare("UPDATE owner_statements SET status = 'locked', locked_at = ?, locked_by = ? WHERE id = ?")
+      .run(nowSql(), userId || null, id);
   }
   return getOwnerStatement(id);
 }

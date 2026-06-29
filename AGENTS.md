@@ -126,3 +126,6 @@ Fix: run `npm run kill:retailer-processes` then restart the dev server.
 
 ## branch_transfers schema history
 The `branch_transfers` table has legacy NOT NULL columns `from_warehouse_id` and `to_warehouse_id` (from the original schema before migration 065 added `warehouse_id`). Migration 091 recreates the table with `DEFAULT 1` on those columns. The route INSERT always includes them mapped to `headerWhId` for safety on un-migrated databases.
+
+## 154_deductions_bonuses_timestamps
+Adds `completed_at` and `cancelled_at` columns to `employee_deductions` and `employee_bonuses`. Server sets these when status transitions to `completed` (during settlement) or `cancelled` (DELETE endpoint). Always use `formatDateTime` from `client/src/utils/dateHelpers.js` for displaying all timestamps.

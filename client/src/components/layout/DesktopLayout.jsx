@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useUiStore } from '../../stores/uiStore';
 import { ChevronLeft } from 'lucide-react';
+import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from '../../utils/bodyFlags';
 
 const MIN_WIDTH = 150;
 const MAX_WIDTH = 420;
@@ -77,8 +78,7 @@ export default function DesktopLayout({ children, branding }) {
     draggingRef.current = true;
     startXRef.current = e.clientX;
     startWidthRef.current = sidebarWidth;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+    addBodyResizeFlags();
   }, [sidebarWidth]);
 
   useEffect(() => {
@@ -92,16 +92,24 @@ export default function DesktopLayout({ children, branding }) {
     function onMouseUp() {
       if (!draggingRef.current) return;
       draggingRef.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      removeBodyResizeFlags();
     }
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     return () => {
+      removeBodyResizeFlags();
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
   }, [setSidebarWidth]);
+
+  // Safety reset: if the window loses focus mid-drag (alt-tab, hide), body
+  // flags may not be cleaned up because mouseup may never fire on document.
+  useEffect(() => {
+    const onBlur = () => resetBodyFlags();
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, []);
 
   const isHidden = effectiveMode === 'hidden';
   const isRail = effectiveMode === 'rail';

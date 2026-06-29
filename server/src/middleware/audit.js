@@ -1,5 +1,6 @@
 const { getDb } = require("../config/database");
 const logger = require("../config/logger");
+const { nowSql } = require("../utils/datetime");
 
 function auditMutation(req, _res, next) {
   req.audit = (action, resource, payload, description, link) => {
@@ -8,13 +9,14 @@ function auditMutation(req, _res, next) {
     // return null instead of throwing.
     try {
       const db = getDb();
-      const info = db.prepare("INSERT INTO audit_logs (user_id, action, resource, payload_json, description, link, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))").run(
+      const info = db.prepare("INSERT INTO audit_logs (user_id, action, resource, payload_json, description, link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
         Number.isInteger(req.user?.id) ? req.user.id : null,
         action,
         resource,
         JSON.stringify(payload || {}),
         description || null,
         link || null,
+        nowSql(),
       );
       return info.lastInsertRowid;
     } catch (err) {

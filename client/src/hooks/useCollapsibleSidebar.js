@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useIsNarrowViewport } from "./useIsNarrowViewport";
+import { addBodyResizeFlags, removeBodyResizeFlags } from "../utils/bodyFlags";
 
 export default function useCollapsibleSidebar(options = {}) {
   const {
@@ -38,7 +39,7 @@ export default function useCollapsibleSidebar(options = {}) {
     panelResizingRef.current = true;
     const startX = e.clientX;
     const startW = panelWidth;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMove = (mv) => {
       if (!panelResizingRef.current) return;
       const raw = mv.clientX - startX;
@@ -47,7 +48,7 @@ export default function useCollapsibleSidebar(options = {}) {
     };
     const onUp = () => {
       panelResizingRef.current = false;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };

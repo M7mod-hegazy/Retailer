@@ -19,7 +19,7 @@ module.exports = {
         expected_cash REAL NOT NULL,
         discrepancy   REAL NOT NULL,
         note          TEXT,
-        created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at    TEXT,
         created_by    INTEGER REFERENCES users(id)
       )

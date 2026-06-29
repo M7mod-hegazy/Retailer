@@ -35,9 +35,10 @@ export default function PosStickyTotalBar({
   paymentType, paymentTypes = [],
   onPaymentChange,
   amountReceived, onAmountReceivedChange,
-  banks = [], selectedBankId, onBankChange,
   amountPaid, onAmountPaidChange,
-  multiCash, onMultiCashChange, multiCredit, onMultiCreditChange,
+  multiCash, onMultiCashChange,
+  multiVisa, onMultiVisaChange, visaMethod,
+  multiCredit, onMultiCreditChange,
   customPayMethods = [], multiCustomAmounts = {}, onMultiCustomAmountChange,
   customerName, customerId, customerBalance = 0,
   onCustomerLookup, onCustomerCreate, onCustomerClear, onCustomerInfo,
@@ -229,7 +230,7 @@ export default function PosStickyTotalBar({
 
   const multiEntered =
     paymentType === "multi"
-      ? (Number(multiCash || 0) + Number(multiCredit || 0) + customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id] || 0), 0))
+      ? (Number(multiCash || 0) + Number(multiVisa || 0) + Number(multiCredit || 0) + customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id] || 0), 0))
       : 0;
   const multiBalanced = paymentType === "multi" && Math.abs(multiEntered - total) < 0.01;
 
@@ -411,7 +412,7 @@ export default function PosStickyTotalBar({
         {/* ═══════════════ Rows 2+3: Payment buttons + inputs (single wrapping row) ═══════════════ */}
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-1 border-b border-zinc-100">
           <div className="flex items-center gap-0.5 shrink-0">
-            {paymentTypes.filter(({ type }) => !(type === "bank_transfer" && banks.length === 0)).map(({ type, label, Icon: _Icon }) => {
+            {paymentTypes.map(({ type, label, Icon: _Icon }) => {
               const isDisabled = isPaymentDisabled(type);
               const isActive = paymentType === type;
               const c = COLOR_MAP[type] || COLOR_MAP.cash;
@@ -450,17 +451,6 @@ export default function PosStickyTotalBar({
             </div>
           )}
 
-          {paymentType === "bank_transfer" && onBankChange && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
-              <span className="text-[11px] font-bold text-zinc-700">بنك:</span>
-              <select value={selectedBankId || ""} onChange={(e) => onBankChange(e.target.value)}
-                className="max-w-[100px] rounded border border-zinc-200 bg-white px-1 py-0.5 text-[11px] font-bold text-zinc-700 outline-none focus:border-blue-400 transition-colors">
-                <option value="">اختر</option>
-                {banks.filter(Boolean).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-          )}
-
           {paymentType === "installments" && (
             <div className="flex items-center gap-1.5 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <span className="text-[11px] font-bold text-zinc-700">الدفعة:</span>
@@ -491,17 +481,29 @@ export default function PosStickyTotalBar({
               <input type="number" min="0" value={multiCash || ""}
                 onChange={(e) => onMultiCashChange?.(e.target.value)} placeholder="0"
                 className="w-[60px] rounded border border-emerald-200 bg-emerald-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-emerald-400 transition-colors" />
-              <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCashChange?.(String(Math.max(0, total - c - Number(multiCredit||0)))); }}
+              <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCashChange?.(String(Math.max(0, total - c - Number(multiCredit||0) - Number(multiVisa||0)))); }}
                 className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
                 <Wand2 className="h-2.5 w-2.5" />
               </button>
-              {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
+              {visaMethod && (
+                <>
+                  <span className="text-2sm font-bold text-blue-800 shrink-0">{visaMethod.icon || "💳"} {visaMethod.name}:</span>
+                  <input type="number" min="0" value={multiVisa || ""}
+                    onChange={(e) => onMultiVisaChange?.(e.target.value)} placeholder="0"
+                    className="w-[60px] rounded border border-blue-200 bg-blue-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
+                  <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiVisaChange?.(String(Math.max(0, total - ca - c - cr))); }}
+                    className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all active:scale-90">
+                    <Wand2 className="h-2.5 w-2.5" />
+                  </button>
+                </>
+              )}
+              {customPayMethods.map(m => (
                 <div key={m.id} className="flex items-center gap-0.5">
                   <span className="text-2sm font-bold text-violet-800 whitespace-nowrap">{m.icon} {m.name}:</span>
                     <input type="number" min="0" value={multiCustomAmounts[m.id] || ""}
                       onChange={(e) => onMultiCustomAmountChange?.(m.id, e.target.value)} placeholder="0"
                       className="w-[60px] rounded border border-violet-200 bg-violet-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-violet-400 transition-colors" />
-                  <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); onMultiCustomAmountChange?.(m.id, String(Math.max(0, total - ca - others - cr))); }}
+                  <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); onMultiCustomAmountChange?.(m.id, String(Math.max(0, total - ca - others - cr - Number(multiVisa||0)))); }}
                     className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
                     <Wand2 className="h-2.5 w-2.5" />
                   </button>
@@ -512,7 +514,7 @@ export default function PosStickyTotalBar({
                 onChange={(e) => onMultiCreditChange?.(e.target.value)}
                 disabled={!hasCustomer} placeholder={hasCustomer ? "0" : "—"}
                 className="w-[60px] rounded border border-amber-200 bg-amber-50/30 px-1 py-1 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-amber-400 transition-colors disabled:opacity-40" />
-              <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCreditChange?.(String(Math.max(0, total - ca - c))); }}
+              <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCreditChange?.(String(Math.max(0, total - ca - c - Number(multiVisa||0)))); }}
                 className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
                 <Wand2 className="h-2.5 w-2.5" />
               </button>

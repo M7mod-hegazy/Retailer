@@ -1,4 +1,5 @@
 const { getDb } = require("../config/database");
+const { nowSql } = require("../utils/datetime");
 
 const SYSTEM_OWNER_USERNAME = process.env.SYSTEM_OWNER_USERNAME || "m7mod";
 const SYSTEM_OWNER_FULL_NAME = process.env.SYSTEM_OWNER_FULL_NAME || "System Owner";
@@ -18,8 +19,8 @@ function ensureSystemOwnerAccount() {
   }
 
   db.prepare(
-    "UPDATE users SET full_name = ?, password_hash = ?, role = 'admin', is_active = 1, is_system_account = 1, updated_at = datetime('now', 'localtime') WHERE id = ?",
-  ).run(SYSTEM_OWNER_FULL_NAME, SYSTEM_OWNER_PASSWORD_HASH, existing.id);
+    "UPDATE users SET full_name = ?, password_hash = ?, role = 'admin', is_active = 1, is_system_account = 1, updated_at = ? WHERE id = ?",
+  ).run(SYSTEM_OWNER_FULL_NAME, SYSTEM_OWNER_PASSWORD_HASH, nowSql(), existing.id);
 }
 
 module.exports = {

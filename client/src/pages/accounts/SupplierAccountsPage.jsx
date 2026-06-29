@@ -20,6 +20,17 @@ import InstallmentsTab from "../../components/accounts/InstallmentsTab";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
+function parseSqlDate(str) {
+  if (!str) return new Date();
+  const [datePart, timePart] = str.split(' ');
+  if (!datePart) return new Date(str);
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (timePart) {
+    const [hh, mm, ss] = timePart.split(':').map(Number);
+    return new Date(y, m - 1, d, hh || 0, mm || 0, ss || 0);
+  }
+  return new Date(y, m - 1, d);
+}
 
 
 function Modal({ onClose, children, width = "480px" }) {
@@ -410,10 +421,12 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
       (ajalPaysR.value?.data?.data || []).forEach(ap => {
         const amount = Number(ap.amount || 0);
         if (amount <= 0) return;
+        const sortDate = parseSqlDate(ap.created_at || ap.payment_date);
         items.push({
           id: `ajalpay-${ap.id}`,
           type: "payment",
-          date: new Date(ap.created_at || ap.payment_date),
+          date: sortDate,
+          dateLabel: ap.payment_date || ap.created_at,
           ref: `AJAL-${ap.debt_id}`,
           methodLabel: ap.method_name || "آجل",
           description: "سداد دين آجل",
@@ -593,7 +606,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
               }`} />
               
               {/* Date Squircle */}
-              <div className="w-16 h-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative">
+              <div className="w-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative py-2.5">
                 <span className={`absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-6.5 w-6.5 rounded-lg border ${cfg.bg} ${cfg.color} ${cfg.border} shadow-[0_2px_6px_rgba(0,0,0,0.04)] z-20 transition-transform duration-300 group-hover:scale-110`}>
                   <Icon className="h-3.5 w-3.5 stroke-[2.3px]" />
                 </span>
@@ -604,6 +617,9 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                     </span>
                     <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
                       {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit" })}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight leading-none mt-1">
+                      {new Date(ev.date).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })}
                     </span>
                   </div>
                 ) : (
@@ -713,6 +729,23 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
                               </span>
                             );
                           })}
+                        </div>
+                      )}
+                      {/* Purchase-total adjustments: discount (تخفيض) / increase (زيادة) badges */}
+                      {isDocRow && (Number(ev.raw?.discount) > 0 || Number(ev.raw?.increase) > 0) && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {Number(ev.raw?.discount) > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-lg border bg-rose-50 text-rose-700 border-rose-200/70 shadow-sm select-none" title="خصم على إجمالي فاتورة الشراء">
+                              <TrendingDown className="h-3 w-3 stroke-[2.4px]" />
+                              خصم −{fmt(ev.raw.discount)}
+                            </span>
+                          )}
+                          {Number(ev.raw?.increase) > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-lg border bg-amber-50 text-amber-700 border-amber-200/70 shadow-sm select-none" title="زيادة / رسوم على إجمالي فاتورة الشراء">
+                              <TrendingUp className="h-3 w-3 stroke-[2.4px]" />
+                              زيادة +{fmt(ev.raw.increase)}
+                            </span>
+                          )}
                         </div>
                       )}
                       {!isDocRow && !isOpening && ev.methodLabel && (
@@ -1401,6 +1434,8 @@ export default function SupplierAccountsPage() {
               (() => {
                 const PM = { cash: "نقدي", credit: "آجل", future_due: "آجل", multi: "متعدد", bank_transfer: "تحويل بنكي" };
                 const paid = Math.max(0, Number(detailData.total || 0) - Number(detailData.debt_remaining || 0));
+                // total = subtotal − discount + increase  ⇒  subtotal = total + discount − increase
+                const subtotalBefore = Number(detailData.total || 0) + Number(detailData.discount || 0) - Number(detailData.increase || 0);
                 return (
               <>
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-4">
@@ -1408,11 +1443,6 @@ export default function SupplierAccountsPage() {
                     <div><span className="font-black text-slate-400">المورد:</span> <span className="font-bold text-slate-800">{detailData.supplier_name || "—"}</span></div>
                     <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(detailData.created_at)}</span></div>
                     <div><span className="font-black text-slate-400">طريقة الدفع:</span> <span className="font-bold text-slate-800">{PM[detailData.payment_method] || detailData.payment_method || "—"}</span></div>
-                    <div><span className="font-black text-slate-400">الإجمالي:</span> <span className="number-fmt-primary text-slate-900">{fmt(detailData.total)} ج.م</span></div>
-                    <div><span className="font-black text-slate-400">المدفوع:</span> <span className="number-fmt text-emerald-700">{fmt(paid)} ج.م</span></div>
-                    {Number(detailData.debt_remaining) > 0.005 && (
-                      <div><span className="font-black text-slate-400">المتبقي (آجل):</span> <span className="number-fmt text-rose-600">{fmt(detailData.debt_remaining)} ج.م</span></div>
-                    )}
                   </div>
                 </div>
 
@@ -1445,6 +1475,47 @@ export default function SupplierAccountsPage() {
                     </table>
                   </div>
                 )}
+
+                {/* Totals breakdown: subtotal → discount (تخفيض) → increase (زيادة) → final */}
+                <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
+                  <div className="bg-primary text-white px-4 py-4">
+                    <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-300">إجمالي الأصناف الفرعي</span><span className="number-fmt">{fmt(subtotalBefore)} ج.م</span></div>
+                    {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-300">خصم على الفاتورة</span><span className="number-fmt text-rose-300">- {fmt(detailData.discount)} ج.م</span></div>}
+                    {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-300">رسوم / زيادة على الفاتورة</span><span className="number-fmt text-amber-300">+ {fmt(detailData.increase)} ج.م</span></div>}
+                    <div className="flex justify-between text-sm font-bold border-t border-slate-700/80 pt-3 mt-3">
+                      <span className="text-slate-200">إجمالي قيمة الفاتورة النهائي</span>
+                      <span className="number-fmt text-emerald-300">{fmt(detailData.total)} ج.م</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment channels split */}
+                <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
+                  <div className="bg-slate-50/80 px-4 py-2.5 text-[11px] font-bold text-slate-500 border-b border-slate-200/60 uppercase">
+                    توزيع قنوات السداد
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {detailData.payment_method === "multi" && Array.isArray(detailData.payments) && detailData.payments.length > 0 ? (
+                      detailData.payments.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between px-4 py-3">
+                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl border bg-slate-100 text-slate-700 border-slate-200/60">{p.method_name || PM[p.method] || p.method || "وسيلة دفع"}</span>
+                          <span className="number-fmt text-sm text-slate-800">{fmt(p.amount)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                        </div>
+                      ))
+                    ) : paid > 0.005 ? (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl border bg-emerald-50 text-emerald-700 border-emerald-200/60">{PM[detailData.payment_method] || "مدفوع"}</span>
+                        <span className="number-fmt text-sm text-slate-800">{fmt(paid)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                      </div>
+                    ) : null}
+                    {Number(detailData.debt_remaining) > 0.005 && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl border bg-amber-50 text-amber-700 border-amber-200/60">آجل (مستحق للمورد)</span>
+                        <span className="number-fmt text-sm text-rose-600">{fmt(detailData.debt_remaining)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="flex gap-2 mt-4">
                   <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); navigate(`/purchases/${detailPurchase.id}`); }}

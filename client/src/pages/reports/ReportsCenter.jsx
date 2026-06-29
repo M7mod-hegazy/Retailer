@@ -5,7 +5,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, LayoutTemplate, Percent } from "lucide-react";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
-import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS, CLASSIFICATIONS } from "./reportsCenterConfig";
+import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS, CLASSIFICATIONS, getReportDescription } from "./reportsCenterConfig";
 import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPreviewRows, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -25,6 +25,7 @@ const SOURCE_CAT_MAP = {
   expenses: "treasury",
   revenues: "treasury",
   treasury: "treasury",
+  "payment-flow": "treasury",
   "owner-statement": "accounts",
   cheques: "treasury",
   "profit-loader": "profitability",
@@ -68,10 +69,12 @@ const CLS_ARABIC = {
   "cls_top_customers": "أفضل العملاء",
   "cls_collection_efficiency": "كفاءة التحصيل",
   "cls_customer_loyalty": "ولاء العملاء",
-  "cls_emp_cashier_perf": "أداء الكاشير",
-  "cls_emp_shifts": "الورديات",
-  "cls_emp_user_activity": "نشاط المستخدمين",
-  "cls_emp_incentives": "الحوافز",
+  "cls_emp_list": "قائمة الموظفين",
+  "cls_emp_deductions": "خصومات الموظفين",
+  "cls_emp_bonuses": "مكافآت الموظفين",
+  "cls_emp_advances": "سلف الموظفين",
+  "cls_emp_payroll": "كشوف الرواتب",
+  "cls_emp_full_history": "السجل الكامل للموظف",
   "cls_inst_plans": "خطط التقسيط",
   "cls_inst_collections": "تحصيلات",
   "cls_inst_by_customer": "حسب العميل",
@@ -100,6 +103,16 @@ const CLS_ARABIC = {
   "cls_trs_reconciliation": "التسويات",
   "cls_trs_daily_sessions": "الجلسات اليومية",
   "cls_trs_withdrawals": "السحوبات",
+  "cls_trs_payment_flow_summary": "ملخص تدفقات وسائل الدفع",
+  "cls_trs_payment_flow_ledger": "سجل التدفقات التفصيلي",
+  "cls_trs_payment_flow_by_doc_type": "حسب نوع المستند",
+  "cls_trs_payment_flow_by_direction": "حسب الاتجاه",
+  "cls_trs_payment_flow_running": "الرصيد التراكمي",
+  "direction": "الاتجاه",
+  "doc_type": "نوع المستند",
+  "party_type": "نوع الطرف",
+  "amount_min": "أقل مبلغ",
+  "amount_max": "أكبر مبلغ",
   "cls_profit_by_item": "الربح حسب الصنف",
   "cls_profit_by_category": "الربح حسب الفئة",
   "cls_profit_health": "صحة الأرباح",
@@ -131,7 +144,7 @@ function clsOptionLabel(opt) {
 }
 
 function previewKeyForSource(sourceId) {
-  return sourceId === "owner-statement" ? "owner-statement" : (SOURCE_CAT_MAP[sourceId] || "sales");
+  return sourceId === "owner-statement" ? "owner-statement" : sourceId === "payment-flow" ? "payment-flow" : (SOURCE_CAT_MAP[sourceId] || "sales");
 }
 
 export default function ReportsCenter() {
@@ -237,7 +250,7 @@ export default function ReportsCenter() {
     }
     if (workspaceFilters.q) params.set("q", workspaceFilters.q);
     if (selectedClsDef?.hasProfit) params.set("cost_method", costMethod);
-    const dimKeys = ["category_id","item_id","customer_id","supplier_id","user_id","warehouse_id","cashier_id","status","payment_type","movement_type","role"];
+    const dimKeys = ["category_id","item_id","customer_id","supplier_id","user_id","warehouse_id","cashier_id","status","payment_type","movement_type","role","method_id","direction","doc_type","party_type","amount_min","amount_max","tax_type"];
     dimKeys.forEach((k) => { if (workspaceFilters[k]) params.set(k, workspaceFilters[k]); });
     const qs = params.toString();
     navigate(`/reports/source/${source.id}/${classification}/${dataMode}${qs ? `?${qs}` : ""}`);
@@ -382,9 +395,16 @@ export default function ReportsCenter() {
                         </button>
                       </div>
 
-                      <p className="text-sm leading-relaxed text-zinc-500 line-clamp-2 mb-4">
-                        {classifications.length} تصنيف · {clsDef ? (clsDef.availableModes || ["detailed"]).map((m) => m === "detailed" ? "تفصيلي" : m === "summary" ? "ملخص" : m).join(" / ") : ""}
-                      </p>
+                      <div className="mb-4 space-y-1.5">
+                        <p className="text-xs font-medium text-slate-500 line-clamp-2 leading-relaxed">
+                          {getReportDescription(source.id, classification || clsDef?.label_key)}
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
+                          <span>{classifications.length} تصنيفات</span>
+                          <span>•</span>
+                          <span>{clsDef ? (clsDef.availableModes || ["detailed"]).map((m) => m === "detailed" ? "تفصيلي" : m === "summary" ? "ملخص" : m).join(" / ") : ""}</span>
+                        </div>
+                      </div>
 
                       {/* Embedded Preview */}
                       <div className="mt-auto pt-4 border-t border-zinc-100">

@@ -207,6 +207,31 @@ function PreviewModal({ returnId, onClose }) {
                           <span className={`number-fmt text-xs font-black ${creditAmt > 0.005 ? "text-blue-700" : "text-zinc-400"}`}>{fmt(creditAmt)}</span>
                         </div>
                       </div>
+                      {/* Before → adjustments → after (only when a discount or increase is applied) */}
+                      {(Number(data.discount) > 0 || Number(data.increase) > 0) && (
+                        <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-zinc-500">إجمالي الأصناف المرتجعة</span>
+                            <span className="number-fmt text-zinc-700">{fmt(Number(total) + Number(data.discount || 0) - Number(data.increase || 0))} ج.م</span>
+                          </div>
+                          {Number(data.discount) > 0 && (
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-black text-rose-600 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> خصم المرتجع</span>
+                              <span className="number-fmt font-black text-rose-600">− {fmt(data.discount)} ج.م</span>
+                            </div>
+                          )}
+                          {Number(data.increase) > 0 && (
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-black text-emerald-600 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> زيادة المرتجع</span>
+                              <span className="number-fmt font-black text-emerald-600">+ {fmt(data.increase)} ج.م</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-zinc-100">
+                            <span className="font-black text-zinc-800">صافي المرتجع</span>
+                            <span className="number-fmt-primary font-black text-zinc-900">{fmt(total)} ج.م</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

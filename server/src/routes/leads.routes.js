@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 const { normalizeDigits } = require("../utils/phone");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 router.use(authRequired);
@@ -65,8 +66,8 @@ router.post("/", canAdd, (req, res) => {
         note = COALESCE(excluded.note, leads.note),
         birthday = COALESCE(excluded.birthday, leads.birthday),
         tags = CASE WHEN excluded.tags != '[]' THEN excluded.tags ELSE leads.tags END,
-        updated_at = datetime('now', 'localtime')
-    `).run(norm, String(phone), name?.trim() || null, note?.trim() || null, birthday || null, tagsJson, source);
+        updated_at = ?
+    `).run(norm, String(phone), name?.trim() || null, note?.trim() || null, birthday || null, tagsJson, source, nowSql());
 
     const lead = db.prepare("SELECT * FROM leads WHERE phone_normalized = ?").get(norm);
     lead.tags = parseTags(lead.tags);
@@ -79,8 +80,8 @@ router.put("/:id", canEdit, (req, res) => {
   try {
     const db = getDb();
     const { name, tags, note, birthday } = req.body;
-    db.prepare("UPDATE leads SET name=?, tags=?, note=?, birthday=?, updated_at=datetime('now', 'localtime') WHERE id=?")
-      .run(name?.trim() || null, JSON.stringify(parseTags(tags)), note?.trim() || null, birthday || null, req.params.id);
+    db.prepare("UPDATE leads SET name=?, tags=?, note=?, birthday=?, updated_at=? WHERE id=?")
+      .run(name?.trim() || null, JSON.stringify(parseTags(tags)), note?.trim() || null, birthday || null, nowSql(), req.params.id);
     const lead = db.prepare("SELECT * FROM leads WHERE id=?").get(req.params.id);
     if (lead) lead.tags = parseTags(lead.tags);
     res.json({ success: true, data: lead });
@@ -92,7 +93,7 @@ router.patch("/:id/opt-out", canEdit, (req, res) => {
   try {
     const db = getDb();
     const val = req.body.opted_out === false || req.body.opted_out === 0 ? 0 : 1;
-    db.prepare("UPDATE leads SET opted_out=?, updated_at=datetime('now', 'localtime') WHERE id=?").run(val, req.params.id);
+    db.prepare("UPDATE leads SET opted_out=?, updated_at=? WHERE id=?").run(val, nowSql(), req.params.id);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

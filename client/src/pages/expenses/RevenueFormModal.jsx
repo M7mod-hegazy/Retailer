@@ -18,7 +18,9 @@ import { useDetach } from "../../hooks/useDetach";
 export default function RevenueFormModal({ open, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
   const [treasuries, setTreasuries] = useState([]);
-  const [banks, setBanks] = useState([]);
+  // Record-only payment methods (فيزا, محافظ رقمية) — received money is recorded
+  // under the method name but moves no balance. Cash is handled separately (drawer).
+  const [payMethods, setPayMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const [form, setForm] = useState({
@@ -50,14 +52,14 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
   async function loadSelectionData() {
     try {
-      const [cat, tr, bn] = await Promise.all([
+      const [cat, tr, pm] = await Promise.all([
         api.get("/api/revenues/categories"),
         api.get("/api/treasuries"),
-        api.get("/api/banks")
+        api.get("/api/payment-methods")
       ]);
       setCategories(cat.data.data || []);
       setTreasuries(tr.data.data || []);
-      setBanks(bn.data.data || []);
+      setPayMethods((pm.data.data || []).filter(m => m.is_active !== 0 && m.category !== 'cash' && m.category !== 'credit' && m.category !== 'bank' && m.type !== 'bank'));
     } catch (e) {}
   }
 
@@ -163,37 +165,33 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
               {/* Payment Method */}
               <div className="col-span-1 space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">قناة القبض</label>
-                 <div className="grid grid-cols-2 gap-2">
-                    <button 
-                       type="button"
-                       onClick={() => setForm(f => ({ ...f, payment_method: 'cash', bank_id: "" }))}
-                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'cash' ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
-                    >
-                       <Banknote className="h-3.5 w-3.5" /> نقدي
-                    </button>
-                    <button 
-                       type="button"
-                       onClick={() => setForm(f => ({ ...f, payment_method: 'bank_transfer', treasury_id: "" }))}
-                       className={`flex items-center justify-center gap-2 rounded-sm border py-2 text-[11px] font-black transition-all ${form.payment_method === 'bank_transfer' ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}
-                    >
-                       <CreditCard className="h-3.5 w-3.5" /> بنك / فيزا
-                    </button>
-                 </div>
+                 <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm(f => ({ ...f, payment_method: e.target.value, treasury_id: e.target.value === 'cash' ? f.treasury_id : "" }))}
+                    className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
+                 >
+                    <option value="cash">💵 نقدي</option>
+                    {payMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
+                 </select>
               </div>
 
-              {/* Source Selection */}
+              {/* Source Selection — only for cash (treasury). Record-only methods move no balance. */}
               <div className="col-span-1 space-y-1.5">
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">إيداع في</label>
-                  <select 
+                 {form.payment_method === 'cash' ? (
+                  <select
                      ref={sourceRef}
-                     value={form.payment_method === 'cash' ? form.treasury_id : form.bank_id}
-                     onChange={(e) => setForm(f => ({ ...f, [form.payment_method === 'cash' ? 'treasury_id' : 'bank_id']: e.target.value }))}
+                     value={form.treasury_id}
+                     onChange={(e) => setForm(f => ({ ...f, treasury_id: e.target.value }))}
                      onKeyDown={e => handleKeyDown(e, { nextRef: dateRef, prevRef: descRef })}
                      className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
                   >
-                     <option value="">{form.payment_method === 'cash' ? 'اختر الخزينة المستلمة...' : 'اختر الحساب البنكي...'}</option>
-                     {form.payment_method === 'cash' ? treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>) : banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                     <option value="">اختر الخزينة المستلمة...</option>
+                     {treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
+                 ) : (
+                  <div className="w-full rounded-sm border border-dashed border-slate-200 bg-slate-50 py-2 px-3 text-2sm font-bold text-slate-400">يُسجَّل خارج الخزينة</div>
+                 )}
               </div>
 
               {/* Date */}

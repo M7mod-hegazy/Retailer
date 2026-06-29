@@ -86,6 +86,11 @@ const dispatcher = {
   "treasury": treasury.treasury,
   "cash-consistency": treasury.cashConsistency,
   "payment-method-flow": treasury.paymentMethodFlow,
+  "payment-flow-summary": treasury.paymentFlowSummaryReport,
+  "payment-flow-ledger": treasury.paymentFlowLedgerReport,
+  "payment-flow-by-doc-type": treasury.paymentFlowByDocTypeReport,
+  "payment-flow-by-direction": treasury.paymentFlowByDirectionReport,
+  "payment-flow-running": treasury.paymentFlowRunningReport,
   "bank-cash-split": treasury.bankCashSplit,
   "reconciliation-exceptions": treasury.reconciliationExceptions,
   "daily-sessions": treasury.dailySessionsReport,
@@ -133,6 +138,12 @@ const dispatcher = {
 
   // Employees
   "employee-adjustments": employees.employeeAdjustments,
+  "employee-list": employees.employeeList,
+  "employee-deductions": employees.employeeDeductions,
+  "employee-bonuses": employees.employeeBonuses,
+  "employee-advances": employees.employeeAdvances,
+  "employee-payroll": employees.employeePayroll,
+  "employee-full-history": employees.employeeFullHistory,
 
   // Profit
   "profit-by-category": profit.profitByCategory,

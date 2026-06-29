@@ -72,7 +72,7 @@ const CATEGORIES = [
   {
     id: "finance",
     label: "المالية والحسابات",
-    pages: ["daily_treasury", "customer_accounts", "supplier_accounts", "revenues", "expenses", "withdrawals", "payment_methods", "bank_operations", "cheques", "payments", "banks", "financial_categories"]
+    pages: ["daily_treasury", "customer_accounts", "supplier_accounts", "revenues", "expenses", "withdrawals", "payment_methods", "cheques", "payments", "financial_categories"]
   },
   {
     id: "contacts",

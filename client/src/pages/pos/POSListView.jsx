@@ -103,6 +103,7 @@ export default function POSListView({ vm }) {
     installmentRemaining, installmentAllocated, installmentBalanced,
     selectedBankId, setSelectedBankId,
     multiCash, setMultiCash,
+    multiVisa, setMultiVisa, visaMethod,
     multiCredit, setMultiCredit,
     customPayMethods, multiCustomAmounts, setMultiCustomAmounts,
     customerQuery, setCustomerQuery,
@@ -151,6 +152,7 @@ export default function POSListView({ vm }) {
   const sellerRef = useRef(null);
   const bankRef = useRef(null);
   const multiCashRef = useRef(null);
+  const multiVisaRef = useRef(null);
   const multiCreditRef = useRef(null);
   const handleFieldEnter = useFieldNavigation();
   const gridNavRef = useRef(null);
@@ -332,6 +334,9 @@ export default function POSListView({ vm }) {
         onAmountPaidChange={setAmountPaid}
         multiCash={multiCash}
         onMultiCashChange={setMultiCash}
+        multiVisa={multiVisa}
+        onMultiVisaChange={setMultiVisa}
+        visaMethod={visaMethod}
         multiCredit={multiCredit}
         onMultiCreditChange={setMultiCredit}
         heldInvoices={heldInvoices}
@@ -865,19 +870,31 @@ export default function POSListView({ vm }) {
                   <div className="flex items-center gap-2 py-2 first:pt-0">
                     <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug">💵 نقدي</span>
                     <input ref={multiCashRef} type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
-                      onKeyDown={(e) => handleFieldEnter(e, { nextRef: multiCreditRef })}
+                      onKeyDown={(e) => handleFieldEnter(e, { nextRef: visaMethod ? multiVisaRef : multiCreditRef })}
                       className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
-                    <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr))); }}
+                    <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr - (Number(multiVisa)||0)))); }}
                       className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
                       <Wand2 className="h-3 w-3" />
                     </button>
                   </div>
-                  {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
+                  {visaMethod && (
+                    <div className="flex items-center gap-2 py-2">
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-blue-700 leading-snug break-words">{visaMethod.icon || "💳"} {visaMethod.name}</span>
+                      <input ref={multiVisaRef} type="number" min="0" value={multiVisa} onChange={(e) => setMultiVisa(e.target.value)} placeholder="0.00"
+                        onKeyDown={(e) => handleFieldEnter(e, { nextRef: multiCreditRef, prevRef: multiCashRef })}
+                        className="w-28 shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+                      <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiVisa(String(Math.max(0, totals.total - ca - c - cr))); }}
+                        className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all active:scale-90">
+                        <Wand2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {customPayMethods.map(m => (
                     <div key={m.id} className="flex items-center gap-2 py-2">
                       <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
                       <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
                         className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
-                      <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => !mm.name?.includes('بنك') && !mm.name?.includes('تحويل') && mm.icon !== '🏦' && mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr))})); }}
+                      <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr - (Number(multiVisa)||0)))})); }}
                         className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
                         <Wand2 className="h-3 w-3" />
                       </button>
@@ -889,14 +906,14 @@ export default function POSListView({ vm }) {
                       placeholder={customer?.id ? "0.00" : "اختر عميل..."} disabled={!customer?.id}
                       onKeyDown={(e) => handleFieldEnter(e, { nextRef: notesRef, prevRef: multiCashRef })}
                       className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
-                    <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c))); }}
+                    <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c - (Number(multiVisa)||0)))); }}
                       className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
                       <Wand2 className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
                 {(() => {
-                  const entered = (Number(multiCash)||0) + customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0);
+                  const entered = (Number(multiCash)||0) + (Number(multiVisa)||0) + customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0) + (Number(multiCredit)||0);
                   const balanced = Math.abs(entered - totals.total) < 0.01;
                   return (
                     <div className={`flex items-center justify-between rounded-lg px-3 py-2 border text-[11px] font-black ${balanced ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
@@ -1452,7 +1469,7 @@ export default function POSListView({ vm }) {
           lines: lines.map(l => ({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, discount_amount: l.line_discount || 0, unit_name: l.unit_name || "", code: l.code || "" })),
           payments: paymentType === "multi" ? [
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
-            ...customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦' && Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+            ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ] : paymentType === "installments"
             ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])

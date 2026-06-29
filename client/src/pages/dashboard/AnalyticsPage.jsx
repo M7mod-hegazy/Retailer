@@ -109,6 +109,9 @@ export default function AnalyticsPage() {
   // Period-aware section data (follows the global period selector)
   const [deadStock, setDeadStock] = useState([]);
   const [paymentMix, setPaymentMix] = useState([]);
+  const [paymentFlow, setPaymentFlow] = useState([]);
+  const [periodSummary, setPeriodSummary] = useState(null);
+  const [periodCompare, setPeriodCompare] = useState(null);
   const [periodLoading, setPeriodLoading] = useState(false);
 
   // Two-period comparison — default to "previous 7 days" vs "last 7 days"
@@ -273,6 +276,19 @@ export default function AnalyticsPage() {
   }, [globalDateMode, globalCustomDates, globalRange]);
 
   // Enumerate every calendar day in the active period (newest first) — one heatmap row per day
+  const previousResolvedPeriod = useMemo(() => {
+    const { start, end } = resolvedPeriod;
+    const s = new Date(`${start}T00:00:00Z`);
+    const e = new Date(`${end}T00:00:00Z`);
+    if (!start || !end || isNaN(s) || isNaN(e)) return { start: "", end: "" };
+    const days = Math.max(1, Math.round((e - s) / 86400000) + 1);
+    const prevEnd = new Date(s);
+    prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setUTCDate(prevStart.getUTCDate() - days + 1);
+    return { start: prevStart.toISOString().split("T")[0], end: prevEnd.toISOString().split("T")[0] };
+  }, [resolvedPeriod]);
+
   const heatmapDayList = useMemo(() => {
     const { start, end } = resolvedPeriod;
     if (!start || !end) return [];
@@ -317,35 +333,47 @@ export default function AnalyticsPage() {
       setPeriodLoading(true);
       const qs = `?start_date=${start}&end_date=${end}`;
       try {
-        const [catRes, custRes, summaryRes, cashRes, deadRes, payRes] = await Promise.all([
+        const [catRes, custRes, summaryRes, cashRes, deadRes, payRes, flowRes, cmpRes] = await Promise.all([
           api.get(`/api/reports/run/sales-by-category${qs}`).catch(() => ({ data: { data: [] } })),
           api.get(`/api/reports/run/top-customers${qs}`).catch(() => ({ data: { data: [] } })),
           api.get(`/api/dashboard/period-summary${qs}`).catch(() => ({ data: { data: null } })),
           api.get(`/api/dashboard/cash-flow${qs}`).catch(() => ({ data: { data: [] } })),
           api.get(`/api/reports/run/dead-stock${qs}`).catch(() => ({ data: { data: [] } })),
           api.get(`/api/reports/run/sales-by-payment${qs}`).catch(() => ({ data: { data: [] } })),
+          api.get(`/api/reports/run/payment-flow-summary${qs}`).catch(() => ({ data: { data: [] } })),
+          api.get(`/api/dashboard/period-compare?a_start=${previousResolvedPeriod.start}&a_end=${previousResolvedPeriod.end}&b_start=${start}&b_end=${end}`).catch(() => ({ data: { data: null } })),
         ]);
 
         setTopCategories((catRes.data?.data || []).slice(0, 5));
-        setTopCustomers((custRes.data?.data || []).slice(0, 5));
+        setTopCustomers((custRes.data?.data || []).filter(c => c.customer_name !== "عميل نقدي").slice(0, 5));
         setCashFlow(cashRes.data?.data || []);
         setDeadStock((deadRes.data?.data || []).slice(0, 6));
         setPaymentMix(payRes.data?.data || []);
+        setPaymentFlow(flowRes.data?.data || []);
 
         const ps = summaryRes.data?.data;
+        setPeriodSummary(ps || null);
+        setPeriodCompare(cmpRes.data?.data || null);
         setReturnRate(prev => ({
           ...prev,
           period: Number(ps?.returns_total || 0),
           serverRate: ps?.return_rate != null ? Number(ps.return_rate) : null,
         }));
       } catch {
+        setPaymentFlow([]);
+        setPaymentMix([]);
+        setDeadStock([]);
+        setTopCustomers([]);
+        setTopCategories([]);
+        setPeriodSummary(null);
+        setPeriodCompare(null);
         // keep previous values on failure
       } finally {
         setPeriodLoading(false);
       }
     }
     loadPeriodData();
-  }, [resolvedPeriod]);
+  }, [resolvedPeriod, previousResolvedPeriod]);
 
   // Return rate calculation: compare returns to sales — both numerator (returnRate.period)
   // and denominator (allSalesRows) now share the same selected period.
@@ -371,6 +399,13 @@ export default function AnalyticsPage() {
     };
   }, [allSalesRows]);
 
+  const periodRevenueSeparate = useMemo(() => cashFlow.reduce((s, d) => s + Number(d.revenues || 0), 0), [cashFlow]);
+  const periodExpenseTotal = useMemo(() => cashFlow.reduce((s, d) => s + Number(d.expenses || 0), 0), [cashFlow]);
+  const periodSalesTotal = Number(periodSummary?.net_sales ?? periodSummary?.gross_sales ?? periodTotals.revenue ?? 0);
+  const periodInvoiceCount = Number(periodSummary?.invoice_count ?? allSalesRows.reduce((s, r) => s + Number(r.count || 0), 0));
+  const periodItemsSold = Number(periodSummary?.items_sold ?? allSalesRows.reduce((s, r) => s + Number(r.items_sold || 0), 0));
+  const currentPeriodCompare = periodCompare?.b || null;
+  const previousPeriodCompare = periodCompare?.a || null;
   // Peak-hours insight derived from the heatmap data (best weekday + best hour slot)
   const peakInsight = useMemo(() => {
     if (!heatmap.length) return null;
@@ -423,6 +458,14 @@ export default function AnalyticsPage() {
   }, [allSalesRows]);
 
   // Human label for the currently selected period (reused across period-aware sections)
+  const paymentFlowReportHref = useMemo(() => {
+    const { start, end } = resolvedPeriod;
+    const params = new URLSearchParams();
+    if (start) params.set("start_date", start);
+    if (end) params.set("end_date", end);
+    const qs = params.toString();
+    return `/reports/source/treasury/payment-flow-summary/summary${qs ? `?${qs}` : ""}`;
+  }, [resolvedPeriod]);
   const periodLabel = useMemo(() => {
     if (globalDateMode === "custom") {
       return globalCustomDates.start && globalCustomDates.end
@@ -469,7 +512,7 @@ export default function AnalyticsPage() {
           <div className="absolute inset-0 rounded-full animate-ping bg-slate-900 opacity-10"></div>
           <Activity className="h-8 w-8 animate-pulse text-slate-800" />
         </div>
-        <div className="text-2sm font-black tracking-[0.2em] text-slate-400 uppercase">جاري تجميع البيانات...</div>
+        <div className="text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">جاري تجميع البيانات...</div>
       </div>
     );
   }
@@ -520,7 +563,7 @@ export default function AnalyticsPage() {
               value={globalDateMode}
               onChange={e => setGlobalDateMode(e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, { nextRef: globalStartRef })}
-              className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-2sm font-black text-slate-700 py-1.5 px-2 rounded-[9px] transition-colors cursor-pointer"
+              className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-[11px] font-black text-slate-700 py-1.5 px-2 rounded-[9px] transition-colors cursor-pointer"
             >
               <option value="predefined">فترة محددة</option>
               <option value="custom">تاريخ مخصص</option>
@@ -530,7 +573,7 @@ export default function AnalyticsPage() {
               <div className="flex">
                 {[1, 7, 14, 30].map(days => (
                   <button key={days} onClick={() => setGlobalRange(days)}
-                    className={`px-3 py-1.5 rounded-[9px] text-2sm font-black transition-all ${globalRange === days ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
+                    className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${globalRange === days ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
                   >{days === 1 ? 'يوم' : days === 7 ? 'أسبوع' : days === 14 ? '١٤ي' : 'شهر'}</button>
                 ))}
               </div>
@@ -557,57 +600,56 @@ export default function AnalyticsPage() {
         {/* Live snapshot — these cards are always "now" and intentionally do NOT follow the period selector */}
         <div className="flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="text-[13px] font-black text-slate-500 uppercase tracking-widest">مؤشرات لحظية — اليوم والأسبوع</h2>
+          <h2 className="text-[13px] font-black text-slate-500 uppercase tracking-widest">مؤشرات الفترة المحددة — {periodLabel}</h2>
         </div>
 
         {/* Metrics Ribbon */}
         <div data-help="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <BentoMetric title="مبيعات اليوم" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={summary.todaySales} /></SensitiveValue>} icon={TrendingUp} theme="dark" hint="إجمالي المبيعات المحققة اليوم حتى اللحظة — يشمل الفواتير المكتملة فقط" />
-          <BentoMetric title="مبيعات الأسبوع" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={summary.weekSales} /></SensitiveValue>} icon={Activity} hint="إجمالي مبيعات الأيام السبعة الأخيرة" />
-          <BentoMetric title="إيرادات منفصلة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={todayRevenues} /></SensitiveValue>} icon={ArrowDownToLine} hint="إيرادات إضافية خارج المبيعات مثل إيجارات أو استردادات" />
-          <BentoMetric title="مصروفات اليوم" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={todayExpenses} /></SensitiveValue>} icon={ArrowUpFromLine} hint="مصروفات التشغيل اليومية" />
+          <BentoMetric title="مبيعات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodSalesTotal} /></SensitiveValue>} icon={TrendingUp} theme="dark" hint={`إجمالي المبيعات داخل الفترة المحددة: ${periodLabel}`} />
+          <BentoMetric title="فواتير الفترة" value={periodInvoiceCount.toLocaleString()} icon={Activity} hint={`عدد الفواتير داخل الفترة المحددة: ${periodLabel}`} />
+          <BentoMetric title="إيرادات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodRevenueSeparate} /></SensitiveValue>} icon={ArrowDownToLine} hint={`إيرادات منفصلة داخل الفترة المحددة: ${periodLabel}`} />
+          <BentoMetric title="مصروفات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodExpenseTotal} /></SensitiveValue>} icon={ArrowUpFromLine} hint={`مصروفات التشغيل داخل الفترة المحددة: ${periodLabel}`} />
           <BentoMetric title="نسبة المرتجعات (الفترة)" value={<SensitiveValue canView={canViewSensitive}>{`${computedReturnRate.rate.toFixed(1)}%`}</SensitiveValue>} icon={Percent} theme={computedReturnRate.rate > 5 ? "alert" : "default"} hint="نسبة قيمة المرتجعات إلى إجمالي المبيعات خلال الفترة المحددة في الأعلى" />
-          <BentoMetric title={inventoryHealth.healthy ? "المخزون سليم" : `تنبيهات ${inventoryHealth.total}`} value={inventoryHealth.healthy ? "0" : inventoryHealth.total} icon={HeartPulse} theme={inventoryHealth.healthy ? "default" : "alert"} hint={`نواقص: ${inventoryHealth.lowStock} · هوامش: ${inventoryHealth.belowMargin} · صلاحية: ${inventoryHealth.expiringSoon}`} />
+          <BentoMetric title={inventoryHealth.healthy ? "تنبيهات حالية" : `تنبيهات حالية ${inventoryHealth.total}`} value={inventoryHealth.healthy ? "0" : inventoryHealth.total} icon={HeartPulse} theme={inventoryHealth.healthy ? "default" : "alert"} hint={`تنبيهات مخزون حالية لا تتبع الفترة: نواقص ${inventoryHealth.lowStock} · هوامش ${inventoryHealth.belowMargin} · صلاحية ${inventoryHealth.expiringSoon}`} />
         </div>
 
-        {/* Period Comparison Strip */}
-        {comparison && (
+        {/* Selected Period Comparison Strip */}
+        {currentPeriodCompare && previousPeriodCompare && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">مبيعات اليوم</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">مبيعات الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={comparison.today.sales} /></SensitiveValue></span>
-                <TrendBadge current={Number(comparison.today.sales)} previous={Number(comparison.yesterday.sales)} />
+                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.net_sales ?? currentPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
+                <TrendBadge current={Number(currentPeriodCompare.net_sales ?? currentPeriodCompare.gross_sales ?? 0)} previous={Number(previousPeriodCompare.net_sales ?? previousPeriodCompare.gross_sales ?? 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">↑ أمس: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={comparison.yesterday.sales} /></SensitiveValue></span>
+              <span className="text-[11px] font-bold text-slate-400">{periodLabel} · السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.net_sales ?? previousPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
             </div>
             <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">فواتير اليوم</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">فواتير الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums">{comparison.today.count}</span>
-                <TrendBadge current={Number(comparison.today.count)} previous={Number(comparison.yesterday.count)} />
+                <span className="text-[22px] font-black text-slate-900 tabular-nums">{currentPeriodCompare.invoice_count || 0}</span>
+                <TrendBadge current={Number(currentPeriodCompare.invoice_count || 0)} previous={Number(previousPeriodCompare.invoice_count || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">↑ أمس: {comparison.yesterday.count}</span>
+              <span className="text-[11px] font-bold text-slate-400">السابق: {previousPeriodCompare.invoice_count || 0}</span>
             </div>
             <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">مبيعات الأسبوع</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ربح الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={comparison.this_week.sales} /></SensitiveValue></span>
-                <TrendBadge current={Number(comparison.this_week.sales)} previous={Number(comparison.last_week.sales)} />
+                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
+                <TrendBadge current={Number(currentPeriodCompare.gross_profit || 0)} previous={Number(previousPeriodCompare.gross_profit || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">↑ الأسبوع الماضي: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={comparison.last_week.sales} /></SensitiveValue></span>
+              <span className="text-[11px] font-bold text-slate-400">السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
             </div>
             <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">فواتير الأسبوع</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">متوسط الفاتورة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums">{comparison.this_week.count}</span>
-                <TrendBadge current={Number(comparison.this_week.count)} previous={Number(comparison.last_week.count)} />
+                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.avg_basket || 0} /></SensitiveValue></span>
+                <TrendBadge current={Number(currentPeriodCompare.avg_basket || 0)} previous={Number(previousPeriodCompare.avg_basket || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">↑ الأسبوع الماضي: {comparison.last_week.count}</span>
+              <span className="text-[11px] font-bold text-slate-400">مقارنة بالفترة السابقة المساوية</span>
             </div>
           </div>
         )}
-
         {/* Central Dashboard - Asymmetrical split */}
         <div className="grid gap-5 xl:grid-cols-[1fr_minmax(350px,400px)]">
           
@@ -618,7 +660,7 @@ export default function AnalyticsPage() {
                 <h2 className="text-[20px] font-black text-slate-900 tracking-tight">حركة المبيعات</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <span className="text-2sm font-bold text-slate-500">مزامنة في الوقت الفعلي</span>
+                  <span className="text-2sm font-bold text-slate-500">مبيعات الفترة المحددة · {periodLabel}</span>
                 </div>
               </div>
 
@@ -628,19 +670,19 @@ export default function AnalyticsPage() {
                 <div className="flex p-1 bg-slate-100 rounded-[14px]">
                   <button
                     onClick={() => setChartMetric("revenue")}
-                    className={`px-4 py-1.5 rounded-[10px] text-2sm font-black transition-all ${chartMetric === "revenue" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "revenue" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     بالقيمة
                   </button>
                   <button
                     onClick={() => setChartMetric("profit")}
-                    className={`px-4 py-1.5 rounded-[10px] text-2sm font-black transition-all ${chartMetric === "profit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "profit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     بالربح
                   </button>
                   <button
                     onClick={() => setChartMetric("count")}
-                    className={`px-4 py-1.5 rounded-[10px] text-2sm font-black transition-all ${chartMetric === "count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >
                     بالعدد
                   </button>
@@ -648,7 +690,7 @@ export default function AnalyticsPage() {
                 {/* Margin toggle */}
                 <button
                   onClick={() => setShowMarginLine(v => !v)}
-                  className={`px-3 py-1.5 rounded-[10px] text-2sm font-black transition-all border ${
+                  className={`px-3 py-1.5 rounded-[10px] text-[11px] font-black transition-all border ${
                     showMarginLine ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-transparent hover:border-slate-200"
                   }`}
                 >
@@ -727,7 +769,10 @@ export default function AnalyticsPage() {
             {/* Top Categories Distribution */}
             <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-[16px] font-black text-slate-900 tracking-tight">توزيع المبيعات بالمنطقة</h3>
+                <div>
+                  <h3 className="text-[16px] font-black text-slate-900 tracking-tight">توزيع المبيعات بالأقسام</h3>
+                  <p className="mt-0.5 text-[11px] font-bold text-slate-400">{periodLabel}</p>
+                </div>
                 <div className="bg-slate-50 p-2 rounded-[14px]">
                   <PieChart className="w-5 h-5 text-slate-500" />
                 </div>
@@ -742,7 +787,7 @@ export default function AnalyticsPage() {
                     const margin = Number(cat.margin_percent || 0);
                     return (
                       <div key={idx} className="relative">
-                        <div className="flex justify-between text-2sm font-black mb-1.5 relative z-10 px-1">
+                        <div className="flex justify-between text-[11px] font-black mb-1.5 relative z-10 px-1">
                           <span className="text-slate-700">{cat.category_name}</span>
                           <span className="text-slate-900"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={cat.revenue || 0} /></SensitiveValue></span>
                         </div>
@@ -861,7 +906,7 @@ export default function AnalyticsPage() {
               </div>
               <div>
                 <h2 className="text-[18px] font-black text-slate-900 tracking-tight">خريطة حرارة المبيعات</h2>
-                <p className="text-2sm font-bold text-slate-500">توزيع المبيعات حسب اليوم والساعة</p>
+                <p className="text-2sm font-bold text-slate-500">توزيع المبيعات حسب اليوم والساعة · {periodLabel}</p>
               </div>
             </div>
 
@@ -870,10 +915,10 @@ export default function AnalyticsPage() {
               {/* Metric toggle */}
               <div className="flex p-0.5 bg-slate-100 rounded-[12px]">
                 <button onClick={() => setHeatmapMetric("total_sales")}
-                  className={`px-3 py-1.5 rounded-[9px] text-2sm font-black transition-all ${heatmapMetric === "total_sales" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "total_sales" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >بالقيمة</button>
                 <button onClick={() => setHeatmapMetric("invoice_count")}
-                  className={`px-3 py-1.5 rounded-[9px] text-2sm font-black transition-all ${heatmapMetric === "invoice_count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "invoice_count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >بالعدد</button>
               </div>
 
@@ -881,7 +926,7 @@ export default function AnalyticsPage() {
               <div className="flex p-0.5 bg-slate-100 rounded-[12px]">
                 {[1, 2, 4].map(g => (
                   <button key={g} onClick={() => setHeatmapGranularity(g)}
-                    className={`px-2.5 py-1.5 rounded-[9px] text-2sm font-black transition-all ${heatmapGranularity === g ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-2.5 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapGranularity === g ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                   >{g === 1 ? "ساعة" : g === 2 ? "ساعتين" : "٤س"}</button>
                 ))}
               </div>
@@ -1075,8 +1120,7 @@ export default function AnalyticsPage() {
                      <option value="top">الأكثر مبيعاً</option>
                      <option value="bottom">الأقل مبيعاً</option>
                    </select>
-
-
+<span className="text-[11px] font-bold text-slate-400">{periodLabel}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
@@ -1154,9 +1198,12 @@ export default function AnalyticsPage() {
           {/* Top Customers Widget */}
           <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
             <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-slate-500" />
-                <h3 className="text-[16px] font-black text-slate-900">أفضل العملاء</h3>
+              <div className="flex items-start gap-2">
+                <Users className="mt-0.5 w-5 h-5 text-slate-500" />
+                <div>
+                  <h3 className="text-[16px] font-black text-slate-900">أفضل العملاء</h3>
+                  <p className="mt-0.5 text-[11px] font-bold text-slate-400">{periodLabel}</p>
+                </div>
               </div>
               <Link to="/reports/center" className="text-[10px] font-black text-indigo-600 hover:underline">تقرير كامل ←</Link>
             </div>
@@ -1251,14 +1298,14 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">رصيد</span>
-                        <span className="inline-flex items-center justify-center h-7 px-3 bg-red-50 text-red-600 rounded-full text-2sm font-black ring-1 ring-red-100 group-hover:scale-105 transition-transform">
+                        <span className="inline-flex items-center justify-center h-7 px-3 bg-red-50 text-red-600 rounded-full text-[11px] font-black ring-1 ring-red-100 group-hover:scale-105 transition-transform">
                           {Number(item.quantity || 0)}
                         </span>
                       </div>
                     </div>
                   ))}
                   {lowStock.length === 5 && (
-                     <Link to="/stock/levels" className="block w-full py-2 mt-1 text-center text-2sm font-black text-indigo-600 bg-indigo-50/50 rounded-[16px] hover:bg-indigo-50 transition-colors">
+                     <Link to="/stock/levels" className="block w-full py-2 mt-1 text-center text-[11px] font-black text-indigo-600 bg-indigo-50/50 rounded-[16px] hover:bg-indigo-50 transition-colors">
                        عرض التفاصيل الكاملة ←
                      </Link>
                   )}
@@ -1267,6 +1314,56 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Payment Flow Preview */}
+        <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-slate-500" />
+              <div>
+                <h3 className="text-[16px] font-black text-slate-900">تدفقات وسائل الدفع</h3>
+                <p className="text-[11px] font-bold text-slate-400">{periodLabel}</p>
+              </div>
+            </div>
+            <Link to={paymentFlowReportHref} className="inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white hover:bg-slate-800">
+              فتح التقرير التفصيلي
+            </Link>
+          </div>
+          {!canViewSensitive ? (
+            <div className="flex items-center justify-center py-8 text-sm font-bold text-slate-300">بيانات مقيدة</div>
+          ) : paymentFlow.length === 0 ? (
+            <div className="py-8 text-center text-sm font-bold text-slate-400">لا توجد تدفقات مسجلة في الفترة</div>
+          ) : (() => {
+            const totalIn = paymentFlow.reduce((s, m) => s + Number(m.total_in || 0), 0);
+            const totalOut = paymentFlow.reduce((s, m) => s + Number(m.total_out || 0), 0);
+            const net = totalIn - totalOut;
+            const top = [...paymentFlow].sort((a, b) => Math.abs(Number(b.net_amount || 0)) - Math.abs(Number(a.net_amount || 0))).slice(0, 5);
+            const max = Math.max(1, ...top.map((m) => Math.max(Number(m.total_in || 0), Number(m.total_out || 0))));
+            return (
+              <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl bg-emerald-50 p-4 text-center"><div className="text-[11px] font-black text-emerald-700">داخل</div><div className="mt-1 text-lg font-black text-emerald-800"><CurrencyDisplay value={totalIn} /></div></div>
+                  <div className="rounded-2xl bg-rose-50 p-4 text-center"><div className="text-[11px] font-black text-rose-700">خارج</div><div className="mt-1 text-lg font-black text-rose-800"><CurrencyDisplay value={totalOut} /></div></div>
+                  <div className="rounded-2xl bg-slate-50 p-4 text-center"><div className="text-[11px] font-black text-slate-500">الصافي</div><div className={`mt-1 text-lg font-black ${net < 0 ? "text-rose-700" : "text-slate-900"}`}><CurrencyDisplay value={net} /></div></div>
+                </div>
+                <div className="space-y-3">
+                  {top.map((m) => (
+                    <div key={m.method_id || m.method_name}>
+                      <div className="mb-1 flex items-center justify-between text-[11px] font-black">
+                        <span className="text-slate-700">{m.method_name || "غير محدد"} <span className="text-[10px] text-slate-400">({m.transaction_count || 0})</span></span>
+                        <span className={Number(m.net_amount || 0) < 0 ? "text-rose-700" : "text-slate-900"}><CurrencyDisplay value={m.net_amount || 0} /></span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-full bg-slate-100 p-1">
+                        <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${Math.max(3, (Number(m.total_in || 0) / max) * 100)}%` }} />
+                        <div className="h-2 justify-self-end rounded-full bg-rose-500" style={{ width: `${Math.max(3, (Number(m.total_out || 0) / max) * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Payment Mix + Discount Leakage */}
@@ -1295,7 +1392,7 @@ export default function AnalyticsPage() {
                     const pct = (Number(p.total_sales || 0) / total) * 100;
                     return (
                       <div key={idx}>
-                        <div className="flex justify-between text-2sm font-black mb-1 px-1">
+                        <div className="flex justify-between text-[11px] font-black mb-1 px-1">
                           <span className="text-slate-700">{labels[p.payment_type] || p.payment_type} <span className="text-[10px] font-bold text-slate-400">({Number(p.invoice_count || 0)} فاتورة)</span></span>
                           <span className="text-slate-900"><CurrencyDisplay value={p.total_sales || 0} /> <span className="text-[10px] text-slate-400">{pct.toFixed(0)}%</span></span>
                         </div>
@@ -1424,14 +1521,14 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">هامش</span>
-                      <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-2sm font-black ring-1 ring-rose-200">
+                      <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[11px] font-black ring-1 ring-rose-200">
                         <SensitiveValue canView={canViewSensitive}>{Number(item.current_margin_percent ?? 0).toFixed(1)}%</SensitiveValue>
                       </span>
                     </div>
                   </div>
                 ))}
                 {belowMargin.length === 5 && (
-                  <Link to="/reports/margin-health" className="block w-full py-2 mt-1 text-center text-2sm font-black text-rose-600 bg-rose-50/50 rounded-[16px] hover:bg-rose-50 transition-colors">
+                  <Link to="/reports/margin-health" className="block w-full py-2 mt-1 text-center text-[11px] font-black text-rose-600 bg-rose-50/50 rounded-[16px] hover:bg-rose-50 transition-colors">
                     عرض التفاصيل الكاملة ←
                   </Link>
                 )}
@@ -1606,7 +1703,7 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className={`inline-flex items-center justify-center h-7 px-3 rounded-full text-2sm font-black ring-1 ${badgeCls}`}>
+                        <span className={`inline-flex items-center justify-center h-7 px-3 rounded-full text-[11px] font-black ring-1 ${badgeCls}`}>
                           {dr < 0 ? `منذ ${Math.abs(dr)} يوم` : `${Math.round(dr)} يوم`}
                         </span>
                       </div>

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, Trash2, User, Package, Search,
   ShoppingCart, Printer, Save, ChevronLeft, Info,
@@ -20,6 +20,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
 import toast from "react-hot-toast";
 import { buildQuotationPrintDoc, formatQuotationNo } from "./quotationUtils";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -142,6 +143,7 @@ export default function QuotationFormPage() {
   const [browseTotalPages, setBrowseTotalPages] = useState(1);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(null);
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     try { return JSON.parse(localStorage.getItem("retailer.quotation.visibleColumns") || "null") || DEFAULT_VISIBLE; } catch { return DEFAULT_VISIBLE; }
@@ -569,8 +571,11 @@ export default function QuotationFormPage() {
       }
       wasSaved.current = true;
       discardDraft();
-      toast.success(editId ? "تم تحديث عرض السعر بنجاح" : "تم إنشاء عرض السعر بنجاح");
-      navigate("/operations/quotations");
+      setSaveSuccess({
+        invoiceNumber: docNo || formatQuotationNo(editId),
+        total: formatMoney(totals.total),
+        customerName: selectedCustomer?.name,
+      });
     } catch (e) {
       const msg = e?.response?.data?.message || "فشل حفظ عرض السعر";
       toast.error(msg, { duration: 5000 });
@@ -594,6 +599,11 @@ export default function QuotationFormPage() {
     if (total <= 0) return 0;
     return Math.round((Number(item.discount || 0) / total) * 100);
   }
+
+  const onDismissSaveSuccess = useCallback(() => {
+    setSaveSuccess(null);
+    navigate("/operations/quotations");
+  }, [navigate]);
 
   function handlePrint() {
     if (!cart.length) {
@@ -1446,6 +1456,15 @@ export default function QuotationFormPage() {
           setCustomerCreateOpen(false);
         }}
       />
+
+      {saveSuccess && (
+        <InvoiceSaveSuccess
+          invoiceNumber={saveSuccess.invoiceNumber}
+          total={saveSuccess.total}
+          customerName={saveSuccess.customerName}
+          onDismiss={onDismissSaveSuccess}
+        />
+      )}
 
       <UnsavedChangesModal
         open={showUnsavedModal}

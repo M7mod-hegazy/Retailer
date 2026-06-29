@@ -2,6 +2,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useShortcut } from "../../shortcuts/useShortcut";
 import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
+import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
 import {
   ArrowUpDown, 
   Check,
@@ -446,7 +447,7 @@ export default function ItemsListPage() {
     startX.current = e.clientX;
     startWidth.current = colWidths[key] || 100;
     
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
 
     const onMouseMove = (moveEvent) => {
       if (!resizingCol.current) return;
@@ -458,7 +459,7 @@ export default function ItemsListPage() {
 
     const onMouseUp = () => {
       resizingCol.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };

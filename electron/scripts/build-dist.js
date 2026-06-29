@@ -68,7 +68,7 @@ function buildArch(arch) {
   const archFlag = arch === "ia32" ? "--ia32" : "--x64";
   run(
     "npx",
-    ["electron-builder", "--win", archFlag, "--config", CONFIG, `-c.directories.output=${out}`],
+    ["electron-builder", "--win", archFlag, "--config", CONFIG, "-c.win.target=nsis", `-c.directories.output=${out}`],
     `electron-builder (${arch})`
   );
 }

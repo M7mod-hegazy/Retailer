@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import LayoutRenderer from "../LayoutRenderer";
 
-const INV = { invoice_no: "INV-9", customer_name: "زبون", lines: [{ product_name: "X", quantity: 1, unit_price: 100 }], payments: [] };
+const INV = { invoice_no: "INV-9", customer_name: "عميل", lines: [{ product_name: "X", quantity: 1, unit_price: 100 }], payments: [] };
 const S = { company_name: "ACME", accent_color: "#0f172a", show_qr: true, tax_rate: 15 };
 
 describe("page zones", () => {

@@ -1,3 +1,24 @@
+const PAYMENT_FLOW_FILTERS = {
+  method: { key: "method_id", type: "lookup", label_key: "payment_method", entity: "payment_method" },
+  direction: { key: "direction", type: "select", label_key: "direction", options: [{ value: "in", label: "داخل" }, { value: "out", label: "خارج" }] },
+  docType: { key: "doc_type", type: "select", label_key: "doc_type", options: [
+    { value: "pos_invoice", label: "فاتورة بيع" },
+    { value: "payment_allocation", label: "تسوية فاتورة" },
+    { value: "customer_payment", label: "تحصيل عميل" },
+    { value: "supplier_payment", label: "سداد مورد" },
+    { value: "ajal_payment", label: "حركة آجل" },
+    { value: "expense", label: "مصروف" },
+    { value: "revenue", label: "إيراد" },
+    { value: "purchase", label: "مشتريات" },
+    { value: "purchase_payment", label: "دفعة مشتريات" },
+    { value: "sales_return", label: "مرتجع مبيعات" },
+    { value: "purchase_return", label: "مرتجع مشتريات" },
+    { value: "withdrawal", label: "مسحوبات" },
+  ] },
+  partyType: { key: "party_type", type: "select", label_key: "party_type", options: [{ value: "customer", label: "عميل" }, { value: "supplier", label: "مورد" }, { value: "general", label: "عام" }] },
+  min: { key: "amount_min", type: "text", label_key: "amount_min" },
+  max: { key: "amount_max", type: "text", label_key: "amount_max" },
+};
 const REPORT_REGISTRY = {
   categories: [
     { id: "sales", label_key: "category_sales" },
@@ -14,7 +35,6 @@ const REPORT_REGISTRY = {
   sources: [
     { id: "sales", label_key: "source_sales", cat: "sales", icon: "TrendingUp" },
     { id: "purchases", label_key: "source_purchases", cat: "purchases", icon: "Package" },
-    { id: "cheques", label_key: "source_cheques", cat: "treasury", icon: "FileText" },
     { id: "purchase-returns", label_key: "source_purchase_returns", cat: "purchases", icon: "RotateCcw" },
     { id: "sales-returns", label_key: "source_sales_returns", cat: "sales", icon: "RotateCcw" },
     { id: "suppliers", label_key: "source_suppliers", cat: "accounts", icon: "Truck" },
@@ -26,6 +46,7 @@ const REPORT_REGISTRY = {
     { id: "expenses", label_key: "source_expenses", cat: "treasury", icon: "Receipt" },
     { id: "revenues", label_key: "source_revenues", cat: "treasury", icon: "TrendingUp" },
     { id: "treasury", label_key: "source_treasury", cat: "treasury", icon: "Wallet" },
+    { id: "payment-flow", label_key: "source_payment_flow", cat: "treasury", icon: "Wallet" },
     { id: "profit-loader", label_key: "source_profit_loader", cat: "profitability", icon: "Percent" },
     { id: "net-profit", label_key: "source_net_profit", cat: "profitability", icon: "LineChart" },
     { id: "expiry", label_key: "source_expiry", cat: "inventory", icon: "Clock" },
@@ -64,9 +85,25 @@ const REPORT_REGISTRY = {
       { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
     ],
     employees: [
-      { key: "cashier_id", type: "lookup", entity: "user", label_key: "cashier" },
-      { key: "user_id", type: "lookup", entity: "user", label_key: "user" },
-      { key: "action", type: "select", label_key: "action", options: [] },
+      { key: "employee_id", type: "lookup", entity: "employee", label_key: "employee" },
+      { key: "deduction_type", type: "select", label_key: "deduction_type", options: [
+        { value: "absence", label: "غياب" }, { value: "fine", label: "غرامة" },
+        { value: "insurance", label: "تأمين" }, { value: "other", label: "أخرى" },
+      ] },
+      { key: "bonus_type", type: "select", label_key: "bonus_type", options: [
+        { value: "performance", label: "أداء" }, { value: "holiday", label: "إجازة" },
+        { value: "overtime", label: "إضافي" }, { value: "transportation", label: "مواصلات" },
+        { value: "other", label: "أخرى" },
+      ] },
+      { key: "status", type: "select", label_key: "status", options: [
+        { value: "active", label: "نشط" }, { value: "completed", label: "مطبق" },
+        { value: "cancelled", label: "ملغي" },
+      ] },
+      { key: "tx_type", type: "select", label_key: "tx_type", options: [
+        { value: "deduction", label: "خصم" }, { value: "bonus", label: "مكافأة" },
+        { value: "advance", label: "سلفة" }, { value: "advance_payment", label: "دفعة سلفة" },
+        { value: "settlement", label: "صرف راتب" },
+      ] },
     ],
     items: [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
@@ -85,16 +122,24 @@ const REPORT_REGISTRY = {
     revenues: [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
     ],
-    cheques: [
-      { key: "status", type: "select", label_key: "status", options: [{ value: "pending", label_key: "pending" }, { value: "cleared", label_key: "cleared" }, { value: "bounced", label_key: "bounced" }, { value: "replaced", label_key: "replaced" }] },
-    ],
     "profit-loader": [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
       { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
     ],
     "net-profit": [],
-    treasury: [],
-    installments: [],
+    treasury: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max],
+    "payment-flow": [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max],
+    tax: [
+      { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
+      { key: "supplier_id", type: "lookup", entity: "supplier", label_key: "supplier" },
+      { key: "status", type: "select", label_key: "status", options: [{ value: "paid", label_key: "paid" }, { value: "unpaid", label_key: "unpaid" }, { value: "cancelled", label_key: "cancelled" }] },
+      { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
+      { key: "tax_type", type: "select", label_key: "tax_type", options: [{ value: "exclusive", label: "خارج السعر" }, { value: "inclusive", label: "داخل السعر" }] },
+    ],
+    installments: [
+      { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
+      { key: "status", type: "select", label_key: "status", options: [{ value: "pending", label: "قيد السداد" }, { value: "paid", label: "مدفوع" }, { value: "cancelled", label_key: "cancelled" }] },
+    ],
     users: [
       { key: "user_id", type: "lookup", entity: "user", label_key: "user" },
       { key: "role", type: "select", label_key: "role", options: [{ value: "admin", label_key: "admin" }, { value: "cashier", label_key: "cashier" }, { value: "manager", label_key: "manager" }] },
@@ -148,7 +193,7 @@ const REPORT_REGISTRY = {
         { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
         { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
       ], multiSelectFilters: [] },
-      { id: "tax", label_key: "cls_sales_tax", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "tax", label_key: "cls_sales_tax", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
     ],
     // ── مشتريات (Purchases) ──
     purchases: [
@@ -173,14 +218,6 @@ const REPORT_REGISTRY = {
         { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
       ], multiSelectFilters: [] },
     ],
-    // ── شيكات / بنوك (Cheques / Banks) ──
-    cheques: [
-      { id: "cheques", label_key: "cls_cheques_listing", detailedQuery: "cheque-listing", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["status"], filters: [
-        { key: "status", type: "select", label_key: "status", options: [{ value: "pending", label_key: "pending" }, { value: "cleared", label_key: "cleared" }, { value: "bounced", label_key: "bounced" }, { value: "replaced", label_key: "replaced" }] },
-      ], multiSelectFilters: [] },
-      { id: "bank-transactions", label_key: "cls_bank_transactions", detailedQuery: "bank-transactions", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
-      { id: "bank-summary", label_key: "cls_bank_summary", detailedQuery: null, summaryQuery: "bank-summary", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
-    ],
     // ── مرتجعات المشتريات (Purchase Returns) ──
     "purchase-returns": [
       { id: "summary", label_key: "cls_preturn_summary", detailedQuery: null, summaryQuery: "purchase-returns-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
@@ -195,7 +232,7 @@ const REPORT_REGISTRY = {
       { id: "detailed", label_key: "cls_sreturn_detailed", detailedQuery: "sales-returns", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
       ], multiSelectFilters: [] },
-      { id: "by-customer", label_key: "cls_sreturn_by_customer", detailedQuery: "sales-returns-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-customer", label_key: "cls_sreturn_by_customer", detailedQuery: "sales-returns-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
     ],
     // ── الموردين (Suppliers) ──
     suppliers: [
@@ -239,22 +276,37 @@ const REPORT_REGISTRY = {
     ],
     // ── الموظفين (Employees) ──
     employees: [
-      { id: "cashier-performance", label_key: "cls_emp_cashier_perf", detailedQuery: "sales-by-cashier", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["cashier_id", "action"], filters: [
-        { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
+      { id: "employee-list", label_key: "cls_emp_list", detailedQuery: "employee-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
       ], multiSelectFilters: [] },
-      { id: "shifts", label_key: "cls_emp_shifts", detailedQuery: "shift-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["cashier_id"], filters: [], multiSelectFilters: [] },
-      { id: "user-activity", label_key: "cls_emp_user_activity", detailedQuery: "user-activity", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id", "action"], filters: [
-        { key: "user_id", type: "lookup", label_key: "user", entity: "user" },
-        { key: "action", type: "select", label_key: "action", options: [] },
+      { id: "employee-deductions", label_key: "cls_emp_deductions", detailedQuery: "employee-deductions", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "deduction_type", "status"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
+        { key: "deduction_type", type: "select", label_key: "deduction_type", options: [{ value: "absence", label: "غياب" }, { value: "fine", label: "غرامة" }, { value: "insurance", label: "تأمين" }, { value: "other", label: "أخرى" }] },
+        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
       ], multiSelectFilters: [] },
-      { id: "incentives", label_key: "cls_emp_incentives", detailedQuery: "employee-adjustments", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "employee-bonuses", label_key: "cls_emp_bonuses", detailedQuery: "employee-bonuses", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "bonus_type", "status"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
+        { key: "bonus_type", type: "select", label_key: "bonus_type", options: [{ value: "performance", label: "أداء" }, { value: "holiday", label: "إجازة" }, { value: "overtime", label: "إضافي" }, { value: "transportation", label: "مواصلات" }, { value: "other", label: "أخرى" }] },
+        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
+      ], multiSelectFilters: [] },
+      { id: "employee-advances", label_key: "cls_emp_advances", detailedQuery: "employee-advances", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
+        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
+      ], multiSelectFilters: [] },
+      { id: "employee-payroll", label_key: "cls_emp_payroll", detailedQuery: "employee-payroll", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
+      ], multiSelectFilters: [] },
+      { id: "employee-full-history", label_key: "cls_emp_full_history", detailedQuery: "employee-full-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"], filters: [
+        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
+        { key: "tx_type", type: "select", label_key: "tx_type", options: [{ value: "deduction", label: "خصم" }, { value: "bonus", label: "مكافأة" }, { value: "advance", label: "سلفة" }, { value: "advance_payment", label: "دفعة سلفة" }, { value: "settlement", label: "صرف راتب" }] },
+      ], multiSelectFilters: [] },
     ],
     // ── أنظمة التقسيط (Installments) ──
     installments: [
-      { id: "plans", label_key: "cls_inst_plans", detailedQuery: "installment-plans", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
-      { id: "collections", label_key: "cls_inst_collections", detailedQuery: "installment-collections", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
-      { id: "by-customer", label_key: "cls_inst_by_customer", detailedQuery: "installments-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
-      { id: "delinquent", label_key: "cls_inst_delinquent", detailedQuery: null, summaryQuery: "installment-delinquent", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "plans", label_key: "cls_inst_plans", detailedQuery: "installment-plans", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }, { key: "status", type: "select", label_key: "status", options: [{ value: "pending", label: "قيد السداد" }, { value: "paid", label: "مدفوع" }, { value: "cancelled", label_key: "cancelled" }] }], multiSelectFilters: [] },
+      { id: "collections", label_key: "cls_inst_collections", detailedQuery: "installment-collections", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
+      { id: "by-customer", label_key: "cls_inst_by_customer", detailedQuery: "installments-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
+      { id: "delinquent", label_key: "cls_inst_delinquent", detailedQuery: null, summaryQuery: "installment-delinquent", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
     ],
     // ── الأصناف (Items / Inventory) ──
     items: [
@@ -356,7 +408,14 @@ const REPORT_REGISTRY = {
       { id: "daily-sessions", label_key: "cls_trs_daily_sessions", detailedQuery: "daily-sessions", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
       { id: "withdrawals", label_key: "cls_trs_withdrawals", detailedQuery: "withdrawals-report", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
     ],
-    // ── محمل ربح المبيعات (Sales Profit Loader) ──
+    "payment-flow": [
+      { id: "payment-flow-summary", label_key: "cls_trs_payment_flow_summary", detailedQuery: null, summaryQuery: "payment-flow-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["method_id"], filters: [PAYMENT_FLOW_FILTERS.method], multiSelectFilters: [] },
+      { id: "payment-flow-ledger", label_key: "cls_trs_payment_flow_ledger", detailedQuery: "payment-flow-ledger", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["method_id", "direction", "doc_type", "party_type", "amount_min", "amount_max"], filters: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max], multiSelectFilters: [] },
+      { id: "payment-flow-by-doc-type", label_key: "cls_trs_payment_flow_by_doc_type", detailedQuery: "payment-flow-by-doc-type", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["doc_type", "method_id", "direction"], filters: [PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction], multiSelectFilters: [] },
+      { id: "payment-flow-by-direction", label_key: "cls_trs_payment_flow_by_direction", detailedQuery: "payment-flow-by-direction", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["direction", "method_id", "doc_type"], filters: [PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.docType], multiSelectFilters: [] },
+      { id: "payment-flow-running", label_key: "cls_trs_payment_flow_running", detailedQuery: "payment-flow-running", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["method_id", "direction", "doc_type"], filters: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType], multiSelectFilters: [] },
+    ],
+    // ── مجمل ربح المبيعات (Sales Profit Loader) ──
     "profit-loader": [
       { id: "by-item", label_key: "cls_profit_by_item", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id"], filters: [
         { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
@@ -383,10 +442,10 @@ const REPORT_REGISTRY = {
     ],
     // ── الضرائب (Tax) ──
     tax: [
-      { id: "vat", label_key: "r23_title", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
-      { id: "output-vat", label_key: "r48_title", detailedQuery: "output-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
-      { id: "input-vat", label_key: "r49_title", detailedQuery: "input-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
-      { id: "vat-filing-summary", label_key: "r50_title", detailedQuery: null, summaryQuery: "vat-filing-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "vat", label_key: "r23_title", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "output-vat", label_key: "r48_title", detailedQuery: "output-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "input-vat", label_key: "r49_title", detailedQuery: "input-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "vat-filing-summary", label_key: "r50_title", detailedQuery: null, summaryQuery: "vat-filing-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
       { id: "returns-tax-effect", label_key: "r51_title", detailedQuery: "returns-tax-effect", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
     ],
   },
@@ -454,6 +513,11 @@ const slugSourceMap = {
   "treasury": "treasury",
   "cash-consistency": "treasury",
   "payment-method-flow": "treasury",
+  "payment-flow-summary": "payment-flow",
+  "payment-flow-ledger": "payment-flow",
+  "payment-flow-by-doc-type": "payment-flow",
+  "payment-flow-by-direction": "payment-flow",
+  "payment-flow-running": "payment-flow",
   "bank-cash-split": "cheques",
   "reconciliation-exceptions": "treasury",
   // Tax
@@ -523,6 +587,11 @@ const clsMap = {
   "treasury": { classification: "balances", dataMode: "summary" },
   "cash-consistency": { classification: "reconciliation", dataMode: "detailed" },
   "payment-method-flow": { classification: "cash-flow", dataMode: "detailed" },
+  "payment-flow-summary": { classification: "payment-flow-summary", dataMode: "summary" },
+  "payment-flow-ledger": { classification: "payment-flow-ledger", dataMode: "detailed" },
+  "payment-flow-by-doc-type": { classification: "payment-flow-by-doc-type", dataMode: "detailed" },
+  "payment-flow-by-direction": { classification: "payment-flow-by-direction", dataMode: "detailed" },
+  "payment-flow-running": { classification: "payment-flow-running", dataMode: "detailed" },
   "bank-cash-split": { classification: "bank-summary", dataMode: "summary" },
   "reconciliation-exceptions": { classification: "reconciliation", dataMode: "detailed" },
   "vat": { classification: "vat", dataMode: "detailed" },
@@ -668,6 +737,11 @@ REPORT_REGISTRY.reports = [
   { id: "R22", cat: "treasury", slug: "treasury", title_key: "r22_title", desc_key: "r22_desc", supportsDates: false, exportFormats: ["pdf", "excel", "word", "print"] },
   { id: "R44", cat: "treasury", slug: "cash-consistency", title_key: "r44_title", desc_key: "r44_desc", supportsDates: true, exportFormats: ["pdf", "excel", "print"] },
   { id: "R45", cat: "treasury", slug: "payment-method-flow", title_key: "r45_title", desc_key: "r45_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"] },
+  { id: "R66", cat: "treasury", slug: "payment-flow-summary", title_key: "r66_title", desc_key: "r66_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.method] },
+  { id: "R67", cat: "treasury", slug: "payment-flow-ledger", title_key: "r67_title", desc_key: "r67_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max] },
+  { id: "R68", cat: "treasury", slug: "payment-flow-by-doc-type", title_key: "r68_title", desc_key: "r68_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction] },
+  { id: "R69", cat: "treasury", slug: "payment-flow-by-direction", title_key: "r69_title", desc_key: "r69_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.docType] },
+  { id: "R70", cat: "treasury", slug: "payment-flow-running", title_key: "r70_title", desc_key: "r70_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType] },
   { id: "R46", cat: "treasury", slug: "bank-cash-split", title_key: "r46_title", desc_key: "r46_desc", supportsDates: false, exportFormats: ["pdf", "excel", "print"] },
   { id: "R47", cat: "treasury", slug: "reconciliation-exceptions", title_key: "r47_title", desc_key: "r47_desc", supportsDates: true, exportFormats: ["pdf", "excel", "print"] },
   // Tax

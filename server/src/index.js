@@ -9,6 +9,7 @@ const { initDb, getDb } = require("./config/database");
 const { startAutoBackupJob } = require("./jobs/autoBackup");
 const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob, startBirthdayJob } = require("./jobs/notificationJobs");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
+const { nowSql } = require("./utils/datetime");
 const logger = require("./config/logger");
 
 /**
@@ -21,7 +22,7 @@ const logger = require("./config/logger");
 function ensureDefaultsExist() {
   const db = getDb();
 
-  db.prepare("UPDATE settings SET wizard_completed = 1, updated_at = datetime('now', 'localtime') WHERE id = 1").run();
+  db.prepare("UPDATE settings SET updated_at = ? WHERE id = 1").run(nowSql());
 
   const warehouse = db.prepare("SELECT id FROM warehouses LIMIT 1").get();
   if (!warehouse) {
@@ -43,7 +44,7 @@ function ensureDefaultsExist() {
   if (!customer) {
     const result = db
       .prepare("INSERT INTO customers (name, phone, opening_balance, is_active) VALUES (?, ?, 0, 1)")
-      .run("زبون نقدي", null);
+      .run("عميل نقدي", null);
     db.prepare("UPDATE settings SET walk_in_customer_id = ? WHERE id = 1").run(result.lastInsertRowid);
   }
 
@@ -56,8 +57,8 @@ function ensureDefaultsExist() {
        invoice_prefix = 'INV-', purchase_prefix = 'PUR-',
        fiscal_year_start = 'January', date_format = 'dd/MM/yyyy',
        language = 'ar', receipt_width = '80mm',
-       updated_at = datetime('now', 'localtime') WHERE id = 1`,
-    ).run();
+       updated_at = ? WHERE id = 1`,
+    ).run(nowSql());
   }
 }
 

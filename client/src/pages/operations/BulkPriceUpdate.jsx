@@ -29,6 +29,7 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
 
 const PRICE_FIELDS = [
   { value: "retail_price",    label: "سعر المستهلك",  key: "sale_price" },
@@ -335,7 +336,7 @@ export default function BulkPriceUpdatePage() {
     resizingCol.current = key;
     startX.current = e.clientX;
     startWidth.current = colWidths[key] || 100;
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMove = (ev) => {
       if (!resizingCol.current) return;
       const diff = startX.current - ev.clientX;
@@ -344,7 +345,7 @@ export default function BulkPriceUpdatePage() {
     };
     const onUp = () => {
       resizingCol.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -1283,12 +1284,21 @@ export default function BulkPriceUpdatePage() {
                           {op.changed_at?.slice(0, 16).replace("T", " ")}
                         </td>
                         <td className="px-4 py-3 text-center border-l border-slate-100">
-                          <span className="inline-block bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[11px] font-black">{op.items_count} صنف</span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="inline-block bg-sky-50 text-sky-700 px-2 py-0.5 rounded text-[11px] font-black">{op.items_count} صنف</span>
+                            {op.change_count > op.items_count && (
+                              <span className="text-[10px] font-bold text-slate-400 leading-none">{op.change_count} تغييرات</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-2sm font-bold text-slate-600 border-l border-slate-100">
                           {op.batch_metadata ? (
                             <span className="flex items-center gap-1 text-indigo-700">
                               <Layers className="h-3 w-3" /> مجمّع
+                            </span>
+                          ) : op.field_count > 1 ? (
+                            <span className="flex items-center gap-1 text-slate-700">
+                              <Layers className="h-3 w-3 text-slate-400" /> عدة حقول ({op.field_count})
                             </span>
                           ) : fieldLabelByKey(op.field)}
                         </td>
@@ -1296,6 +1306,10 @@ export default function BulkPriceUpdatePage() {
                           {op.batch_metadata ? (
                             <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-black">
                               {(() => { const m = parseBatchMeta(op); if (m && m.rules) return `${m.rules.length} قواعد`; return 'Batch'; })()}
+                            </span>
+                          ) : (op.field_count > 1 || op.value_count > 1) ? (
+                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[11px] font-black">
+                              قيم مختلفة
                             </span>
                           ) : (
                             <span className={`number-fmt-primary text-sm px-2 py-0.5 rounded ${op.adjustment_value > 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"}`}>

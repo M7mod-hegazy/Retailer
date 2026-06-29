@@ -662,9 +662,9 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
 
   db.prepare(
       `UPDATE items
-       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = datetime('now', 'localtime')
+       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = ?
        WHERE id = ?`,
-    )
+     )
     .run(
       sku.code,
       sku.skuSequence,
@@ -684,7 +684,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
       !isFeatureEnabled(db, "feature_expiry")
         ? (existing.track_expiry || 0)
         : payload.track_expiry === undefined ? (existing.track_expiry || 0) : payload.track_expiry ? 1 : 0,
-      id,
+      nowSql(), id,
     );
 
   if (payload.image_urls !== undefined || payload.image_urls_text !== undefined) {
@@ -717,10 +717,10 @@ router.post("/:id/swap/:otherId", requirePagePermission("items", "add"), (req, r
   if (!a || !b) return res.status(404).json({ success: false, message: "Item not found" });
 
   db.transaction(() => {
-    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
-      .run(b.code, b.sku_sequence, a.id);
-    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
-      .run(a.code, a.sku_sequence, b.id);
+    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = ? WHERE id = ?")
+      .run(b.code, b.sku_sequence, nowSql(), a.id);
+    db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = ? WHERE id = ?")
+      .run(a.code, a.sku_sequence, nowSql(), b.id);
   })();
 
   return res.json({ success: true });
@@ -739,8 +739,8 @@ router.post("/reorder", requirePagePermission("items", "add"), (req, res) => {
   db.transaction(() => {
     ordered_ids.forEach((id, index) => {
       const seq = index + 1;
-      db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
-        .run(`${prefix}.${seq}`, seq, Number(id));
+      db.prepare("UPDATE items SET code = ?, sku_sequence = ?, updated_at = ? WHERE id = ?")
+        .run(`${prefix}.${seq}`, seq, nowSql(), Number(id));
     });
   })();
 
@@ -751,7 +751,7 @@ router.delete("/:id", requirePagePermission("items", "delete"), (req, res) => {
   try {
     const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
-    getDb().prepare("UPDATE items SET deleted_at = datetime('now', 'localtime'), is_active = 0, updated_at = datetime('now', 'localtime') WHERE id = ?").run(req.params.id);
+    getDb().prepare("UPDATE items SET deleted_at = ?, is_active = 0, updated_at = ? WHERE id = ?").run(nowSql(), nowSql(), req.params.id);
     req.audit("delete", "items", { id: req.params.id }, `📦 تم حذف صنف`);
     return res.json({ success: true });
   } catch (err) {
@@ -763,7 +763,7 @@ router.post("/:id/restore", requirePagePermission("items", "add"), (req, res) =>
   try {
     const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
-    getDb().prepare("UPDATE items SET deleted_at = NULL, is_active = 1, updated_at = datetime('now', 'localtime') WHERE id = ?").run(req.params.id);
+    getDb().prepare("UPDATE items SET deleted_at = NULL, is_active = 1, updated_at = ? WHERE id = ?").run(nowSql(), req.params.id);
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: "تعذر استعادة الصنف" });
@@ -1049,7 +1049,7 @@ function updateSmartItem(db, id, rawPayload, createCategories) {
 
   db.prepare(
     `UPDATE items
-     SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = datetime('now', 'localtime')
+     SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, updated_at = ?
      WHERE id = ?`,
   ).run(
     sku.code,
@@ -1067,6 +1067,7 @@ function updateSmartItem(db, id, rawPayload, createCategories) {
     payload.description,
     payload.is_active,
     payload.min_stock_qty,
+    nowSql(),
     Number(id),
   );
 
@@ -1331,7 +1332,7 @@ router.post("/import", express.json({ limit: "50mb" }), requirePagePermission("i
 
       const updateStmt = db.prepare(
         `UPDATE items
-         SET name = ?, sale_price = ?, purchase_price = ?, updated_at = datetime('now', 'localtime')
+         SET name = ?, sale_price = ?, purchase_price = ?, updated_at = ?
          WHERE id = ?`,
       );
 
@@ -1364,7 +1365,7 @@ router.post("/import", express.json({ limit: "50mb" }), requirePagePermission("i
               errors.push({ row: index + 1, message: "Duplicate barcode" });
               return;
             }
-            updateStmt.run(name, salePrice, purchasePrice, existing.id);
+            updateStmt.run(name, salePrice, purchasePrice, nowSql(), existing.id);
             success += 1;
             return;
           }
@@ -1543,7 +1544,7 @@ router.post("/import/batches/:id/undo", requirePagePermission("items", "import_u
         if (!newItemIds.includes(itemId)) recomputeWACCForItem(itemId, db);
       }
 
-      db.prepare("UPDATE import_batches SET status = 'undone', undone_at = datetime('now', 'localtime'), undone_by = ? WHERE id = ?").run(req.user?.id || null, batchId);
+      db.prepare("UPDATE import_batches SET status = 'undone', undone_at = ?, undone_by = ? WHERE id = ?").run(nowSql(), req.user?.id || null, batchId);
     });
     tx();
 
@@ -1621,14 +1622,14 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
       `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, reason, operation_id, changed_by, source)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'bulk_update')`
     );
-    const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`);
+    const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = ? WHERE id = ?`);
 
     const run = db.transaction(() => {
       for (const item of items) {
         const newPrice = calcNewPrice(item.old_price, direction, adjustment_type, value);
         if (newPrice === item.old_price) continue;
         insertHistory.run(item.id, field, item.old_price, newPrice, adjustment_type, value, reason, operationId, changedBy);
-        updateItem.run(newPrice, item.id);
+        updateItem.run(newPrice, nowSql(), item.id);
         totalChanges++;
       }
     });
@@ -1675,7 +1676,7 @@ router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (
             const newPrice = calcNewPrice(item.old_price, direction, adjustment_type, v);
             if (newPrice === item.old_price) continue;
             insertHistory.run(item.id, field, item.old_price, newPrice, adjustment_type, v, reason, operationId, changedBy, null);
-            db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(newPrice, item.id);
+            db.prepare(`UPDATE items SET ${field} = ?, updated_at = ? WHERE id = ?`).run(newPrice, nowSql(), item.id);
             ruleChanges++;
             totalChanges++;
           }
@@ -1713,7 +1714,7 @@ router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (
           }
           if (newPrice === item.old_price) continue;
           insertHistory.run(item_id, field, item.old_price, newPrice, adjType, adjValue, reason, operationId, changedBy, null);
-          db.prepare(`UPDATE items SET ${field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(newPrice, item_id);
+          db.prepare(`UPDATE items SET ${field} = ?, updated_at = ? WHERE id = ?`).run(newPrice, nowSql(), item_id);
           totalChanges++;
         }
       }
@@ -1741,7 +1742,7 @@ router.post("/bulk-price-rollback", requirePagePermission("items", "add"), (req,
     let restored = 0;
     const run = db.transaction(() => {
       for (const h of history) {
-        db.prepare(`UPDATE items SET ${h.field} = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`).run(h.old_value, h.item_id);
+        db.prepare(`UPDATE items SET ${h.field} = ?, updated_at = ? WHERE id = ?`).run(h.old_value, nowSql(), h.item_id);
         restored++;
       }
       db.prepare("DELETE FROM price_history WHERE operation_id = ?").run(operation_id);
@@ -1758,9 +1759,15 @@ router.get("/bulk-price-history", requirePagePermission("items", "view"), (req, 
   try {
     const rows = db.prepare(`
       SELECT operation_id,
-             CASE WHEN MAX(batch_metadata) IS NOT NULL THEN 'batch' ELSE field END as field,
-             adjustment_type, adjustment_value, reason, changed_by,
-             COUNT(*) as items_count, MIN(changed_at) as changed_at,
+             CASE WHEN MAX(batch_metadata) IS NOT NULL THEN 'batch' ELSE MIN(field) END as field,
+             COUNT(DISTINCT field) as field_count,
+             MIN(adjustment_type) as adjustment_type,
+             MIN(adjustment_value) as adjustment_value,
+             COUNT(DISTINCT adjustment_type || '|' || adjustment_value) as value_count,
+             MIN(reason) as reason, MIN(changed_by) as changed_by,
+             COUNT(DISTINCT item_id) as items_count,
+             COUNT(*) as change_count,
+             MIN(changed_at) as changed_at,
              MAX(batch_metadata) as batch_metadata
       FROM price_history
       GROUP BY operation_id

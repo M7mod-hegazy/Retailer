@@ -7,6 +7,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { generateDocNumber } = require("../utils/docNumber");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { nowSql, today } = require("../utils/datetime");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -259,8 +260,8 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
 
       const ret = db.prepare(`
         INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, refund_method, cash_amount, credit_amount, reason, notes, created_by, created_at)
-        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
-      `).run(docNo, supplier_id || null, total, discount, increase, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId);
+        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(docNo, supplier_id || null, total, discount, increase, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId, nowSql());
 
       for (const line of lines) {
         const cost = Number(line.unit_cost || line.unit_price);
@@ -409,8 +410,8 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
     if (discount > 20 && invoice?.id) {
       const db = getDb();
       const alreadyNotified = db.prepare(
-        "SELECT id FROM notifications WHERE title = ? AND body LIKE ? AND date(created_at) = date('now', 'localtime') LIMIT 1"
-      ).get('💸 خصم كبير مطبق', `%#${invoice.id}%`);
+        "SELECT id FROM notifications WHERE title = ? AND body LIKE ? AND date(created_at) = ? LIMIT 1"
+      ).get('💸 خصم كبير مطبق', `%#${invoice.id}%`, today());
       if (!alreadyNotified) {
         NotificationModel.create({
           title: "💸 خصم كبير مطبق",

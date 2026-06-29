@@ -32,6 +32,7 @@ const NotFoundPage = lazy(() => import("./pages/error/NotFoundPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const ActivationPage = lazy(() => import("./pages/auth/ActivationPage"));
 const FirstRunSetupPage = lazy(() => import("./pages/auth/FirstRunSetupPage"));
+const BusinessSetupWizard = lazy(() => import("./pages/setup/BusinessSetupWizard"));
 const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const FinanceWorkspacePage = lazy(() => import("./pages/workspaces/FinanceWorkspacePage"));
@@ -56,7 +57,6 @@ const WithdrawalsListPage = lazy(() => import("./pages/expenses/WithdrawalsListP
 const UnitsPage = lazy(() => import("./pages/definitions/UnitsPage"));
 const WarehousesPage = lazy(() => import("./pages/definitions/WarehousesPage"));
 const BranchesPage = lazy(() => import("./pages/definitions/BranchesPage"));
-const BanksPage = lazy(() => import("./pages/definitions/BanksPage"));
 const UsersPage = lazy(() => import("./pages/definitions/UsersPage"));
 const EmployeesPage = lazy(() => import("./pages/definitions/EmployeesPage"));
 const POSPage = lazy(() => import("./pages/pos/POSPage"));
@@ -104,7 +104,6 @@ const PaymentMethodsPage = lazy(() => import("./pages/operations/PaymentMethodsP
 const PaymentTransactionsPage = lazy(() => import("./pages/operations/PaymentTransactionsPage"));
 const CustomerProfilePage = lazy(() => import("./pages/definitions/CustomerProfilePage"));
 const SupplierProfilePage = lazy(() => import("./pages/definitions/SupplierProfilePage"));
-const BankOperationsPage = lazy(() => import("./pages/operations/BankOperationsPage"));
 const ExpenseCategoriesPage = lazy(() => import("./pages/definitions/ExpenseCategoriesPage"));
 const CustomerAccountsPage = lazy(() => import("./pages/accounts/CustomerAccountsPage"));
 const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccountsPage"));
@@ -205,6 +204,36 @@ function SetupGate({ children }) {
     return (
       <Suspense fallback={<FullPageLoader />}>
         <FirstRunSetupPage onDone={recheck} />
+      </Suspense>
+    );
+  }
+  return children;
+}
+
+// First-run business setup gate. After login, checks whether the business
+// setup wizard has been completed. If not, shows the setup wizard.
+function WizardGate({ children }) {
+  const [state, setState] = useState({ loading: true, needsWizard: false });
+
+  const recheck = useCallback(async () => {
+    try {
+      const res = await api.get("/api/settings");
+      const completed = !!res.data?.data?.wizard_completed;
+      setState({ loading: false, needsWizard: !completed });
+    } catch {
+      setState({ loading: false, needsWizard: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    recheck();
+  }, [recheck]);
+
+  if (state.loading) return <FullPageLoader />;
+  if (state.needsWizard) {
+    return (
+      <Suspense fallback={<FullPageLoader />}>
+        <BusinessSetupWizard onDone={recheck} />
       </Suspense>
     );
   }
@@ -361,6 +390,7 @@ export default function App() {
           path="/*"
           element={
             <AuthGuard>
+              <WizardGate>
               <AppShell>
                 <QueryClientProvider client={queryClient}>
                 <RouteErrorBoundary>
@@ -391,7 +421,7 @@ export default function App() {
                     <Route path="definitions/warehouses" element={<PermissionRoute page="warehouses"><WarehousesPage /></PermissionRoute>} />
                     <Route path="definitions/branches" element={<PermissionRoute page="branches"><BranchesPage /></PermissionRoute>} />
                     <Route path="definitions/treasuries" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="definitions/banks" element={<PermissionRoute page="banks"><BanksPage /></PermissionRoute>} />
+                    <Route path="definitions/banks" element={<Navigate to="/dashboard" replace />} />
                     <Route path="definitions/users" element={<PermissionRoute page="users"><UsersPage /></PermissionRoute>} />
                     <Route path="definitions/employees" element={<PermissionRoute page="employees"><EmployeesPage /></PermissionRoute>} />
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
@@ -426,7 +456,7 @@ export default function App() {
                     <Route path="operations/payment-transactions" element={<Navigate to="/operations/payment-methods" replace />} />
                     <Route path="operations/treasury-transfer" element={<Navigate to="/expenses" replace />} />
                     <Route path="operations/installments" element={<Navigate to="/accounts/customers" replace />} />
-                    <Route path="operations/bank-operations" element={<PermissionRoute page="bank_operations"><BankOperationsPage /></PermissionRoute>} />
+                    <Route path="operations/bank-operations" element={<Navigate to="/dashboard" replace />} />
                     <Route path="operations/bulk-price-update" element={<PermissionRoute page="bulk_price_update"><BulkPriceUpdatePage /></PermissionRoute>} />
                     <Route path="operations/employee-adjustments" element={<PermissionRoute page="employee_adjustments"><EmployeeAdjustmentsPage /></PermissionRoute>} />
                     <Route path="operations/items" element={<PermissionRoute page="items"><ItemOperationsPage /></PermissionRoute>} />
@@ -462,6 +492,7 @@ export default function App() {
                   </RouteErrorBoundary>
                   </QueryClientProvider>
                 </AppShell>
+              </WizardGate>
               </AuthGuard>
             }
           />

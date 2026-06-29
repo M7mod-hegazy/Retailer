@@ -1,5 +1,6 @@
 const express = require("express");
 const { getDb } = require("../config/database");
+const { nowSql } = require("../utils/datetime");
 const router = express.Router();
 
 // GET /api/pos-drafts?type=active  or  ?type=held
@@ -33,9 +34,9 @@ router.post("/", (req, res) => {
     const hasLabel = cols.includes("label");
     const insertSql = hasLabel
       ? `INSERT INTO pos_drafts (type, label, lines_json, customer_json, discount, increase, payment_type, held_at, notes, tax_enabled, tax_rate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       : `INSERT INTO pos_drafts (type, lines_json, customer_json, discount, increase, payment_type, held_at, notes, tax_enabled, tax_rate)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?, ?)`;
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const values = [
       type,
       ...(hasLabel ? [label || null] : []),
@@ -44,6 +45,7 @@ router.post("/", (req, res) => {
       Number(discount || 0),
       Number(increase || 0),
       payment_type || "cash",
+      nowSql(),
       notes || null,
       // better-sqlite3 cannot bind booleans — normalize to 0/1/null (null = follow settings on resume)
       tax_enabled == null ? null : (Number(tax_enabled) ? 1 : 0),

@@ -2,6 +2,7 @@ const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
+const { nowSql } = require("../utils/datetime");
 
 // Load the WhatsApp engine — works in Electron and plain Node
 let engine = null;
@@ -121,8 +122,8 @@ router.put("/templates/:kind", requirePagePermission("settings", "edit"), (req, 
     const { body } = req.body;
     db.prepare(`
       INSERT INTO message_templates (kind, body) VALUES (?,?)
-      ON CONFLICT(kind) DO UPDATE SET body=excluded.body, updated_at=datetime('now', 'localtime')
-    `).run(kind, body || "");
+      ON CONFLICT(kind) DO UPDATE SET body=excluded.body, updated_at=?
+    `).run(kind, body || "", nowSql());
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

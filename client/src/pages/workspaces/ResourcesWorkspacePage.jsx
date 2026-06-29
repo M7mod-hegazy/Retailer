@@ -1,16 +1,14 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { Warehouse, Wallet, Landmark } from "lucide-react";
+import { Warehouse, Wallet } from "lucide-react";
 import PageWrapper from "../../components/ui/PageWrapper";
 import { Tabs } from "../../components/ui/Tabs";
 import WarehousesPage from "../definitions/WarehousesPage";
 import TreasuriesPage from "../definitions/TreasuriesPage";
-import BanksPage from "../definitions/BanksPage";
 
 const tabs = [
   { value: "warehouses", label: "المخازن", icon: Warehouse },
   { value: "treasuries", label: "الخزائن", icon: Wallet },
-  { value: "banks", label: "البنوك", icon: Landmark },
 ];
 
 export default function ResourcesWorkspacePage() {
@@ -34,7 +32,7 @@ export default function ResourcesWorkspacePage() {
             <div>
               <h1 className="text-xl font-black text-slate-900">البنية التشغيلية</h1>
               <p className="mt-1 text-sm text-slate-500">
-                تعريف موارد العمل الأساسية مثل المخازن والخزائن والبنوك داخل مساحة تنظيمية واحدة.
+                تعريف موارد العمل الأساسية مثل المخازن والخزائن داخل مساحة تنظيمية واحدة.
               </p>
             </div>
           </div>
@@ -50,7 +48,6 @@ export default function ResourcesWorkspacePage() {
         <div key={activeTab} data-help="workspace-content">
           {activeTab === "warehouses" ? <WarehousesPage /> : null}
           {activeTab === "treasuries" ? <TreasuriesPage /> : null}
-          {activeTab === "banks" ? <BanksPage /> : null}
         </div>
       </section>
     </PageWrapper>

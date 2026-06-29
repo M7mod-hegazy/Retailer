@@ -7,6 +7,7 @@ const { getDb } = require("../config/database");
 const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 
 const { auditMutation } = require("../middleware/audit");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 router.use(auditMutation);
@@ -191,7 +192,7 @@ router.post("/change-password", authRequired, (req, res, next) => {
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now', 'localtime') WHERE id = ?").run(hash, req.user.id);
+  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(hash, nowSql(), req.user.id);
   req.audit("change_password", "auth", { user_id: req.user.id }, `👤 تم تغيير كلمة المرور للمستخدم #${req.user.id}`);
   return res.json({ success: true, data: { changed: true } });
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition, useDeferredValue } from "react";
 import toast from "react-hot-toast";
 import api from "../../../services/api";
+import { addBodyResizeFlags, removeBodyResizeFlags } from "../../../utils/bodyFlags";
 import {
   ITEM_FIELDS,
   analyzeRows,
@@ -877,7 +878,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     event.preventDefault();
     event.stopPropagation();
     resizeRef.current = { field, startX: event.clientX, startWidth: getColumnWidth(field) };
-    document.body.classList.add("cursor-col-resize", "select-none");
+    addBodyResizeFlags();
     const onMouseMove = (moveEvent) => {
       const current = resizeRef.current;
       if (!current) return;
@@ -886,7 +887,7 @@ export function useImportWizard({ items, categories, units, selectedCategoryId =
     };
     const onMouseUp = () => {
       resizeRef.current = null;
-      document.body.classList.remove("cursor-col-resize", "select-none");
+      removeBodyResizeFlags();
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };

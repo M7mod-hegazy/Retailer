@@ -6,6 +6,7 @@ const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 
@@ -127,12 +128,12 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
 
     if (payload.password) {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
-      ).run(full_name, username, String(payload.password), role, is_active, can_view_updates, req.params.id);
+        "UPDATE users SET full_name = ?, username = ?, password_hash = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = ? WHERE id = ?"
+      ).run(full_name, username, String(payload.password), role, is_active, can_view_updates, nowSql(), req.params.id);
     } else {
       db.prepare(
-        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
-      ).run(full_name, username, role, is_active, can_view_updates, req.params.id);
+        "UPDATE users SET full_name = ?, username = ?, role = ?, is_active = ?, can_view_updates = ?, updated_at = ? WHERE id = ?"
+      ).run(full_name, username, role, is_active, can_view_updates, nowSql(), req.params.id);
     }
 
     const updatedUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(req.params.id);

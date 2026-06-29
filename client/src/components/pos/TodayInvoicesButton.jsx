@@ -192,7 +192,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                       >
                         <td className="px-4 py-3 font-mono text-2sm font-black text-slate-700">{inv.invoice_no}</td>
                         <td className="px-4 py-3 text-2sm font-bold text-slate-800 max-w-[140px] truncate">
-                          {inv.customer_name || "زبون نقدي"}
+                          {inv.customer_name || "عميل نقدي"}
                         </td>
                         <td className="px-4 py-3 text-center text-2sm font-bold text-slate-600">
                           {inv.items_count || "—"}

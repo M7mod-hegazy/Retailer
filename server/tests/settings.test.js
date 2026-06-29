@@ -39,5 +39,17 @@ describe("Settings Routes", () => {
     expect(res.body.data).toHaveProperty("id", 1);
   });
 
+  it("does not lock the desktop app after many local API requests", async () => {
+    let last;
+    for (let i = 0; i < 305; i += 1) {
+      last = await request(app)
+        .get("/api/settings")
+        .set("Authorization", `Bearer ${adminToken}`);
+    }
+
+    expect(last.status).toBe(200);
+    expect(last.headers).not.toHaveProperty("ratelimit-limit");
+  });
+
 });
 

@@ -396,11 +396,12 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
 
       // Update header metadata (keep reference_no, type, created_at)
       db.prepare(
-        "UPDATE branch_transfers SET partner_branch = ?, notes = ?, warehouse_id = ?, updated_at = datetime('now', 'localtime') WHERE id = ?"
+        "UPDATE branch_transfers SET partner_branch = ?, notes = ?, warehouse_id = ?, updated_at = ? WHERE id = ?"
       ).run(
         partner_branch || null,
         notes || null,
         Number(items[0]?.warehouse_id) || existing.warehouse_id,
+        nowSql(),
         id
       );
 

@@ -2,7 +2,7 @@ const request = require("supertest");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { createApp } = require("../src/app");
+const { createApp, isLocalTransportRequest } = require("../src/app");
 const { initDb, setDb } = require("../src/config/database");
 const { UserModel } = require("../src/models/user.model");
 const jwt = require("jsonwebtoken");
@@ -37,10 +37,17 @@ describe("Auth Routes", () => {
     expect(res.body.message).toMatch(/اسم المستخدم أو كلمة المرور غير صحيحة/);
   });
 
-  it("should have rate limiting configured", async () => {
+  it("keeps health checks outside the API rate limiter", async () => {
     const res = await request(app).get("/health");
     expect(res.status).toBe(200);
-    expect(res.headers).toHaveProperty("ratelimit-limit");
+    expect(res.headers).not.toHaveProperty("ratelimit-limit");
+  });
+
+  it("recognizes desktop-local transports as rate-limit exempt", () => {
+    expect(isLocalTransportRequest({ ip: "127.0.0.1", socket: {} })).toBe(true);
+    expect(isLocalTransportRequest({ ip: "::1", socket: {} })).toBe(true);
+    expect(isLocalTransportRequest({ socket: {} })).toBe(true);
+    expect(isLocalTransportRequest({ ip: "192.168.1.50", socket: { remoteAddress: "192.168.1.50" } })).toBe(false);
   });
 
   it("locks account after repeated failed attempts", async () => {

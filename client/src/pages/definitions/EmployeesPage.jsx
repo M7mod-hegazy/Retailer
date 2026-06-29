@@ -1,24 +1,489 @@
-import React from "react";
-import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
+import React, { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";
+import { usePerformanceStore } from "../../stores/performanceStore";
+import { useNavigate } from "react-router-dom";
+import {
+  Plus, Download, Users, Search, Edit3, Trash2, CheckCircle2, Database, Minus, MapPin, BarChart3,
+} from "lucide-react";
+import api from "../../services/api";
+import toast from "react-hot-toast";
+import DataTable from "../../components/ui/DataTable";
+import SmartTooltip from "../../components/ui/SmartTooltip";
+import PermissionGate from "../../components/ui/PermissionGate";
+import { usePermission } from "../../hooks/usePermission";
+import PermissionDeniedModal from "../../components/ui/PermissionDeniedModal";
+import DeleteImpactModal from "../../components/ui/DeleteImpactModal";
+import EmployeeDetail from "./employees/EmployeeDetail";
+
+const PERIOD_LABELS = {
+  monthly: "شهري",
+  weekly: "أسبوعي",
+  daily: "يومي",
+};
 
 export default function EmployeesPage() {
   usePageTour('employees');
+  const navigate = useNavigate();
+  const reduceMotion = usePerformanceStore((s) => !s.settings.animations || s.settings.reduceMotion);
+  const canAdd = usePermission("employees", "add");
+  const canEdit = usePermission("employees", "edit");
+
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [query, setQuery] = useState("");
+
+  // Simple add/edit form fields
+  const [showForm, setShowForm] = useState(false);
+  const [editingRow, setEditingRow] = useState(null);
+  const [form, setForm] = useState({ name: "", role: "", phone: "", address: "", phones: [] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Permissions
+  const [permDenied, setPermDenied] = useState(false);
+  const [deleteState, setDeleteState] = useState(null);
+
+  useEffect(() => { loadEmployees(); }, []);
+
+  async function loadEmployees() {
+    setLoading(true);
+    try {
+      const res = await api.get("/api/employees");
+      if (res.data?.success) setEmployees(res.data.data);
+    } catch { toast.error("تعذر تحميل البيانات"); }
+    finally { setLoading(false); }
+  }
+
+  const filteredEmployees = useMemo(() => {
+    if (!query) return employees;
+    const q = query.toLowerCase();
+    return employees.filter(e => {
+      const phonesStr = e.phones ? JSON.parse(e.phones).join(" ") : (e.phone || "");
+      return (e.name || "").toLowerCase().includes(q) ||
+        (e.role || "").toLowerCase().includes(q) ||
+        (e.phone || "").toLowerCase().includes(q) ||
+        (e.address || "").toLowerCase().includes(q) ||
+        phonesStr.toLowerCase().includes(q);
+    });
+  }, [employees, query]);
+
+  function startCreate() {
+    setEditingRow(null);
+    setForm({ name: "", role: "", phone: "", address: "", phones: [] });
+    setShowForm(true);
+  }
+
+  function startEdit(row) {
+    const phones = row.phones ? JSON.parse(row.phones) : (row.phone ? [row.phone] : []);
+    setEditingRow(row);
+    setForm({ name: row.name || "", role: row.role || "", phone: row.phone || "", address: row.address || "", phones });
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name) { toast.error("اسم الموظف مطلوب"); return; }
+    setIsSubmitting(true);
+    const payload = {
+      ...form,
+      phones: (form.phones || []).filter(p => p.trim() !== ""),
+      phone: (form.phones || []).find(p => p.trim() !== "") || form.phone || "",
+    };
+    try {
+      if (editingRow) {
+        await api.put(`/api/employees/${editingRow.id}`, payload);
+        toast.success("تم التحديث");
+      } else {
+        await api.post("/api/employees", payload);
+        toast.success("تمت الإضافة");
+      }
+      setShowForm(false);
+      setEditingRow(null);
+      setForm({ name: "", role: "", phone: "", address: "", phones: [] });
+      loadEmployees();
+    } catch { toast.error("فشل الحفظ"); }
+    finally { setIsSubmitting(false); }
+  }
+
+  async function handleDelete(id) {
+    const row = employees.find(r => r.id === id);
+    const itemName = row?.name || `#${id}`;
+    setDeleteState({ id, itemName, impact: null, loading: true, confirming: false });
+    try {
+      const res = await api.get(`/api/employees/${id}/delete-impact`);
+      setDeleteState(s => s && s.id === id ? { ...s, impact: res.data?.data || { mode: "unknown" }, loading: false } : s);
+    } catch {
+      setDeleteState(s => s && s.id === id ? { ...s, impact: { mode: "unknown" }, loading: false } : s);
+    }
+  }
+
+  async function performDelete() {
+    const ds = deleteState;
+    if (!ds) return;
+    setDeleteState(s => s ? { ...s, confirming: true } : s);
+    try {
+      const res = await api.delete(`/api/employees/${ds.id}`);
+      if (res.data?.archived) toast.success(res.data?.message || "تم أرشفة الموظف");
+      else toast.success("تم الحذف بنجاح");
+      setDeleteState(null);
+      loadEmployees();
+      if (selectedEmployee?.id === ds.id) setSelectedEmployee(null);
+    } catch (err) {
+      setDeleteState(null);
+      if (err?.response?.status >= 500) return;
+      toast.error(err?.response?.data?.message || "فشل الحذف");
+    }
+  }
+
+  const columns = useMemo(() => [
+    {
+      id: "index",
+      header: "#",
+      accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
+      cell: (info) => <span className="text-[11px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
+      size: 50,
+    },
+    {
+      accessorKey: "name",
+      header: "الموظف",
+      cell: (info) => {
+        const row = info.row.original;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+              {(row.name || "?")?.charAt(0)}
+            </div>
+            <span className="text-sm font-bold text-slate-800">{row.name}</span>
+          </div>
+        );
+      },
+    },
+    { accessorKey: "role", header: "المسمى", cell: (info) => <span className="text-sm font-bold text-slate-500">{info.getValue() || "-"}</span> },
+    { accessorKey: "phone", header: "الهاتف", cell: (info) => <span className="text-sm font-bold text-slate-600 font-mono">{info.getValue() || "-"}</span> },
+    {
+      accessorKey: "salary",
+      header: "الراتب",
+      cell: (info) => {
+        const val = info.getValue();
+        return val > 0
+          ? <span className="text-sm font-black text-emerald-700 font-mono">{Number(val).toLocaleString()}</span>
+          : <span className="text-xs text-slate-300">-</span>;
+      },
+    },
+    {
+      accessorKey: "salary_period",
+      header: "الدورة",
+      cell: (info) => {
+        const period = info.getValue() || "monthly";
+        return <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{PERIOD_LABELS[period] || period}</span>;
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      size: 80,
+      cell: (info) => (
+        <div className="flex items-center justify-center gap-1">
+          <SmartTooltip content="تعديل">
+            <PermissionGate page="employees" action="edit">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-zinc-900 transition-all"
+              >
+                <Edit3 className="h-4 w-4" />
+              </motion.button>
+            </PermissionGate>
+          </SmartTooltip>
+          <SmartTooltip content="حذف">
+            <PermissionGate page="employees" action="delete">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+              </motion.button>
+            </PermissionGate>
+          </SmartTooltip>
+        </div>
+      ),
+    },
+  ], []);
+
   return (
-    <SimpleCrudPage
-      pageKey="employees"
-      title="الموظفون"
-      endpoint="/api/employees"
-      fields={[
-        { name: "name", label: "اسم الموظف", required: true },
-        { name: "role", label: "المسمى الوظيفي" },
-        { name: "phone", label: "الهاتف" },
-      ]}
-      columns={[
-        { key: "name", label: "الموظف" },
-        { key: "role", label: "المسمى" },
-        { key: "phone", label: "الهاتف" },
-      ]}
-    />
+    <div className="min-h-screen bg-[var(--bg-base)] flex flex-col font-sans w-full max-w-full relative" dir="rtl">
+      <PermissionDeniedModal open={permDenied} onClose={() => setPermDenied(false)} />
+      <DeleteImpactModal
+        open={!!deleteState}
+        itemName={deleteState?.itemName}
+        impact={deleteState?.impact}
+        loading={!!deleteState?.loading}
+        confirming={!!deleteState?.confirming}
+        onCancel={() => setDeleteState(null)}
+        onConfirm={performDelete}
+      />
+
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
+        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+        {!reduceMotion && (
+          <motion.div
+            animate={{ x: ["-150%", "200%"] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 w-[40%] h-full skew-x-12"
+            style={{ background: "linear-gradient(to right,transparent,color-mix(in srgb,var(--text-primary) 8%,transparent),transparent)", mixBlendMode: "overlay" }}
+          />
+        )}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
+      </div>
+
+      {/* Hero Header */}
+      <header className="relative z-10 w-full pt-12 pb-6 px-4 md:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-[1600px] mx-auto"
+        >
+          <div className="flex items-center gap-3 mb-6" style={{ color: "var(--text-muted)" }}>
+            <motion.div initial={{ width: 0 }} animate={{ width: 32 }} transition={{ delay: 0.5, duration: 0.8 }} className="h-px" style={{ backgroundColor: "var(--text-muted)" }} />
+            <Database className="h-3 w-3" />
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">نظام إدارة الموظفين</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tighter leading-[1.1] text-[var(--text-primary)]">
+                الموظفون
+              </h1>
+              <p className="mt-3 text-sm font-medium text-[var(--text-secondary)] max-w-xl">
+                إدارة بيانات الموظفين والرواتب والسلفيات والخصومات والمكافآت
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <SmartTooltip content="السجل الكامل للموظف">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate("/reports/source/employees/employee-full-history/detailed")}
+                  className="flex items-center gap-2 h-11 px-5 rounded-xl text-xs font-black transition-all shadow-sm border"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+                >
+                  <BarChart3 className="h-4 w-4" /> السجل الكامل
+                </motion.button>
+              </SmartTooltip>
+              <SmartTooltip content="تصدير CSV">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 h-11 px-5 rounded-xl text-xs font-black transition-all shadow-sm border"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+                >
+                  <Download className="h-4 w-4" /> تصدير
+                </motion.button>
+              </SmartTooltip>
+              {canAdd && (
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={startCreate}
+                  className="h-11 px-6 bg-primary text-white rounded-xl text-xs font-black shadow-lg flex items-center gap-2 transition-all"
+                >
+                  <Plus className="h-4 w-4" /> إضافة موظف
+                </motion.button>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </header>
+
+      {/* Master-Detail Layout */}
+      <main className="relative z-10 w-full max-w-[1600px] mx-auto px-4 md:px-8 pb-8 flex flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
+          className="flex flex-col lg:flex-row gap-6"
+        >
+          {/* Left Panel — Employee List */}
+          <div className="lg:w-[420px] xl:w-[480px] flex-shrink-0 rounded-3xl border shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]"
+            style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+          >
+            {/* Search */}
+            <div className="p-4 border-b" style={{ borderColor: "var(--border-subtle)" }}>
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
+                <input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="بحث في الموظفين..."
+                  className="w-full h-10 rounded-xl pr-10 pl-4 text-sm font-bold outline-none transition-all border"
+                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
+                />
+              </div>
+            </div>
+
+            {/* Employee List */}
+            <div className="p-2 space-y-1">
+              {filteredEmployees.map(emp => {
+                const isSelected = selectedEmployee?.id === emp.id;
+                return (
+                  <motion.button
+                    key={emp.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedEmployee(isSelected ? null : emp)}
+                    className={`w-full text-right p-3.5 rounded-2xl transition-all flex items-center gap-3 border ${
+                      isSelected
+                        ? "bg-blue-50 border-blue-200 shadow-sm"
+                        : "bg-transparent border-transparent hover:bg-slate-50 hover:border-slate-100"
+                    }`}
+                  >
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0 ${
+                      isSelected ? "bg-blue-600" : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                    }`}>
+                      {(emp.name || "?")?.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-800 truncate">{emp.name}</span>
+                        {emp.salary > 0 && (
+                          <span className="text-[10px] font-black text-emerald-600 font-mono">{Number(emp.salary).toLocaleString()}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {emp.role && <span className="text-[11px] text-slate-500">{emp.role}</span>}
+                        {emp.phone && <span className="text-[11px] text-slate-400 font-mono">{emp.phone}</span>}
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {PERIOD_LABELS[emp.salary_period] || "شهري"}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+              {!loading && filteredEmployees.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-400">لا يوجد موظفون</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel — Employee Detail */}
+          <div className="flex-1 rounded-3xl border shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]"
+            style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+          >
+            <EmployeeDetail
+              employee={selectedEmployee}
+              onClose={() => setSelectedEmployee(null)}
+              onUpdate={(updated) => {
+                setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
+                setSelectedEmployee(updated);
+              }}
+            />
+          </div>
+        </motion.div>
+      </main>
+
+      {/* Add/Edit Form Modal */}
+      {showForm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+          onClick={() => { setShowForm(false); setEditingRow(null); }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-black text-slate-800 mb-6">
+              {editingRow ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">اسم الموظف <span className="text-rose-500">*</span></label>
+                <input
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المسمى الوظيفي</label>
+                <input
+                  value={form.role}
+                  onChange={e => setForm({ ...form, role: e.target.value })}
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">العنوان</label>
+                <input
+                  value={form.address}
+                  onChange={e => setForm({ ...form, address: e.target.value })}
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  placeholder="العنوان (اختياري)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">أرقام الهاتف</label>
+                {(form.phones || []).map((ph, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      value={ph}
+                      onChange={e => {
+                        const updated = [...form.phones];
+                        updated[idx] = e.target.value;
+                        setForm({ ...form, phones: updated });
+                      }}
+                      className="flex-1 h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                      placeholder={`رقم ${idx + 1}`}
+                    />
+                    {form.phones.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, phones: form.phones.filter((_, i) => i !== idx) })}
+                        className="h-12 w-12 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 transition-all"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, phones: [...(form.phones || []), ""] })}
+                  className="text-xs font-black text-blue-600 hover:text-blue-800 transition-all flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> إضافة رقم آخر
+                </button>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setEditingRow(null); }}
+                  className="flex-1 h-12 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isSubmitting ? "جاري الحفظ..." : editingRow ? "حفظ التعديلات" : "إضافة"}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
   );
 }

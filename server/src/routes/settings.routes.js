@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { authRequired, requireRole } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
 router.use(auditMutation);
@@ -159,8 +160,8 @@ function buildUpdate(current, updates) {
   const cols = Object.keys(current).filter(k => !skip.has(k) && SAFE_COL.test(k));
   const setClauses = cols.map(c => `${c} = ?`);
   const params = cols.map(c => coerceVal(c, next[c]));
-  const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = datetime('now', 'localtime') WHERE id = 1`;
-  return { sql, params };
+  const sql = `UPDATE settings SET ${setClauses.join(", ")}, updated_at = ? WHERE id = 1`;
+  return { sql, params: [...params, nowSql()] };
 }
 
 router.get("/", authRequired, requirePagePermission("settings", "view"), (_req, res) => {

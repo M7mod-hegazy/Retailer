@@ -6,6 +6,7 @@ const multer = require("multer");
 const AdmZip = require("adm-zip");
 const { closeDb, getDb, getDbPath, initDb } = require("../config/database");
 const { getUploadsDir } = require("../middleware/upload");
+const { nowSql } = require("../utils/datetime");
 const {
   performBackup,
   computeBackupPreview,
@@ -224,9 +225,9 @@ router.put("/settings", can("create"), (req, res, next) => {
 
     getDb()
       .prepare(
-        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = datetime('now', 'localtime') WHERE id = 1",
+        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = ? WHERE id = 1",
       )
-      .run(autoBackupEnabled, autoBackupPath, intervalHours);
+      .run(autoBackupEnabled, autoBackupPath, intervalHours, nowSql());
 
     const settings = getDb()
       .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, CalendarDays, Search, X, Package, User, List, LayoutList, BarChart3, Filter } from "lucide-react";
 import { PREVIEW_COLUMNS, GHOST_ROWS, CAT_PREVIEW_COLUMNS, CAT_GHOST_ROWS, COL_TYPE_STYLE, FILTER_DIMENSIONS } from "./reportsCenterConfig";
@@ -43,8 +43,8 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
     );
   }
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-border-subtle bg-bg-surface shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-border-strong">
+    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="max-h-[280px] overflow-y-auto rounded-[12px] p-1 scrollbar-thin scrollbar-thumb-border-strong">
         {items.map((item, i) => (
           <button
             key={item.id}
@@ -502,6 +502,8 @@ export function LookupEntityFilter({ entity, value, onChange, placeholder }) {
     supplier: "/api/suppliers",
     user: "/api/users",
     warehouse: "/api/warehouses",
+    payment_method: "/api/payment-methods",
+    employee: "/api/employees",
   }[entity];
 
   useEffect(() => {
@@ -512,7 +514,7 @@ export function LookupEntityFilter({ entity, value, onChange, placeholder }) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items.slice(0, 12);
-    const keys = entity === "product" ? ["name", "code", "item_code", "barcode"] : ["name"];
+    const keys = entity === "product" ? ["name", "code", "item_code", "barcode"] : ["name", "category", "type"];
     return fuzzyFilterRows(items, search, keys).slice(0, 12);
   }, [search, items, entity]);
 
@@ -765,6 +767,7 @@ export function DimensionFilter({ dimension, value, onChange, formatLabel }) {
     const entityLabel = {
       category: "تصنيف", product: "منتج", customer: "عميل",
       supplier: "مورد", user: "مستخدم", warehouse: "مخزن",
+      employee: "موظف",
     }[dimension.entity] || dimension.entity;
     return (
       <div className="space-y-1.5">
@@ -834,7 +837,7 @@ export function FilterPanelTop({
   const handleKeyDown = useFieldNavigation();
 
   return (
-    <motion.div layout className="bg-white rounded-[24px] border border-zinc-200 shadow-sm overflow-hidden">
+    <motion.div layout className="bg-white rounded-[24px] border border-zinc-200 shadow-sm">
       {/* Collapse header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
@@ -954,7 +957,7 @@ export function FilterPanelTop({
                           <label className="block text-[11px] font-bold text-zinc-500">{dim.label}</label>
                           <LookupEntityFilter entity={dim.entity} value={filters[dim.key] || ""}
                             onChange={(v) => onFilterChange(dim.key, v)}
-                            placeholder={`بحث عن ${({ category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن" })[dim.entity] || ""}...`}
+                            placeholder={`بحث عن ${({ category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن", employee: "موظف" })[dim.entity] || ""}...`}
                           />
                         </div>
                       ) : null}

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, BarChart3, CalendarDays, ChevronDown, FileImage, FileSpreadsheet, FileText,
   LayoutTemplate, LayoutList, Loader2, Printer, RefreshCw, Search, SlidersHorizontal, X,
-  ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, ArrowUp, ArrowDown
+  ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, ArrowUp, ArrowDown, Info
 } from "lucide-react";
 import ChartWorkspace from "../../components/reports/ChartWorkspace";
 import A4PageView from "../../components/ui/A4PageView";
@@ -22,7 +22,7 @@ import AccountStatementLedger from "./templates/AccountStatementLedger";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
-import { SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate } from "./reportsCenterConfig";
+import { SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, getReportDescription } from "./reportsCenterConfig";
 import { formatNumber } from "../../utils/currency";
 
 const CLS_ARABIC = {
@@ -60,10 +60,12 @@ const CLS_ARABIC = {
   "cls_top_customers": "أفضل العملاء",
   "cls_collection_efficiency": "كفاءة التحصيل",
   "cls_customer_loyalty": "ولاء العملاء",
-  "cls_emp_cashier_perf": "أداء الكاشير",
-  "cls_emp_shifts": "الورديات",
-  "cls_emp_user_activity": "نشاط المستخدمين",
-  "cls_emp_incentives": "الحوافز",
+  "cls_emp_list": "قائمة الموظفين",
+  "cls_emp_deductions": "خصومات الموظفين",
+  "cls_emp_bonuses": "مكافآت الموظفين",
+  "cls_emp_advances": "سلف الموظفين",
+  "cls_emp_payroll": "كشوف الرواتب",
+  "cls_emp_full_history": "السجل الكامل للموظف",
   "cls_inst_plans": "خطط التقسيط",
   "cls_inst_collections": "تحصيلات",
   "cls_inst_by_customer": "حسب العميل",
@@ -92,6 +94,16 @@ const CLS_ARABIC = {
   "cls_trs_reconciliation": "التسويات",
   "cls_trs_daily_sessions": "الجلسات اليومية",
   "cls_trs_withdrawals": "السحوبات",
+  "cls_trs_payment_flow_summary": "ملخص تدفقات وسائل الدفع",
+  "cls_trs_payment_flow_ledger": "سجل التدفقات التفصيلي",
+  "cls_trs_payment_flow_by_doc_type": "حسب نوع المستند",
+  "cls_trs_payment_flow_by_direction": "حسب الاتجاه",
+  "cls_trs_payment_flow_running": "الرصيد التراكمي",
+  "direction": "الاتجاه",
+  "doc_type": "نوع المستند",
+  "party_type": "نوع الطرف",
+  "amount_min": "أقل مبلغ",
+  "amount_max": "أكبر مبلغ",
   "cls_profit_by_item": "الربح حسب الصنف",
   "cls_profit_by_category": "الربح حسب الفئة",
   "cls_profit_health": "صحة الأرباح",
@@ -140,6 +152,10 @@ const CLS_ARABIC = {
   "cashier": "الكاشير",
   "role": "الصلاحية",
   "action": "الإجراء",
+  "employee": "الموظف",
+  "deduction_type": "نوع الخصم",
+  "bonus_type": "نوع المكافأة",
+  "tx_type": "نوع الحركة",
   "payment_type": "طريقة الدفع",
   "movement_type": "نوع الحركة",
   "in": "وارد",
@@ -207,9 +223,45 @@ const ARABIC_COL_LABELS = {
   source_line_id: "رقم سطر المصدر",
   tax_amount: "مبلغ الضريبة",
   tax_type: "نوع الضريبة",
+  tax_type_label: "نوع الضريبة",
+  status_label: "الحالة",
+  period_label: "الفترة",
+  basis_label: "أساس الحساب",
+  method_name: "وسيلة الدفع",
+  plan_id: "رقم الخطة",
   total_tax: "إجمالي الضريبة",
   updated_at: "آخر تحديث",
   v: "القيمة",
+  employee_name: "اسم الموظف",
+  job_title: "المسمى الوظيفي",
+  salary: "الراتب",
+  salary_period: "دورة الراتب",
+  working_days_per_month: "أيام العمل الشهرية",
+  daily_salary: "الراتب اليومي",
+  active_deductions_total: "إجمالي الخصومات",
+  active_bonuses_total: "إجمالي المكافآت",
+  active_advances_balance: "رصيد السلف",
+  deduction_type: "نوع الخصم",
+  deduction_type_label: "نوع الخصم",
+  bonus_type: "نوع المكافأة",
+  bonus_type_label: "نوع المكافأة",
+  recurring_label: "متكرر",
+  is_recurring: "متكرر",
+  completed_at: "تاريخ التطبيق",
+  cancelled_at: "تاريخ الإلغاء",
+  remaining_balance: "الرصيد المتبقي",
+  repaid_amount: "المبلغ المسدد",
+  base_salary: "الراتب الأساسي",
+  total_bonuses: "إجمالي المكافآت",
+  total_deductions: "إجمالي الخصومات",
+  advance_deductions: "خصم السلف",
+  net_salary: "صافي الراتب",
+  settled_at: "تاريخ الصرف",
+  settled_by: "تم الصرف بواسطة",
+  expense_id: "رقم المصروف",
+  tx_type: "نوع الحركة",
+  tx_type_label: "نوع الحركة",
+  sub_type: "النوع الفرعي",
 };
 const NOTE_KEYS = new Set(["notes", "note", "description", "cancel_reason", "reason"]);
 function arColLabel(key) { return ARABIC_COL_LABELS[key] || key; }
@@ -350,7 +402,7 @@ function ExportPill({ format, onExport }) {
 function FilterInput({ filter, value, onChange, dynamicOptions }) {
   const opts = (dynamicOptions && dynamicOptions.length > 0) ? dynamicOptions : (filter.options || []);
   if (filter.type === "lookup") {
-    const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن" }[filter.entity] || filter.entity;
+    const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن", payment_method: "وسيلة دفع", employee: "موظف" }[filter.entity] || filter.entity;
     const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
     return (
       <div className="space-y-1.5">
@@ -467,7 +519,7 @@ export default function SourceWorkspacePage() {
   // Set topbar breadcrumb to show the current report name
   const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
   const clearDynamicBreadcrumb = useUiStore((s) => s.clearDynamicBreadcrumb);
-  const reportLabel = useMemo(() => a(classificationId), [classificationId]);
+  const reportLabel = useMemo(() => a(clsDef?.label_key || classificationId), [clsDef, classificationId]);
   useEffect(() => {
     setDynamicBreadcrumb({ label: reportLabel, path: `/reports/source/${sourceKey}/${classificationId}/${dataMode}` });
     return () => clearDynamicBreadcrumb();
@@ -894,7 +946,7 @@ export default function SourceWorkspacePage() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-6 py-8 text-slate-900" dir="rtl">
       {/* COMMAND COCKPIT (DASHBOARD HARDENED) */}
-      <div className="flex flex-col mb-8 bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden relative">
+      <div className="flex flex-col mb-8 bg-white border border-slate-200 shadow-sm rounded-2xl relative">
         
         {/* Row 1: Header & Primary Toggles */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 p-5 border-b border-slate-100 bg-slate-50/50">
@@ -911,7 +963,11 @@ export default function SourceWorkspacePage() {
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase mb-0.5">{sourceDef.label}</span>
-              <h1 className="text-[20px] font-bold text-slate-900 tracking-tight leading-none">{a(classificationId)}</h1>
+              <h1 className="text-[20px] font-bold text-slate-900 tracking-tight leading-none mb-1.5">{a(clsDef?.label_key || classificationId)}</h1>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100/80 border border-slate-200/60 text-slate-600 text-xs font-medium max-w-xl transition-all duration-300">
+                <Info size={13} className="shrink-0 text-emerald-600" />
+                <span>{getReportDescription(sourceKey, classificationId || clsDef?.label_key)}</span>
+              </div>
             </div>
           </div>
 
@@ -1216,30 +1272,8 @@ export default function SourceWorkspacePage() {
                 rowKey="id"
                 renderExpandedRow={renderItemExpandedRow}
                 rowClass={(row) => row._is_item ? "bg-zinc-50/50" : ""}
+                totals={columnTotals}
               />
-              {/* Totals Bar */}
-              {rows.length > 0 && Object.keys(columnTotals).length > 0 && (
-                <div className="flex items-stretch border-t-2 border-emerald-500 bg-emerald-50/50">
-                  {displayColumns.map((col) => {
-                    const val = columnTotals[col.id];
-                    const hasVal = val != null && !isNaN(Number(val));
-                    return (
-                      <div key={col.id}
-                        style={{ minWidth: col.width || 120, flex: 1 }}
-                        className="flex items-center justify-center px-3 py-2.5 text-center border-l border-emerald-100 last:border-l-0"
-                      >
-                        {hasVal ? (
-                          <span className="text-sm font-black text-emerald-800 tabular-nums" dir="ltr">
-                            {formatNumber(val)}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-bold text-emerald-600">الإجمالي</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </motion.div>
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
@@ -1284,7 +1318,7 @@ export default function SourceWorkspacePage() {
               rows={printAllData?.data || rows}
               columns={visibleColumns}
               noteColumns={allColumns.filter((c) => c.isNote)}
-              title={`${sourceDef?.label || ''} - ${a(classificationId)}`}
+              title={`${sourceDef?.label || ''} - ${a(clsDef?.label_key || classificationId)}`}
               subtitle={computedSubtitle}
               filters={filters}
               settings={s}
@@ -1309,7 +1343,7 @@ export default function SourceWorkspacePage() {
         open={pdfDialogOpen}
         onClose={() => setPdfDialogOpen(false)}
         columns={allColumns}
-        title={`${sourceDef?.label || ''} - ${a(classificationId)}`}
+        title={`${sourceDef?.label || ''} - ${a(clsDef?.label_key || classificationId)}`}
         onExport={handlePdfExport}
       />
     </div>

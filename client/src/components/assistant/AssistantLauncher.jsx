@@ -16,7 +16,6 @@ export default function AssistantLauncher() {
   const isOpen = useAssistantStore((s) => s.isOpen);
   const open = useAssistantStore((s) => s.open);
   const dismissed = useAssistantStore((s) => s.bubbleDismissed);
-  const dismissBubble = useAssistantStore((s) => s.dismissBubble);
 
   const onDashboard = location.pathname === "/" || location.pathname.startsWith("/dashboard");
   const visible = onDashboard && !dismissed && !isOpen;
@@ -25,6 +24,7 @@ export default function AssistantLauncher() {
     <AnimatePresence>
       {visible && (
         <motion.div
+          key="assistant-bubble"
           dir="rtl"
           initial={{ opacity: 0, y: 16, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -40,7 +40,7 @@ export default function AssistantLauncher() {
             <span className="text-[13px] font-black">{t("assistant.bubble")}</span>
           </button>
           <button
-            onClick={dismissBubble}
+            onClick={() => useAssistantStore.getState().dismissBubble()}
             aria-label={t("assistant.dismiss")}
             className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-black/5"
             style={{ color: "var(--text-muted)" }}
