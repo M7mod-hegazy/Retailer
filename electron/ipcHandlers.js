@@ -217,85 +217,207 @@ function setupIpc(window) {
     }
   });
 
+  // ---------------------------------------------------------------------
+  // Silent print pipeline
+  // ---------------------------------------------------------------------
+
+  /** Roll width in mm from a CSS page-size string ("80mm auto" → 80); 0 = page size. */
+  function rollWidthFromPageSize(pageSizeStr) {
+    const m = /^(\d+(?:\.\d+)?)mm\s+auto/.exec(pageSizeStr || "");
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  /**
+   * Render HTML in a hidden window sized to the paper and measure the content
+   * height AFTER web fonts are ready and every <img> has decoded — a logo that
+   * loads after measurement used to reflow the receipt taller than the page we
+   * asked for, cutting off the bottom. Resolves { win, contentHeightPx } — the
+   * caller owns the window and must destroy it.
+   */
+  async function loadPrintWindow(tmpFile, rollWidthMm) {
+    const winWidthPx = rollWidthMm ? Math.ceil((rollWidthMm * 96) / 25.4) : 800;
+    // javascript must stay enabled so we can wait for fonts/images and measure
+    // the rendered height. The HTML is our own trusted print document (no
+    // scripts); sandbox + a local temp file keep it isolated.
+    const win = new BrowserWindow({
+      show: false,
+      width: winWidthPx,
+      height: 1200,
+      useContentSize: true,
+      webPreferences: { offscreen: false, sandbox: true },
+    });
+    await win.loadFile(tmpFile);
+    let contentHeightPx = 0;
+    try {
+      contentHeightPx = await win.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          const measure = () => resolve(Math.ceil(Math.max(
+            document.body.scrollHeight, document.documentElement.scrollHeight, 1)));
+          const fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+          const imgsReady = Promise.all(Array.from(document.images).map(
+            (img) => img.decode ? img.decode().catch(() => {}) : Promise.resolve()
+          ));
+          const timeout = new Promise((r) => setTimeout(r, 3000));
+          Promise.race([Promise.all([fontsReady, imgsReady]), timeout])
+            .then(() => requestAnimationFrame(() => requestAnimationFrame(measure)));
+        })
+      `);
+    } catch { /* caller treats 0 as measurement failure */ }
+    return { win, contentHeightPx };
+  }
+
+  /** Build webContents.print options from measured geometry + calibration mode. */
+  function buildPrintOptions({ deviceName, copies, pageSizeStr, rollWidthMm, contentHeightPx, paperMode }) {
+    const MM = 1000;             // microns per millimetre
+    const PX = 25400 / 96;       // microns per CSS pixel @96dpi
+    const printOptions = {
+      silent: true,
+      printBackground: true,
+      deviceName: deviceName || undefined,
+      copies: Math.max(1, Number(copies) || 1),
+      margins: { marginType: "none" },
+      headerFooter: { header: "", footer: "" },
+    };
+    if (rollWidthMm) {
+      // "driver" paper mode: omit pageSize entirely and trust the Windows
+      // driver's configured roll form. Some thermal drivers feed a large blank
+      // top gap when handed a foreign custom page size; the calibration wizard
+      // lets the user pick whichever mode their driver handles cleanly.
+      if (paperMode !== "driver") {
+        // Round height UP to whole millimetres plus a 1mm tail so driver
+        // rounding never clips the last printed line.
+        const heightMm = Math.ceil((contentHeightPx * PX) / MM) + 1;
+        printOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
+      }
+    } else if (/^148mm/.test(pageSizeStr)) {
+      printOptions.pageSize = "A5";
+    } else if (pageSizeStr) {
+      printOptions.pageSize = "A4";
+    }
+    return printOptions;
+  }
+
+  // ESC/POS raw bytes, written straight to the Windows spooler with the RAW
+  // datatype (bypasses the graphics driver). Used for drawer kick + paper cut
+  // on printers whose drivers don't expose those switches reliably.
+  const ESCPOS_OPS = {
+    drawer: [0x1b, 0x70, 0x00, 0x19, 0xfa],       // ESC p 0 — kick pin 2
+    cut: [0x1b, 0x64, 0x03, 0x1d, 0x56, 0x42, 0x00], // feed 3 lines + GS V B (partial cut)
+  };
+
+  const RAW_PRINTER_PS = `
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class RawPrinter {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+  public class DOCINFOA {
+    [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+    [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+    [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+  }
+  [DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi)]
+  public static extern bool OpenPrinter(string szPrinter, out IntPtr hPrinter, IntPtr pd);
+  [DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true)]
+  public static extern bool ClosePrinter(IntPtr hPrinter);
+  [DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi)]
+  public static extern bool StartDocPrinter(IntPtr hPrinter, int level, [In] DOCINFOA di);
+  [DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true)]
+  public static extern bool EndDocPrinter(IntPtr hPrinter);
+  [DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true)]
+  public static extern bool StartPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true)]
+  public static extern bool EndPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true)]
+  public static extern bool WritePrinter(IntPtr hPrinter, byte[] pBytes, int dwCount, out int dwWritten);
+  public static bool Send(string printer, byte[] bytes) {
+    IntPtr h;
+    if (!OpenPrinter(printer, out h, IntPtr.Zero)) return false;
+    DOCINFOA di = new DOCINFOA(); di.pDocName = "Retailer ESC/POS"; di.pDataType = "RAW";
+    bool ok = false;
+    if (StartDocPrinter(h, 1, di)) {
+      if (StartPagePrinter(h)) {
+        int written;
+        ok = WritePrinter(h, bytes, bytes.Length, out written);
+        EndPagePrinter(h);
+      }
+      EndDocPrinter(h);
+    }
+    ClosePrinter(h);
+    return ok;
+  }
+}
+'@
+$bytes = [Convert]::FromBase64String($env:RETAILER_ESC_BYTES)
+if (-not [RawPrinter]::Send($env:RETAILER_ESC_PRINTER, $bytes)) { exit 1 }
+`;
+
+  /** Send raw ESC/POS ops ("cut" / "drawer") to a printer. Windows only. */
+  function sendEscposOps(deviceName, ops) {
+    return new Promise((resolve) => {
+      if (process.platform !== "win32" || !deviceName) return resolve({ success: false, error: "unsupported" });
+      const bytes = [];
+      (ops || []).forEach((op) => { if (ESCPOS_OPS[op]) bytes.push(...ESCPOS_OPS[op]); });
+      if (!bytes.length) return resolve({ success: true });
+      const os = require("os");
+      const { execFile } = require("child_process");
+      const scriptFile = path.join(os.tmpdir(), `retailer-escpos-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`);
+      try { fs.writeFileSync(scriptFile, RAW_PRINTER_PS, "utf8"); }
+      catch (e) { return resolve({ success: false, error: e.message }); }
+      execFile(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptFile],
+        {
+          timeout: 10000,
+          windowsHide: true,
+          env: {
+            ...process.env,
+            RETAILER_ESC_PRINTER: deviceName,
+            RETAILER_ESC_BYTES: Buffer.from(bytes).toString("base64"),
+          },
+        },
+        (error) => {
+          try { fs.unlinkSync(scriptFile); } catch { /* ignore */ }
+          resolve(error ? { success: false, error: "escpos_failed" } : { success: true });
+        },
+      );
+    });
+  }
+
   // Silent print: render the provided HTML in a hidden window and send it straight
   // to the configured printer (no OS dialog). Returns { success:false } so the
   // renderer can fall back to the dialog-based iframe path when this fails.
   ipcMain.handle("print:silent", async (_event, payload = {}) => {
-    const { html = "", deviceName = "", copies = 1, pageSizeStr = "" } = payload;
+    const {
+      html = "", deviceName = "", copies = 1, pageSizeStr = "",
+      paperMode = "custom", escposCut = false, escposDrawer = false,
+    } = payload;
     if (!html) return { success: false, error: "no_html" };
     const os = require("os");
     const tmpFile = path.join(os.tmpdir(), `retailer-print-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
     let printWin = null;
     try {
       fs.writeFileSync(tmpFile, html, "utf8");
-      // Lay the hidden window out at the *paper* width so the receipt — which is
-      // `width:<roll>mm; margin:0 auto` — centers with ZERO offset. With the old
-      // default ~800px window, the 80mm receipt was centered inside an 800px body;
-      // the forced 80mm print sheet (captured from x=0) then grabbed only the left
-      // slice, so every roll print came out shifted right, clipped on the left, and
-      // never filled the paper. Matching the window content width to the roll width
-      // makes the body == the receipt width, so it aligns to the origin and fills.
-      const rollWidthMm = /^58mm/.test(pageSizeStr) ? 58 : /^80mm/.test(pageSizeStr) ? 80 : 0;
-      const winWidthPx = rollWidthMm ? Math.ceil((rollWidthMm * 96) / 25.4) : 800;
-      // javascript must stay enabled so we can wait for fonts and measure the
-      // rendered height below. The HTML is our own trusted print document (no
-      // scripts); sandbox + a local temp file keep it isolated.
-      printWin = new BrowserWindow({
-        show: false,
-        width: winWidthPx,
-        height: 1200,
-        useContentSize: true,
-        webPreferences: { offscreen: false, sandbox: true },
-      });
-      await printWin.loadFile(tmpFile);
+      // Lay the hidden window out at the *paper* width: the print sheet is
+      // captured from x=0, so window width must equal the paper for the
+      // rendered band offsets to land where the head expects them.
+      const rollWidthMm = rollWidthFromPageSize(pageSizeStr);
+      const loaded = await loadPrintWindow(tmpFile, rollWidthMm);
+      printWin = loaded.win;
 
-      // Electron's silent print IGNORES the CSS `@page { size }` rule, so a thermal
-      // job sent without an explicit pageSize comes out on the driver's default
-      // geometry — frequently a blank page. Wait for web fonts + layout to settle,
-      // then measure the real content height and pass an explicit pageSize.
-      let contentHeightPx = 0;
-      try {
-        contentHeightPx = await printWin.webContents.executeJavaScript(`
-          new Promise((resolve) => {
-            const measure = () => resolve(Math.ceil(Math.max(
-              document.body.scrollHeight, document.documentElement.scrollHeight, 1)));
-            const ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-            ready.then(() => requestAnimationFrame(() => requestAnimationFrame(measure)));
-          })
-        `);
-      } catch { /* fall back to default geometry below */ }
-
-      const MM = 1000;             // microns per millimetre
-      const PX = 25400 / 96;       // microns per CSS pixel @96dpi
-      const printOptions = {
-        silent: true,
-        printBackground: true,
-        deviceName: deviceName || undefined,
-        copies: Math.max(1, Number(copies) || 1),
-        margins: { marginType: "none" },
-        headerFooter: { header: "", footer: "" },
-      };
-      // Thermal rolls: explicit width + measured height (auto-height paper).
-      // A4/A5: a named size Electron understands. If the height couldn't be
-      // measured we fall back to ~300mm continuous roll so the content doesn't
-      // get clipped on a tiny default page.
-      if (rollWidthMm) {
-        if (contentHeightPx > 0) {
-          printOptions.pageSize = {
-            width: rollWidthMm * MM,
-            height: Math.ceil(contentHeightPx * PX),
-          };
-        } else {
-          printOptions.pageSize = {
-            width: rollWidthMm * MM,
-            height: 300 * MM,
-          };
-        }
-      } else if (/^148mm/.test(pageSizeStr)) {
-        printOptions.pageSize = "A5";
-      } else if (!rollWidthMm && pageSizeStr) {
-        printOptions.pageSize = "A4";
+      // Electron's silent print IGNORES the CSS `@page { size }` rule, so thermal
+      // jobs need an explicit pageSize (unless the calibrated paperMode says the
+      // driver's own form handles it better). A failed measurement used to fall
+      // back to a 300mm page — printing a mostly-blank tail; now it aborts so the
+      // renderer falls back to the visible dialog instead of wasting paper.
+      if (rollWidthMm && paperMode !== "driver" && !(loaded.contentHeightPx > 0)) {
+        return { success: false, error: "measure_failed" };
       }
+
+      const printOptions = buildPrintOptions({
+        deviceName, copies, pageSizeStr, rollWidthMm,
+        contentHeightPx: loaded.contentHeightPx, paperMode,
+      });
 
       // A small extra frame so the very last paint lands before the print snapshot.
       await new Promise((resolve) => setTimeout(resolve, 80));
@@ -305,7 +427,66 @@ function setupIpc(window) {
           (success, failureReason) => resolve({ success, failureReason }),
         );
       });
+      if (result.success && (escposCut || escposDrawer)) {
+        const ops = [];
+        if (escposCut) ops.push("cut");
+        if (escposDrawer) ops.push("drawer");
+        // Best-effort: a failed kick/cut must not fail the whole print job.
+        await sendEscposOps(deviceName, ops);
+      }
       return { success: !!result.success, error: result.success ? null : (result.failureReason || "print_failed") };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      if (printWin && !printWin.isDestroyed()) printWin.destroy();
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore temp cleanup errors */ }
+    }
+  });
+
+  // Raw ESC/POS ops on demand (e.g. "open drawer" button, cut between the parts
+  // of a multi-part receipt). Renderer opts in per printer via calibration.
+  ipcMain.handle("print:escpos-raw", async (_event, payload = {}) => {
+    const { deviceName = "", ops = [] } = payload;
+    const wanted = (Array.isArray(ops) ? ops : []).filter((op) => op === "cut" || op === "drawer");
+    if (!wanted.length) return { success: false, error: "no_ops" };
+    return sendEscposOps(deviceName, wanted);
+  });
+
+  // Debug/verification harness: run the IDENTICAL hidden-window pipeline but end
+  // in printToPDF instead of the printer. Lets print geometry (band width, page
+  // height, image-aware measurement) be verified without hardware or paper.
+  ipcMain.handle("print:debug-pdf", async (_event, payload = {}) => {
+    const { html = "", pageSizeStr = "", fileName = "" } = payload;
+    if (!html) return { success: false, error: "no_html" };
+    const os = require("os");
+    const tmpFile = path.join(os.tmpdir(), `retailer-print-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+    let printWin = null;
+    try {
+      fs.writeFileSync(tmpFile, html, "utf8");
+      const rollWidthMm = rollWidthFromPageSize(pageSizeStr);
+      const loaded = await loadPrintWindow(tmpFile, rollWidthMm);
+      printWin = loaded.win;
+      if (rollWidthMm && !(loaded.contentHeightPx > 0)) {
+        return { success: false, error: "measure_failed" };
+      }
+      const MM = 1000;
+      const PX = 25400 / 96;
+      const pdfOptions = { printBackground: true, margins: { top: 0, bottom: 0, left: 0, right: 0 } };
+      if (rollWidthMm) {
+        const heightMm = Math.ceil((loaded.contentHeightPx * PX) / MM) + 1;
+        pdfOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
+      } else if (/^148mm/.test(pageSizeStr)) {
+        pdfOptions.pageSize = "A5";
+      } else {
+        pdfOptions.pageSize = "A4";
+      }
+      const pdf = await printWin.webContents.printToPDF(pdfOptions);
+      const outDir = path.join(app.getPath("userData"), "print-debug");
+      fs.mkdirSync(outDir, { recursive: true });
+      const safeName = String(fileName || "").replace(/[^\w.-]+/g, "_") || `print-${Date.now()}.pdf`;
+      const outPath = path.join(outDir, safeName.endsWith(".pdf") ? safeName : `${safeName}.pdf`);
+      fs.writeFileSync(outPath, pdf);
+      return { success: true, path: outPath };
     } catch (error) {
       return { success: false, error: error.message };
     } finally {

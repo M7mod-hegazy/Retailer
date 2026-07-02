@@ -6,7 +6,9 @@ import {
   Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2,
 } from "lucide-react";
 import api from "../../services/api";
-import { printContent, getPrinterForPageSize } from "../../services/printService";
+import toast from "react-hot-toast";
+import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint } from "../../services/printService";
+import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintDesigner from "./designer/PrintDesigner";
 import { familyForSize } from "./layout/layoutModel";
@@ -220,7 +222,7 @@ export default function PrintPreviewModal({
   const reportFitTone = reportFitScore <= reportCapacity ? "green"
     : reportFitScore <= reportCapacity + 1.5 ? "amber" : "red";
 
-  const combinedSettings = {
+  const combinedSettingsBase = {
     ...(fetchedGlobalSettings || {}),
     ...(globalSettings || {}),
     ...docSettings,
@@ -238,6 +240,13 @@ export default function PrintPreviewModal({
       invoice_print_column_keys: invoicePrintKeys,
     } : {}),
   };
+
+  // Inject the mapped printer's calibration (printable band + shift) so the
+  // preview shows exactly the geometry that will hit the paper.
+  const mappedPrinter = getPrinterSizeMap()[activeTemplate] || "";
+  const combinedSettings = isThermal
+    ? withCalibration(combinedSettingsBase, mappedPrinter, activeTemplate)
+    : combinedSettingsBase;
 
   // Page navigation
   const handlePageCount = useCallback((count) => {
@@ -331,14 +340,27 @@ export default function PrintPreviewModal({
     });
   };
 
-  function buildIframeAndPrint(contentHtml, pageSizeStr, afterPrint) {
-    printContent({
+  const FALLBACK_REASON_LABELS = {
+    no_printer_mapped: "لم يتم تعيين طابعة لهذا المقاس — سيُفتح مربع حوار الطباعة",
+    measure_failed: "تعذّر قياس ارتفاع الإيصال — سيُفتح مربع حوار الطباعة",
+    print_failed: "فشلت الطباعة الصامتة — سيُفتح مربع حوار الطباعة",
+  };
+
+  async function buildIframeAndPrint(contentHtml, pageSizeStr, afterPrint) {
+    const result = await printContent({
       contentHtml,
       pageSizeStr,
       deviceName: getPrinterForPageSize(pageSizeStr),
       title: operationLabel || "طباعة",
       afterPrint,
+      docType: docType || "",
+      docLabel: operationLabel || "",
     });
+    // Tell the user WHY the dialog opened instead of the fast silent path —
+    // silent-silent fallbacks made real print problems undiagnosable.
+    if (result.mode === "dialog" && isElectronPrint() && result.reason && result.reason !== "not_electron") {
+      toast(FALLBACK_REASON_LABELS[result.reason] || FALLBACK_REASON_LABELS.print_failed, { icon: "🖨️" });
+    }
   }
 
   return (

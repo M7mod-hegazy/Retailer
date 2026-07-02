@@ -3,7 +3,7 @@ import {
   Ruler, Hash, AlignLeft, Baseline, ListChecks, Eye, Receipt,
   FileBarChart2, ToggleLeft, ToggleRight, Info, Zap, MousePointerClick,
   RefreshCw, FileText
-, QrCode } from "lucide-react";
+, QrCode, Wrench, Download, Upload, Trash2, CheckCircle2, XCircle, History, ChevronDown, ChevronUp } from "lucide-react";
 import { BlockRenderer, CustomTextBlocksSection, getCustomBlocks, saveCustomBlocks } from "./CustomTextBlocks";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -13,10 +13,12 @@ import AjalScheduleTemplate from "../../components/print/templates/AjalScheduleT
 import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegisterTemplate";
 import PaymentMethodsReportTemplate from "../../components/print/templates/PaymentMethodsReportTemplate";
 import PrintDesigner from "../../components/print/designer/PrintDesigner";
+import CalibrationWizard from "../../components/print/calibration/CalibrationWizard";
 import { familyForSize } from "../../components/print/layout/layoutModel";
 import { PrintThermalDoc, PrintA4Doc } from "../../components/print/PrintDoc";
 import { Maximize2, Printer as PrinterIcon } from "lucide-react";
-import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap } from "../../services/printService";
+import { listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap, getPrintJobLog, clearPrintJobLog } from "../../services/printService";
+import { resolveCalibration, exportDeviceProfile, importDeviceProfile } from "../../services/printCalibration";
 import { getHint as fmHint } from "../../utils/fieldMeta";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import { smartFormat, resolveThermalColumns } from "../../components/print/blocks/blockUtils";
@@ -1559,6 +1561,11 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [docSettings, setDocSettings] = useState({});
   const [printers, setPrinters] = useState([]);
   const [sizePrinterMap, setSizePrinterMap] = useState(() => getPrinterSizeMap());
+  const [calWizard, setCalWizard] = useState({ open: false, printerName: "", sizeKey: "" });
+  const [calVersion, setCalVersion] = useState(0);
+  const [printJobLog, setPrintJobLog] = useState(() => getPrintJobLog());
+  const [logOpen, setLogOpen] = useState(false);
+  const importFileRef = useRef(null);
   // Pan & Zoom
   const [viewZoom, setViewZoom] = useState(0.6);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1586,6 +1593,62 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     const next = { ...sizePrinterMap, [size]: printerName };
     setSizePrinterMap(next);
     setPrinterSizeMap(next);
+  }
+
+  function openCalibrationWizard(size) {
+    const printerName = sizePrinterMap[size] || "";
+    if (!printerName) return;
+    setCalWizard({ open: true, printerName, sizeKey: size });
+  }
+
+  function closeCalibrationWizard() {
+    setCalWizard((prev) => ({ ...prev, open: false }));
+    setCalVersion((v) => v + 1); // force the "معايَر/غير معاير" chips to re-read localStorage
+  }
+
+  function handleExportDeviceProfile() {
+    const profile = exportDeviceProfile(getPrinterSizeMap());
+    const blob = new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "retailer-device-profile.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("تم تصدير ملف الجهاز");
+  }
+
+  function handleImportDeviceProfile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const profile = JSON.parse(String(reader.result || "{}"));
+        const map = importDeviceProfile(profile);
+        if (map) {
+          setPrinterSizeMap(map);
+          setSizePrinterMap(map);
+        }
+        setCalVersion((v) => v + 1);
+        toast.success("تم استيراد ملف الجهاز");
+      } catch {
+        toast.error("ملف غير صالح");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  function refreshPrintLog() {
+    setPrintJobLog(getPrintJobLog());
+  }
+
+  function handleClearPrintLog() {
+    clearPrintJobLog();
+    setPrintJobLog([]);
   }
 
   const hover  = useCallback((k) => setHovered(k), []);
@@ -1705,29 +1768,131 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               تم اكتشاف {printers.length} طابعة متصلة — اختر طابعة لكل حجم لتفعيل الطباعة الفورية
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4" key={calVersion}>
             {[
               { size: "58mm", label: "58mm", sub: "رول حراري صغير" },
               { size: "80mm", label: "80mm", sub: "رول حراري قياسي" },
               { size: "A5",   label: "A5",   sub: "نصف صفحة" },
               { size: "A4",   label: "A4",   sub: "ورقة كاملة" },
-            ].map(({ size, label, sub }) => (
-              <div key={size} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
-                  <span className="text-[11px] font-bold text-slate-500">{sub}</span>
+            ].map(({ size, label, sub }) => {
+              const isRollSize = size === "58mm" || size === "80mm";
+              const assignedPrinter = sizePrinterMap[size] || "";
+              const cal = isRollSize ? resolveCalibration(assignedPrinter, size) : null;
+              const isCalibrated = !!(cal && cal.printAreaWidthMm > 0);
+              return (
+                <div key={size} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
+                    <span className="text-[11px] font-bold text-slate-500">{sub}</span>
+                  </div>
+                  <StyledSelect
+                    value={sizePrinterMap[size] || ""}
+                    onChange={(e) => handleSizePrinterChange(size, e.target.value)}
+                    options={[
+                      { value: "", label: isElectronPrint() && printers.length > 0 ? "— بدون تعيين (ستظهر نافذة الطباعة) —" : "— بدون تعيين —" },
+                      ...printers.map(p => ({ value: p.name, label: `🖨 ${p.displayName || p.name}${p.isDefault ? " (الافتراضية)" : ""}` })),
+                    ]}
+                  />
+                  {isRollSize && (
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openCalibrationWizard(size)}
+                        disabled={!assignedPrinter}
+                        className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        <Wrench size={11} /> معايرة
+                      </button>
+                      <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                        isCalibrated ? "bg-success-bg text-success-text" : "bg-slate-100 text-slate-400"
+                      }`}>
+                        {isCalibrated ? `معايَر: ${cal.printAreaWidthMm}mm` : "غير معاير"}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <StyledSelect
-                  value={sizePrinterMap[size] || ""}
-                  onChange={(e) => handleSizePrinterChange(size, e.target.value)}
-                  options={[
-                    { value: "", label: isElectronPrint() && printers.length > 0 ? "— بدون تعيين (ستظهر نافذة الطباعة) —" : "— بدون تعيين —" },
-                    ...printers.map(p => ({ value: p.name, label: `🖨 ${p.displayName || p.name}${p.isDefault ? " (الافتراضية)" : ""}` })),
-                  ]}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={handleExportDeviceProfile}
+              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all">
+              <Download size={12} /> تصدير ملف الجهاز
+            </button>
+            <button type="button" onClick={() => importFileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all">
+              <Upload size={12} /> استيراد ملف الجهاز
+            </button>
+            <input ref={importFileRef} type="file" accept="application/json" className="hidden" onChange={handleImportDeviceProfile} />
+          </div>
+        </section>
+
+        {/* Print job log */}
+        <section>
+          <button type="button" onClick={() => setLogOpen((v) => !v)} className="w-full flex items-center gap-2">
+            <div className="flex-1">
+              <SectionLabel icon={History} title="سجل الطباعة" hint="آخر عمليات الطباعة الصامتة على هذا الجهاز" />
+            </div>
+            {logOpen ? <ChevronUp size={14} className="text-slate-400 mb-4" /> : <ChevronDown size={14} className="text-slate-400 mb-4" />}
+          </button>
+          {logOpen && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{printJobLog.length} عملية</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={refreshPrintLog}
+                    className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-100 transition-all">
+                    <RefreshCw size={11} /> تحديث
+                  </button>
+                  <button type="button" onClick={handleClearPrintLog}
+                    className="flex items-center gap-1 rounded-md border border-danger-border bg-danger-bg px-2 py-1 text-[10px] font-black text-danger-text hover:bg-red-100 transition-all">
+                    <Trash2 size={11} /> مسح
+                  </button>
+                </div>
+              </div>
+              {printJobLog.length === 0 ? (
+                <div className="px-3 py-6 text-center text-[11px] font-bold text-slate-400">لا توجد عمليات طباعة بعد</div>
+              ) : (
+                <div className="max-h-[280px] overflow-y-auto">
+                  <table className="w-full text-[10px]">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr className="text-slate-400 font-black uppercase tracking-widest">
+                        <th className="px-2 py-1.5 text-right">الوقت</th>
+                        <th className="px-2 py-1.5 text-right">المستند</th>
+                        <th className="px-2 py-1.5 text-right">الطابعة</th>
+                        <th className="px-2 py-1.5 text-right">المقاس</th>
+                        <th className="px-2 py-1.5 text-right">الوضع</th>
+                        <th className="px-2 py-1.5 text-right">النتيجة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {printJobLog.map((entry, idx) => {
+                        const d = entry.at ? new Date(entry.at) : null;
+                        const timeLabel = d
+                          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`
+                          : "";
+                        return (
+                          <tr key={idx} className={`border-t border-slate-100 font-bold ${entry.ok ? "text-slate-600" : "bg-danger-bg text-danger-text"}`}>
+                            <td className="px-2 py-1.5 whitespace-nowrap">{timeLabel}</td>
+                            <td className="px-2 py-1.5">{entry.doc_label || entry.doc_type || "—"}</td>
+                            <td className="px-2 py-1.5 truncate max-w-[100px]">{entry.printer || "—"}</td>
+                            <td className="px-2 py-1.5">{entry.size || "—"}</td>
+                            <td className="px-2 py-1.5">{entry.mode === "silent" ? "صامت" : "حوار"}</td>
+                            <td className="px-2 py-1.5 flex items-center gap-1">
+                              {entry.ok
+                                ? <CheckCircle2 size={12} className="text-success-text" />
+                                : <span className="flex items-center gap-1"><XCircle size={12} className="text-danger-text" /> {entry.reason || "فشل"}</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Paper */}
@@ -1989,6 +2154,14 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         </div>
 
       </div>
+
+      <CalibrationWizard
+        open={calWizard.open}
+        onClose={closeCalibrationWizard}
+        printerName={calWizard.printerName}
+        sizeKey={calWizard.sizeKey}
+      />
+
       </>
       )}
     </div>

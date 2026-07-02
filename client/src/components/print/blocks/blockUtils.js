@@ -67,18 +67,25 @@ export function resolveThermalColumns(s) {
   return defaultThermalKeys(paper);
 }
 
-/** Physical roll paper width in mm for the active receipt size. */
+/** Physical roll paper width in mm for the active receipt size. Accepts custom
+ *  widths ("57mm", "76mm", "110mm", …) in addition to the standard 58/80. */
 export function rollPaperWidthMm(s) {
-  return g(s, "receipt_width") === "58mm" ? 58 : 80;
+  const raw = String(g(s, "receipt_width") || "80mm");
+  const mm = parseFloat(raw);
+  if (Number.isFinite(mm) && mm >= 20 && mm <= 210) return mm;
+  return 80;
 }
 
 /**
  * Standard printable band (mm) for a roll size — what a real thermal head can
  * actually reach, narrower than the paper. Used as the default so content isn't
- * clipped at the paper edge out of the box. (80mm paper ≈ 72mm, 58mm ≈ 48mm.)
+ * clipped at the paper edge out of the box. (80mm paper ≈ 72mm, 58mm ≈ 48mm;
+ * other widths use the common head margins until calibrated.)
  */
 export function rollDefaultPrintWidthMm(paperMm) {
-  return paperMm === 58 ? 48 : 72;
+  if (paperMm === 58) return 48;
+  if (paperMm === 80) return 72;
+  return Math.max(20, paperMm - (paperMm <= 60 ? 10 : 8));
 }
 
 /**
@@ -88,7 +95,31 @@ export function rollDefaultPrintWidthMm(paperMm) {
  */
 export function rollPrintWidthMm(s) {
   const paper = rollPaperWidthMm(s);
-  return paper - 2;
+  const calibrated = Number(g(s, "print_area_width")) || 0;
+  const band = calibrated > 0 ? calibrated : rollDefaultPrintWidthMm(paper);
+  return Math.min(paper, band);
+}
+
+/**
+ * Horizontal calibration shift in mm (±). Slides the printed band inside the
+ * paper so it lands on the head's real printable area. Positive = toward the
+ * physical right edge of the paper.
+ */
+export function rollShiftXMm(s) {
+  const shift = Number(g(s, "print_shift_x"));
+  return Number.isFinite(shift) ? shift : 0;
+}
+
+/**
+ * Physical left offset (mm) of the printed band inside the paper: centered
+ * band plus the calibration shift, clamped so the band never leaves the paper.
+ */
+export function rollBandLeftMm(s) {
+  const paper = rollPaperWidthMm(s);
+  const band = rollPrintWidthMm(s);
+  const centered = (paper - band) / 2;
+  const left = centered + rollShiftXMm(s);
+  return Math.min(Math.max(0, left), Math.max(0, paper - band));
 }
 
 export const HEAVY_NUM = { fontWeight: 900 };

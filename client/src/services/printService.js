@@ -12,7 +12,10 @@
  *
  * All callers should funnel through printContent() or printFullHtml() so silent
  * printing works consistently across POS receipts, invoices, statements, etc.
+ * Both resolve to a structured result: { mode: "silent"|"dialog", reason }.
  */
+
+import { resolveCalibration } from "./printCalibration";
 
 export function isElectronPrint() {
   return !!(typeof window !== "undefined" && window.electronAPI && typeof window.electronAPI.invoke === "function");
@@ -32,16 +35,25 @@ export function setPrinterSizeMap(map) {
 }
 
 /**
+ * Normalize a CSS page-size string to the size key used by the printer map and
+ * calibration store: "58mm" / "80mm" / custom "NNmm" / "A5" / "A4".
+ */
+export function sizeKeyForPageSize(pageSizeStr) {
+  if (!pageSizeStr) return "A4";
+  if (/^148mm/.test(pageSizeStr)) return "A5";
+  if (/^210mm/.test(pageSizeStr)) return "A4";
+  const roll = /^(\d+(?:\.\d+)?)mm\s+auto/.exec(pageSizeStr);
+  if (roll) return `${roll[1]}mm`;
+  return "A4";
+}
+
+/**
  * Given a CSS page-size string (e.g. "80mm auto", "210mm 297mm"),
  * return the printer name assigned to that size, or "" if none.
  */
 export function getPrinterForPageSize(pageSizeStr) {
   const map = getPrinterSizeMap();
-  if (!pageSizeStr) return map["A4"] || "";
-  if (pageSizeStr.startsWith("58mm"))  return map["58mm"] || "";
-  if (pageSizeStr.startsWith("80mm"))  return map["80mm"] || "";
-  if (pageSizeStr.startsWith("148mm")) return map["A5"]   || "";
-  return map["A4"] || "";
+  return map[sizeKeyForPageSize(pageSizeStr)] || "";
 }
 
 /** Return the list of installed printers (Electron only); [] in the browser. */
@@ -53,6 +65,31 @@ export async function listPrinters() {
   } catch {
     return [];
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Print job log — capped local history so failures are diagnosable    */
+/* and recent documents can be re-printed from settings.               */
+/* ------------------------------------------------------------------ */
+
+const JOB_LOG_KEY = "retailer_print_job_log";
+const JOB_LOG_MAX = 100;
+
+export function getPrintJobLog() {
+  try { return JSON.parse(localStorage.getItem(JOB_LOG_KEY) || "[]"); }
+  catch { return []; }
+}
+
+function appendJobLog(entry) {
+  try {
+    const log = getPrintJobLog();
+    log.unshift(entry);
+    localStorage.setItem(JOB_LOG_KEY, JSON.stringify(log.slice(0, JOB_LOG_MAX)));
+  } catch { /* logging must never break printing */ }
+}
+
+export function clearPrintJobLog() {
+  localStorage.removeItem(JOB_LOG_KEY);
 }
 
 /**
@@ -109,10 +146,16 @@ function printViaIframe(fullHtml, afterPrint) {
   });
 }
 
-/** Attempt silent print to a configured device. Resolves true only on success. */
+/**
+ * Attempt silent print to a configured device.
+ * Resolves { ok, reason } — reason explains a false `ok`.
+ */
 async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
-  if (!isElectronPrint() || !deviceName) return false;
+  if (!isElectronPrint()) return { ok: false, reason: "not_electron" };
+  if (!deviceName) return { ok: false, reason: "no_printer_mapped" };
   try {
+    const sizeKey = sizeKeyForPageSize(pageSizeStr);
+    const cal = resolveCalibration(deviceName, sizeKey);
     const res = await window.electronAPI.invoke("print:silent", {
       html: fullHtml,
       deviceName,
@@ -120,32 +163,50 @@ async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
       // The main process needs the paper size to pass an explicit pageSize to
       // webContents.print — CSS @page is ignored there and thermal jobs print blank.
       pageSizeStr: pageSizeStr || "",
+      // Per-printer geometry decisions made in the calibration wizard.
+      paperMode: cal.paperMode || "custom",
+      escposCut: !!cal.escposCut,
+      escposDrawer: !!cal.escposDrawer,
     });
-    return !!(res && res.success);
-  } catch {
-    return false;
+    if (res && res.success) return { ok: true, reason: null };
+    return { ok: false, reason: (res && res.error) || "print_failed" };
+  } catch (e) {
+    return { ok: false, reason: e && e.message ? e.message : "print_failed" };
   }
 }
 
 /**
  * Print an already-complete HTML document. Tries silent first (if a deviceName is
  * given and we're in Electron), otherwise falls back to the dialog.
+ * Resolves { mode: "silent"|"dialog", reason } — reason is why silent was skipped
+ * or failed (null when silent succeeded).
  */
-export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "" } = {}) {
-  const ok = await printSilently(fullHtml, deviceName, copies, pageSizeStr);
-  if (ok) {
+export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "", docType = "", docLabel = "" } = {}) {
+  const silent = await printSilently(fullHtml, deviceName, copies, pageSizeStr);
+  appendJobLog({
+    at: new Date().toISOString(),
+    doc_type: docType || "",
+    doc_label: docLabel || "",
+    printer: deviceName || "",
+    size: sizeKeyForPageSize(pageSizeStr),
+    copies: Math.max(1, Number(copies) || 1),
+    mode: silent.ok ? "silent" : "dialog",
+    ok: silent.ok,
+    reason: silent.reason,
+  });
+  if (silent.ok) {
     if (afterPrint) afterPrint();
-    return true;
+    return { mode: "silent", reason: null };
   }
   printViaIframe(fullHtml, afterPrint);
-  return false;
+  return { mode: "dialog", reason: silent.reason };
 }
 
 /**
  * Print inner document HTML using the standard print-frame wrapper. Preferred
  * entry point for receipt/invoice/report printing.
  */
-export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title } = {}) {
+export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "" } = {}) {
   const fullHtml = buildPrintDocument(contentHtml, pageSizeStr, title);
-  return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr });
+  return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr, docType, docLabel });
 }

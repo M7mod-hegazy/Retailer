@@ -1,17 +1,34 @@
 import React from "react";
-import { g, rollPrintWidthMm } from "../blocks/blockUtils";
+import { g, rollPaperWidthMm, rollPrintWidthMm, rollBandLeftMm } from "../blocks/blockUtils";
 
+/**
+ * Thermal roll container. The outer div is the physical PAPER width so the
+ * printed sheet maps 1:1 onto the roll; the inner div is the printable BAND
+ * (calibrated per printer, narrower than the paper) placed at its physical
+ * left offset. Positioning is left-based on purpose — it describes where the
+ * print head sits on the paper, which does not depend on text direction.
+ */
 export default function RollWrapper({ settings: s, children }) {
-  const widthMm = rollPrintWidthMm(s);
+  const paperMm = rollPaperWidthMm(s);
+  const bandMm = rollPrintWidthMm(s);
+  const bandLeftMm = rollBandLeftMm(s);
   return (
-    <div dir="rtl" style={{
-      fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
-      fontSize: `${g(s, "body_font_size")}px`,
-      lineHeight: 1.6,
-      width: `${widthMm}mm`, margin: "0 auto",
+    <div style={{
+      width: `${paperMm}mm`,
       boxSizing: "border-box",
-      padding: "2mm 1mm",
-      color: g(s, "accent_color"), background: "#fff",
-    }}>{children}</div>
+      background: "#fff",
+    }}>
+      <div dir="rtl" style={{
+        fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
+        fontSize: `${g(s, "body_font_size")}px`,
+        lineHeight: 1.6,
+        width: `${bandMm}mm`,
+        marginLeft: `${bandLeftMm}mm`,
+        marginRight: 0,
+        boxSizing: "border-box",
+        padding: "2mm 1mm",
+        color: g(s, "accent_color"), background: "#fff",
+      }}>{children}</div>
+    </div>
   );
 }

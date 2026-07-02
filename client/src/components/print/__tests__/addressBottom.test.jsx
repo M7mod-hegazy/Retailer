@@ -13,8 +13,9 @@ describe("address_position=bottom + receipt_header", () => {
     const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={S} />);
     expect(container.textContent).toContain("ترويسة مهمة");
     expect(container.textContent).toContain("العنوان في الأسفل");
-    // RollWrapper > [centered brand div, headtext, ...]; brand div must not hold the address.
-    const brandHeader = container.firstChild.firstChild;
+    // RollWrapper now nests [paper div > band div > centered brand div, headtext, ...];
+    // brand div must not hold the address.
+    const brandHeader = container.firstChild.firstChild.firstChild;
     expect(brandHeader.textContent).not.toContain("العنوان في الأسفل");
   });
 
