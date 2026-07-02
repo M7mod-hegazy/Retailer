@@ -355,6 +355,7 @@ export default function PrintPreviewModal({
       afterPrint,
       docType: docType || "",
       docLabel: operationLabel || "",
+      printFont: combinedSettings.print_font || "",
     });
     // Tell the user WHY the dialog opened instead of the fast silent path —
     // silent-silent fallbacks made real print problems undiagnosable.

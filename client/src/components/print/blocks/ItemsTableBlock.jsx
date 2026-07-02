@@ -138,7 +138,9 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
 
   const headCell = { padding: "0 4px 3px", fontWeight: 900, textAlign: "center", fontSize: "10px", color: "#fff" };
   const cell = { padding: "2px 4px", fontWeight: 700 };
-  const rb = "1px solid #d1d5db";
+  // Thermal printers are 1-bit: light-gray hairlines dither to nothing on
+  // paper. Roll tables must rule with pure black to actually print.
+  const rb = "1px solid #000";
 
   if (cols) {
     const displayCols = cols.filter(c => c.key !== "code");
@@ -151,7 +153,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
                 ...headCell,
                 textAlign: c.align || (c.key === "name" ? "right" : "center"),
                 ...(c.key === "name" ? { width: "60%" } : {}),
-                borderBottom: "2px solid #555",
+                borderBottom: "2px solid #000",
                 borderLeft: ci > 0 ? rb : "none",
               }}>
                 {c.key === "name" ? "الصنف" : (c.label || HEADER[c.key])}
@@ -184,10 +186,10 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
     <table style={{ width: "100%", fontSize, borderCollapse: "collapse", marginTop: "2px", border: rb }}>
       <thead>
         <tr style={{ background: "#000" }}>
-          <th style={{ ...headCell, width: "60%", textAlign: "right", borderBottom: "2px solid #555", borderLeft: rb }}>الصنف</th>
-          <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>كمية</th>
-          {showPrice && <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>سعر</th>}
-          <th style={{ ...headCell, borderBottom: "2px solid #555", borderLeft: rb }}>إجمالي</th>
+          <th style={{ ...headCell, width: "60%", textAlign: "right", borderBottom: "2px solid #000", borderLeft: rb }}>الصنف</th>
+          <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rb }}>كمية</th>
+          {showPrice && <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rb }}>سعر</th>}
+          <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rb }}>إجمالي</th>
         </tr>
       </thead>
       <tbody>

@@ -92,41 +92,10 @@ export function clearPrintJobLog() {
   localStorage.removeItem(JOB_LOG_KEY);
 }
 
-/**
- * Wrap inner document HTML in the standard print-frame document (RTL, zero
- * margins, table-friendly). Mirrors the markup PrintPreviewModal used inline.
- */
-export function buildPrintDocument(contentHtml, pageSizeStr, title = "طباعة") {
-  const cleaned = String(contentHtml || "").replace(/@page\s*\{[^}]*\}/g, "");
-  return `<!DOCTYPE html>
-<html lang="ar">
-<head>
-  <meta charset="utf-8">
-  <title>${title || "طباعة"}</title>
-  <style>
-    @page { size: ${pageSizeStr}; margin: 0; }
-    html { margin: 0; padding: 0; display: flex; justify-content: center; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      /* Tahoma/Segoe UI/Arial are always present on Windows and render Arabic
-         crisply on thermal printers; the web fonts are a best-effort upgrade
-         that the silent-print window usually can't load. */
-      font-family: "Tajawal", "Noto Sans Arabic", "Tahoma", "Segoe UI", Arial, sans-serif;
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-      color: #000; background: #fff;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 4px 6px; text-align: center; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    img { max-width: 100%; height: auto; }
-    .rpt-page-outer { page-break-inside: avoid; }
-  </style>
-</head>
-<body>${cleaned}</body>
-</html>`;
-}
+// Document shell + shared print CSS live in printDocument.js so the preview,
+// the Studio canvas, and the real print path can never drift apart.
+export { buildPrintDocument, getPrintBaseCss } from "./printDocument";
+import { buildPrintDocument as buildDoc } from "./printDocument";
 
 /** Print a fully-built HTML document via the hidden iframe (always shows dialog). */
 function printViaIframe(fullHtml, afterPrint) {
@@ -206,7 +175,7 @@ export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, aft
  * Print inner document HTML using the standard print-frame wrapper. Preferred
  * entry point for receipt/invoice/report printing.
  */
-export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "" } = {}) {
-  const fullHtml = buildPrintDocument(contentHtml, pageSizeStr, title);
+export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "", printFont = "" } = {}) {
+  const fullHtml = buildDoc(contentHtml, pageSizeStr, title, { printFont });
   return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr, docType, docLabel });
 }

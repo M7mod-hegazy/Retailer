@@ -1,5 +1,5 @@
 import React from "react";
-import { g, rollPaperWidthMm, rollPrintWidthMm, rollBandLeftMm } from "../blocks/blockUtils";
+import { g, rollPaperWidthMm, rollPrintWidthMm, rollBandLeftMm, rollClampFontPx } from "../blocks/blockUtils";
 
 /**
  * Thermal roll container. The outer div is the physical PAPER width so the
@@ -20,14 +20,16 @@ export default function RollWrapper({ settings: s, children }) {
     }}>
       <div dir="rtl" style={{
         fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
-        fontSize: `${g(s, "body_font_size")}px`,
+        fontSize: `${rollClampFontPx(g(s, "body_font_size"))}px`,
         lineHeight: 1.6,
         width: `${bandMm}mm`,
         marginLeft: `${bandLeftMm}mm`,
         marginRight: 0,
         boxSizing: "border-box",
         padding: "2mm 1mm",
-        color: g(s, "accent_color"), background: "#fff",
+        // Receipt body is always thermal-black; accent_color styles headings on
+        // the page family only — a light accent used to fade the whole receipt.
+        color: "#000", background: "#fff",
       }}>{children}</div>
     </div>
   );

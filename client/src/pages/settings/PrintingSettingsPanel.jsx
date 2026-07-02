@@ -57,9 +57,14 @@ const PAPER_OPTIONS = [
   { value: "A4",   label: "A4",   sub: "ورقة كاملة",       dims: "210 × 297mm", icon: FileBarChart2 },
 ];
 
+// Bundled families ship inside the app and are EMBEDDED into every print job
+// (real bold weights — no synthesized bold breaking apart on thermal heads).
+// System families rely on Windows fonts and embed nothing.
 const FONT_FAMILIES = [
-  { value: "Tahoma", label: "Tahoma — موصى به (حراري واضح)" },
-  { value: "Noto Sans Arabic", label: "Noto Sans Arabic" },
+  { value: "Tajawal", label: "Tajawal — موصى به (مضمّن، عربي واضح)" },
+  { value: "Cairo", label: "Cairo — مضمّن، عريض للإيصالات" },
+  { value: "Noto Sans Arabic", label: "Noto Sans Arabic — مضمّن، تغطية كاملة" },
+  { value: "Tahoma", label: "Tahoma — خط النظام" },
   { value: "sans-serif", label: "Arial — حديث"    },
   { value: "serif",      label: "Times — رسمي"    },
   { value: "monospace",  label: "Courier — حرارية" },
@@ -71,7 +76,7 @@ const DEFAULTS = {
   receipt_header: "أهلاً وسهلاً بكم",
   receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
   header_font_size: 16, body_font_size: 13, footer_font_size: 11,
-  item_font_size: 13, print_font: "Tahoma", logo_max_height: 48,
+  item_font_size: 13, print_font: "Tajawal", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
   print_area_width: 0, print_shift_x: 0,

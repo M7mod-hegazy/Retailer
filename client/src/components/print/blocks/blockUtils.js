@@ -2,7 +2,7 @@ export const DEFAULTS = {
   receipt_width: "80mm", invoice_prefix: "INV",
   receipt_header: "", receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
   header_font_size: 16, body_font_size: 12, footer_font_size: 10,
-  item_font_size: 12, print_font: "Tahoma", logo_max_height: 48,
+  item_font_size: 12, print_font: "Tajawal", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
   thermal_print_column_keys: null,
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
@@ -22,16 +22,56 @@ export const DEFAULTS = {
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
   address_font_size: 9, address_alignment: "right",
   tax_id_font_size: 9, tax_id_alignment: "right",
+  // Thermal contrast guard: coerce too-light colors to #000 on roll output
+  // (1-bit heads can't dither light grays into anything visible).
+  thermal_pure_black: true,
 };
 
 export const g = (s, k) => {
   const raw = (s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
-  if (k.startsWith("show_") || k.startsWith("logo_on_")) {
+  if (k.startsWith("show_") || k.startsWith("logo_on_") || k === "thermal_pure_black") {
     if (raw === 0 || raw === "0" || raw === "false") return false;
     if (raw === 1 || raw === "1" || raw === "true") return true;
   }
   return raw;
 };
+
+/**
+ * Perceived luminance (0=black..1=white) of a #rgb/#rrggbb color.
+ * Returns 0 for anything unparseable (named colors, rgb()) — treated as dark,
+ * i.e. left alone by the thermal guard.
+ */
+export function colorLuminance(color) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(color || "").trim());
+  if (!m) return 0;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const gr = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * gr + 0.0722 * b;
+}
+
+/**
+ * Thermal color guard: on 1-bit thermal paper, light colors dither to nothing.
+ * When `thermal_pure_black` is on (default), colors too light to print are
+ * coerced to pure black for the roll family.
+ */
+export function rollSafeColor(s, color) {
+  if (!color || !g(s, "thermal_pure_black")) return color;
+  return colorLuminance(color) > 0.55 ? "#000" : color;
+}
+
+/** Legibility floors for thermal output (203dpi heads blur smaller text). */
+export const ROLL_MIN_BODY_PX = 10;
+export const ROLL_MIN_TABLE_PX = 9;
+
+/** Clamp a roll font-size (px) to its legible floor. */
+export function rollClampFontPx(px, min = ROLL_MIN_BODY_PX) {
+  const n = Number(px);
+  if (!Number.isFinite(n) || n <= 0) return min;
+  return Math.max(min, n);
+}
 
 /** Priority order for thermal columns — highest first. Used for auto-hide when over limit. */
 const THERMAL_COL_PRIORITY = ["name", "qty", "total", "price", "unit", "discount"];

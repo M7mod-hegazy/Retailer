@@ -7,6 +7,7 @@ import PageWrapper from "./families/PageWrapper";
 import PageZoneLayout from "./families/PageZoneLayout";
 import { customInserts } from "./customBlockBridge";
 import { overrideCss, overrideBox } from "./layout/layoutModel";
+import { rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/blockUtils";
 
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
@@ -41,7 +42,14 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     if (!entry || !entry.families.includes(family)) return;
     const Block = entry.component;
     const selKey = overrideKey != null ? overrideKey : type;
-    const ov = perBlock[selKey] || {};
+    let ov = perBlock[selKey] || {};
+    // Thermal guard: on roll output, coerce too-light override colors to black
+    // and keep font sizes above the 203dpi legibility floor.
+    if (family === "roll" && (ov.color || ov.fontSize != null)) {
+      ov = { ...ov };
+      if (ov.color) ov.color = rollSafeColor(settings, ov.color);
+      if (ov.fontSize != null && ov.fontSize !== "") ov.fontSize = rollClampFontPx(ov.fontSize, ROLL_MIN_TABLE_PX);
+    }
     const props = { ...(entry.defaultProps || {}), ...ov, ...(extraProps || {}) };
     let node = <Block key={`${type}-${key++}`} invoice={invoice} settings={settings} props={props} family={family} editing={editing} />;
     const css = overrideCss(ov, `[data-ov="${selKey}"]`);
