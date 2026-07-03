@@ -92,6 +92,16 @@ export function clearPrintJobLog() {
   localStorage.removeItem(JOB_LOG_KEY);
 }
 
+/**
+ * Was this document already printed successfully on this terminal?
+ * Drives the "نسخة" reprint stamp. Log-based, so it survives page reloads but
+ * is intentionally machine-local (a reprint on another terminal won't know).
+ */
+export function hasPrintedBefore(docType, docId) {
+  if (!docType || !docId) return false;
+  return getPrintJobLog().some((e) => e.ok && e.doc_type === docType && e.doc_id === String(docId));
+}
+
 // Document shell + shared print CSS live in printDocument.js so the preview,
 // the Studio canvas, and the real print path can never drift apart.
 export { buildPrintDocument, getPrintBaseCss } from "./printDocument";
@@ -150,12 +160,13 @@ async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
  * Resolves { mode: "silent"|"dialog", reason } — reason is why silent was skipped
  * or failed (null when silent succeeded).
  */
-export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "", docType = "", docLabel = "" } = {}) {
+export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "", docType = "", docLabel = "", docId = "" } = {}) {
   const silent = await printSilently(fullHtml, deviceName, copies, pageSizeStr);
   appendJobLog({
     at: new Date().toISOString(),
     doc_type: docType || "",
     doc_label: docLabel || "",
+    doc_id: docId ? String(docId) : "",
     printer: deviceName || "",
     size: sizeKeyForPageSize(pageSizeStr),
     copies: Math.max(1, Number(copies) || 1),
@@ -175,7 +186,57 @@ export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, aft
  * Print inner document HTML using the standard print-frame wrapper. Preferred
  * entry point for receipt/invoice/report printing.
  */
-export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "", printFont = "" } = {}) {
+export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "", docId = "", printFont = "" } = {}) {
   const fullHtml = buildDoc(contentHtml, pageSizeStr, title, { printFont });
-  return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr, docType, docLabel });
+  return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr, docType, docLabel, docId });
+}
+
+/**
+ * Print a multi-part document (e.g. customer receipt + kitchen stub).
+ * Silent path: each part is its own print job, so the printer's cut — driver
+ * auto-cut or the calibrated ESC/POS cut sent after every job — lands between
+ * the parts. Dialog fallback: parts join into one document with page breaks
+ * (the dialog can't drive per-part cuts).
+ * parts: [{ contentHtml, copies? }]. Resolves { mode, reason }.
+ */
+export async function printMultipart({ parts = [], pageSizeStr, deviceName = "", afterPrint, title, docType = "", docLabel = "", printFont = "" } = {}) {
+  const usable = parts.filter((p) => p && p.contentHtml);
+  if (!usable.length) return { mode: "dialog", reason: "no_parts" };
+  if (usable.length === 1) {
+    return printContent({ contentHtml: usable[0].contentHtml, pageSizeStr, deviceName, copies: usable[0].copies || 1, afterPrint, title, docType, docLabel, printFont });
+  }
+
+  const joinedFallback = () => printContent({
+    contentHtml: usable.map((p) => `<div style="page-break-after: always;">${p.contentHtml}</div>`).join(""),
+    pageSizeStr, deviceName: "", afterPrint, title, docType, docLabel, printFont,
+  });
+
+  if (!isElectronPrint() || !deviceName) {
+    const res = await joinedFallback();
+    return { mode: "dialog", reason: res.reason || "no_printer_mapped" };
+  }
+
+  for (let i = 0; i < usable.length; i++) {
+    const fullHtml = buildDoc(usable[i].contentHtml, pageSizeStr, title, { printFont });
+    const silent = await printSilently(fullHtml, deviceName, usable[i].copies || 1, pageSizeStr);
+    appendJobLog({
+      at: new Date().toISOString(),
+      doc_type: docType || "",
+      doc_label: docLabel ? `${docLabel} (${i + 1}/${usable.length})` : `part ${i + 1}/${usable.length}`,
+      printer: deviceName,
+      size: sizeKeyForPageSize(pageSizeStr),
+      copies: usable[i].copies || 1,
+      mode: silent.ok ? "silent" : "dialog",
+      ok: silent.ok,
+      reason: silent.reason,
+    });
+    if (!silent.ok) {
+      // A part failed mid-run: surface the whole document in the dialog so
+      // nothing silently goes unprinted (the user can reprint what's missing).
+      await joinedFallback();
+      return { mode: "dialog", reason: silent.reason };
+    }
+  }
+  if (afterPrint) afterPrint();
+  return { mode: "silent", reason: null };
 }

@@ -6,6 +6,7 @@ export const DEFAULTS = {
   logo_alignment: "center", accent_color: "#0f172a",
   thermal_print_column_keys: null,
   margin_top: 4, margin_side: 4, qr_size: 44, qr_alignment: "right", qr_content: "",
+  qr_mode: "free_text", print_numerals: "western",
   // Thermal print-head calibration. A real 80mm/58mm head can only print across a
   // band narrower than the paper (≈72mm/48mm) and that band is often offset from
   // the paper edges, so a receipt laid out edge-to-edge gets clipped on one side
@@ -19,6 +20,7 @@ export const DEFAULTS = {
   show_phone: true, show_address: true, show_tax_id: true,
   show_branch: true, show_invoice_date: true,
   show_notes: true,
+  show_watermark: false, show_signature_lines: false, show_barcode_line: false,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
   address_font_size: 9, address_alignment: "right",
   tax_id_font_size: 9, tax_id_alignment: "right",
@@ -169,10 +171,33 @@ export function parseJsonArray(v) {
   try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
 }
 
-export function smartFormat(n) {
+const ARABIC_INDIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+
+/**
+ * Maps western digits 0-9 to Arabic-Indic ٠-٩ in `str` when settings have
+ * `print_numerals: "arabic"`; returns `str` unchanged otherwise (default
+ * "western"). Non-digit characters, including ".", pass through untouched.
+ * Only call this at display choke points (prices/qty/totals) — never on
+ * barcode content, QR content, or invoice numbers, which must stay
+ * machine-readable western digits.
+ */
+export function formatPrintDigits(s, str) {
+  const value = String(str);
+  if (g(s, "print_numerals") !== "arabic") return value;
+  return value.replace(/[0-9]/g, (d) => ARABIC_INDIC_DIGITS[Number(d)]);
+}
+
+/**
+ * Format a number to at most 2 decimal places for display. When `s` (settings)
+ * is passed, also applies `formatPrintDigits` — the shared choke point that
+ * lets item prices/qty/totals and money blocks honor `print_numerals`.
+ * Omitting `s` keeps the legacy western-digit behavior unchanged.
+ */
+export function smartFormat(n, s) {
   const num = Number(n || 0);
   const rounded = Math.round(num * 100) / 100;
-  return rounded.toString();
+  const str = rounded.toString();
+  return s !== undefined ? formatPrintDigits(s, str) : str;
 }
 
 export function computeTotals(invoice = {}, s = {}) {

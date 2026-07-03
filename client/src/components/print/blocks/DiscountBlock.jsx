@@ -10,13 +10,13 @@ export default function DiscountBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الخصم</span>
-        <span style={{ fontWeight: 700, color: "#dc2626" }}>- {currency} {smartFormat(totalDiscount)}</span>
+        <span style={{ fontWeight: 700, color: "#dc2626" }}>- {currency} {smartFormat(totalDiscount, s)}</span>
       </div>
     );
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ fontWeight: 700 }}>الخصم:</span><span style={HEAVY_VAL}>- {currency} {smartFormat(totalDiscount)}</span>
+      <span style={{ fontWeight: 700 }}>الخصم:</span><span style={HEAVY_VAL}>- {currency} {smartFormat(totalDiscount, s)}</span>
     </div>
   );
 }

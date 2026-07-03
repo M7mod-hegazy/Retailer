@@ -26,10 +26,10 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
             <div style={{ fontWeight: 700, marginBottom: "3px", color: accent }}>طريقة الدفع</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               {payments.map((p, i) => (
-                <span key={i}>{p.method_name || "نقداً"}: {currency} {smartFormat(p.amount)}</span>
+                <span key={i}>{p.method_name || "نقداً"}: {currency} {smartFormat(p.amount, s)}</span>
               ))}
               {paid < grandTotal && plan.length === 0 && (
-                <span style={{ color: "#dc2626" }}>المتبقي: {currency} {smartFormat(grandTotal - paid)}</span>
+                <span style={{ color: "#dc2626" }}>المتبقي: {currency} {smartFormat(grandTotal - paid, s)}</span>
               )}
             </div>
           </>
@@ -50,13 +50,13 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
                   <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
                     <td style={{ padding: "2px 4px", fontWeight: 700 }}>{r.installment_no ?? i + 1}</td>
                     <td style={{ padding: "2px 4px" }} dir="ltr">{fmtDate(r.due_date)}</td>
-                    <td style={{ padding: "2px 4px", textAlign: "left", fontWeight: 700 }}>{currency} {smartFormat(r.amount)}</td>
+                    <td style={{ padding: "2px 4px", textAlign: "left", fontWeight: 700 }}>{currency} {smartFormat(r.amount, s)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginTop: "3px", borderTop: `1px solid ${accent}`, paddingTop: "2px" }}>
-              <span>إجمالي الأقساط:</span><span dir="ltr">{currency} {smartFormat(planTotal)}</span>
+              <span>إجمالي الأقساط:</span><span dir="ltr">{currency} {smartFormat(planTotal, s)}</span>
             </div>
           </div>
         )}
@@ -70,12 +70,12 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
       {payments.map((p, i) => (
         <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ fontWeight: 700 }}>{p.method_name || "نقداً"}:</span>
-          <span style={HEAVY_VAL}>{currency} {smartFormat(p.amount)}</span>
+          <span style={HEAVY_VAL}>{currency} {smartFormat(p.amount, s)}</span>
         </div>
       ))}
       {paid > grandTotal && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ fontWeight: 700 }}>الباقي:</span><span style={HEAVY_VAL}>{currency} {smartFormat(change)}</span>
+          <span style={{ fontWeight: 700 }}>الباقي:</span><span style={HEAVY_VAL}>{currency} {smartFormat(change, s)}</span>
         </div>
       )}
       {plan.length > 0 && (
@@ -84,11 +84,11 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
           {plan.map((r, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ fontWeight: 700 }}>قسط {r.installment_no ?? i + 1} <span dir="ltr">{fmtDate(r.due_date)}</span>:</span>
-              <span dir="ltr" style={HEAVY_VAL}>{currency} {smartFormat(r.amount)}</span>
+              <span dir="ltr" style={HEAVY_VAL}>{currency} {smartFormat(r.amount, s)}</span>
             </div>
           ))}
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid #000", marginTop: "3px", paddingTop: "3px" }}>
-            <span>إجمالي الأقساط:</span><span dir="ltr">{currency} {smartFormat(planTotal)}</span>
+            <span>إجمالي الأقساط:</span><span dir="ltr">{currency} {smartFormat(planTotal, s)}</span>
           </div>
         </div>
       )}

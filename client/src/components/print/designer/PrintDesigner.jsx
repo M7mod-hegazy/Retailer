@@ -185,13 +185,18 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   };
 
   // ── columns (items_table) ────────────────────────────────────────────────
-  const columns = (fam.columns && fam.columns.items_table) || defaultColumns(family);
-  const setColumns = (cols) => setFamLayout((c) => ({ columns: { ...(c.columns || {}), items_table: cols } }));
-  const draftForRender = useMemo(() => {
-    const f = draft.layout[family];
-    const pb = { ...(f.perBlock || {}), items_table: { ...((f.perBlock || {}).items_table || {}), columns } };
-    return { ...draft, layout: { ...draft.layout, [family]: { ...f, perBlock: pb } } };
-  }, [draft, family, columns]);
+  // Canonical location is perBlock.items_table.columns — the same place the
+  // print renderer reads. (The old fam.columns store looked right in the
+  // designer but was silently dropped at print time; normalizeLayout migrates
+  // legacy saves.)
+  const columns = ((fam.perBlock || {}).items_table || {}).columns
+    || (fam.columns && fam.columns.items_table) // legacy pre-normalize saves
+    || defaultColumns(family);
+  const setColumns = (cols) => setFamLayout((c) => ({
+    perBlock: { ...(c.perBlock || {}), items_table: { ...((c.perBlock || {}).items_table || {}), columns: cols } },
+  }));
+  // What the canvas renders IS the draft — no re-injection, no preview drift.
+  const draftForRender = draft;
 
   const reset = () => commit({ ...draft, layout: { ...draft.layout, [family]: seedFamilyLayout(family) } });
 

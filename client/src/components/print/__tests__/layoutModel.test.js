@@ -9,11 +9,13 @@ describe("layoutModel", () => {
     expect(familyForSize("A4")).toBe("page");
   });
 
-  it("seeds both families with order, columns, empty inserted/perBlock", () => {
+  it("seeds families with order, canonical perBlock columns, empty inserted", () => {
     const fam = seedFamilyLayout("page");
     expect(fam.order.length).toBeGreaterThan(5);
     expect(fam.inserted).toEqual([]);
-    expect(fam.columns.items_table.length).toBe(defaultColumns("page").length);
+    // Columns seed in perBlock.items_table.columns — the location print reads.
+    expect(fam.perBlock.items_table.columns.length).toBe(defaultColumns("page").length);
+    expect(fam.columns).toBeUndefined();
   });
 
   it("ensureLayout is non-mutating and idempotent", () => {

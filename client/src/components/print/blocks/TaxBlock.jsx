@@ -13,13 +13,13 @@ export default function TaxBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الضريبة ({taxRate}%{inclusive ? " شاملة" : ""})</span>
-        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(taxAmount)}</span>
+        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(taxAmount, s)}</span>
       </div>
     );
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ fontWeight: 700 }}>ضريبة ({taxRate}%{inclusive ? " شاملة" : ""}):</span><span style={HEAVY_VAL}>{currency} {smartFormat(taxAmount)}</span>
+      <span style={{ fontWeight: 700 }}>ضريبة ({taxRate}%{inclusive ? " شاملة" : ""}):</span><span style={HEAVY_VAL}>{currency} {smartFormat(taxAmount, s)}</span>
     </div>
   );
 }

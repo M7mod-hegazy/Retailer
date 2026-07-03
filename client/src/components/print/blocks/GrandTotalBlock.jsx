@@ -9,7 +9,7 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 6px", background: accent, color: "#fff", borderRadius: "2px", marginTop: "3px" }}>
         <span style={{ fontWeight: 900 }}>الإجمالي</span>
-        <span style={{ fontWeight: 900 }}>{currency} {smartFormat(grandTotal)}</span>
+        <span style={{ fontWeight: 900 }}>{currency} {smartFormat(grandTotal, s)}</span>
       </div>
     );
   }
@@ -29,7 +29,7 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, family }) {
           الإجمالي
           <span style={{ marginRight: "5px", fontSize: "11px" }}>✦</span>
         </span>
-        <span style={{ fontFamily: "monospace" }}>{currency} {smartFormat(grandTotal)}</span>
+        <span style={{ fontFamily: "monospace" }}>{currency} {smartFormat(grandTotal, s)}</span>
       </div>
     </div>
   );

@@ -4,6 +4,12 @@ const COMMON = [
   "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
   "doc_number", "doc_date", "customer", "cashier",
   "items_table", "subtotal", "discount", "increase", "tax", "grand_total", "payments",
-  "notes", "footer_text", "qr",
+  "notes", "footer_text", "qr", "barcode",
 ];
-export const DEFAULT_ORDER = { roll: [...COMMON], page: [...COMMON] };
+// Page-only additions: `watermark` is an absolutely-positioned overlay so its
+// position in the order doesn't affect layout — placed first for clarity.
+// `signature_lines` is a footer element, placed after notes/footer/qr/barcode.
+export const DEFAULT_ORDER = {
+  roll: [...COMMON],
+  page: ["watermark", ...COMMON, "signature_lines"],
+};

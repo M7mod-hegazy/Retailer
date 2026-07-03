@@ -22,6 +22,11 @@ import CustomTextBlock from "./CustomTextBlock";
 import DividerBlock from "./DividerBlock";
 import SpacerBlock from "./SpacerBlock";
 import NotesBlock from "./NotesBlock";
+import WatermarkBlock from "./WatermarkBlock";
+import SignatureLinesBlock from "./SignatureLinesBlock";
+import BarcodeBlock from "./BarcodeBlock";
+import OrderNumberBlock from "./OrderNumberBlock";
+import ImageBlock from "./ImageBlock";
 
 const ALL = ["roll", "page"];
 
@@ -50,4 +55,9 @@ export const BLOCK_REGISTRY = {
   custom_text:         { component: CustomTextBlock,        label: "نص مخصص",        group: "inserted", families: ALL },
   divider:             { component: DividerBlock,           label: "فاصل",           group: "inserted", families: ALL },
   spacer:              { component: SpacerBlock,            label: "مسافة",          group: "inserted", families: ALL },
+  watermark:           { component: WatermarkBlock,         label: "علامة مائية",    group: "foot",     families: ["page"] },
+  signature_lines:     { component: SignatureLinesBlock,    label: "التوقيعات",      group: "foot",     families: ["page"] },
+  barcode:             { component: BarcodeBlock,           label: "باركود",         group: "foot",     families: ALL },
+  order_number:        { component: OrderNumberBlock,       label: "رقم الطلب",      group: "head",     families: ALL },
+  image:               { component: ImageBlock,             label: "صورة/بانر",      group: "brand",    families: ALL },
 };

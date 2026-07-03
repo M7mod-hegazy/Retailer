@@ -11,13 +11,13 @@ export default function IncreaseBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>رسوم إضافية</span>
-        <span style={{ fontWeight: 700, color: "#059669" }}>+ {currency} {smartFormat(totalIncrease)}</span>
+        <span style={{ fontWeight: 700, color: "#059669" }}>+ {currency} {smartFormat(totalIncrease, s)}</span>
       </div>
     );
   }
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ fontWeight: 700 }}>رسوم إضافية:</span><span style={HEAVY_VAL}>+ {currency} {smartFormat(totalIncrease)}</span>
+      <span style={{ fontWeight: 700 }}>رسوم إضافية:</span><span style={HEAVY_VAL}>+ {currency} {smartFormat(totalIncrease, s)}</span>
     </div>
   );
 }

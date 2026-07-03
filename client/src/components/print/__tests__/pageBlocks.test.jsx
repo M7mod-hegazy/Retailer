@@ -13,10 +13,12 @@ describe("page-family blocks", () => {
     expect(thead).toContain("#");
     expect(thead).toContain("سعر");
   });
-  it("items_table omits page-only columns on roll", () => {
+  it("items_table drops the price column on narrow 58mm rolls (80mm keeps it)", () => {
     const { component: Block } = BLOCK_REGISTRY.items_table;
-    const { container } = render(<Block invoice={INV} settings={S} props={{}} family="roll" />);
-    expect(container.querySelector("thead").textContent).not.toContain("سعر");
+    const narrow = render(<Block invoice={INV} settings={{ ...S, receipt_width: "58mm" }} props={{}} family="roll" />);
+    expect(narrow.container.querySelector("thead").textContent).not.toContain("سعر");
+    const wide = render(<Block invoice={INV} settings={{ ...S, receipt_width: "80mm" }} props={{}} family="roll" />);
+    expect(wide.container.querySelector("thead").textContent).toContain("سعر");
   });
   it("grand_total renders an accent box on page", () => {
     const { component: Block } = BLOCK_REGISTRY.grand_total;

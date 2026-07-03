@@ -1929,6 +1929,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           <div className="grid grid-cols-2 gap-4 mb-4">
             {cf("print_font",      "عائلة الخط",     null, <StyledSelect value={get(s,"print_font")}      onChange={e => onChange("print_font", e.target.value)}       options={FONT_FAMILIES} />)}
             {cf("logo_alignment",  "محاذاة الشعار",  null, <StyledSelect value={get(s,"logo_alignment")}  onChange={e => onChange("logo_alignment", e.target.value)}   options={[{value:"center",label:"وسط"},{value:"right",label:"يمين"},{value:"left",label:"يسار"}]} />)}
+            {cf("print_numerals",  "أرقام الطباعة",  null, <StyledSelect value={get(s,"print_numerals") || "western"} onChange={e => onChange("print_numerals", e.target.value)} options={[{value:"western",label:"إنجليزية 123"},{value:"arabic",label:"عربية ١٢٣"}]} />)}
           </div>
           <div className="grid grid-cols-2 gap-4">
             {cf("header_font_size", "خط اسم الشركة", null, <Stepper value={get(s,"header_font_size")} onChange={v => onChange("header_font_size", v)} min={10} max={32} unit="px" />)}
@@ -2013,6 +2014,13 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {get(s, "show_qr") !== false && (
           <section>
             <SectionLabel icon={QrCode} title="رمز QR" hint="تحكم في حجم ومحاذاة رمز QR في أسفل المستند" />
+            <div className="mb-3">
+              {cf("qr_mode", "نوع محتوى رمز QR", "فاتورة إلكترونية ZATCA يولّد رمز TLV متوافق مع هيئة الزكاة والضريبة السعودية",
+                <StyledSelect value={get(s,"qr_mode") || "free_text"} onChange={e => onChange("qr_mode", e.target.value)} options={[
+                  {value:"free_text", label:"نص حر"},
+                  {value:"zatca", label:"فاتورة إلكترونية ZATCA"},
+                ]} />)}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               {cf("qr_size", "حجم رمز QR", null, <Stepper value={get(s,"qr_size")} onChange={v => onChange("qr_size", v)} min={28} max={100} unit="px" />)}
               {cf("qr_alignment", "محاذاة رمز QR", null,

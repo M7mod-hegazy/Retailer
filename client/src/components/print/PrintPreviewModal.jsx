@@ -7,11 +7,11 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
-import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint } from "../../services/printService";
+import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
 import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintDesigner from "./designer/PrintDesigner";
-import { familyForSize } from "./layout/layoutModel";
+import { familyForSize, resolveEffectiveLayout } from "./layout/layoutModel";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
 
@@ -60,6 +60,7 @@ export default function PrintPreviewModal({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [docSettings, setDocSettings] = useState({});
   const [fetchedGlobalSettings, setFetchedGlobalSettings] = useState({});
+  const [globalScopeSettings, setGlobalScopeSettings] = useState({});
   const [reportPrintKeys, setReportPrintKeys] = useState([]);
   const [printPage, setPrintPage] = useState(1);
   const [totalPrintPages, setTotalPrintPages] = useState(1);
@@ -128,6 +129,11 @@ export default function PrintPreviewModal({
       });
     api.get("/api/settings").then((r) => {
       if (!cancelled && r.data?.data) setFetchedGlobalSettings(r.data.data);
+    }).catch(() => {});
+    // The "_global" scope row: the shared default layout every doc type
+    // inherits unless its own layout overrides it (resolveEffectiveLayout).
+    api.get("/api/print-settings-per-doc/_global").then((r) => {
+      if (!cancelled && r.data?.data) setGlobalScopeSettings(r.data.data);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [docType, open]);
@@ -222,10 +228,20 @@ export default function PrintPreviewModal({
   const reportFitTone = reportFitScore <= reportCapacity ? "green"
     : reportFitScore <= reportCapacity + 1.5 ? "amber" : "red";
 
+  // Merge order (low → high): settings table → props → _global scope flat
+  // fields → per-doc flat fields; layout is merged structurally per family so
+  // a doc inherits the _global design until it overrides specific pieces.
+  const effectiveLayout = {
+    roll: resolveEffectiveLayout(globalScopeSettings, docSettings, "roll"),
+    page: resolveEffectiveLayout(globalScopeSettings, docSettings, "page"),
+  };
+  const { layout: _gsLayout, ...globalScopeFlat } = globalScopeSettings || {};
   const combinedSettingsBase = {
     ...(fetchedGlobalSettings || {}),
     ...(globalSettings || {}),
+    ...globalScopeFlat,
     ...docSettings,
+    layout: effectiveLayout,
     ...(operationLabel ? { receipt_footer: operationLabel } : {}),
     ...(isReportDoc ? {
       report_print_column_keys: reportPrintKeys,
@@ -346,15 +362,34 @@ export default function PrintPreviewModal({
     print_failed: "فشلت الطباعة الصامتة — سيُفتح مربع حوار الطباعة",
   };
 
+  // "نسخة" reprint stamp (per-doc opt-in): injected into the print HTML only,
+  // so originals and the on-screen preview stay clean. Roll gets a bordered
+  // line up top; page gets a corner badge (WatermarkBlock covers full-page
+  // watermarking separately).
+  const stampEnabled = (() => {
+    const v = combinedSettings.reprint_stamp;
+    return !(v === undefined || v === null || v === false || v === 0 || v === "0" || v === "false" || v === "");
+  })();
+  const docId = invoice?.invoice_number || invoice?.doc_number || invoice?.number || invoice?.id || "";
+
+  function withReprintStamp(contentHtml) {
+    if (!stampEnabled || !hasPrintedBefore(docType, docId)) return contentHtml;
+    const stamp = isThermal
+      ? `<div style="text-align:center;font-weight:900;font-size:13px;border:1px solid #000;margin:1mm auto 2mm;padding:0.5mm 4mm;width:fit-content;">نسخة — إعادة طباعة</div>`
+      : `<div style="position:absolute;top:4mm;left:6mm;transform:rotate(-8deg);border:2px solid #b91c1c;color:#b91c1c;font-weight:900;font-size:16px;padding:1mm 4mm;opacity:0.85;">نسخة</div>`;
+    return stamp + contentHtml;
+  }
+
   async function buildIframeAndPrint(contentHtml, pageSizeStr, afterPrint) {
     const result = await printContent({
-      contentHtml,
+      contentHtml: withReprintStamp(contentHtml),
       pageSizeStr,
       deviceName: getPrinterForPageSize(pageSizeStr),
       title: operationLabel || "طباعة",
       afterPrint,
       docType: docType || "",
       docLabel: operationLabel || "",
+      docId,
       printFont: combinedSettings.print_font || "",
     });
     // Tell the user WHY the dialog opened instead of the fast silent path —

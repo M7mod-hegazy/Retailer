@@ -9,7 +9,7 @@ export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
         <span style={{ color: "#64748b" }}>الإجمالي الفرعي</span>
-        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(subtotal)}</span>
+        <span style={{ fontWeight: 700 }}>{currency} {smartFormat(subtotal, s)}</span>
       </div>
     );
   }
@@ -18,7 +18,7 @@ export default function SubtotalBlock({ invoice = {}, settings: s, family }) {
   if (Math.abs(subtotal - grandTotal) < 0.01) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ fontWeight: 700 }}>الإجمالي:</span><span style={HEAVY_VAL}>{currency} {smartFormat(subtotal)}</span>
+      <span style={{ fontWeight: 700 }}>الإجمالي:</span><span style={HEAVY_VAL}>{currency} {smartFormat(subtotal, s)}</span>
     </div>
   );
 }

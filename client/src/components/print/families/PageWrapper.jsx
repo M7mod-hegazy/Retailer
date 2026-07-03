@@ -9,6 +9,9 @@ export default function PageWrapper({ settings: s, size = "A4", children }) {
     <div dir="rtl" style={{
       width: w,
       padding: "2mm 2mm",
+      // Positioned ancestor for absolute overlays (WatermarkBlock) so they
+      // clip to the printed sheet, not some further-up container.
+      position: "relative",
       fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
       fontSize: `${g(s, "body_font_size")}px`,
       // Bolder, near-black base for the whole A4/A5 sheet so text and numbers

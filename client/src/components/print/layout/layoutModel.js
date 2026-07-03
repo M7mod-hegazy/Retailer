@@ -8,6 +8,7 @@
 // table columns, margins) live under `layout.<family>`.
 
 import { DEFAULT_ORDER } from "../families/defaultOrder";
+import { mergeFamilyLayouts, normalizeLayout } from "../../../../../shared/printLayout";
 
 export const FAMILIES = ["roll", "page"];
 
@@ -98,10 +99,26 @@ export function seedFamilyLayout(family) {
   return {
     order: [...DEFAULT_ORDER[family]],
     inserted: [],
-    perBlock: {},
-    columns: { items_table: defaultColumns(family) },
+    // Columns live in perBlock.items_table.columns — the location the print
+    // renderer reads. (The old top-level `columns` bag never reached paper.)
+    perBlock: { items_table: { columns: defaultColumns(family) } },
     margins: {},
   };
+}
+
+// Re-exported for client callers; implementation is shared with the server
+// route + migration so saved layouts normalize identically everywhere.
+export { normalizeLayout, mergeFamilyLayouts };
+
+/**
+ * Effective layout for one family: _global scope layout under the per-doc
+ * layout (per-doc wins), both normalized first. Either argument may be a full
+ * settings object ({ layout: {...} }) or null.
+ */
+export function resolveEffectiveLayout(globalScopeSettings, docSettings, family) {
+  const gl = normalizeLayout(globalScopeSettings || {}).settings.layout || {};
+  const dl = normalizeLayout(docSettings || {}).settings.layout || {};
+  return mergeFamilyLayouts(gl[family], dl[family]);
 }
 
 // Returns a NEW settings object with layout.roll / layout.page seeded if absent.

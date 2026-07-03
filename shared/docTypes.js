@@ -6,4 +6,10 @@ const DOC_TYPES = [
   "ajal_full_statement", "cheque_register", "payment_receipt", "daily_treasury",
   "payment_methods_report", "reports_generic",
 ];
-module.exports = { DOC_TYPES };
+
+// Rows the print-settings store accepts: every doc type plus the pseudo-scope
+// "_global" — the shared default layout every doc inherits unless it overrides.
+// Kept separate so "_global" never leaks into doc-type pickers/iterators.
+const LAYOUT_SCOPES = [...DOC_TYPES, "_global"];
+
+module.exports = { DOC_TYPES, LAYOUT_SCOPES };

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { g } from "./blockUtils";
+import { g, computeTotals } from "./blockUtils";
+import { buildZatcaTlv } from "../../../../../shared/zatcaQr";
 
-function buildQrContent(invoice = {}, settings = {}) {
+function buildFreeTextContent(invoice = {}, settings = {}) {
   const custom = g(settings, "qr_content");
   if (custom) return custom;
   const data = {
@@ -13,6 +14,34 @@ function buildQrContent(invoice = {}, settings = {}) {
     inv: invoice.invoice_no || invoice.invoice_number || "",
   };
   return JSON.stringify(data);
+}
+
+// ZATCA simplified-invoice QR: TLV-encoded seller/VAT/timestamp/total/vat.
+// Returns null (never throws) when required settings are missing, so the
+// caller can fall back to the free-text QR instead of crashing the receipt.
+function buildZatcaContent(invoice = {}, settings = {}) {
+  const sellerName = g(settings, "company_name");
+  const vatNumber = g(settings, "tax_id");
+  if (!sellerName || !vatNumber) return null;
+  const { grandTotal, taxAmount } = computeTotals(invoice, settings);
+  const timestamp = invoice.created_at || new Date().toISOString();
+  return buildZatcaTlv({ sellerName, vatNumber, timestamp, total: grandTotal, vat: taxAmount });
+}
+
+// `qr_mode`: "free_text" (default, legacy JSON/custom content) or "zatca"
+// (Saudi e-invoice TLV QR). Any failure building the ZATCA payload — missing
+// settings, a thrown error — silently falls back to free-text so a
+// misconfigured ZATCA mode never breaks receipt printing.
+function buildQrContent(invoice = {}, settings = {}) {
+  if (g(settings, "qr_mode") === "zatca") {
+    try {
+      const zatca = buildZatcaContent(invoice, settings);
+      if (zatca) return zatca;
+    } catch {
+      // fall through to free-text
+    }
+  }
+  return buildFreeTextContent(invoice, settings);
 }
 
 const alignMap = {
@@ -27,6 +56,9 @@ export default function QrBlock({ invoice = {}, settings: s, family }) {
   const size = g(s, "qr_size");
   const alignment = g(s, "qr_alignment") || "right";
   const customContent = g(s, "qr_content");
+  const qrMode = g(s, "qr_mode") || "free_text";
+  const companyName = g(s, "company_name");
+  const taxId = g(s, "tax_id");
   const [dataUrl, setDataUrl] = useState(null);
 
   useEffect(() => {
@@ -47,7 +79,7 @@ export default function QrBlock({ invoice = {}, settings: s, family }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [size, customContent, invoice?.total, invoice?.created_at, invoice?.tax_amount, invoice?.invoice_no]);
+  }, [size, customContent, qrMode, companyName, taxId, invoice?.total, invoice?.created_at, invoice?.tax_amount, invoice?.invoice_no]);
 
   const justifyContent = alignMap[alignment] || "flex-end";
 

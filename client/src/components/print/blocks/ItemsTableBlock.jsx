@@ -1,5 +1,5 @@
 import React from "react";
-import { g, smartFormat, resolveThermalColumns, defaultThermalKeys, rollPaperWidthMm } from "./blockUtils";
+import { g, smartFormat, formatPrintDigits, resolveThermalColumns, defaultThermalKeys, rollPaperWidthMm } from "./blockUtils";
 
 const lineTotalOf = (line) =>
   ((Number(line.unit_price) || Number(line.unit_cost) || 0) * Number(line.quantity)) - (Number(line.discount_amount) || 0);
@@ -14,16 +14,16 @@ const nameOf = (line) => {
   return base;
 };
 const unitOf = (line) => line.unit_name || line.sold_unit_name || "";
-const discountOf = (line) => smartFormat(Number(line.discount_amount) || 0);
+const discountOf = (line, s) => smartFormat(Number(line.discount_amount) || 0, s);
 
 const VALUE = {
   code: (line) => codeOf(line),
   name: (line) => nameOf(line),
   unit: (line) => unitOf(line),
-  qty: (line) => line.quantity,
-  price: (line) => smartFormat(priceOf(line)),
-  discount: (line) => discountOf(line),
-  total: (line) => smartFormat(lineTotalOf(line)),
+  qty: (line, s) => formatPrintDigits(s, String(line.quantity)),
+  price: (line, s) => smartFormat(priceOf(line), s),
+  discount: (line, s) => discountOf(line, s),
+  total: (line, s) => smartFormat(lineTotalOf(line), s),
 };
 const HEADER = { code: "كود", name: "المنتج", unit: "الوحدة", qty: "كمية", price: "سعر", discount: "الخصم", total: "إجمالي" };
 
@@ -90,7 +90,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
                     padding: "3px 6px", fontWeight: 700, ...cellBorder,
                     ...(c.key === "code" ? { fontSize: "10px", color: "#334155", fontFamily: "monospace" } : {}),
                     ...(c.key === "total" ? { fontWeight: 800 } : {}),
-                  }}>{VALUE[c.key](line)}</td>
+                  }}>{VALUE[c.key](line, s)}</td>
                 ))}
               </tr>
             ))}
@@ -116,9 +116,9 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
               <td style={{ padding: "3px 6px", color: "#475569", fontWeight: 700 }}>{i + 1}</td>
               {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "10px", color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{codeOf(line)}</td>}
               <td style={{ padding: "3px 6px", fontWeight: 700 }}>{nameOf(line)}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{line.quantity}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{smartFormat(priceOf(line))}</td>
-              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 800 }}>{smartFormat(lineTotalOf(line))}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{formatPrintDigits(s, String(line.quantity))}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{smartFormat(priceOf(line), s)}</td>
+              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 800 }}>{smartFormat(lineTotalOf(line), s)}</td>
             </tr>
           ))}
         </tbody>
@@ -172,7 +172,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
                   borderBottom: rb,
                   borderLeft: ci > 0 ? rb : "none",
                 }}>
-                  {c.key === "name" ? mergedItemName(line) : VALUE[c.key](line)}
+                  {c.key === "name" ? mergedItemName(line) : VALUE[c.key](line, s)}
                 </td>
               ))}
             </tr>
@@ -196,9 +196,9 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         {lines.map((line, i) => (
           <tr key={i}>
             <td style={{ ...cell, textAlign: "right", width: "60%", wordBreak: "break-word", borderBottom: rb, borderLeft: rb }}>{mergedItemName(line)}</td>
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{line.quantity}</td>
-            {showPrice && <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(priceOf(line))}</td>}
-            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(lineTotalOf(line))}</td>
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{formatPrintDigits(s, String(line.quantity))}</td>
+            {showPrice && <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(priceOf(line), s)}</td>}
+            <td style={{ ...cell, textAlign: "center", whiteSpace: "nowrap", borderBottom: rb, borderLeft: rb }}>{smartFormat(lineTotalOf(line), s)}</td>
           </tr>
         ))}
       </tbody>

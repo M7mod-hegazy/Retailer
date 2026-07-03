@@ -14,8 +14,9 @@ describe("block registry", () => {
   it("computes grand total = subtotal - discount + tax", () => {
     const { component: Block } = BLOCK_REGISTRY.grand_total;
     const { container } = render(<Block invoice={INV} settings={S} props={{}} family="roll" />);
-    // 200 - 0 + 15% = 230.00
-    expect(container.textContent).toContain("230.00");
+    // 200 - 0 + 15% = 230 (smartFormat prints no trailing decimal padding)
+    expect(container.textContent).toContain("230");
+    expect(container.textContent).toContain("الإجمالي");
   });
   it("doc_title renders props.title on page, nothing on roll", () => {
     const { component: Block } = BLOCK_REGISTRY.doc_title;
