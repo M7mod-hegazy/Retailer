@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildZatcaTlv, formatZatcaAmount } from "../../../../../shared/zatcaQr";
+import { buildZatcaTlv, formatZatcaAmount } from "@shared/zatcaQr";
 
 // Manually assemble a TLV field the same way the ZATCA spec describes it —
 // independent of shared/zatcaQr.js internals — so this test doesn't just

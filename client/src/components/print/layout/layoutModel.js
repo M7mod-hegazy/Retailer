@@ -8,7 +8,7 @@
 // table columns, margins) live under `layout.<family>`.
 
 import { DEFAULT_ORDER } from "../families/defaultOrder";
-import { mergeFamilyLayouts, normalizeLayout } from "../../../../../shared/printLayout";
+import { mergeFamilyLayouts, normalizeLayout } from "@shared/printLayout";
 
 export const FAMILIES = ["roll", "page"];
 

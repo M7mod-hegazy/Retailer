@@ -4,8 +4,8 @@
 // better-sqlite3 surface the migration touches: prepare().get/all/run.
 import { describe, it, expect } from "vitest";
 import { up } from "../../../../../electron/migrations/162_normalize_print_layouts";
-import { normalizeLayout } from "../../../../../shared/printLayout";
-import { DOC_TYPES, LAYOUT_SCOPES } from "../../../../../shared/docTypes";
+import { normalizeLayout } from "@shared/printLayout";
+import { DOC_TYPES, LAYOUT_SCOPES } from "@shared/docTypes";
 
 const COLS = [{ key: "name", label: "الصنف", visible: true, align: "right" }];
 

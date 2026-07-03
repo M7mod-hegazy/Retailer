@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { g, computeTotals } from "./blockUtils";
-import { buildZatcaTlv } from "../../../../../shared/zatcaQr";
+import { buildZatcaTlv } from "@shared/zatcaQr";
 
 function buildFreeTextContent(invoice = {}, settings = {}) {
   const custom = g(settings, "qr_content");

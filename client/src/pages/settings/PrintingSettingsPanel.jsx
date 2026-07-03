@@ -1991,17 +1991,12 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             {tog("show_notes",           "ملاحظات الفاتورة", "الملاحظة المسجلة على المستند")}
             {tog("show_footer",          "التذييل النصي",    "رسالة الشكر")}
             {tog("show_qr",              "رمز QR",           "رمز التحقق")}
-            {tog("show_barcode_line",    "باركود المنتج",    "لكل صنف")}
+            {tog("show_barcode_line",    "باركود المستند",   "رقم المستند كباركود قابل للمسح")}
             {tog("show_item_code",       "كود المنتج (SKU)",  "رمز الصنف في جدول الأصناف")}
           </div>
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">ظهور الشعار في المستندات</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {tog("logo_on_invoices", "فواتير A4/A5", "شعار الشركة في فواتير A4")}
-              {tog("logo_on_receipts", "إيصالات حرارية", "شعار الشركة في إيصالات 58/80mm")}
-              {tog("logo_on_reports", "تقارير", "شعار الشركة في رأس التقارير")}
-            </div>
-          </div>
+          {/* logo_on_invoices/receipts/reports toggles removed: nothing in the
+              live print path ever read them (only orphaned legacy renderers
+              did). Per-document logo visibility = show_logo in each doc tab. */}
         </section>
 
         {/* Thermal Columns */}

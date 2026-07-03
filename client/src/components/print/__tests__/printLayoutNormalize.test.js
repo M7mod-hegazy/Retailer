@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeLayout, mergeFamilyLayouts } from "../../../../../shared/printLayout";
+import { normalizeLayout, mergeFamilyLayouts } from "@shared/printLayout";
 
 const COLS = [
   { key: "name", label: "الصنف", visible: true, align: "right" },

@@ -3,12 +3,14 @@ import { g } from "../blocks/blockUtils";
 
 const SECTION = {
   logo: "brand", company_name: "brand", branch: "brand", address: "brand", tax_id: "brand",
+  image: "brand",
   receipt_header_text: "headtext",
   doc_number: "meta", doc_date: "meta", customer: "meta", cashier: "meta",
+  order_number: "meta",
   items_table: "items",
   subtotal: "totals", discount: "totals", increase: "totals", tax: "totals", grand_total: "totals",
   payments: "payments",
-  footer_text: "footer", qr: "qr",
+  footer_text: "footer", qr: "qr", barcode: "qr",
 };
 const GAP_BEFORE = { meta: "6px", items: "8px", totals: "8px", payments: "6px", footer: "10px" };
 

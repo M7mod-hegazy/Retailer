@@ -75,6 +75,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     return (
       <PageWrapper settings={settings} size={size}>
         <PageZoneLayout items={items} invoice={invoice} settings={settings} />
+        <PageOverlays overlays={famLayout.overlays} invoice={invoice} />
       </PageWrapper>
     );
   }
@@ -83,6 +84,53 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
       <RollZoneLayout items={items} settings={settings} />
     </RollWrapper>
   );
+}
+
+/**
+ * Free-position overlay elements for the page family (hybrid positioning):
+ * absolutely-placed text/image/stamp elements at exact mm coordinates inside
+ * the sheet (PageWrapper is position:relative). Stored as
+ * layout.page.overlays = [{ id, type, xMm, yMm, widthMm?, props }].
+ * The flow-based zone layout stays authoritative for document content; these
+ * are decorations (stamps, badges, extra images) the Studio drags around.
+ */
+function PageOverlays({ overlays, invoice = {} }) {
+  if (!Array.isArray(overlays) || !overlays.length) return null;
+  return overlays.map((o) => {
+    if (!o || o.xMm == null || o.yMm == null) return null;
+    const p = o.props || {};
+    const base = {
+      position: "absolute",
+      left: `${o.xMm}mm`,
+      top: `${o.yMm}mm`,
+      ...(o.widthMm ? { width: `${o.widthMm}mm` } : {}),
+      ...(p.angle ? { transform: `rotate(${p.angle}deg)` } : {}),
+      pointerEvents: "none",
+    };
+    if (o.type === "image" && p.src) {
+      return <img key={o.id} data-overlay={o.id} src={p.src} alt="" style={{ ...base, maxWidth: o.widthMm ? undefined : "40mm" }} />;
+    }
+    if (o.type === "stamp") {
+      return (
+        <div key={o.id} data-overlay={o.id} style={{
+          ...base,
+          border: `2px solid ${p.color || "#b91c1c"}`, color: p.color || "#b91c1c",
+          fontWeight: 900, fontSize: `${p.fontSize || 14}px`, padding: "1mm 3mm",
+          textAlign: "center", opacity: p.opacity != null ? p.opacity : 0.9,
+        }}>{p.text || ""}</div>
+      );
+    }
+    // default: free text
+    return (
+      <div key={o.id} data-overlay={o.id} style={{
+        ...base,
+        fontSize: `${p.fontSize || 12}px`,
+        fontWeight: p.bold ? 900 : 600,
+        color: p.color || "#0f172a",
+        textAlign: p.align || "right",
+      }}>{p.text || ""}</div>
+    );
+  });
 }
 
 const HANDLE = { position: "absolute", width: 10, height: 10, background: "#fff", border: "2px solid #7c3aed", borderRadius: 2, zIndex: 30, boxShadow: "0 1px 2px rgba(0,0,0,0.25)" };

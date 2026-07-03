@@ -10,6 +10,7 @@ import {
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import { ensureLayout, seedFamilyLayout, SHOW_KEY, defaultColumns, newInsertId } from "../layout/layoutModel";
+import { printContent, getPrinterForPageSize } from "../../../services/printService";
 
 const MOCK = {
   invoice_no: "INV-2025-0001",
@@ -343,15 +344,18 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
   const testPrint = () => {
     const html = printRef.current ? printRef.current.innerHTML : "";
     const pageSize = size === "58mm" ? "58mm auto" : size === "80mm" ? "80mm auto" : size === "A5" ? "148mm 210mm" : "210mm 297mm";
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
-    document.body.appendChild(iframe);
-    const idoc = iframe.contentWindow.document;
-    idoc.open();
-    idoc.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>@page{size:${pageSize};margin:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Tajawal","Noto Sans Arabic",system-ui,sans-serif;direction:rtl;color:#0f172a;background:#fff}table{width:100%;border-collapse:collapse}</style></head><body>${html.replace(/@page\s*\{[^}]*\}/g, "")}</body></html>`);
-    idoc.close();
-    iframe.contentWindow.focus();
-    requestAnimationFrame(() => { iframe.contentWindow.print(); setTimeout(() => iframe.parentNode && iframe.parentNode.removeChild(iframe), 2000); });
+    // Same pipeline as real printing (shared document shell, embedded fonts,
+    // calibration, silent path + job log) — the old hand-rolled iframe CSS
+    // drifted from what actually printed.
+    printContent({
+      contentHtml: html,
+      pageSizeStr: pageSize,
+      deviceName: getPrinterForPageSize(pageSize),
+      title: "طباعة تجريبية",
+      docType: docType || "designer-test",
+      docLabel: "طباعة تجريبية من المحرر",
+      printFont: merged.print_font || "",
+    });
   };
 
   if (!open) return null;
@@ -370,9 +374,10 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
 
   return createPortal((
     <div dir="rtl" className="fixed inset-0 z-[9999] flex flex-col bg-slate-100">
-      {/* hidden clean render for test print */}
+      {/* hidden clean render for test print — uses the SAME invoice data as
+          the canvas, so the "اختبار" stress toggle test-prints what you see */}
       <div ref={printRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none", width: SHEET_W[size] }}>
-        <LayoutRenderer family={family} size={size} invoice={MOCK} settings={merged} layout={draftForRender.layout} />
+        <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} />
       </div>
 
       {/* Top bar */}
@@ -481,9 +486,14 @@ export default function PrintDesigner({ open = true, onClose, docType, label, in
               ))}
             </div>
           ) : (
-            <div ref={sheetRef} className="mx-auto" style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
-              {showRuler && renderRuler({ size, contentMm, pageH, merged })}
-              <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} editing designer={designer} />
+            // m-auto inside a min-h-full flex row centers the sheet on BOTH
+            // axes while staying scroll-safe when the sheet outgrows the
+            // viewport (plain flex centering clips the top edge on overflow).
+            <div className="flex min-h-full w-full">
+              <div ref={sheetRef} className="m-auto" style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "center center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+                {showRuler && renderRuler({ size, contentMm, pageH, merged })}
+                <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={merged} layout={draftForRender.layout} editing designer={designer} />
+              </div>
             </div>
           )}
 

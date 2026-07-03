@@ -3,11 +3,10 @@
 // tax invoice" QR spec: tag 1 = seller name, 2 = VAT registration number,
 // 3 = invoice timestamp (ISO 8601), 4 = invoice total incl. VAT, 5 = VAT amount.
 //
-// Pure CommonJS module usable from both the Node server and the browser
-// client bundle (Vite handles the CJS→ESM interop the same way it does for
-// shared/docTypes.js) — no Node-only APIs. UTF-8 encoding goes through
-// TextEncoder with a Buffer fallback; Base64 goes through btoa with a Buffer
-// fallback, so this runs unmodified in the renderer, in Node, and in tests.
+// ESM module consumed by the browser client bundle. No Node-only APIs. UTF-8
+// encoding goes through TextEncoder with a Buffer fallback; Base64 goes through
+// btoa with a Buffer fallback, so this runs unmodified in the renderer, in Node,
+// and in tests.
 
 /** Encode a JS string to an array of UTF-8 bytes. */
 function utf8Bytes(str) {
@@ -85,4 +84,4 @@ function buildZatcaTlv(opts) {
   return bytesToBase64(allBytes);
 }
 
-module.exports = { buildZatcaTlv, formatZatcaAmount };
+export { buildZatcaTlv, formatZatcaAmount };
