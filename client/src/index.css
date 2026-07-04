@@ -2554,18 +2554,14 @@ select {
   box-shadow: none;
 }
 
-/* Print styles */
+/* Print styles — browser Ctrl+P fallback: hide the app, show only the
+   PrintPreviewModal hidden print layer (Tailwind `print:flex`). The old
+   #receipt-print-area mechanism was removed with the legacy receipt files. */
 @media print {
   body * {
     visibility: hidden !important;
   }
 
-  #receipt-print-area,
-  #receipt-print-area * {
-    visibility: visible !important;
-  }
-
-  /* Allow PrintPreviewModal hidden print layer (Tailwind `print:flex`). */
   .print\:flex {
     visibility: visible !important;
     position: fixed !important;
@@ -2579,27 +2575,9 @@ select {
     visibility: visible !important;
   }
 
-  #receipt-print-area {
-    display: block !important;
-    position: fixed !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 80mm !important;
-    background: white !important;
-    color: black !important;
-    font-family: 'Arial', sans-serif !important;
-    font-size: 12px !important;
-    direction: rtl !important;
-  }
-
   .no-print {
     display: none !important;
   }
-}
-
-/* Receipt print area — hidden on screen */
-#receipt-print-area {
-  display: none;
 }
 
 /* Single global theme baseline (dark/light toggles disabled) */
