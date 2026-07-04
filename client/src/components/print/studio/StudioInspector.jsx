@@ -337,6 +337,22 @@ export default function StudioInspector({ st }) {
             <input type="number" value={Number(merged.qr_size) || 44}
               onChange={(e) => st.setFlat("qr_size", clamp(Number(e.target.value) || 44, 24, 400))} className={`${inputCls} w-20`} />
           </Row>
+          <Row label="المحاذاة">
+            <select value={merged.qr_alignment || "right"} onChange={(e) => st.setFlat("qr_alignment", e.target.value)} className={`${inputCls} w-24`}>
+              <option value="right">يمين</option><option value="center">وسط</option><option value="left">يسار</option>
+            </select>
+          </Row>
+        </Section>
+      )}
+
+      {selected === "address" && (
+        <Section title="العنوان والهاتف">
+          <Row label="الموضع">
+            <select value={merged.address_position || "top"} onChange={(e) => st.setFlat("address_position", e.target.value)} className={`${inputCls} w-32`}>
+              <option value="top">في رأس المستند</option>
+              <option value="bottom">أسفل المستند</option>
+            </select>
+          </Row>
         </Section>
       )}
 
@@ -401,6 +417,15 @@ export default function StudioInspector({ st }) {
                 <option value="arabic">١ ٢ ٣</option>
               </select>
             </Row>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {[["header_font_size", "اسم الشركة", 10, 32, 16], ["body_font_size", "نص الجسم", 8, 18, 13],
+                ["item_font_size", "جدول الأصناف", 8, 16, 13], ["footer_font_size", "التذييل", 8, 16, 11]].map(([k, lbl, min, max, dflt]) => (
+                <label key={k} className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">خط {lbl}
+                  <input type="number" value={Number(merged[k]) || dflt}
+                    onChange={(e) => st.setFlat(k, clamp(Number(e.target.value) || dflt, min, max))} className={`${inputCls} w-full`} />
+                </label>
+              ))}
+            </div>
           </Section>
 
           {family === "roll" && (
