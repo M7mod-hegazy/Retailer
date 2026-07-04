@@ -21,11 +21,13 @@ export default function StudioCanvas({ st, children }) {
   const pages = Math.max(1, Math.ceil(fillRatio - 0.005));
   const fitTone = fillRatio <= 0.92 ? "ok" : fillRatio <= 1.0 ? "warn" : "over";
 
-  // printable-band guides (roll): canvasSettings already carries calibration
+  // Printable-band guides (roll): only meaningful once the printer has been
+  // calibrated — on an uncalibrated setup the guides just look like a defect.
   const paperMm = parseFloat(size) || 80;
+  const isCalibrated = !!(st.calibration && st.calibration.printAreaWidthMm > 0);
   const bandW = family === "roll" ? rollPrintWidthMm(st.canvasSettings) : 0;
   const bandL = family === "roll" ? rollBandLeftMm(st.canvasSettings) : 0;
-  const bandClipped = family === "roll" && bandW < paperMm - 1;
+  const bandClipped = family === "roll" && isCalibrated && st.showBand && bandW < paperMm - 1;
 
   const startOverlayDrag = (o, e) => {
     e.preventDefault(); e.stopPropagation();
@@ -110,12 +112,12 @@ export default function StudioCanvas({ st, children }) {
         // m-auto inside a min-h-full flex row centers the sheet on BOTH axes
         // while staying scroll-safe when the sheet outgrows the viewport.
         <div className="flex min-h-full w-full">
-          <div ref={sheetRef} className="m-auto"
+          <div ref={(el) => { sheetRef.current = el; if (st.sheetElRef) st.sheetElRef.current = el; }} className="m-auto"
             style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "center center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
             onClick={(e) => e.stopPropagation()}>
             {st.showRuler && <MmRulers size={size} contentMm={contentMm} pageH={pageH} />}
             {/* printable-band guides: what the thermal head can physically reach */}
-            {st.showBand && bandClipped && (
+            {bandClipped && (
               <>
                 <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
                 <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
@@ -142,11 +144,13 @@ export default function StudioCanvas({ st, children }) {
         </div>
       )}
 
-      {/* band info chip (roll) */}
-      {!children && family === "roll" && bandClipped && st.showBand && (
-        <div className="pointer-events-none absolute top-3 left-3 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 text-[9px] font-black text-[var(--text-secondary)] shadow">
-          منطقة الطباعة الفعلية: {bandW}مم من {paperMm}مم
-        </div>
+      {/* band info chip (roll, calibrated only) */}
+      {!children && family === "roll" && isCalibrated && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); st.setShowBand((v) => !v); }}
+          title="إظهار/إخفاء حدود منطقة الطباعة الفعلية"
+          className={`absolute top-3 left-3 rounded-lg border px-2.5 py-1.5 text-[9px] font-black shadow transition-colors ${st.showBand ? "border-[var(--border-normal)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]" : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-70"}`}>
+          منطقة الطباعة: {bandW}مم من {paperMm}مم {st.showBand ? "◉" : "◎"}
+        </button>
       )}
 
       {/* zoom control */}

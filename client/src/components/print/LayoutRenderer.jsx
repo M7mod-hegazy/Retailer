@@ -36,6 +36,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
   const orderSet = new Set(order);
 
   const items = [];
+  const absBlocks = []; // page family: freely-positioned blocks (perBlock[key].abs)
   let key = 0;
   const pushBlock = (type, extraProps, overrideKey) => {
     const entry = BLOCK_REGISTRY[type];
@@ -62,7 +63,25 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
         </div>
       );
     }
-    if (editing && designer) node = wrapSelectable(node, selKey, type, entry.label, orderSet.has(selKey), designer);
+    // On page family every element is grabbable (drag = free move); on roll
+    // only flow-order blocks move (drag = reorder).
+    if (editing && designer) node = wrapSelectable(node, selKey, type, entry.label, family === "page" || orderSet.has(selKey), designer);
+    // Free positioning (page family): a block with an `abs` override leaves the
+    // flow and renders at exact mm coordinates inside the sheet — this is what
+    // makes "drag anything anywhere" real on A4/A5.
+    const abs = family === "page" && ov.abs && ov.abs.xMm != null && ov.abs.yMm != null ? ov.abs : null;
+    if (abs) {
+      absBlocks.push(
+        <div key={`abs-${selKey}-${key}`} data-abs-block={selKey} style={{
+          position: "absolute",
+          left: `${abs.xMm}mm`,
+          top: `${abs.yMm}mm`,
+          ...(abs.widthMm ? { width: `${abs.widthMm}mm` } : {}),
+          zIndex: 5,
+        }}>{node}</div>
+      );
+      return;
+    }
     items.push({ type, group: entry.group, node: <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment> });
   };
 
@@ -75,6 +94,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     return (
       <PageWrapper settings={settings} size={size}>
         <PageZoneLayout items={items} invoice={invoice} settings={settings} />
+        {absBlocks}
         <PageOverlays overlays={famLayout.overlays} invoice={invoice} />
       </PageWrapper>
     );

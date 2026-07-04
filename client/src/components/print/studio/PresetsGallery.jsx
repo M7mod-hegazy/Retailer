@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { X, BookmarkPlus, Download, Upload, Trash2, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import LayoutRenderer from "../LayoutRenderer";
@@ -7,14 +7,48 @@ import {
   applyPreset, captureAsPreset, getUserPresets, saveUserPreset,
   deleteUserPreset, exportUserPresets, importUserPresets,
 } from "../presets/presetEngine";
-import { SHEET_W, PX_PER_MM, sampleById } from "./studioData";
+import { SHEET_W, sampleById } from "./studioData";
 
 const TAG_LABELS = {
   bilingual: "ثنائي اللغة", compact: "موفر للورق", ticket: "تذكرة طلب",
   kitchen: "مطبخ", modern: "عصري", classic: "كلاسيكي", minimal: "بسيط",
   bordered: "مؤطَّر", dense: "كثيف", user: "قوالبي",
+  simple: "بسيط", whitespace: "هوائي", framed: "مؤطَّر", elegant: "أنيق",
+  boutique: "بوتيك", pharmacy: "صيدلية", cafe: "كافيه", electronics: "إلكترونيات",
+  delivery: "توصيل", zatca: "زاتكا ZATCA", compliance: "امتثال ضريبي",
+  service: "خدمات", supermarket: "سوبرماركت", wholesale: "جملة",
+  ultra: "فائق التوفير", formal: "رسمي", draft: "مسودة", letterhead: "ترويسة",
+  dark: "داكن", quotation: "عرض سعر", statement: "كشف حساب",
+  retail: "تجزئة", warranty: "ضمان",
 };
 const tagLabel = (t) => TAG_LABELS[t] || t;
+
+// A thumbnail that always shows the WHOLE sheet: render at true size, measure,
+// then scale to fit the card box (width and height) — no more cut-off A4s.
+function Thumb({ family, size, invoice, settings, layout }) {
+  const boxRef = useRef(null);
+  const innerRef = useRef(null);
+  const [scale, setScale] = useState(0);
+  useLayoutEffect(() => {
+    const box = boxRef.current, inner = innerRef.current;
+    if (!box || !inner) return;
+    const w = inner.offsetWidth, h = inner.offsetHeight;
+    if (!w || !h) return;
+    setScale(Math.min((box.clientWidth - 14) / w, (box.clientHeight - 14) / h));
+  }, [settings, layout, size]);
+  return (
+    <div ref={boxRef} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <div ref={innerRef} style={{
+        flexShrink: 0, width: SHEET_W[size], background: "#fff",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
+        transform: `scale(${scale || 0.15})`, transformOrigin: "center center",
+        visibility: scale ? "visible" : "hidden",
+      }}>
+        <LayoutRenderer family={family} size={size} invoice={invoice} settings={settings} layout={layout} />
+      </div>
+    </div>
+  );
+}
 
 // Preset gallery: live thumbnails rendered by the REAL LayoutRenderer, so what
 // you see is exactly what applying the preset produces. One click applies
@@ -36,9 +70,8 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
   }, [all]);
   const visible = tag ? all.filter((p) => (p.tags || []).includes(tag)) : all;
 
-  const paperMm = parseFloat(SHEET_W[size]) || 80;
-  const CARD_W = family === "roll" ? 190 : 220;
-  const scale = CARD_W / (paperMm * PX_PER_MM);
+  const CARD_W = family === "roll" ? 200 : 250;
+  const THUMB_H = family === "roll" ? 320 : 330;
 
   const saveCurrent = () => {
     const name = (window.prompt("اسم القالب الجديد:") || "").trim();
@@ -125,9 +158,9 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
               <div key={p.id} className="group flex flex-col overflow-hidden rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] transition-shadow hover:shadow-lg">
                 <button type="button" onClick={() => { onApply(p); setAppliedId(p.id); }}
                   title="انقر لتطبيق القالب (يمكن التراجع بـ Ctrl+Z)"
-                  className="relative block h-[240px] overflow-hidden bg-[#e8e8e8] p-2 text-right">
-                  <div className="pointer-events-none mx-auto origin-top" style={{ width: SHEET_W[size], transform: `scale(${scale})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                    <LayoutRenderer family={family} size={size} invoice={invoice} settings={previewSettings} layout={previewLayout} />
+                  className="relative block overflow-hidden bg-[#e0e0e2] text-right" style={{ height: THUMB_H }}>
+                  <div className="pointer-events-none absolute inset-0">
+                    <Thumb family={family} size={size} invoice={invoice} settings={previewSettings} layout={previewLayout} />
                   </div>
                   {appliedId === p.id && (
                     <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-[var(--primary)] px-2 py-0.5 text-[9px] font-black text-white"><Check size={10} /> مطبَّق</span>

@@ -97,6 +97,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [past, setPast] = useState([]);   // [{scope, draft}]
   const [future, setFuture] = useState([]);
   const printRef = useRef(null);
+  const sheetElRef = useRef(null); // the live canvas sheet — free-move math needs its rect
   const stashTimer = useRef(null);
 
   const isBlockDoc = scope === "_global" || BLOCK_DOCS.has(scope);
@@ -319,8 +320,68 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     if (ins && (ins.props?.text || "") !== t) setInsert(key, { props: { text: t } });
   };
 
-  // ── direct mouse move / resize on canvas (ported from designer) ────────
+  // ── direct mouse interactions on the canvas ────────────────────────────
+  // Page family (A4/A5): dragging a block moves it FREELY — first drag
+  // converts the flow block to an absolute mm position (perBlock[key].abs)
+  // and live-updates while the pointer moves. Roll: drag reorders the flow
+  // (variable-height paper has no meaningful absolute Y).
+  const mmGeom = () => {
+    const sheet = sheetElRef.current;
+    if (!sheet) return null;
+    const rect = sheet.getBoundingClientRect();
+    const sheetWmm = parseFloat(SHEET_W[size]) || 210;
+    return { rect, sheetWmm, mmPerPx: sheetWmm / rect.width };
+  };
+  const half = (v) => Math.round(v * 2) / 2;
+
+  const writeOv = (base, famBase, key, patch) => setDrafts((d) => ({
+    ...d,
+    [scope]: {
+      ...base,
+      layout: {
+        ...base.layout,
+        [family]: { ...famBase, perBlock: { ...(famBase.perBlock || {}), [key]: { ...((famBase.perBlock || {})[key] || {}), ...patch } } },
+      },
+    },
+  }));
+
+  const startFreeMove = (key, e) => {
+    const geom = mmGeom();
+    const el = e.currentTarget;
+    if (!geom || !el) return;
+    const startX = e.clientX, startY = e.clientY;
+    const base = withFamBase();
+    const famBase = base.layout[family];
+    const curOv = (famBase.perBlock || {})[key] || {};
+    const elRect = el.getBoundingClientRect();
+    const startAbs = curOv.abs && curOv.abs.xMm != null
+      ? { ...curOv.abs }
+      : {
+          xMm: half((elRect.left - geom.rect.left) * geom.mmPerPx),
+          yMm: half((elRect.top - geom.rect.top) * geom.mmPerPx),
+          widthMm: half(Math.min(elRect.width * geom.mmPerPx, geom.sheetWmm)),
+        };
+    let moved = false;
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+      if (!moved) { setPast((p) => [...p, { scope, draft: cur }]); setFuture([]); moved = true; }
+      const dx = (ev.clientX - startX) * geom.mmPerPx;
+      const dy = (ev.clientY - startY) * geom.mmPerPx;
+      const w = startAbs.widthMm || 20;
+      writeOv(base, famBase, key, {
+        abs: {
+          ...startAbs,
+          xMm: half(clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm))),
+          yMm: half(Math.max(0, startAbs.yMm + dy)),
+        },
+      });
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+
   const onMoveStart = (key, e) => {
+    if (family === "page") { startFreeMove(key, e); return; }
     const startX = e.clientX, startY = e.clientY;
     const base = withFamBase();
     const fam0 = base.layout[family];
@@ -349,19 +410,46 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
+  // Toggle free positioning from the inspector: ON captures the block's
+  // current rendered position; OFF returns it to the flow.
+  const setFreePosition = (key, on) => {
+    if (family !== "page") return;
+    if (!on) {
+      setFamLayout((c) => {
+        const pb = { ...(c.perBlock || {}) };
+        if (pb[key]) { const { abs, ...rest } = pb[key]; pb[key] = rest; }
+        return { perBlock: pb };
+      });
+      return;
+    }
+    const geom = mmGeom();
+    const el = document.querySelector(`[data-designer-key="${CSS.escape(key)}"]`);
+    let abs = { xMm: 20, yMm: 20 };
+    if (geom && el) {
+      const r = el.getBoundingClientRect();
+      abs = {
+        xMm: half((r.left - geom.rect.left) * geom.mmPerPx),
+        yMm: half((r.top - geom.rect.top) * geom.mmPerPx),
+        widthMm: half(Math.min(r.width * geom.mmPerPx, geom.sheetWmm)),
+      };
+    }
+    setOverride(key, { abs });
+  };
+
   const onResizeStart = (key, dir, e) => {
     const startX = e.clientX, startY = e.clientY, z = zoom;
     const base = withFamBase();
     const famBase = base.layout[family];
+    const curOv = (famBase.perBlock || {})[key] || {};
     const isDim = key === "logo" || key === "qr";
     const dimKey = key === "logo" ? "logo_max_height" : "qr_size";
-    const baseWidth = Number((famBase.perBlock || {})[key]?.width) || 100;
-    const baseFont = Number((famBase.perBlock || {})[key]?.fontSize) || Number(merged.item_font_size) || 11;
+    const isAbs = family === "page" && curOv.abs && curOv.abs.xMm != null;
+    const geom = isAbs ? mmGeom() : null;
+    const baseWidth = Number(curOv.width) || 100;
+    const baseAbsW = isAbs ? (Number(curOv.abs.widthMm) || 40) : 0;
+    const baseFont = Number(curOv.fontSize) || Number(merged.item_font_size) || 11;
     const baseDim = Number(merged[dimKey]) || (key === "logo" ? 48 : 44);
-    const setOvLive = (patch) => setDrafts((d) => ({
-      ...d,
-      [scope]: { ...base, layout: { ...base.layout, [family]: { ...famBase, perBlock: { ...(famBase.perBlock || {}), [key]: { ...((famBase.perBlock || {})[key] || {}), ...patch } } } } },
-    }));
+    const setOvLive = (patch) => writeOv(base, famBase, key, patch);
     const setTopLive = (k, v) => setDrafts((d) => ({ ...d, [scope]: { ...base, [k]: v } }));
     setPast((p) => [...p, { scope, draft: cur }]); setFuture([]); setResizing(true);
     const move = (ev) => {
@@ -369,6 +457,12 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       if (isDim) {
         const d = dir.s ? dir.s * dy : dir.w * dx;
         setTopLive(dimKey, clamp(Math.round(baseDim + d), 16, 500));
+      } else if (isAbs && dir.w) {
+        // free-positioned block: horizontal handles resize the mm width
+        const dMm = (ev.clientX - startX) * (geom ? geom.mmPerPx : 0.26);
+        const patch = { abs: { ...curOv.abs, widthMm: half(clamp(baseAbsW + dir.w * dMm, 5, geom ? geom.sheetWmm : 210)) } };
+        if (dir.s) patch.fontSize = clamp(Math.round(baseFont + dir.s * dy * 0.3), 6, 80);
+        setOvLive(patch);
       } else {
         const patch = {};
         if (dir.w) patch.width = clamp(Math.round(baseWidth + dir.w * dx * 0.3), 10, 100);
@@ -499,9 +593,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setFlat, setFamLayout, unlinkFamily, ownFamily, isBlockDoc,
     overlays, addOverlay, setOverlay, removeOverlay,
     invoiceData, canvasSettings, renderLayout, designer,
-    zoom, setZoom, showRuler, compare, sampleId, showBand,
+    zoom, setZoom, showRuler, compare, sampleId, showBand, setShowBand,
     calibration, printerName, openCalibration: () => setCalibOpen(true),
-    resetFamily, applyPresetToDraft,
+    resetFamily, applyPresetToDraft, sheetElRef, setFreePosition,
   };
 
   const isTemplateDoc = !isBlockDoc;

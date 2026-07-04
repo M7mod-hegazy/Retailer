@@ -56,7 +56,11 @@ export const SHOW_KEY = {
 };
 
 // Style-override keys applied generically by LayoutRenderer as a wrapper.
-export const STYLE_KEYS = ["fontSize", "color", "align", "bold", "italic", "width"];
+export const STYLE_KEYS = [
+  "fontSize", "color", "align", "bold", "italic", "width",
+  "fontFamily", "lineHeight", "background", "padding",
+  "borderWidth", "borderStyle", "borderColor", "borderRadius",
+];
 
 export function overrideStyle(o = {}) {
   if (!o) return null;
@@ -67,17 +71,26 @@ export function overrideStyle(o = {}) {
   if (o.bold != null) style.fontWeight = o.bold ? 900 : 400;
   if (o.italic) style.fontStyle = "italic";
   if (o.width != null && o.width !== "") style.width = typeof o.width === "number" ? `${o.width}%` : o.width;
+  if (o.fontFamily) style.fontFamily = o.fontFamily;
+  if (o.lineHeight != null && o.lineHeight !== "") style.lineHeight = o.lineHeight;
   return Object.keys(style).length ? style : null;
 }
 
-// Box styling (width + spacing) lives on the wrapper element — values the inner
-// block can't override. Returns a style object or null.
+// Box styling (width, spacing, surface: background/padding/border/radius)
+// lives on the wrapper element — values the inner block can't override.
+// Returns a style object or null.
 export function overrideBox(o = {}) {
   if (!o) return null;
   const style = {};
   if (o.width != null && o.width !== "") style.width = typeof o.width === "number" ? `${o.width}%` : o.width;
   if (o.marginTop != null && o.marginTop !== "") style.marginTop = `${o.marginTop}px`;
   if (o.marginBottom != null && o.marginBottom !== "") style.marginBottom = `${o.marginBottom}px`;
+  if (o.background) style.background = o.background;
+  if (o.padding != null && o.padding !== "" && Number(o.padding) !== 0) style.padding = `${o.padding}px`;
+  if (o.borderWidth != null && Number(o.borderWidth) > 0) {
+    style.border = `${o.borderWidth}px ${o.borderStyle || "solid"} ${o.borderColor || "#000"}`;
+  }
+  if (o.borderRadius != null && Number(o.borderRadius) > 0) style.borderRadius = `${o.borderRadius}px`;
   return Object.keys(style).length ? style : null;
 }
 
@@ -91,6 +104,8 @@ export function overrideCss(o = {}, selector) {
   if (o.bold != null) d.push(`font-weight:${o.bold ? 900 : 400} !important`);
   if (o.italic) d.push("font-style:italic !important");
   if (o.align) d.push(`text-align:${o.align} !important`);
+  if (o.fontFamily) d.push(`font-family:${o.fontFamily} !important`);
+  if (o.lineHeight != null && o.lineHeight !== "") d.push(`line-height:${o.lineHeight} !important`);
   if (!d.length) return "";
   return `${selector},${selector} *{${d.join(";")}}`;
 }
