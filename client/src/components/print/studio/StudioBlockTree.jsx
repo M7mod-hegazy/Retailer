@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { GripVertical, Eye, EyeOff, Trash2, Type, Minus, Square, QrCode, Link2, Unlink } from "lucide-react";
+import { GripVertical, Eye, EyeOff, Trash2, Type, Minus, Square, QrCode, Link2, Unlink, Move } from "lucide-react";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 
 const INSERTABLE = [
@@ -14,6 +14,7 @@ const INSERTABLE = [
 // drag reorders, the eye toggles real visibility.
 export default function StudioBlockTree({ st }) {
   const [dragIdx, setDragIdx] = useState(null);
+  const [dropIdx, setDropIdx] = useState(null);
   const { fam, family, selected, hovered } = st;
 
   const hiddenBlocks = Object.keys(BLOCK_REGISTRY).filter((t) => {
@@ -40,7 +41,12 @@ export default function StudioBlockTree({ st }) {
       )}
 
       <div>
-        <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">ترتيب العناصر — اسحب للترتيب</div>
+        <div className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+          عناصر المستند — اسحب هنا للترتيب
+        </div>
+        <div className="mb-2 rounded-lg bg-[var(--accent-soft)] px-2 py-1.5 text-[9px] font-bold leading-relaxed text-[var(--primary)]">
+          اسحب أي عنصر على الورقة مباشرة لتحريكه بحرية في أي مكان{family === "roll" ? "، أو Ctrl+سحب لإعادة الترتيب" : ""}.
+        </div>
         <div className="space-y-0.5">
           {fam.order.map((type, idx) => {
             const entry = BLOCK_REGISTRY[type];
@@ -51,17 +57,27 @@ export default function StudioBlockTree({ st }) {
             return (
               <div key={type} draggable
                 onDragStart={() => setDragIdx(idx)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => { st.moveOrder(dragIdx, idx); setDragIdx(null); }}
+                onDragOver={(e) => { e.preventDefault(); if (dropIdx !== idx) setDropIdx(idx); }}
+                onDragLeave={() => setDropIdx((v) => (v === idx ? null : v))}
+                onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
+                onDrop={() => { st.moveOrder(dragIdx, idx); setDragIdx(null); setDropIdx(null); }}
                 onClick={() => st.setSelected(type)}
                 onMouseEnter={() => st.setHovered(type)} onMouseLeave={() => st.setHovered(null)}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors ${
+                className={`relative flex cursor-grab items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors active:cursor-grabbing ${
+                  dragIdx === idx ? "opacity-40" : ""
+                } ${
                   isSel ? "border-[var(--primary)] bg-[var(--accent-soft)]"
                   : isHov ? "border-[var(--border-accent)] bg-[var(--accent-soft)]"
                   : "border-transparent hover:bg-[var(--bg-input)]"
                 } ${vis ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] opacity-60"}`}>
+                {dropIdx === idx && dragIdx !== null && dragIdx !== idx && (
+                  <span className={`absolute inset-x-0 h-0.5 rounded-full bg-[var(--primary)] ${dragIdx < idx ? "-bottom-0.5" : "-top-0.5"}`} />
+                )}
                 <GripVertical size={12} className="shrink-0 text-[var(--text-muted)]" />
                 <span className="flex-1 truncate">{entry.label}</span>
+                {(fam.perBlock || {})[type]?.abs?.xMm != null && (
+                  <Move size={11} className="shrink-0 text-[var(--primary)]" title="موضع حر" />
+                )}
                 <button type="button" title={vis ? "إخفاء" : "إظهار"}
                   onClick={(e) => { e.stopPropagation(); st.toggleVisible(type); }}
                   className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)]">

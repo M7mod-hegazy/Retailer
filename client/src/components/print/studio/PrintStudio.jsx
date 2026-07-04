@@ -321,10 +321,12 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   };
 
   // ── direct mouse interactions on the canvas ────────────────────────────
-  // Page family (A4/A5): dragging a block moves it FREELY — first drag
-  // converts the flow block to an absolute mm position (perBlock[key].abs)
-  // and live-updates while the pointer moves. Roll: drag reorders the flow
-  // (variable-height paper has no meaningful absolute Y).
+  // Dragging a block on the canvas moves it FREELY on every paper size —
+  // the first drag converts the flow block to an absolute mm position
+  // (perBlock[key].abs) while reserving its original slot (abs.holdMm) so the
+  // rest of the document does not reflow. Ctrl+drag on roll reorders the flow
+  // instead. The tree always reorders.
+  const [dragSnap, setDragSnap] = useState(null); // {centerX: bool} while free-dragging
   const mmGeom = () => {
     const sheet = sheetElRef.current;
     if (!sheet) return null;
@@ -360,6 +362,8 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
           xMm: half((elRect.left - geom.rect.left) * geom.mmPerPx),
           yMm: half((elRect.top - geom.rect.top) * geom.mmPerPx),
           widthMm: half(Math.min(elRect.width * geom.mmPerPx, geom.sheetWmm)),
+          // reserve the original slot so the document doesn't reflow
+          holdMm: half(Math.max(2, elRect.height * geom.mmPerPx)),
         };
     let moved = false;
     const move = (ev) => {
@@ -368,20 +372,25 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       const dx = (ev.clientX - startX) * geom.mmPerPx;
       const dy = (ev.clientY - startY) * geom.mmPerPx;
       const w = startAbs.widthMm || 20;
+      let x = clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm));
+      // magnetic center snap (±1.5mm) with a visual guide line
+      const centered = Math.abs((x + Math.min(w, geom.sheetWmm) / 2) - geom.sheetWmm / 2) < 1.5;
+      if (centered) x = geom.sheetWmm / 2 - Math.min(w, geom.sheetWmm) / 2;
+      setDragSnap({ centerX: centered });
       writeOv(base, famBase, key, {
-        abs: {
-          ...startAbs,
-          xMm: half(clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm))),
-          yMm: half(Math.max(0, startAbs.yMm + dy)),
-        },
+        abs: { ...startAbs, xMm: half(x), yMm: half(Math.max(0, startAbs.yMm + dy)) },
       });
     };
-    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    const up = () => {
+      setDragSnap(null);
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+    };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
   const onMoveStart = (key, e) => {
-    if (family === "page") { startFreeMove(key, e); return; }
+    // free move everywhere; Ctrl+drag on roll = reorder the flow instead
+    if (family === "page" || !e.ctrlKey) { startFreeMove(key, e); return; }
     const startX = e.clientX, startY = e.clientY;
     const base = withFamBase();
     const fam0 = base.layout[family];
@@ -411,9 +420,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   };
 
   // Toggle free positioning from the inspector: ON captures the block's
-  // current rendered position; OFF returns it to the flow.
+  // current rendered position (and reserves its slot); OFF returns it to
+  // the flow.
   const setFreePosition = (key, on) => {
-    if (family !== "page") return;
     if (!on) {
       setFamLayout((c) => {
         const pb = { ...(c.perBlock || {}) };
@@ -424,13 +433,14 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     }
     const geom = mmGeom();
     const el = document.querySelector(`[data-designer-key="${CSS.escape(key)}"]`);
-    let abs = { xMm: 20, yMm: 20 };
+    let abs = { xMm: 10, yMm: 10, holdMm: 6 };
     if (geom && el) {
       const r = el.getBoundingClientRect();
       abs = {
         xMm: half((r.left - geom.rect.left) * geom.mmPerPx),
         yMm: half((r.top - geom.rect.top) * geom.mmPerPx),
         widthMm: half(Math.min(r.width * geom.mmPerPx, geom.sheetWmm)),
+        holdMm: half(Math.max(2, r.height * geom.mmPerPx)),
       };
     }
     setOverride(key, { abs });
@@ -443,7 +453,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const curOv = (famBase.perBlock || {})[key] || {};
     const isDim = key === "logo" || key === "qr";
     const dimKey = key === "logo" ? "logo_max_height" : "qr_size";
-    const isAbs = family === "page" && curOv.abs && curOv.abs.xMm != null;
+    const isAbs = curOv.abs && curOv.abs.xMm != null;
     const geom = isAbs ? mmGeom() : null;
     const baseWidth = Number(curOv.width) || 100;
     const baseAbsW = isAbs ? (Number(curOv.abs.widthMm) || 40) : 0;
@@ -595,7 +605,8 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     invoiceData, canvasSettings, renderLayout, designer,
     zoom, setZoom, showRuler, compare, sampleId, showBand, setShowBand,
     calibration, printerName, openCalibration: () => setCalibOpen(true),
-    resetFamily, applyPresetToDraft, sheetElRef, setFreePosition,
+    resetFamily, applyPresetToDraft, sheetElRef, setFreePosition, dragSnap,
+    editingKey, startEditText: setEditingKey,
   };
 
   const isTemplateDoc = !isBlockDoc;

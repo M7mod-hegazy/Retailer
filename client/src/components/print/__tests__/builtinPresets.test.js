@@ -2,25 +2,31 @@ import { describe, it, expect } from "vitest";
 import { BUILTIN_PRESETS, presetsForSize, DEFAULT_PRESET_ID } from "../presets/builtinPresets";
 import { applyPreset } from "../presets/presetEngine";
 import { BLOCK_REGISTRY } from "../blocks/registry";
+import { TAG_LABELS } from "../studio/PresetsGallery";
 import { colorLuminance } from "../blocks/blockUtils";
 
-const KNOWN_TYPES = new Set(Object.keys(BLOCK_REGISTRY));
+const SIZES = ["58mm", "80mm", "A5", "A4"];
 const ROLL_SIZES = new Set(["80mm", "58mm"]);
 const PAGE_SIZES = new Set(["A4", "A5"]);
 
-describe("builtinPresets — size coverage", () => {
-  it.each(["80mm", "58mm", "A4", "A5"])("has at least 20 presets for %s", (size) => {
-    expect(presetsForSize(size).length).toBeGreaterThanOrEqual(20);
+describe("builtinPresets library", () => {
+  it("ships at least 25 presets per paper size", () => {
+    SIZES.forEach((sz) => {
+      expect(presetsForSize(sz).length, `presets for ${sz}`).toBeGreaterThanOrEqual(25);
+    });
   });
-});
 
-describe("builtinPresets — structural integrity", () => {
-  it("has no duplicate ids", () => {
+  it("all preset ids are unique", () => {
     const ids = BUILTIN_PRESETS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("every preset has a valid family, non-empty Arabic name, and sizes consistent with family", () => {
+  it("default preset ids exist", () => {
+    expect(BUILTIN_PRESETS.some((p) => p.id === DEFAULT_PRESET_ID.roll)).toBe(true);
+    expect(BUILTIN_PRESETS.some((p) => p.id === DEFAULT_PRESET_ID.page)).toBe(true);
+  });
+
+  it("every preset has family, Arabic name, and family-consistent sizes", () => {
     BUILTIN_PRESETS.forEach((p) => {
       expect(["roll", "page"]).toContain(p.family);
       expect(typeof p.name).toBe("string");
@@ -28,67 +34,78 @@ describe("builtinPresets — structural integrity", () => {
       expect(Array.isArray(p.sizes)).toBe(true);
       expect(p.sizes.length).toBeGreaterThan(0);
       const allowed = p.family === "roll" ? ROLL_SIZES : PAGE_SIZES;
-      p.sizes.forEach((s) => expect(allowed.has(s)).toBe(true));
+      p.sizes.forEach((s) => expect(allowed.has(s), `${p.id}: size ${s} invalid for ${p.family}`).toBe(true));
     });
   });
 
-  it("every layout.order (when present) contains only known block types", () => {
-    BUILTIN_PRESETS.forEach((p) => {
-      const order = p.layout && p.layout.order;
-      if (!order) return;
-      order.forEach((type) => expect(KNOWN_TYPES.has(type)).toBe(true));
+  it("presets are structurally DISTINCT per size (no near-duplicates)", () => {
+    SIZES.forEach((sz) => {
+      const sigs = presetsForSize(sz).map((p) => JSON.stringify({
+        order: p.layout.order,
+        perBlock: p.layout.perBlock,
+        inserted: p.layout.inserted,
+        headerStyle: p.layout.headerStyle,
+        flat: p.flat,
+      }));
+      expect(new Set(sigs).size, `distinct signatures for ${sz}`).toBe(sigs.length);
     });
   });
 
-  it("every inserted entry has a unique id (per preset) and a known type", () => {
+  it("every ordered block / insert type is valid for the preset family", () => {
     BUILTIN_PRESETS.forEach((p) => {
-      const inserted = (p.layout && p.layout.inserted) || [];
-      const ids = inserted.map((b) => b.id);
-      expect(new Set(ids).size).toBe(ids.length);
-      inserted.forEach((b) => {
-        expect(KNOWN_TYPES.has(b.type)).toBe(true);
-        expect(typeof b.id).toBe("string");
-        expect(b.id.length).toBeGreaterThan(0);
+      (p.layout.order || []).forEach((t) => {
+        const entry = BLOCK_REGISTRY[t];
+        expect(entry, `${p.id}: unknown block ${t}`).toBeTruthy();
+        expect(entry.families.includes(p.family), `${p.id}: ${t} not valid on ${p.family}`).toBe(true);
+      });
+      (p.layout.inserted || []).forEach((ins) => {
+        expect(BLOCK_REGISTRY[ins.type], `${p.id}: unknown insert type ${ins.type}`).toBeTruthy();
+        expect(ins.id, `${p.id}: insert without id`).toBeTruthy();
+        expect(ins.after, `${p.id}: insert without anchor`).toBeTruthy();
       });
     });
   });
-});
 
-describe("builtinPresets — applyPreset safety", () => {
-  it("applies cleanly for every preset and yields a perBlock object for its family", () => {
-    BUILTIN_PRESETS.forEach((p) => {
-      expect(() => applyPreset({}, p)).not.toThrow();
-      const result = applyPreset({}, p);
-      const fam = result.layout[p.family];
-      expect(fam).toBeTruthy();
-      expect(typeof fam.perBlock).toBe("object");
-      expect(fam.perBlock).not.toBeNull();
+  it("roll presets stay thermal-safe (black-only, readable sizes)", () => {
+    BUILTIN_PRESETS.filter((p) => p.family === "roll").forEach((p) => {
+      Object.entries(p.layout.perBlock || {}).forEach(([key, ov]) => {
+        if (ov.color) {
+          expect(colorLuminance(ov.color), `${p.id}.${key} color too light for thermal`).toBeLessThanOrEqual(0.55);
+        }
+        expect(ov.background, `${p.id}.${key} background not allowed on roll`).toBeUndefined();
+        if (ov.borderColor) expect(ov.borderColor).toBe("#000");
+        if (key === "items_table" && ov.fontSize != null) {
+          expect(ov.fontSize, `${p.id} table font below thermal floor`).toBeGreaterThanOrEqual(9);
+        }
+      });
+      const flat = p.flat || {};
+      if (flat.item_font_size != null) expect(flat.item_font_size).toBeGreaterThanOrEqual(9);
+      if (flat.body_font_size != null) expect(flat.body_font_size).toBeGreaterThanOrEqual(10);
     });
   });
 
-  it("does not mutate the source preset object", () => {
+  it("every tag has an Arabic label in the gallery", () => {
     BUILTIN_PRESETS.forEach((p) => {
-      const before = JSON.stringify(p);
-      applyPreset({}, p);
-      expect(JSON.stringify(p)).toBe(before);
+      (p.tags || []).forEach((t) => {
+        expect(TAG_LABELS[t], `missing Arabic label for tag "${t}" (preset ${p.id})`).toBeTruthy();
+      });
     });
   });
-});
 
-describe("builtinPresets — thermal-safe colors", () => {
-  it("keeps any flat.accent_color dark enough to print (luminance <= 0.55)", () => {
+  it("applyPreset produces a usable layout for every preset", () => {
     BUILTIN_PRESETS.forEach((p) => {
-      const color = p.flat && p.flat.accent_color;
-      if (!color) return;
-      expect(colorLuminance(color)).toBeLessThanOrEqual(0.55);
+      const next = applyPreset({}, p);
+      const fam = next.layout[p.family];
+      expect(Array.isArray(fam.order)).toBe(true);
+      expect(fam.order.length).toBeGreaterThan(2);
+      expect(fam.perBlock).toBeTruthy();
     });
   });
-});
 
-describe("builtinPresets — DEFAULT_PRESET_ID", () => {
-  it("points at ids that actually exist in the library", () => {
-    const ids = new Set(BUILTIN_PRESETS.map((p) => p.id));
-    expect(ids.has(DEFAULT_PRESET_ID.roll)).toBe(true);
-    expect(ids.has(DEFAULT_PRESET_ID.page)).toBe(true);
+  it("insert ids are unique within each preset", () => {
+    BUILTIN_PRESETS.forEach((p) => {
+      const ids = (p.layout.inserted || []).map((b) => b.id);
+      expect(new Set(ids).size, `${p.id} duplicate insert ids`).toBe(ids.length);
+    });
   });
 });

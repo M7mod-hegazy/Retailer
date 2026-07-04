@@ -8,7 +8,7 @@ import { g, rollPaperWidthMm, rollPrintWidthMm, rollBandLeftMm, rollClampFontPx 
  * left offset. Positioning is left-based on purpose — it describes where the
  * print head sits on the paper, which does not depend on text direction.
  */
-export default function RollWrapper({ settings: s, children }) {
+export default function RollWrapper({ settings: s, children, overlay }) {
   const paperMm = rollPaperWidthMm(s);
   const bandMm = rollPrintWidthMm(s);
   const bandLeftMm = rollBandLeftMm(s);
@@ -17,6 +17,9 @@ export default function RollWrapper({ settings: s, children }) {
       width: `${paperMm}mm`,
       boxSizing: "border-box",
       background: "#fff",
+      // Positioned ancestor for freely-placed (abs) blocks: their mm
+      // coordinates are relative to the PAPER edge, not the printable band.
+      position: "relative",
     }}>
       <div dir="rtl" style={{
         fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
@@ -31,6 +34,7 @@ export default function RollWrapper({ settings: s, children }) {
         // the page family only — a light accent used to fade the whole receipt.
         color: "#000", background: "#fff",
       }}>{children}</div>
+      {overlay}
     </div>
   );
 }

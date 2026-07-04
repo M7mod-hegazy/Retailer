@@ -1,7 +1,67 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import {
+  Bold, Italic, AlignRight, AlignCenter, AlignLeft, Eye, EyeOff, Trash2,
+  Move, Pencil, Copy,
+} from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
+import { BLOCK_REGISTRY } from "../blocks/registry";
 import { rollPrintWidthMm, rollBandLeftMm } from "../blocks/blockUtils";
 import { SIZES, SHEET_W, PAGE_H_MM, PX_PER_MM } from "./studioData";
+
+const NO_TYPOGRAPHY = new Set(["logo", "qr", "image", "divider", "spacer", "barcode"]);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Floating quick toolbar: appears while an element is selected, right above
+// the canvas — the most-used actions without leaving the mouse.
+function FloatingToolbar({ st }) {
+  const { selected, fam } = st;
+  const selInsert = (fam.inserted || []).find((b) => b.id === selected);
+  const isOverlay = st.overlays.some((o) => o.id === selected);
+  if (!selected || isOverlay) return null;
+  const selType = selInsert ? selInsert.type : selected;
+  const entry = BLOCK_REGISTRY[selType];
+  if (!entry) return null;
+  const ov = st.ov(selected);
+  const isAbs = ov.abs && ov.abs.xMm != null;
+  const texty = !NO_TYPOGRAPHY.has(selType);
+  const editable = st.designer.editableOf && st.designer.editableOf(selected);
+  const inOrder = fam.order.includes(selected);
+  const btn = (active) => `flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[11px] font-bold transition-colors ${active ? "bg-[var(--primary)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`;
+  return (
+    <div dir="rtl" onClick={(e) => e.stopPropagation()}
+      className="absolute top-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-1.5 py-1 shadow-lg">
+      <span className="max-w-[90px] truncate px-1 text-[10px] font-black text-[var(--text-primary)]">{entry.label}</span>
+      {texty && (
+        <>
+          <span className="mx-0.5 h-4 w-px bg-[var(--border-subtle)]" />
+          <button type="button" className={btn(false)} title="تصغير الخط"
+            onClick={() => st.setOverride(selected, { fontSize: clamp((Number(ov.fontSize) || Number(st.merged.item_font_size) || 11) - 1, 6, 90) })}>−</button>
+          <button type="button" className={btn(false)} title="تكبير الخط"
+            onClick={() => st.setOverride(selected, { fontSize: clamp((Number(ov.fontSize) || Number(st.merged.item_font_size) || 11) + 1, 6, 90) })}>+</button>
+          <button type="button" className={btn(!!ov.bold)} title="عريض" onClick={() => st.setOverride(selected, { bold: !ov.bold })}><Bold size={12} /></button>
+          <button type="button" className={btn(!!ov.italic)} title="مائل" onClick={() => st.setOverride(selected, { italic: !ov.italic })}><Italic size={12} /></button>
+          <button type="button" className={btn(ov.align === "right")} title="يمين" onClick={() => st.setOverride(selected, { align: ov.align === "right" ? undefined : "right" })}><AlignRight size={12} /></button>
+          <button type="button" className={btn(ov.align === "center")} title="وسط" onClick={() => st.setOverride(selected, { align: ov.align === "center" ? undefined : "center" })}><AlignCenter size={12} /></button>
+          <button type="button" className={btn(ov.align === "left")} title="يسار" onClick={() => st.setOverride(selected, { align: ov.align === "left" ? undefined : "left" })}><AlignLeft size={12} /></button>
+          <input type="color" value={ov.color || "#0f172a"} onChange={(e) => st.setOverride(selected, { color: e.target.value })}
+            className="h-6 w-7 cursor-pointer rounded border border-[var(--border-normal)]" title="اللون" />
+        </>
+      )}
+      <span className="mx-0.5 h-4 w-px bg-[var(--border-subtle)]" />
+      <button type="button" className={btn(!!isAbs)} title={isAbs ? "إلغاء الوضع الحر (عودة للتدفق)" : "وضع حر — حرِّكه في أي مكان"}
+        onClick={() => st.setFreePosition(selected, !isAbs)}><Move size={12} /></button>
+      {editable && (
+        <button type="button" className={btn(false)} title="تحرير النص مباشرة"
+          onClick={() => st.startEditText(selected)}><Pencil size={12} /></button>
+      )}
+      {selInsert && <button type="button" className={btn(false)} title="تكرار" onClick={st.duplicateSelected}><Copy size={12} /></button>}
+      <button type="button" className={btn(false)} title="إخفاء/إظهار" disabled={!inOrder} onClick={() => st.toggleVisible(selected)}>
+        {st.isVisible(selected) ? <Eye size={12} /> : <EyeOff size={12} />}
+      </button>
+      <button type="button" className={btn(false)} title="حذف (Delete)" onClick={st.deleteSelected}><Trash2 size={12} /></button>
+    </div>
+  );
+}
 
 // Center canvas: true-scale sheet centered on BOTH axes, zoom, mm rulers,
 // printable-band guides (roll), fit meter (page), size compare, and a drag
@@ -125,12 +185,19 @@ export default function StudioCanvas({ st, children }) {
                 <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, right: 0, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
               </>
             )}
+            {/* magnetic center guide while free-dragging */}
+            {st.dragSnap?.centerX && (
+              <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
+            )}
             <LayoutRenderer family={family} size={size} invoice={st.invoiceData}
               settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} />
             {overlayLayer}
           </div>
         </div>
       )}
+
+      {/* floating quick toolbar for the selected element */}
+      {!children && !st.compare && <FloatingToolbar st={st} />}
 
       {/* fit / overflow meter (page family) */}
       {!children && family === "page" && !st.compare && pageH > 0 && (

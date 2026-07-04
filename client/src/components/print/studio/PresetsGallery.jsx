@@ -9,7 +9,7 @@ import {
 } from "../presets/presetEngine";
 import { SHEET_W, sampleById } from "./studioData";
 
-const TAG_LABELS = {
+export const TAG_LABELS = {
   bilingual: "ثنائي اللغة", compact: "موفر للورق", ticket: "تذكرة طلب",
   kitchen: "مطبخ", modern: "عصري", classic: "كلاسيكي", minimal: "بسيط",
   bordered: "مؤطَّر", dense: "كثيف", user: "قوالبي",
@@ -19,7 +19,8 @@ const TAG_LABELS = {
   service: "خدمات", supermarket: "سوبرماركت", wholesale: "جملة",
   ultra: "فائق التوفير", formal: "رسمي", draft: "مسودة", letterhead: "ترويسة",
   dark: "داكن", quotation: "عرض سعر", statement: "كشف حساب",
-  retail: "تجزئة", warranty: "ضمان",
+  retail: "تجزئة", warranty: "ضمان", restaurant: "مطعم", kiosk: "كشك",
+  promo: "عروض", luxury: "فاخر", station: "محطة",
 };
 const tagLabel = (t) => TAG_LABELS[t] || t;
 

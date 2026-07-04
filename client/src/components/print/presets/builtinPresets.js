@@ -2,14 +2,14 @@
  * builtinPresets.js — curated built-in design presets (see presetEngine.js
  * for the preset shape and apply semantics).
  *
- * Authored as a matrix (header treatment × table style × totals style ×
- * density) then curated with real names, so the library stays maintainable.
- * Every preset remains fully editable after applying.
+ * Authored as a matrix (header treatment × table style × totals treatment ×
+ * density × typography) then curated per shop type. Every preset must be
+ * recognizable AT THUMBNAIL SIZE — differences are structural (frames, block
+ * order, giant numbers, column sets, dividers, fonts), not font-size nudges.
  *
- * Coverage: 20+ presets for EACH paper size (80mm, 58mm, A4, A5). Most roll
- * presets suit both roll sizes; a few are size-specific (dense multi-column
- * only makes sense on 80mm, ultra-compact only on 58mm). Same idea for page:
- * most suit both A4/A5, a few are size-specific.
+ * Thermal safety (roll): text stays #000 (the renderer coerces light colors),
+ * no colored backgrounds (1-bit heads), table fonts ≥ 9px, contrast via
+ * borders/weight/size — everything here prints crisply on a 203dpi head.
  */
 
 import { DEFAULT_ORDER } from "../families/defaultOrder";
@@ -37,6 +37,12 @@ const COMFORT_FLAT = { body_font_size: 12, item_font_size: 12, footer_font_size:
 // ROLL_MIN_TABLE_PX in blockUtils.js) — never smaller than the printable floor.
 const ULTRA_COMPACT_FLAT = { body_font_size: 10, item_font_size: 9, footer_font_size: 8, header_font_size: 12 };
 
+// box helpers — thermal-safe frames (pure black)
+const frame = (w = 1, style = "solid", padding = 4) => ({ borderWidth: w, borderStyle: style, borderColor: "#000", padding });
+const div = (id, after, style = "solid") => ({ id, type: "divider", after, props: { style } });
+const gap = (id, after, height = 6) => ({ id, type: "spacer", after, props: { height } });
+const note = (id, after, text, props = {}) => ({ id, type: "custom_text", after, props: { text, align: "center", ...props } });
+
 const rollPreset = (id, name, nameEn, { table = "grid", density = "comfort", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["80mm", "58mm"] } = {}) => ({
   id, family: "roll", sizes, name, nameEn, tags,
   layout: {
@@ -50,11 +56,12 @@ const rollPreset = (id, name, nameEn, { table = "grid", density = "comfort", per
   },
 });
 
-const pagePreset = (id, name, nameEn, { headerStyle = "band", table = "gridZebra", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["A4", "A5"] } = {}) => ({
+const pagePreset = (id, name, nameEn, { headerStyle = "band", headerMetaAlign, table = "gridZebra", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["A4", "A5"] } = {}) => ({
   id, family: "page", sizes, name, nameEn, tags,
   layout: {
     ...(order ? { order } : {}),
     headerStyle,
+    ...(headerMetaAlign ? { headerMetaAlign } : {}),
     perBlock: { ...perBlock, items_table: { ...PAGE_TABLE[table], ...(perBlock.items_table || {}) } },
     inserted,
   },
@@ -68,425 +75,569 @@ function moveAfter(baseOrder, item, afterItem) {
   arr.splice(idx + 1, 0, item);
   return arr;
 }
+/** Insert a registry block that's not in the default order (e.g. order_number). */
+function withBlockAfter(baseOrder, block, afterItem) {
+  if (baseOrder.includes(block)) return moveAfter(baseOrder, block, afterItem);
+  const arr = [...baseOrder];
+  arr.splice(arr.indexOf(afterItem) + 1, 0, block);
+  return arr;
+}
+/** Drop blocks from an order (paper-savers / tickets hide whole sections). */
+const without = (baseOrder, ...blocks) => baseOrder.filter((x) => !blocks.includes(x));
 
 /* ---- column bundles (perBlock.items_table.columns) ---- */
 
-const BILINGUAL_ROLL_COLS_4 = [
-  { key: "name", label: "الصنف / Item", visible: true, align: "right" },
-  { key: "qty", label: "كمية / Qty", visible: true, align: "center" },
-  { key: "price", label: "سعر / Price", visible: true, align: "center" },
-  { key: "total", label: "إجمالي / Total", visible: true, align: "left" },
-];
-const BILINGUAL_ROLL_COLS_3 = [
-  { key: "name", label: "الصنف / Item", visible: true, align: "right" },
-  { key: "qty", label: "كمية / Qty", visible: true, align: "center" },
-  { key: "total", label: "إجمالي / Total", visible: true, align: "left" },
-];
-const KITCHEN_TICKET_COLS = [
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-];
-const DENSE_SUPERMARKET_COLS = [
-  { key: "code", label: "كود", visible: true, align: "center" },
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-  { key: "price", label: "سعر", visible: true, align: "center" },
-  { key: "total", label: "إجمالي", visible: true, align: "left" },
-];
-const WHOLESALE_DENSE_COLS = [
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "unit", label: "الوحدة", visible: true, align: "center" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-  { key: "discount", label: "خصم", visible: true, align: "center" },
-  { key: "total", label: "إجمالي", visible: true, align: "left" },
-];
-const FUEL_DENSE_COLS = [
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "unit", label: "الوحدة", visible: true, align: "center" },
-  { key: "qty", label: "الكمية", visible: true, align: "center" },
-  { key: "price", label: "السعر", visible: true, align: "center" },
-  { key: "total", label: "الإجمالي", visible: true, align: "left" },
-];
-const ULTRA_COMPACT_COLS = [
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-  { key: "total", label: "إجمالي", visible: true, align: "left" },
-];
-const BILINGUAL_PAGE_COLS = [
-  { key: "code", label: "كود / Code", visible: true, align: "center" },
-  { key: "name", label: "الصنف / Item", visible: true, align: "right" },
-  { key: "qty", label: "كمية / Qty", visible: true, align: "center" },
-  { key: "price", label: "سعر / Price", visible: true, align: "center" },
-  { key: "total", label: "الإجمالي / Total", visible: true, align: "left" },
-];
-const DELIVERY_PAGE_COLS = [
-  { key: "code", label: "كود", visible: true, align: "center" },
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "unit", label: "الوحدة", visible: true, align: "center" },
-  { key: "qty", label: "الكمية", visible: true, align: "center" },
-];
-const A4_DETAILED_COLS = [
-  { key: "code", label: "كود", visible: true, align: "center" },
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "unit", label: "الوحدة", visible: true, align: "center" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-  { key: "price", label: "سعر", visible: true, align: "center" },
-  { key: "discount", label: "خصم", visible: true, align: "center" },
-  { key: "total", label: "إجمالي", visible: true, align: "left" },
-];
-const A4_WHOLESALE_COLS = [
-  { key: "name", label: "الصنف", visible: true, align: "right" },
-  { key: "unit", label: "الوحدة", visible: true, align: "center" },
-  { key: "qty", label: "كمية", visible: true, align: "center" },
-  { key: "discount", label: "خصم", visible: true, align: "center" },
-  { key: "total", label: "إجمالي", visible: true, align: "left" },
-];
+const col = (key, label, align = "center") => ({ key, label, visible: true, align });
+const R3 = [col("name", "الصنف", "right"), col("qty", "كمية"), col("total", "إجمالي", "left")];
+const R3_PRICE = [col("name", "الصنف", "right"), col("qty", "كمية"), col("price", "سعر"), col("total", "إجمالي", "left")];
+const R_KITCHEN = [col("name", "الصنف", "right"), col("qty", "كمية")];
+const R_BILINGUAL_4 = [col("name", "الصنف / Item", "right"), col("qty", "كمية / Qty"), col("price", "سعر / Price"), col("total", "إجمالي / Total", "left")];
+const R_BILINGUAL_3 = [col("name", "الصنف / Item", "right"), col("qty", "كمية / Qty"), col("total", "إجمالي / Total", "left")];
+const R_SUPERMARKET = [col("code", "كود"), col("name", "الصنف", "right"), col("qty", "كمية"), col("price", "سعر"), col("total", "إجمالي", "left")];
+const R_WHOLESALE = [col("name", "الصنف", "right"), col("unit", "الوحدة"), col("qty", "كمية"), col("discount", "خصم"), col("total", "إجمالي", "left")];
+const R_ELECTRONICS = [col("code", "الموديل"), col("name", "الجهاز", "right"), col("qty", "عدد"), col("total", "إجمالي", "left")];
 
-// "barcode" already sits at the end of the roll default order (gated by
-// show_barcode_line). The electronics preset wants it emphasized right under
-// the items table — reorder the existing block instead of inserting a second
-// one (inserting a duplicate "barcode" type would render it twice).
-const ELECTRONICS_ROLL_ORDER = moveAfter(DEFAULT_ORDER.roll, "barcode", "items_table");
+const P_STD = [col("code", "كود"), col("name", "الصنف", "right"), col("qty", "كمية"), col("price", "سعر"), col("total", "إجمالي", "left")];
+const P_SIMPLE = [col("name", "الصنف", "right"), col("qty", "الكمية"), col("price", "السعر"), col("total", "الإجمالي", "left")];
+const P_BILINGUAL = [col("code", "كود / Code"), col("name", "الصنف / Item", "right"), col("qty", "كمية / Qty"), col("price", "سعر / Price"), col("total", "الإجمالي / Total", "left")];
+const P_DETAILED = [col("code", "كود"), col("name", "الصنف", "right"), col("unit", "الوحدة"), col("qty", "كمية"), col("price", "سعر"), col("discount", "خصم"), col("total", "إجمالي", "left")];
+const P_WHOLESALE = [col("name", "الصنف", "right"), col("unit", "الوحدة"), col("qty", "كمية"), col("discount", "خصم"), col("total", "إجمالي", "left")];
+const P_DELIVERY = [col("code", "كود"), col("name", "الصنف", "right"), col("unit", "الوحدة"), col("qty", "الكمية")];
+const P_RESTAURANT = [col("name", "الطبق", "right"), col("qty", "عدد"), col("price", "سعر"), col("total", "إجمالي", "left")];
 
-/* ---- curated library (extended by the preset authoring pass) ---- */
+/* ---- shared order variants ---- */
 
-export const BUILTIN_PRESETS = [
-  // ================= ROLL — core structural directions (80mm + 58mm) =================
+const RO = DEFAULT_ORDER.roll;
+const PO = DEFAULT_ORDER.page;
+const ELECTRONICS_ROLL_ORDER = moveAfter(RO, "barcode", "items_table");
+const KITCHEN_ORDER = ["order_number", "doc_number", "doc_date", "items_table", "notes"];
+const QUEUE_ORDER = ["company_name", "order_number", "doc_date", "footer_text"];
+const TICKET_ORDER = withBlockAfter(["company_name", "doc_number", "doc_date", "customer", "items_table", "discount", "grand_total", "payments", "footer_text"], "order_number", "company_name");
+const PICKUP_ORDER = ["company_name", "order_number", "customer", "doc_date", "items_table", "notes", "footer_text"];
+const GRAB_ORDER = ["company_name", "doc_number", "items_table", "grand_total", "payments"];
+
+/* ================================================================
+ * ROLL LIBRARY — thermal 58/80mm
+ * ================================================================ */
+
+const ROLL_PRESETS = [
+  // ── core directions ──
   rollPreset("roll-classic", "كلاسيكي", "Classic", {
     table: "grid",
-    perBlock: { company_name: { bold: true, fontSize: 16 } },
+    perBlock: { company_name: { bold: true, fontSize: 17 } },
+    inserted: [div("d1", "cashier"), div("d2", "payments")],
     tags: ["classic"],
   }),
   rollPreset("roll-modern", "عصري", "Modern", {
     table: "lines",
     perBlock: {
-      company_name: { bold: true, fontSize: 16 },
-      doc_number: { bold: true },
-      grand_total: { bold: true, fontSize: 15 },
+      company_name: { fontSize: 24, bold: true, align: "center", fontFamily: "Cairo" },
+      grand_total: { fontSize: 16 },
+      doc_number: { fontFamily: "monospace", fontSize: 13, align: "center" },
     },
+    inserted: [div("d1", "receipt_header_text", "dash")],
+    flat: { print_font: "Cairo" },
     tags: ["modern"],
   }),
-  rollPreset("roll-simple", "بسيط", "Simple", {
+  rollPreset("roll-minimal", "بسيط هوائي", "Airy minimal", {
     table: "open",
-    perBlock: { company_name: { fontSize: 15, marginBottom: 4 } },
-    inserted: [
-      { id: "ins-space-head", type: "spacer", after: "company_name", props: { height: 6 } },
-      { id: "ins-space-items", type: "spacer", after: "items_table", props: { height: 6 } },
-    ],
+    perBlock: {
+      company_name: { fontSize: 13, align: "center" },
+      footer_text: { fontSize: 9, align: "center" },
+    },
+    inserted: [div("d1", "cashier", "wave"), div("d2", "grand_total", "wave"), gap("s1", "company_name", 8)],
+    flat: { show_logo: false },
     tags: ["simple", "whitespace"],
   }),
   rollPreset("roll-framed", "مؤطَّر", "Framed", {
-    table: "lines",
-    inserted: [
-      { id: "ins-div-head", type: "divider", after: "address", props: { style: "solid" } },
-      { id: "ins-div-preitems", type: "divider", after: "customer", props: { style: "dash" } },
-      { id: "ins-div-pretotals", type: "divider", after: "items_table", props: { style: "dash" } },
-      { id: "ins-div-prefooter", type: "divider", after: "payments", props: { style: "solid" } },
-    ],
+    table: "grid",
+    perBlock: {
+      company_name: { ...frame(2, "solid", 6), align: "center", bold: true, fontSize: 16, marginBottom: 6 },
+      doc_number: { ...frame(1, "dashed", 4), align: "center", fontFamily: "monospace" },
+      grand_total: { ...frame(3, "double", 8), fontSize: 16 },
+    },
     tags: ["framed"],
   }),
-  rollPreset("roll-elegant-compact", "أنيق مضغوط", "Elegant Compact", {
-    table: "lines", density: "compact",
-    perBlock: { company_name: { bold: true, fontSize: 14 } },
-    flat: { show_notes: false },
-    tags: ["compact", "elegant"],
-  }),
-  rollPreset("roll-saver", "موفر — مضغوط", "Paper Saver", {
-    table: "lines", density: "compact",
-    flat: { show_notes: false, show_branch: false },
-    tags: ["compact"],
-  }),
-  rollPreset("roll-saver-lite", "موفر — بلا حدود", "Ink Saver", {
-    table: "open", density: "compact",
-    flat: { show_notes: false, show_branch: false, show_address: false },
-    tags: ["compact"],
-  }),
-  rollPreset("roll-bilingual", "ثنائي اللغة", "Bilingual", {
-    table: "grid",
-    perBlock: { items_table: { columns: BILINGUAL_ROLL_COLS_4 } },
-    tags: ["bilingual"],
-  }),
-  rollPreset("roll-bilingual-compact", "ثنائي اللغة — مضغوط", "Bilingual Compact", {
-    table: "lines", density: "compact",
-    perBlock: { items_table: { columns: BILINGUAL_ROLL_COLS_3 } },
-    tags: ["bilingual", "compact"],
-  }),
-  rollPreset("roll-ticket-kitchen", "تذكرة طلب — عميل ومطبخ", "Kitchen Order Ticket", {
+  rollPreset("roll-luxury", "فاخر مزدوج", "Double luxury", {
     table: "lines",
     perBlock: {
-      items_table: { columns: KITCHEN_TICKET_COLS },
-      customer: { bold: true, fontSize: 13 },
+      company_name: { ...frame(3, "double", 10), fontSize: 20, bold: true, align: "center", fontFamily: "Noto Sans Arabic", marginBottom: 8 },
+      grand_total: { ...frame(3, "double", 8), fontSize: 18 },
+      footer_text: { italic: true, align: "center" },
     },
-    inserted: [
-      { id: "ins-order-no", type: "order_number", after: "doc_number", props: { fontSize: 28, label: "رقم الطلب" } },
-    ],
-    tags: ["ticket"],
+    inserted: [gap("s1", "tax_id", 8), gap("s2", "payments", 8)],
+    flat: { print_font: "Noto Sans Arabic" },
+    tags: ["luxury", "elegant"],
   }),
-  rollPreset("roll-ticket-queue", "رقم الانتظار", "Queue Number", {
-    table: "open", density: "compact",
-    inserted: [
-      { id: "ins-order-no-big", type: "order_number", after: "doc_number", props: { fontSize: 54, label: "رقم الانتظار" } },
-    ],
-    flat: { show_notes: false },
-    tags: ["ticket"],
-  }),
-  rollPreset("roll-ticket-pickup", "استلام + مطعم", "Pickup & Restaurant", {
-    table: "lines",
-    perBlock: { customer: { bold: true, fontSize: 14 } },
-    inserted: [
-      { id: "ins-order-no-pickup", type: "order_number", after: "doc_number", props: { fontSize: 30, label: "رقم الاستلام" } },
-    ],
-    tags: ["ticket"],
-  }),
-  rollPreset("roll-boutique", "بوتيك أزياء", "Fashion Boutique", {
+  rollPreset("roll-elegant", "أنيق متمركز", "Centered elegant", {
     table: "open",
-    perBlock: { company_name: { align: "center", bold: true, fontSize: 18 } },
-    inserted: [
-      { id: "ins-wave-head", type: "divider", after: "company_name", props: { style: "wave" } },
-      { id: "ins-wave-foot", type: "divider", after: "items_table", props: { style: "wave" } },
-      { id: "ins-thanks", type: "custom_text", after: "footer_text", props: { text: "شكراً لتسوقك معنا يا {اسم_العميل} ✦", align: "center", fontSize: 11, bold: true } },
-    ],
-    tags: ["boutique"],
+    perBlock: {
+      company_name: { fontSize: 18, align: "center", fontFamily: "Noto Sans Arabic", lineHeight: 1.9 },
+      branch: { align: "center" }, address: { align: "center" }, doc_number: { align: "center" },
+      doc_date: { align: "center" }, customer: { align: "center" },
+      grand_total: { fontSize: 15 },
+    },
+    inserted: [div("d1", "cashier", "wave"), div("d2", "payments", "wave")],
+    flat: { print_font: "Noto Sans Arabic", logo_alignment: "center" },
+    tags: ["elegant", "whitespace"],
   }),
-  rollPreset("roll-pharmacy", "صيدلية", "Pharmacy", {
+  rollPreset("roll-mono", "محطة — أرقام واضحة", "Station mono", {
     table: "lines",
-    perBlock: { tax_id: { bold: true, fontSize: 12, align: "center" } },
-    inserted: [
-      { id: "ins-div-pharm", type: "divider", after: "tax_id", props: { style: "solid" } },
-    ],
-    tags: ["pharmacy"],
+    perBlock: {
+      items_table: { fontFamily: "monospace" },
+      doc_number: { fontFamily: "monospace", fontSize: 14, bold: true },
+      grand_total: { fontFamily: "monospace", fontSize: 16 },
+      payments: { fontFamily: "monospace" },
+    },
+    inserted: [div("d1", "cashier", "dash"), div("d2", "payments", "dash")],
+    tags: ["station", "dense"],
+  }),
+
+  // ── paper savers ──
+  rollPreset("roll-compact", "موفر", "Compact", {
+    table: "lines", density: "compact",
+    perBlock: { items_table: { columns: R3 } },
+    flat: { show_branch: false, show_cashier_name: false, show_address: false },
+    tags: ["compact"],
+  }),
+  rollPreset("roll-ultra", "موفر — أقصى توفير", "Ultra saver", {
+    table: "open", density: "ultra", sizes: ["58mm"],
+    perBlock: { items_table: { columns: R3 }, company_name: { fontSize: 12, align: "center" } },
+    flat: { show_logo: false, show_branch: false, show_address: false, show_tax_id: false, show_cashier_name: false, show_footer: false },
+    tags: ["compact", "ultra"],
+  }),
+  rollPreset("roll-compact-frame", "موفر مؤطَّر", "Compact framed", {
+    table: "grid", density: "compact",
+    perBlock: {
+      items_table: { columns: R3 },
+      grand_total: { ...frame(2, "solid", 5), fontSize: 14 },
+      company_name: { bold: true, fontSize: 14, align: "center" },
+    },
+    flat: { show_cashier_name: false },
+    tags: ["compact", "framed"],
+  }),
+
+  // ── bilingual ──
+  rollPreset("roll-bilingual", "ثنائي اللغة", "Bilingual", {
+    table: "grid", sizes: ["80mm"],
+    perBlock: { items_table: { columns: R_BILINGUAL_4 }, company_name: { fontSize: 16, bold: true, align: "center" } },
+    inserted: [note("n1", "footer_text", "Thank you for your visit!", { fontSize: 10, italic: true })],
+    tags: ["bilingual"],
+  }),
+  rollPreset("roll-bilingual-compact", "ثنائي اللغة — مضغوط", "Bilingual compact", {
+    table: "lines", density: "compact",
+    perBlock: { items_table: { columns: R_BILINGUAL_3 } },
+    inserted: [note("n1", "footer_text", "Thank you!", { fontSize: 9, italic: true })],
+    tags: ["bilingual", "compact"],
+  }),
+
+  // ── restaurant / order tickets ──
+  rollPreset("roll-kitchen", "تذكرة مطبخ", "Kitchen ticket", {
+    table: "grid", order: KITCHEN_ORDER,
+    perBlock: {
+      order_number: { fontSize: 52 },
+      items_table: { columns: R_KITCHEN, fontSize: 14, bold: true },
+      notes: { ...frame(2, "dashed", 5), fontSize: 13, bold: true },
+    },
+    tags: ["ticket", "kitchen", "restaurant"],
+  }),
+  rollPreset("roll-ticket-customer", "تذكرة طلب — نسخة العميل", "Order ticket — customer", {
+    table: "lines", order: TICKET_ORDER,
+    perBlock: {
+      order_number: { fontSize: 40 },
+      items_table: { columns: R3 },
+      grand_total: { ...frame(2, "solid", 6), fontSize: 16 },
+    },
+    tags: ["ticket", "restaurant"],
+  }),
+  rollPreset("roll-queue", "رقم الانتظار", "Queue number", {
+    table: "open", order: QUEUE_ORDER,
+    perBlock: {
+      order_number: { fontSize: 64 },
+      company_name: { fontSize: 14, align: "center" },
+      footer_text: { ...frame(1, "dashed", 4), align: "center", fontSize: 11 },
+    },
+    flat: { receipt_footer: "يرجى انتظار النداء — شكراً لصبركم" },
+    tags: ["ticket", "restaurant"],
+  }),
+  rollPreset("roll-pickup", "استلام — مطعم", "Restaurant pickup", {
+    table: "grid", order: PICKUP_ORDER,
+    perBlock: {
+      order_number: { fontSize: 44 },
+      customer: { fontSize: 14, bold: true, ...frame(1, "solid", 4) },
+      items_table: { columns: R_KITCHEN, fontSize: 13, bold: true },
+    },
+    tags: ["ticket", "delivery", "restaurant"],
+  }),
+
+  // ── shop verticals ──
+  rollPreset("roll-supermarket", "سوبرماركت كثيف", "Dense supermarket", {
+    table: "grid", density: "compact", sizes: ["80mm"],
+    order: without(RO, "receipt_header_text", "notes"),
+    perBlock: { items_table: { columns: R_SUPERMARKET, fontSize: 9 }, company_name: { fontSize: 14, bold: true } },
+    flat: { show_cashier_name: true },
+    tags: ["dense", "supermarket"],
+  }),
+  rollPreset("roll-wholesale", "جملة", "Wholesale", {
+    table: "grid", density: "compact", sizes: ["80mm"],
+    perBlock: {
+      items_table: { columns: R_WHOLESALE, fontSize: 9 },
+      doc_number: { ...frame(1, "solid", 3), fontFamily: "monospace", fontSize: 12 },
+    },
+    tags: ["dense", "wholesale"],
   }),
   rollPreset("roll-cafe", "كافيه", "Cafe", {
-    table: "open",
-    perBlock: { company_name: { bold: true, fontSize: 18 } },
+    table: "lines",
+    perBlock: {
+      company_name: { fontSize: 22, bold: true, align: "center", fontFamily: "Cairo" },
+      items_table: { columns: R3, fontSize: 12 },
+      grand_total: { fontSize: 15 },
+    },
     inserted: [
-      { id: "ins-dots-head", type: "divider", after: "company_name", props: { style: "dots" } },
-      { id: "ins-dots-foot", type: "divider", after: "items_table", props: { style: "dots" } },
+      div("d1", "receipt_header_text", "wave"),
+      note("n1", "payments", "شكراً {اسم_العميل} — نراك قريباً ☕", { bold: true, fontSize: 11 }),
     ],
-    tags: ["cafe"],
+    flat: { print_font: "Cairo" },
+    tags: ["cafe", "modern"],
   }),
-  rollPreset("roll-electronics", "إلكترونيات", "Electronics", {
+  rollPreset("roll-pharmacy", "صيدلية", "Pharmacy", {
     table: "grid",
+    perBlock: {
+      items_table: { columns: R3_PRICE, fontSize: 10 },
+      tax_id: { ...frame(1, "solid", 3), fontSize: 10, bold: true, align: "center" },
+      company_name: { fontSize: 15, bold: true },
+    },
+    flat: { print_font: "Noto Sans Arabic", show_tax_id: true },
+    tags: ["pharmacy", "compliance"],
+  }),
+  rollPreset("roll-boutique", "بوتيك", "Boutique", {
+    table: "open",
+    perBlock: {
+      company_name: { fontSize: 19, align: "center", fontFamily: "Noto Sans Arabic", lineHeight: 2 },
+      items_table: { columns: R3 },
+      grand_total: { fontSize: 15, align: "center" },
+      footer_text: { italic: true, align: "center", fontSize: 10 },
+    },
+    inserted: [gap("s1", "logo", 6), div("d1", "customer", "wave"), gap("s2", "grand_total", 6)],
+    flat: { logo_max_height: 70, logo_alignment: "center", show_cashier_name: false, print_font: "Noto Sans Arabic" },
+    tags: ["boutique", "elegant"],
+  }),
+  rollPreset("roll-electronics", "إلكترونيات + ضمان", "Electronics + warranty", {
+    table: "grid", sizes: ["80mm"],
     order: ELECTRONICS_ROLL_ORDER,
+    perBlock: { items_table: { columns: R_ELECTRONICS, fontSize: 10 } },
+    inserted: [note("n1", "grand_total", "الضمان سنتان من تاريخ الفاتورة — يرجى الاحتفاظ بالإيصال", { ...frame(1, "dashed", 4), fontSize: 10, bold: true })],
     flat: { show_barcode_line: true },
-    tags: ["electronics"],
+    tags: ["electronics", "warranty"],
   }),
   rollPreset("roll-delivery", "توصيل", "Delivery", {
     table: "lines",
-    perBlock: { customer: { bold: true, fontSize: 14 }, address: { bold: true } },
-    inserted: [
-      { id: "ins-phone-note", type: "custom_text", after: "customer", props: { text: "هاتف التواصل: {الهاتف}", align: "right", fontSize: 11 } },
-    ],
+    order: withBlockAfter(RO, "order_number", "doc_date"),
+    perBlock: {
+      order_number: { fontSize: 36 },
+      customer: { ...frame(2, "solid", 5), fontSize: 13, bold: true },
+      items_table: { columns: R3 },
+    },
+    flat: { address_position: "top" },
     tags: ["delivery"],
   }),
-  rollPreset("roll-zatca", "ZATCA — فاتورة ضريبية مبسطة", "ZATCA Simplified", {
+  rollPreset("roll-services", "خدمات وصيانة", "Services", {
+    table: "lines",
+    perBlock: {
+      items_table: { columns: R3 },
+      notes: { ...frame(1, "solid", 5), fontSize: 11, marginTop: 4 },
+      doc_number: { fontFamily: "monospace", bold: true },
+    },
+    inserted: [note("n1", "payments", "استلمتُ الخدمة بحالة جيدة — التوقيع: ______________", { fontSize: 10, align: "right", marginTop: 10 })],
+    tags: ["service"],
+  }),
+  rollPreset("roll-zatca", "زاتكا ZATCA", "ZATCA compliant", {
     table: "grid",
-    perBlock: { tax_id: { bold: true } },
-    flat: { qr_mode: "zatca", show_qr: true, qr_size: 64, qr_alignment: "center" },
+    perBlock: {
+      tax_id: { ...frame(1, "solid", 3), bold: true, align: "center", fontSize: 11 },
+      items_table: { columns: R3_PRICE, fontSize: 10 },
+    },
+    flat: { qr_mode: "zatca", show_qr: true, qr_size: 70, qr_alignment: "center", print_font: "Noto Sans Arabic", show_tax_id: true },
     tags: ["zatca", "compliance"],
   }),
-  rollPreset("roll-salon", "صالون وتجميل", "Salon", {
+  rollPreset("roll-barcode-retail", "تجزئة بباركود", "Retail barcode", {
+    table: "grid", density: "compact",
+    perBlock: { items_table: { columns: R3_PRICE, fontSize: 9 } },
+    flat: { show_barcode_line: true, show_qr: false },
+    tags: ["retail", "dense"],
+  }),
+  rollPreset("roll-grab", "سريع — بيع خاطف", "Grab & go", {
+    table: "lines", order: GRAB_ORDER,
+    perBlock: {
+      company_name: { fontSize: 13, align: "center" },
+      items_table: { columns: R_KITCHEN, fontSize: 13, bold: true },
+      grand_total: { fontSize: 18, ...frame(2, "solid", 6) },
+    },
+    tags: ["compact", "kiosk"],
+  }),
+  rollPreset("roll-kiosk", "كشك مبسّط", "Simple kiosk", {
     table: "open",
-    perBlock: { customer: { bold: true, fontSize: 13 } },
-    inserted: [
-      { id: "ins-dots-salon", type: "divider", after: "items_table", props: { style: "dots" } },
-      { id: "ins-note-salon", type: "custom_text", after: "footer_text", props: { text: "نتمنى لك تجربة رائعة ✦", align: "center", fontSize: 11 } },
-    ],
-    tags: ["service"],
+    order: without(RO, "branch", "address", "tax_id", "cashier", "notes"),
+    perBlock: {
+      company_name: { fontSize: 16, align: "center", bold: true },
+      grand_total: { fontSize: 16, align: "center" },
+      items_table: { columns: R3 },
+    },
+    inserted: [div("d1", "receipt_header_text", "dash"), div("d2", "items_table", "dash")],
+    tags: ["kiosk", "simple"],
   }),
-  rollPreset("roll-workshop", "ورشة صيانة", "Workshop", {
+  rollPreset("roll-promo", "عروض وترويج", "Promo", {
     table: "lines",
-    perBlock: { notes: { bold: true, fontSize: 12 } },
-    tags: ["service"],
+    perBlock: {
+      receipt_header_text: { ...frame(2, "dashed", 6), bold: true, fontSize: 13, align: "center" },
+      grand_total: { fontSize: 15 },
+    },
+    inserted: [note("n1", "footer_text", "🎁 اعرض هذا الإيصال واحصل على خصم ٥٪ في زيارتك القادمة", { ...frame(1, "dashed", 5), bold: true, fontSize: 10 })],
+    tags: ["promo", "retail"],
   }),
+];
 
-  // ================= ROLL — 80mm-only (dense multi-column) =================
-  rollPreset("roll-supermarket-dense", "سوبرماركت — كثيف", "Supermarket Dense", {
-    table: "grid", density: "compact",
-    perBlock: { items_table: { columns: DENSE_SUPERMARKET_COLS } },
-    sizes: ["80mm"],
-    tags: ["dense", "supermarket"],
-  }),
-  rollPreset("roll-wholesale-dense", "جملة — تفصيلي", "Wholesale Detailed", {
-    table: "grid", density: "compact",
-    perBlock: { items_table: { columns: WHOLESALE_DENSE_COLS } },
-    sizes: ["80mm"],
-    tags: ["dense", "wholesale"],
-  }),
-  rollPreset("roll-fuel-station", "محطة وقود", "Fuel Station", {
-    table: "grid", density: "compact",
-    perBlock: { items_table: { columns: FUEL_DENSE_COLS } },
-    sizes: ["80mm"],
-    tags: ["dense"],
-  }),
+/* ================================================================
+ * PAGE LIBRARY — A4 / A5 (full color)
+ * ================================================================ */
 
-  // ================= ROLL — 58mm-only (ultra compact) =================
-  rollPreset("roll-ultra-compact", "فائق الإيجاز", "Ultra Compact", {
-    table: "open", density: "ultra",
-    perBlock: { items_table: { columns: ULTRA_COMPACT_COLS } },
-    flat: { show_notes: false, show_branch: false, show_address: false },
-    sizes: ["58mm"],
-    tags: ["compact", "ultra"],
-  }),
-  rollPreset("roll-58-kiosk", "كشك سريع", "Quick Kiosk", {
-    table: "open", density: "ultra",
-    perBlock: { items_table: { columns: ULTRA_COMPACT_COLS } },
-    inserted: [
-      { id: "ins-order-no-kiosk", type: "order_number", after: "doc_number", props: { fontSize: 20, label: "" } },
-    ],
-    flat: { show_notes: false, show_branch: false },
-    sizes: ["58mm"],
-    tags: ["compact", "ticket"],
-  }),
-  rollPreset("roll-58-zatca-mini", "ضريبي مصغر", "Mini ZATCA", {
-    table: "lines", density: "ultra",
-    perBlock: { items_table: { columns: ULTRA_COMPACT_COLS }, tax_id: { bold: true } },
-    flat: { qr_mode: "zatca", show_qr: true, qr_size: 44, qr_alignment: "center", show_notes: false },
-    sizes: ["58mm"],
-    tags: ["compact", "zatca"],
-  }),
-
-  // ================= PAGE — core structural directions (A4 + A5) =================
+const PAGE_PRESETS = [
+  // ── core directions (distinct accents so thumbnails differ instantly) ──
   pagePreset("page-modern", "عصري", "Modern", {
-    headerStyle: "band", table: "gridZebra",
+    headerStyle: "band", table: "linesZebra",
+    perBlock: { items_table: { columns: P_STD } },
+    flat: { accent_color: "#1e293b", print_font: "Cairo" },
     tags: ["modern"],
   }),
   pagePreset("page-classic", "كلاسيكي", "Classic", {
     headerStyle: "classic", table: "grid",
+    perBlock: { items_table: { columns: P_STD } },
+    flat: { accent_color: "#111827" },
     tags: ["classic"],
   }),
   pagePreset("page-minimal", "بسيط", "Minimal", {
-    headerStyle: "minimal", table: "open",
-    tags: ["simple"],
+    headerStyle: "minimal", table: "open", headerMetaAlign: "left",
+    perBlock: { items_table: { columns: P_SIMPLE } },
+    flat: { accent_color: "#0f172a" },
+    tags: ["simple", "whitespace"],
   }),
-  pagePreset("page-formal", "رسمي", "Formal", {
+  pagePreset("page-formal", "رسمي بتوقيعات", "Formal", {
     headerStyle: "classic", table: "lines",
-    flat: { show_signature_lines: true },
+    perBlock: { items_table: { columns: P_STD }, footer_text: { italic: true } },
+    flat: { accent_color: "#334155", print_font: "Noto Sans Arabic", show_signature_lines: true },
     tags: ["formal"],
   }),
   pagePreset("page-draft", "مسودة", "Draft", {
     headerStyle: "minimal", table: "open",
-    flat: { show_watermark: true, watermark_text: "مسودة" },
+    perBlock: { items_table: { columns: P_SIMPLE } },
+    flat: { accent_color: "#64748b", show_watermark: true, watermark_text: "مسودة" },
     tags: ["draft"],
   }),
-  pagePreset("page-bilingual", "ثنائي اللغة", "Bilingual", {
-    headerStyle: "band", table: "gridZebra",
-    perBlock: { items_table: { columns: BILINGUAL_PAGE_COLS } },
-    tags: ["bilingual"],
-  }),
-  pagePreset("page-bilingual-classic", "ثنائي اللغة — كلاسيكي", "Bilingual Classic", {
-    headerStyle: "classic", table: "grid",
-    perBlock: { items_table: { columns: BILINGUAL_PAGE_COLS } },
-    tags: ["bilingual", "classic"],
-  }),
-  pagePreset("page-compact-pro", "احترافي مضغوط", "Compact Professional", {
-    headerStyle: "band", table: "lines",
-    flat: { body_font_size: 11, item_font_size: 10, footer_font_size: 9, header_font_size: 14 },
-    tags: ["compact"],
+  pagePreset("page-elegant", "أنيق", "Elegant", {
+    headerStyle: "minimal", table: "open", headerMetaAlign: "center",
+    perBlock: {
+      items_table: { columns: P_SIMPLE },
+      company_name: { fontFamily: "Noto Sans Arabic", fontSize: 22 },
+      footer_text: { italic: true, align: "center" },
+    },
+    inserted: [div("d1", "customer", "wave")],
+    flat: { accent_color: "#57534e", print_font: "Noto Sans Arabic" },
+    tags: ["elegant", "whitespace"],
   }),
   pagePreset("page-letterhead", "ترويسة رسمية", "Letterhead", {
-    headerStyle: "minimal", table: "open",
-    perBlock: { company_name: { marginBottom: 8 }, address: { marginTop: 4 } },
-    tags: ["formal", "letterhead"],
+    headerStyle: "minimal", table: "lines", headerMetaAlign: "left",
+    perBlock: {
+      company_name: { fontSize: 26, bold: true, fontFamily: "Cairo" },
+      branch: { fontSize: 12 },
+      receipt_header_text: { italic: true },
+    },
+    inserted: [div("d1", "receipt_header_text", "solid")],
+    flat: { accent_color: "#78350f", show_signature_lines: true },
+    tags: ["letterhead", "formal"],
   }),
-  pagePreset("page-dark-navy", "كحلي داكن", "Dark Navy", {
-    headerStyle: "band", table: "gridZebra",
-    flat: { accent_color: "#0f172a" },
-    tags: ["dark"],
-  }),
-  pagePreset("page-dark-blue", "أزرق داكن", "Dark Blue", {
-    headerStyle: "band", table: "gridZebra",
-    flat: { accent_color: "#1e3a8a" },
-    tags: ["dark"],
-  }),
-  pagePreset("page-dark-brown", "بني داكن", "Dark Brown", {
-    headerStyle: "classic", table: "lines",
-    flat: { accent_color: "#7c2d12" },
-    tags: ["dark"],
-  }),
-  pagePreset("page-dark-green", "أخضر داكن", "Dark Green", {
-    headerStyle: "band", table: "gridZebra",
-    flat: { accent_color: "#14532d" },
-    tags: ["dark"],
-  }),
-  pagePreset("page-quotation", "عرض سعر", "Quotation", {
-    headerStyle: "classic", table: "lines",
-    flat: { show_signature_lines: true, receipt_footer: "هذا العرض ساري لمدة 7 أيام من تاريخه" },
-    inserted: [
-      { id: "ins-validity", type: "custom_text", after: "footer_text", props: { text: "نشكركم على ثقتكم — بانتظار موافقتكم", align: "center", fontSize: 10 } },
-    ],
-    tags: ["quotation"],
-  }),
-  pagePreset("page-delivery-note", "إذن تسليم", "Delivery Note", {
-    headerStyle: "classic", table: "grid",
-    perBlock: { items_table: { columns: DELIVERY_PAGE_COLS } },
-    flat: { show_tax: false, show_subtotal: false, show_discount_line: false, receipt_footer: "إذن تسليم بضاعة" },
-    tags: ["delivery"],
-  }),
-  pagePreset("page-statement", "كشف حساب", "Account Statement", {
-    headerStyle: "minimal", table: "lines",
-    flat: { show_signature_lines: true, receipt_footer: "كشف حساب" },
-    tags: ["statement"],
-  }),
-  pagePreset("page-zatca-invoice", "ضريبي معتمد", "ZATCA Invoice", {
-    headerStyle: "classic", table: "grid",
-    flat: { qr_mode: "zatca", show_qr: true },
-    tags: ["zatca", "formal"],
-  }),
-  pagePreset("page-elegant", "أنيق", "Elegant", {
-    headerStyle: "minimal", table: "lines",
-    flat: { print_font: "Cairo" },
-    tags: ["elegant"],
-  }),
-  pagePreset("page-thankyou-retail", "متجر — شكر", "Retail Thank You", {
-    headerStyle: "band", table: "gridZebra",
-    inserted: [
-      { id: "ins-thanks-retail", type: "custom_text", after: "footer_text", props: { text: "شكراً لتسوقك معنا يا {اسم_العميل}", align: "center", fontSize: 11, bold: true } },
-    ],
-    tags: ["retail"],
-  }),
-  pagePreset("page-warranty", "بطاقة ضمان", "Warranty Card", {
-    headerStyle: "classic", table: "lines",
-    flat: { show_signature_lines: true },
-    inserted: [
-      { id: "ins-warranty-note", type: "custom_text", after: "footer_text", props: { text: "هذا المنتج مشمول بالضمان وفق الشروط والأحكام المعلنة", align: "center", fontSize: 10 } },
-    ],
-    tags: ["formal", "warranty"],
-  }),
-
-  // ================= PAGE — A4-only (dense multi-column) =================
-  pagePreset("page-a4-detailed-report", "كشف تفصيلي", "Detailed Report", {
-    headerStyle: "classic", table: "gridZebra",
-    perBlock: { items_table: { columns: A4_DETAILED_COLS } },
-    sizes: ["A4"],
-    tags: ["dense"],
-  }),
-  pagePreset("page-a4-wholesale", "جملة — A4", "Wholesale A4", {
-    headerStyle: "band", table: "gridZebra",
-    perBlock: { items_table: { columns: A4_WHOLESALE_COLS } },
-    sizes: ["A4"],
-    tags: ["dense", "wholesale"],
-  }),
-
-  // ================= PAGE — A5-only (compact half-page) =================
-  pagePreset("page-a5-compact-receipt", "إيصال نصف صفحة", "Half-Page Receipt", {
-    headerStyle: "minimal", table: "lines",
-    flat: { body_font_size: 11, item_font_size: 10, footer_font_size: 9, header_font_size: 13 },
-    sizes: ["A5"],
+  pagePreset("page-compact", "مضغوط", "Compact", {
+    headerStyle: "classic", table: "lines", headerMetaAlign: "right",
+    perBlock: { items_table: { columns: P_STD, fontSize: 9 } },
+    flat: { accent_color: "#0f172a", body_font_size: 10, item_font_size: 9, header_font_size: 13, footer_font_size: 8 },
     tags: ["compact"],
   }),
-  pagePreset("page-a5-letterhead-mini", "ترويسة مصغرة", "Mini Letterhead", {
-    headerStyle: "minimal", table: "open",
-    flat: { body_font_size: 11, item_font_size: 10, footer_font_size: 9 },
-    sizes: ["A5"],
-    tags: ["compact", "formal"],
+
+  // ── color series (band + treatments) ──
+  pagePreset("page-navy", "كحلي داكن", "Dark navy", {
+    headerStyle: "band", table: "lines",
+    perBlock: {
+      items_table: { columns: P_STD, fontFamily: "monospace" },
+      grand_total: { background: "#1e3a8a", color: "#ffffff", padding: 8, borderRadius: 6 },
+    },
+    flat: { accent_color: "#1e3a8a" },
+    tags: ["dark", "modern"],
+  }),
+  pagePreset("page-emerald", "زمردي", "Emerald", {
+    headerStyle: "band", table: "gridZebra",
+    perBlock: { items_table: { columns: P_STD } },
+    flat: { accent_color: "#047857" },
+    tags: ["modern"],
+  }),
+  pagePreset("page-burgundy", "نبيذي", "Burgundy", {
+    headerStyle: "classic", table: "lines",
+    perBlock: { items_table: { columns: P_SIMPLE }, company_name: { fontFamily: "Noto Sans Arabic" } },
+    flat: { accent_color: "#7f1d1d", print_font: "Noto Sans Arabic" },
+    tags: ["classic", "elegant"],
+  }),
+  pagePreset("page-royal", "أزرق ملكي", "Royal blue", {
+    headerStyle: "band", table: "openZebra",
+    perBlock: {
+      items_table: { columns: P_STD },
+      grand_total: { background: "#1d4ed8", color: "#ffffff", padding: 8, borderRadius: 8 },
+    },
+    flat: { accent_color: "#1d4ed8", print_font: "Cairo" },
+    tags: ["modern"],
+  }),
+  pagePreset("page-charcoal", "فحمي", "Charcoal", {
+    headerStyle: "minimal", table: "grid",
+    perBlock: {
+      items_table: { columns: P_STD },
+      doc_number: { fontFamily: "monospace", fontSize: 14 },
+      grand_total: { ...frame(2, "solid", 6), borderColor: "#111827" },
+    },
+    flat: { accent_color: "#111827" },
+    tags: ["dark", "simple"],
+  }),
+  pagePreset("page-brown", "بني دافئ", "Warm brown", {
+    headerStyle: "classic", table: "linesZebra",
+    perBlock: { items_table: { columns: P_SIMPLE } },
+    flat: { accent_color: "#78350f" },
+    tags: ["classic"],
+  }),
+
+  // ── bilingual ──
+  pagePreset("page-bilingual", "ثنائي اللغة", "Bilingual", {
+    headerStyle: "band", table: "linesZebra",
+    perBlock: { items_table: { columns: P_BILINGUAL } },
+    inserted: [note("n1", "footer_text", "This is a computer-generated invoice.", { fontSize: 9, italic: true, align: "left" })],
+    flat: { accent_color: "#047857" },
+    tags: ["bilingual"],
+  }),
+  pagePreset("page-bilingual-classic", "ثنائي اللغة — كلاسيكي", "Bilingual classic", {
+    headerStyle: "classic", table: "grid",
+    perBlock: { items_table: { columns: P_BILINGUAL } },
+    flat: { accent_color: "#7f1d1d" },
+    tags: ["bilingual", "classic"],
+  }),
+
+  // ── business docs ──
+  pagePreset("page-quotation", "عرض سعر", "Quotation", {
+    headerStyle: "classic", table: "lines",
+    order: without(PO, "payments"),
+    perBlock: { items_table: { columns: P_STD } },
+    inserted: [note("n1", "grand_total", "هذا العرض ساري لمدة ١٥ يوماً من تاريخه — الأسعار شاملة الضريبة", { ...frame(1, "dashed", 6), bold: true, fontSize: 11 })],
+    flat: { accent_color: "#0369a1", show_signature_lines: true },
+    tags: ["quotation", "formal"],
+  }),
+  pagePreset("page-delivery", "إذن تسليم", "Delivery note", {
+    headerStyle: "band", table: "grid",
+    perBlock: {
+      items_table: { columns: P_DELIVERY },
+      doc_number: { fontFamily: "monospace", fontSize: 16, bold: true },
+      notes: { ...frame(1, "solid", 6), fontSize: 11 },
+    },
+    flat: { accent_color: "#b45309", show_signature_lines: true },
+    tags: ["delivery"],
+  }),
+  pagePreset("page-statement", "كشف مفصَّل", "Detailed statement", {
+    headerStyle: "classic", table: "grid",
+    perBlock: { items_table: { columns: P_DETAILED, fontSize: 9 } },
+    flat: { accent_color: "#334155", body_font_size: 10, item_font_size: 9 },
+    tags: ["statement", "dense"],
+  }),
+  pagePreset("page-zatca", "زاتكا ZATCA", "ZATCA compliant", {
+    headerStyle: "band", table: "lines",
+    perBlock: {
+      items_table: { columns: P_STD },
+      tax_id: { bold: true, fontSize: 12 },
+    },
+    flat: { accent_color: "#065f46", qr_mode: "zatca", show_qr: true, qr_size: 72, qr_alignment: "center", show_tax_id: true },
+    tags: ["zatca", "compliance"],
+  }),
+  pagePreset("page-warranty", "فاتورة بضمان", "Warranty invoice", {
+    headerStyle: "classic", table: "gridZebra",
+    perBlock: { items_table: { columns: P_STD } },
+    inserted: [note("n1", "notes", "شهادة ضمان: يخضع هذا المنتج لضمان المصنع لمدة ٢٤ شهراً من تاريخ الفاتورة. لا يشمل الضمان سوء الاستخدام.", { ...frame(1, "solid", 8), fontSize: 10, align: "right" })],
+    flat: { accent_color: "#1f2937", show_signature_lines: true },
+    tags: ["warranty", "formal"],
+  }),
+  pagePreset("page-retail", "تجزئة بباركود", "Retail barcode", {
+    headerStyle: "band", table: "linesZebra",
+    perBlock: { items_table: { columns: P_STD } },
+    flat: { accent_color: "#4338ca", show_barcode_line: true },
+    tags: ["retail"],
+  }),
+
+  // ── verticals ──
+  pagePreset("page-wholesale", "جملة", "Wholesale", {
+    headerStyle: "classic", table: "lines",
+    perBlock: { items_table: { columns: P_WHOLESALE, fontSize: 10 } },
+    flat: { accent_color: "#374151", body_font_size: 10, item_font_size: 10 },
+    tags: ["wholesale", "dense"],
+  }),
+  pagePreset("page-supermarket", "سوبرماركت", "Supermarket", {
+    headerStyle: "band", table: "gridZebra",
+    perBlock: { items_table: { columns: P_DETAILED, fontSize: 9 } },
+    flat: { accent_color: "#15803d", item_font_size: 9 },
+    tags: ["supermarket", "dense"],
+  }),
+  pagePreset("page-restaurant", "فاتورة مطعم", "Restaurant bill", {
+    headerStyle: "band", table: "linesZebra",
+    order: withBlockAfter(PO, "order_number", "doc_date"),
+    perBlock: {
+      order_number: { fontSize: 40 },
+      items_table: { columns: P_RESTAURANT },
+    },
+    flat: { accent_color: "#b45309", print_font: "Cairo" },
+    tags: ["restaurant", "ticket"],
+  }),
+  pagePreset("page-boutique", "بوتيك", "Boutique", {
+    headerStyle: "minimal", table: "open", headerMetaAlign: "center",
+    perBlock: {
+      company_name: { fontFamily: "Cairo", fontSize: 24 },
+      items_table: { columns: P_SIMPLE },
+      grand_total: { ...frame(1, "solid", 8), borderColor: "#7f1d1d" },
+    },
+    inserted: [div("d1", "customer", "wave"), div("d2", "payments", "wave")],
+    flat: { accent_color: "#7f1d1d", print_font: "Cairo" },
+    tags: ["boutique", "elegant"],
+  }),
+  pagePreset("page-pharmacy", "صيدلية", "Pharmacy", {
+    headerStyle: "classic", table: "grid",
+    perBlock: {
+      items_table: { columns: P_STD },
+      tax_id: { bold: true, fontSize: 12 },
+    },
+    flat: { accent_color: "#047857", print_font: "Noto Sans Arabic", show_tax_id: true },
+    tags: ["pharmacy", "compliance"],
+  }),
+  pagePreset("page-electronics", "إلكترونيات", "Electronics", {
+    headerStyle: "band", table: "gridZebra",
+    perBlock: { items_table: { columns: P_STD } },
+    inserted: [note("n1", "notes", "الضمان سنتان — تُقبل الاستبدالات خلال ١٤ يوماً بحالة العبوة الأصلية.", { ...frame(1, "dashed", 6), fontSize: 10 })],
+    flat: { accent_color: "#1d4ed8", show_barcode_line: true },
+    tags: ["electronics", "warranty"],
+  }),
+  pagePreset("page-services", "خدمات وأتعاب", "Services", {
+    headerStyle: "minimal", table: "lines", headerMetaAlign: "right",
+    perBlock: {
+      items_table: { columns: [col("name", "البيان", "right"), col("qty", "الوحدات"), col("price", "سعر الوحدة"), col("total", "الإجمالي", "left")] },
+      notes: { ...frame(1, "solid", 6) },
+    },
+    flat: { accent_color: "#0e7490", show_signature_lines: true },
+    tags: ["service", "formal"],
   }),
 ];
 
-/** Presets applicable to one paper size ("58mm"/"80mm"/"A5"/"A4"). */
+export const BUILTIN_PRESETS = [...ROLL_PRESETS, ...PAGE_PRESETS];
+
 export function presetsForSize(size) {
-  return BUILTIN_PRESETS.filter((p) => p.sizes.includes(size));
+  return BUILTIN_PRESETS.filter((p) => !p.sizes || !p.sizes.length || p.sizes.includes(size));
 }
 
-/** The out-of-the-box default preset id per family. */
 export const DEFAULT_PRESET_ID = { roll: "roll-classic", page: "page-modern" };

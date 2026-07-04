@@ -82,7 +82,7 @@ export default function StudioInspector({ st }) {
   const isBlockSel = !!selected && !selOverlay && (selInOrder || selInsert);
   const selType = selInsert ? selInsert.type : selected;
   const selOv = isBlockSel ? st.ov(selected) : {};
-  const isAbs = isBlockSel && family === "page" && selOv.abs && selOv.abs.xMm != null;
+  const isAbs = isBlockSel && selOv.abs && selOv.abs.xMm != null;
   const hasTypography = isBlockSel && !NO_TYPOGRAPHY.has(selType);
   const hasBox = isBlockSel && !NO_BOX.has(selType);
   const selLabel = selected
@@ -213,11 +213,11 @@ export default function StudioInspector({ st }) {
             </div>
           </div>
 
-          {/* free position (page family, all blocks) */}
-          {family === "page" && (
-            <Section title="الموضع">
-              <Toggle label="وضع حر — ضعه في أي مكان بالمليمتر" checked={!!isAbs} onChange={(v) => st.setFreePosition(selected, v)} />
-              {isAbs && (
+          {/* free position — every block, every paper size */}
+          <Section title="الموضع">
+            <Toggle label="وضع حر — ضعه في أي مكان بالمليمتر" checked={!!isAbs} onChange={(v) => st.setFreePosition(selected, v)} />
+            {isAbs && (
+              <>
                 <div className="mt-2 grid grid-cols-3 gap-2">
                   {[["xMm", "س"], ["yMm", "ص"], ["widthMm", "عرض"]].map(([k, lbl]) => (
                     <label key={k} className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">{lbl} (مم)
@@ -225,12 +225,21 @@ export default function StudioInspector({ st }) {
                     </label>
                   ))}
                 </div>
-              )}
-              <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--text-muted)]">
-                <Move size={10} /> اسحب العنصر مباشرة على الورقة لتحريكه بحرية.
-              </div>
-            </Section>
-          )}
+                <div className="mt-1.5">
+                  <Toggle label="حجز مساحته الأصلية (لا يُزاح الباقي)" checked={Number(selOv.abs.holdMm) > 0}
+                    onChange={(v) => setAbs({ holdMm: v ? Math.max(2, Number(selOv.abs.holdMm) || 6) : 0 })} />
+                  {Number(selOv.abs.holdMm) > 0 && (
+                    <Row label="ارتفاع المساحة (مم)">
+                      <input type="number" value={selOv.abs.holdMm} onChange={(e) => setAbs({ holdMm: Math.max(0, Number(e.target.value) || 0) })} className={`${inputCls} w-16`} />
+                    </Row>
+                  )}
+                </div>
+              </>
+            )}
+            <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--text-muted)]">
+              <Move size={10} /> اسحب العنصر مباشرة على الورقة لتحريكه بحرية{family === "roll" ? " — Ctrl+سحب لإعادة الترتيب" : ""}. ينجذب تلقائياً لمنتصف الورقة.
+            </div>
+          </Section>
 
           {/* typography — text-driven blocks only */}
           {hasTypography && (

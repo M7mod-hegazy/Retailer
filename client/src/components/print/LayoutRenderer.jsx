@@ -7,7 +7,7 @@ import PageWrapper from "./families/PageWrapper";
 import PageZoneLayout from "./families/PageZoneLayout";
 import { customInserts } from "./customBlockBridge";
 import { overrideCss, overrideBox } from "./layout/layoutModel";
-import { rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/blockUtils";
+import { g, rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/blockUtils";
 
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
@@ -66,20 +66,36 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     // On page family every element is grabbable (drag = free move); on roll
     // only flow-order blocks move (drag = reorder).
     if (editing && designer) node = wrapSelectable(node, selKey, type, entry.label, family === "page" || orderSet.has(selKey), designer);
-    // Free positioning (page family): a block with an `abs` override leaves the
-    // flow and renders at exact mm coordinates inside the sheet — this is what
-    // makes "drag anything anywhere" real on A4/A5.
-    const abs = family === "page" && ov.abs && ov.abs.xMm != null && ov.abs.yMm != null ? ov.abs : null;
+    // Free positioning (both families): a block with an `abs` override leaves
+    // the flow and renders at exact mm coordinates inside the sheet — this is
+    // what makes "drag anything anywhere" real. `holdMm` optionally keeps the
+    // block's original slot as empty space so the rest of the document does
+    // not reflow when a part is moved out.
+    const abs = ov.abs && ov.abs.xMm != null && ov.abs.yMm != null ? ov.abs : null;
     if (abs) {
       absBlocks.push(
-        <div key={`abs-${selKey}-${key}`} data-abs-block={selKey} style={{
+        <div key={`abs-${selKey}-${key}`} data-abs-block={selKey} dir="rtl" style={{
           position: "absolute",
           left: `${abs.xMm}mm`,
           top: `${abs.yMm}mm`,
           ...(abs.widthMm ? { width: `${abs.widthMm}mm` } : {}),
           zIndex: 5,
+          // Roll abs blocks escape the band div, so restore the receipt's
+          // typography context (the outer paper div sets none of it).
+          ...(family === "roll" ? {
+            color: "#000",
+            fontFamily: `${g(settings, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
+            fontSize: `${rollClampFontPx(g(settings, "body_font_size"))}px`,
+            lineHeight: 1.6,
+          } : {}),
         }}>{node}</div>
       );
+      if (Number(abs.holdMm) > 0) {
+        items.push({
+          type, group: entry.group,
+          node: <div key={`hold-${selKey}-${key}`} data-abs-hold={selKey} style={{ height: `${abs.holdMm}mm` }} />,
+        });
+      }
       return;
     }
     items.push({ type, group: entry.group, node: <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment> });
@@ -100,7 +116,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     );
   }
   return (
-    <RollWrapper settings={settings}>
+    <RollWrapper settings={settings} overlay={absBlocks.length ? absBlocks : null}>
       <RollZoneLayout items={items} settings={settings} />
     </RollWrapper>
   );
