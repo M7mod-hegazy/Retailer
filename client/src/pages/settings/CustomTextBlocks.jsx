@@ -85,42 +85,42 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
   const posLabel = INSERTION_POINTS.find(p => p.value === block.position)?.label || block.position;
 
   return (
-    <div className={`rounded-sm border transition-all ${block.enabled ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50 opacity-60"}`}>
+    <div className={`rounded-sm border transition-all ${block.enabled ? "border-[var(--border-normal)] bg-[var(--bg-surface)]" : "border-[var(--border-subtle)] bg-[var(--bg-input)] opacity-60"}`}>
       {/* Card Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border-subtle)]">
         {/* Reorder */}
         <div className="flex flex-col gap-0.5 shrink-0">
           <button type="button" onClick={onMoveUp} disabled={index === 0}
-            className="rounded px-0.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20 transition-colors">
+            className="rounded px-0.5 py-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 transition-colors">
             <ChevronUp className="h-3 w-3" />
           </button>
           <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-            className="rounded px-0.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20 transition-colors">
+            className="rounded px-0.5 py-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 transition-colors">
             <ChevronDown className="h-3 w-3" />
           </button>
         </div>
 
         {/* Position badge */}
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-black uppercase tracking-widest text-slate-800 truncate">
+          <div className="text-[11px] font-black uppercase tracking-widest text-[var(--text-primary)] truncate">
             {block.text?.trim() ? `"${block.text.slice(0, 28).replace(/\n/g, " ↵ ")}${block.text.length > 28 ? "…" : ""}"` : "نص فارغ"}
           </div>
-          <div className="text-[9px] font-bold text-slate-400 mt-0.5">{posLabel}</div>
+          <div className="text-[9px] font-bold text-[var(--text-muted)] mt-0.5">{posLabel}</div>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
           <button type="button" onClick={() => upd("enabled", !block.enabled)}
-            className={`rounded-sm p-1 transition-colors ${block.enabled ? "text-emerald-500 hover:bg-emerald-50" : "text-slate-300 hover:bg-slate-100"}`}
+            className={`rounded-sm p-1 transition-colors ${block.enabled ? "text-success-text hover:bg-success-bg" : "text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)]"}`}
             title={block.enabled ? "مفعّل" : "معطّل"}>
             {block.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
           </button>
           <button type="button" onClick={() => setOpen(o => !o)}
-            className="rounded-sm p-1 text-slate-400 hover:bg-slate-100 transition-colors">
+            className="rounded-sm p-1 text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)] transition-colors">
             {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
           <button type="button" onClick={onDelete}
-            className="rounded-sm p-1 text-rose-300 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+            className="rounded-sm p-1 text-danger/60 hover:bg-danger-bg hover:text-danger transition-colors">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -131,7 +131,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
         <div className="p-3 space-y-3">
           {/* Textarea */}
           <div>
-            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            <label className="block text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
               النص (المسافات والأسطر محفوظة)
             </label>
             <textarea
@@ -141,16 +141,16 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
               rows={3}
               placeholder={"مثال:\nشركة إلهيجازي للتجزئة\nالسجل التجاري: 1234567"}
               style={{ fontFamily: "monospace" }}
-              className="w-full resize-y rounded-sm border border-slate-200 bg-white px-3 py-2 text-2sm text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 leading-relaxed"
+              className="w-full resize-y rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2 text-2sm text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] shadow-sm transition-all placeholder:text-[var(--text-muted)] leading-relaxed"
             />
-            <div className="mt-1 text-[9px] font-bold text-slate-400 text-left ltr">
+            <div className="mt-1 text-[9px] font-bold text-[var(--text-muted)] text-left ltr">
               {block.text.length} حرف • {block.text.split("\n").length} سطر
             </div>
           </div>
 
           {/* Position */}
           <div>
-            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            <label className="block text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
               موضع الظهور في المستند
             </label>
             <div className="grid grid-cols-2 gap-1">
@@ -159,10 +159,10 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
                   key={pt.value}
                   type="button"
                   onClick={() => upd("position", pt.value)}
-                  className={`flex flex-col items-start rounded-sm border px-2.5 py-2 text-right transition-all ${block.position === pt.value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={`flex flex-col items-start rounded-sm border px-2.5 py-2 text-right transition-all ${block.position === pt.value ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]"}`}
                 >
-                  <div className={`text-[11px] font-black ${block.position === pt.value ? "text-white" : "text-slate-800"}`}>{pt.label}</div>
-                  <div className={`text-[9px] font-bold mt-0.5 ${block.position === pt.value ? "text-slate-300" : "text-slate-400"}`}>{pt.hint}</div>
+                  <div className={`text-[11px] font-black ${block.position === pt.value ? "text-white" : "text-[var(--text-primary)]"}`}>{pt.label}</div>
+                  <div className={`text-[9px] font-bold mt-0.5 ${block.position === pt.value ? "text-white/70" : "text-[var(--text-muted)]"}`}>{pt.hint}</div>
                 </button>
               ))}
             </div>
@@ -170,7 +170,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
 
           {/* Paper Size Filter */}
           <div>
-            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            <label className="block text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
               يظهر على هذه المقاسات
             </label>
             <div className="flex gap-1.5 flex-wrap">
@@ -189,7 +189,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
                       );
                     }}
                     className={`rounded-sm border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest transition-all ${
-                      active ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"
+                      active ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)]"
                     }`}
                   >
                     {size}
@@ -197,7 +197,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
                 );
               })}
             </div>
-            <div className="mt-1 text-[9px] font-bold text-slate-400">
+            <div className="mt-1 text-[9px] font-bold text-[var(--text-muted)]">
               {(() => {
                 const sz = block.paperSizes ?? ["58mm", "80mm", "A5", "A4"];
                 if (sz.length === 4) return "يظهر على جميع المقاسات";
@@ -211,11 +211,11 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
           <div className="flex items-center gap-3 flex-wrap">
             {/* Alignment */}
             <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">المحاذاة</div>
-              <div className="flex rounded-sm overflow-hidden border border-slate-200">
+              <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">المحاذاة</div>
+              <div className="flex rounded-sm overflow-hidden border border-[var(--border-normal)]">
                 {[["right", <AlignRight className="h-3.5 w-3.5" />], ["center", <AlignCenter className="h-3.5 w-3.5" />], ["left", <AlignLeft className="h-3.5 w-3.5" />]].map(([a, icon]) => (
                   <button key={a} type="button" onClick={() => upd("align", a)}
-                    className={`px-2.5 py-1.5 transition-colors border-l last:border-l-0 border-slate-200 ${block.align === a ? "bg-primary text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}>
+                    className={`px-2.5 py-1.5 transition-colors border-l last:border-l-0 border-[var(--border-normal)] ${block.align === a ? "bg-primary text-white" : "bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)]"}`}>
                     {icon}
                   </button>
                 ))}
@@ -224,27 +224,27 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
 
             {/* Font Size */}
             <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">حجم الخط</div>
-              <div className="flex items-center rounded-sm border border-slate-200 overflow-hidden">
+              <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">حجم الخط</div>
+              <div className="flex items-center rounded-sm border border-[var(--border-normal)] overflow-hidden">
                 <button type="button" onClick={() => upd("fontSize", Math.max(7, (block.fontSize || 10) - 1))}
-                  className="px-2 py-1.5 text-2sm font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
-                <div className="px-3 text-2sm font-black text-slate-800">{block.fontSize || 10}px</div>
+                  className="px-2 py-1.5 text-2sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-l border-[var(--border-normal)]">−</button>
+                <div className="px-3 text-2sm font-black text-[var(--text-primary)]">{block.fontSize || 10}px</div>
                 <button type="button" onClick={() => upd("fontSize", Math.min(24, (block.fontSize || 10) + 1))}
-                  className="px-2 py-1.5 text-2sm font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
+                  className="px-2 py-1.5 text-2sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-r border-[var(--border-normal)]">+</button>
               </div>
             </div>
 
             {/* Bold / Italic */}
             <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">التنسيق</div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">التنسيق</div>
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => upd("bold", !block.bold)}
-                  className={`rounded-sm border px-3 py-1.5 text-2sm font-black transition-all ${block.bold ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={`rounded-sm border px-3 py-1.5 text-2sm font-black transition-all ${block.bold ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]"}`}
                   style={{ fontWeight: "900" }}>
                   B
                 </button>
                 <button type="button" onClick={() => upd("italic", !block.italic)}
-                  className={`rounded-sm border px-3 py-1.5 text-2sm transition-all ${block.italic ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={`rounded-sm border px-3 py-1.5 text-2sm transition-all ${block.italic ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]"}`}
                   style={{ fontStyle: "italic", fontFamily: "serif" }}>
                   I
                 </button>
@@ -254,7 +254,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
             {/* Live text preview */}
             {block.text?.trim() && (
               <div className="flex-1 min-w-[100px]">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">معاينة مصغرة</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">معاينة مصغرة</div>
                 <div
                   style={{
                     textAlign: block.align,
@@ -311,9 +311,9 @@ export function CustomTextBlocksSection({ blocks, onUpdate }) {
   return (
     <div className="space-y-3">
       {blocks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
-          <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">لا توجد نصوص مضافة بعد</div>
-          <div className="text-[11px] font-bold text-slate-300 max-w-[240px] leading-relaxed">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-[var(--border-normal)] bg-[var(--bg-input)] py-8 text-center">
+          <div className="text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)]">لا توجد نصوص مضافة بعد</div>
+          <div className="text-[11px] font-bold text-[var(--text-muted)] max-w-[240px] leading-relaxed">
             أضف نصوصاً مخصصة مثل بيانات الضمان، ملاحظات الدفع، أو رسائل ترويجية في أي موضع من المستند
           </div>
         </div>
@@ -335,7 +335,7 @@ export function CustomTextBlocksSection({ blocks, onUpdate }) {
       <button
         type="button"
         onClick={addBlock}
-        className="flex w-full items-center justify-center gap-2 rounded-sm border border-dashed border-slate-300 bg-white py-3 text-[11px] font-black uppercase tracking-widest text-slate-500 transition-all hover:border-slate-900 hover:bg-primary-600 hover:text-white"
+        className="flex w-full items-center justify-center gap-2 rounded-sm border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] py-3 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] transition-all hover:border-[var(--text-primary)] hover:bg-primary-600 hover:text-white"
       >
         <Plus className="h-4 w-4" />
         إضافة نص مخصص جديد

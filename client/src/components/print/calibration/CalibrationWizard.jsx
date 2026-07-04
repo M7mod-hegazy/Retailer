@@ -157,15 +157,15 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
         {/* Step progress */}
         <div className="flex items-center gap-2">
           {[1, 2, 3].map((n) => (
-            <div key={n} className={`flex-1 h-1.5 rounded-full transition-colors ${step >= n ? "bg-primary" : "bg-slate-100"}`} />
+            <div key={n} className={`flex-1 h-1.5 rounded-full transition-colors ${step >= n ? "bg-primary" : "bg-[var(--bg-input)]"}`} />
           ))}
         </div>
 
         {step === 1 && (
           <div className="space-y-3">
-            <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <Ruler className="h-4 w-4 shrink-0 text-slate-500 mt-0.5" />
-              <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+            <div className="flex items-start gap-2 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-3">
+              <Ruler className="h-4 w-4 shrink-0 text-[var(--text-secondary)] mt-0.5" />
+              <p className="text-[11px] font-bold text-[var(--text-secondary)] leading-relaxed">
                 اطبع صفحة المعايرة، ثم اقرأ أصغر وأكبر رقم يظهر فعلياً على الورق (من الحافة اليسرى للورقة).
                 بعض الطابعات الحرارية تطبع نطاقاً أضيق من عرض الورق نفسه أو تزيحه جانبياً.
               </p>
@@ -180,19 +180,19 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="block text-[11px] font-black text-slate-500 mb-1">أصغر رقم ظاهر (يسار)</span>
+                <span className="block text-[11px] font-black text-[var(--text-secondary)] mb-1">أصغر رقم ظاهر (يسار)</span>
                 <input
                   type="number" value={leftMm} min={0} max={paperMm}
                   onChange={(e) => setLeftMm(Number(e.target.value))}
-                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
+                  className="w-full rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)]"
                 />
               </label>
               <label className="block">
-                <span className="block text-[11px] font-black text-slate-500 mb-1">أكبر رقم ظاهر (يمين)</span>
+                <span className="block text-[11px] font-black text-[var(--text-secondary)] mb-1">أكبر رقم ظاهر (يمين)</span>
                 <input
                   type="number" value={rightMm} min={0} max={paperMm}
                   onChange={(e) => setRightMm(Number(e.target.value))}
-                  className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800"
+                  className="w-full rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)]"
                 />
               </label>
             </div>
@@ -218,7 +218,7 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
 
         {step === 2 && (
           <div className="space-y-3">
-            <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+            <p className="text-[11px] font-bold text-[var(--text-secondary)] leading-relaxed">
               اطبع نفس العينة بالوضعين، ثم اختر أيهما ظهر بدون فراغ فارغ أعلى الإيصال.
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -244,12 +244,12 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
             </div>
 
             <button type="button" onClick={() => setHelpOpen((v) => !v)}
-              className="w-full flex items-center justify-between text-[11px] font-black text-slate-500 hover:text-slate-700 px-1">
+              className="w-full flex items-center justify-between text-[11px] font-black text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-1">
               <span className="flex items-center gap-1.5"><HelpCircle size={13} /> لماذا ما زال هناك فراغ؟</span>
               {helpOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
             {helpOpen && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] font-bold text-slate-600 leading-relaxed">
+              <div className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-3 text-[11px] font-bold text-[var(--text-secondary)] leading-relaxed">
                 باقي الفراغ العلوي عادة يأتي من إعدادات التغذية بتعريف الطابعة نفسه (وليس من هذا البرنامج).
                 افتح: خصائص الطابعة ← تفضيلات ← مقاس الورق، وتأكد أن مقاس الورق المُعرَّف مطابق لعرض الرول الفعلي.
               </div>
@@ -268,7 +268,7 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
 
         {step === 3 && (
           <div className="space-y-3">
-            <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+            <p className="text-[11px] font-bold text-[var(--text-secondary)] leading-relaxed">
               اطبع صفحة التأكيد وتحقق أن الإطار المربع يظهر كاملاً على الورق (وليس مقطوعاً من أي جانب).
             </p>
             <button type="button" onClick={printVerify} disabled={!printerName || busy}
@@ -288,34 +288,34 @@ export default function CalibrationWizard({ open, onClose, printerName, sizeKey 
         )}
 
         {/* Extras — always visible */}
-        <div className="border-t border-slate-100 pt-3 space-y-2">
-          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إضافات</h4>
+        <div className="border-t border-[var(--border-subtle)] pt-3 space-y-2">
+          <h4 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest">إضافات</h4>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+            <div className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-2.5 space-y-1.5">
               <button type="button" onClick={() => toggleExtra("escposCut", !cal.escposCut)}
                 className="w-full flex items-center justify-between">
-                <span className="text-[11px] font-black text-slate-700 flex items-center gap-1.5"><Scissors size={13} /> قص تلقائي</span>
-                {cal.escposCut ? <ToggleRight className="h-5 w-5 shrink-0 text-primary" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-slate-300" />}
+                <span className="text-[11px] font-black text-[var(--text-primary)] flex items-center gap-1.5"><Scissors size={13} /> قص تلقائي</span>
+                {cal.escposCut ? <ToggleRight className="h-5 w-5 shrink-0 text-primary" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />}
               </button>
               <button type="button" onClick={() => testEscpos("cut")} disabled={!isElectronPrint() || !printerName}
-                className="w-full text-[10px] font-bold text-slate-500 hover:text-slate-800 disabled:opacity-40 py-1">
+                className="w-full text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 py-1">
                 اختبار القص
               </button>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+            <div className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-2.5 space-y-1.5">
               <button type="button" onClick={() => toggleExtra("escposDrawer", !cal.escposDrawer)}
                 className="w-full flex items-center justify-between">
-                <span className="text-[11px] font-black text-slate-700 flex items-center gap-1.5"><DoorOpen size={13} /> فتح الدرج</span>
-                {cal.escposDrawer ? <ToggleRight className="h-5 w-5 shrink-0 text-primary" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-slate-300" />}
+                <span className="text-[11px] font-black text-[var(--text-primary)] flex items-center gap-1.5"><DoorOpen size={13} /> فتح الدرج</span>
+                {cal.escposDrawer ? <ToggleRight className="h-5 w-5 shrink-0 text-primary" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />}
               </button>
               <button type="button" onClick={() => testEscpos("drawer")} disabled={!isElectronPrint() || !printerName}
-                className="w-full text-[10px] font-bold text-slate-500 hover:text-slate-800 disabled:opacity-40 py-1">
+                className="w-full text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 py-1">
                 اختبار فتح الدرج
               </button>
             </div>
           </div>
           {!isElectronPrint() && (
-            <p className="text-[10px] font-bold text-slate-400">اختبارات القص والدرج متاحة فقط داخل تطبيق سطح المكتب.</p>
+            <p className="text-[10px] font-bold text-[var(--text-muted)]">اختبارات القص والدرج متاحة فقط داخل تطبيق سطح المكتب.</p>
           )}
         </div>
       </div>

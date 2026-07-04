@@ -158,13 +158,13 @@ const get = (s, k) => s[k] ?? DEFAULTS[k];
 
 function SectionLabel({ icon: Icon, title, hint }) {
   return (
-    <div className="flex items-center gap-3 border-b border-slate-100 pb-2.5 mb-4">
+    <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] pb-2.5 mb-4">
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
         <Icon className="h-3.5 w-3.5" />
       </div>
       <div>
-        <div className="text-[11px] font-black uppercase tracking-widest text-slate-800">{title}</div>
-        {hint && <div className="text-[11px] font-bold text-slate-400">{hint}</div>}
+        <div className="text-[11px] font-black uppercase tracking-widest text-[var(--text-primary)]">{title}</div>
+        {hint && <div className="text-[11px] font-bold text-[var(--text-muted)]">{hint}</div>}
       </div>
     </div>
   );
@@ -177,21 +177,21 @@ function ControlField({ label, hint, fieldKey, hovered, onHover, onLeave, childr
   return (
     <div
       data-field-key={fieldKey}
-      className={`relative rounded-sm transition-all duration-150 ${isActive ? "ring-2 ring-amber-400 ring-offset-1 bg-amber-50/60" : ""}`}
+      className={`relative rounded-sm transition-all duration-150 ${isActive ? "ring-2 ring-[var(--warning-border)] ring-offset-1 bg-[var(--warning-light)]" : ""}`}
       onMouseEnter={() => visual && onHover(fieldKey)}
       onMouseLeave={() => visual && onLeave()}
     >
       {isActive && (
-        <div className="absolute -top-2 left-0 z-10 flex items-center gap-1 rounded-sm bg-amber-400 px-1.5 py-0.5 text-[9px] font-black uppercase text-white shadow-sm">
+        <div className="absolute -top-2 left-0 z-10 flex items-center gap-1 rounded-sm bg-[var(--warning-text)] px-1.5 py-0.5 text-[9px] font-black uppercase text-white shadow-sm">
           <MousePointerClick className="h-2.5 w-2.5" /> يُظهَر في المعاينة
         </div>
       )}
-      <label className="block space-y-1.5 text-slate-500 focus-within:text-slate-900 transition-colors px-0.5 pb-0.5 pt-1">
+      <label className="block space-y-1.5 text-[var(--text-secondary)] focus-within:text-[var(--text-primary)] transition-colors px-0.5 pb-0.5 pt-1">
         <span className="flex items-center justify-between gap-1 text-[11px] font-black uppercase tracking-widest">
           <span>{label}</span>
           {hint && (
             <span className="group relative cursor-help">
-              <Info className="h-3 w-3 text-slate-300 group-hover:text-slate-600" />
+              <Info className="h-3 w-3 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]" />
               <div className="absolute left-0 top-5 z-20 hidden w-44 rounded-sm bg-slate-800 p-2 text-[11px] font-bold text-white shadow-xl group-hover:block">{hint}</div>
             </span>
           )}
@@ -203,12 +203,12 @@ function ControlField({ label, hint, fieldKey, hovered, onHover, onLeave, childr
 }
 
 function StyledInput({ ...props }) {
-  return <input {...props} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal" />;
+  return <input {...props} className="w-full rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] shadow-sm transition-all placeholder:text-[var(--text-muted)] placeholder:font-normal" />;
 }
 
 function StyledSelect({ value, onChange, options }) {
   return (
-    <select value={value ?? ""} onChange={onChange} className="w-full rounded-sm border border-slate-200 bg-white py-2 px-3 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 shadow-sm transition-all appearance-none cursor-pointer">
+    <select value={value ?? ""} onChange={onChange} className="w-full rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] shadow-sm transition-all appearance-none cursor-pointer">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -217,10 +217,10 @@ function StyledSelect({ value, onChange, options }) {
 function Stepper({ value, onChange, min = 0, max = 100, step = 1, unit }) {
   const v = Number(value ?? 0);
   return (
-    <div className="flex items-center rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <button type="button" onClick={() => onChange(Math.max(min, v - step))} className="px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100 border-l border-slate-200">−</button>
-      <div className="flex-1 text-center text-sm font-black text-slate-800 py-2">{v}{unit && <span className="text-[11px] font-bold text-slate-400 ml-1">{unit}</span>}</div>
-      <button type="button" onClick={() => onChange(Math.min(max, v + step))} className="px-3 py-2 text-sm font-black text-slate-500 hover:bg-slate-100 border-r border-slate-200">+</button>
+    <div className="flex items-center rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] shadow-sm overflow-hidden">
+      <button type="button" onClick={() => onChange(Math.max(min, v - step))} className="px-3 py-2 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-l border-[var(--border-normal)]">−</button>
+      <div className="flex-1 text-center text-sm font-black text-[var(--text-primary)] py-2">{v}{unit && <span className="text-[11px] font-bold text-[var(--text-muted)] ml-1">{unit}</span>}</div>
+      <button type="button" onClick={() => onChange(Math.min(max, v + step))} className="px-3 py-2 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-r border-[var(--border-normal)]">+</button>
     </div>
   );
 }
@@ -234,13 +234,13 @@ function ToggleSwitch({ checked, onChange, label, hint, fieldKey, hovered, onHov
       onMouseEnter={() => visual && onHover(fieldKey)}
       onMouseLeave={() => visual && onLeave()}
       onClick={() => onChange(!checked)}
-      className={`flex cursor-pointer select-none items-center justify-between gap-3 rounded-sm border p-3 transition-all ${isActive ? "ring-2 ring-amber-400 ring-offset-1" : ""} ${checked ? "border-primary bg-primary" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+      className={`flex cursor-pointer select-none items-center justify-between gap-3 rounded-sm border p-3 transition-all ${isActive ? "ring-2 ring-[var(--warning-border)] ring-offset-1" : ""} ${checked ? "border-primary bg-primary" : "border-[var(--border-normal)] bg-[var(--bg-input)] hover:bg-[var(--bg-input-hover)]"}`}
     >
       <div className="min-w-0">
-        <div className={`text-[11px] font-black uppercase tracking-widest truncate ${checked ? "text-white" : "text-slate-800"}`}>{label}</div>
-        {hint && <div className={`mt-0.5 text-[11px] font-bold truncate ${checked ? "text-slate-300" : "text-slate-400"}`}>{hint}</div>}
+        <div className={`text-[11px] font-black uppercase tracking-widest truncate ${checked ? "text-white" : "text-[var(--text-primary)]"}`}>{label}</div>
+        {hint && <div className={`mt-0.5 text-[11px] font-bold truncate ${checked ? "text-white/70" : "text-[var(--text-muted)]"}`}>{hint}</div>}
       </div>
-      {checked ? <ToggleRight className="h-5 w-5 shrink-0 text-emerald-400" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-slate-300" />}
+      {checked ? <ToggleRight className="h-5 w-5 shrink-0 text-[var(--success-border)]" /> : <ToggleLeft className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />}
     </div>
   );
 }
@@ -294,12 +294,12 @@ function PaperPicker({ value, onChange }) {
     <div className="grid grid-cols-4 gap-3">
       {PAPER_OPTIONS.map(({ value: v, label, sub, dims, icon: Icon }) => (
         <button key={v} type="button" onClick={() => onChange(v)}
-          className={`flex flex-col items-center gap-1.5 rounded-sm border py-4 transition-all ${value === v ? "border-primary bg-primary shadow-lg scale-[1.02]" : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"}`}>
-          <Icon className={`h-5 w-5 ${value === v ? "text-white" : "text-slate-400"}`} />
+          className={`flex flex-col items-center gap-1.5 rounded-sm border py-4 transition-all ${value === v ? "border-primary bg-primary shadow-lg scale-[1.02]" : "border-[var(--border-normal)] bg-[var(--bg-input)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)]"}`}>
+          <Icon className={`h-5 w-5 ${value === v ? "text-white" : "text-[var(--text-muted)]"}`} />
           <div className="text-center">
-            <div className={`text-sm font-black tracking-widest leading-none ${value === v ? "text-white" : "text-slate-800"}`}>{label}</div>
-            <div className={`text-[9px] font-bold mt-1 ${value === v ? "text-slate-300" : "text-slate-400"}`}>{sub}</div>
-            <div className={`text-[9px] font-bold ${value === v ? "text-slate-400" : "text-slate-300"}`}>{dims}</div>
+            <div className={`text-sm font-black tracking-widest leading-none ${value === v ? "text-white" : "text-[var(--text-primary)]"}`}>{label}</div>
+            <div className={`text-[9px] font-bold mt-1 ${value === v ? "text-white/70" : "text-[var(--text-muted)]"}`}>{sub}</div>
+            <div className={`text-[9px] font-bold ${value === v ? "text-white/60" : "text-[var(--text-muted)]"}`}>{dims}</div>
           </div>
         </button>
       ))}
@@ -369,15 +369,15 @@ function ThermalColumnsSection({ settings: s, onChange }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
-        <span className="text-[11px] font-bold text-slate-500">
-          <span className="text-slate-800 font-black ml-1">{currentKeys.length}</span>
+      <div className="flex items-center justify-between rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2">
+        <span className="text-[11px] font-bold text-[var(--text-secondary)]">
+          <span className="text-[var(--text-primary)] font-black ml-1">{currentKeys.length}</span>
           من <span className="font-black mx-0.5">{maxCols}</span> عمود متاح لـ {paperWidth}
         </span>
         <div className="flex items-center gap-1">
-          <div className="h-1.5 w-16 rounded-full bg-slate-200 overflow-hidden">
+          <div className="h-1.5 w-16 rounded-full bg-[var(--border-normal)] overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${currentKeys.length > maxCols ? "bg-red-500" : "bg-emerald-500"}`}
+              className={`h-full rounded-full transition-all ${currentKeys.length > maxCols ? "bg-[var(--danger)]" : "bg-[var(--success-text)]"}`}
               style={{ width: `${Math.min(100, (currentKeys.length / maxCols) * 100)}%` }}
             />
           </div>
@@ -394,7 +394,7 @@ function ThermalColumnsSection({ settings: s, onChange }) {
               className={`flex items-center gap-1.5 rounded-sm border px-3 py-2 transition-all ${
                 active
                   ? "border-primary bg-primary/5 border-primary/30"
-                  : "border-slate-200 bg-white"
+                  : "border-[var(--border-normal)] bg-[var(--bg-input)]"
               } ${atMax ? "opacity-50" : ""}`}
             >
               <button
@@ -408,7 +408,7 @@ function ThermalColumnsSection({ settings: s, onChange }) {
                   className={`h-4 w-4 shrink-0 rounded-sm border-2 flex items-center justify-center transition-all ${
                     active
                       ? "border-primary bg-primary"
-                      : "border-slate-300"
+                      : "border-[var(--border-strong)]"
                   }`}
                 >
                   {active && (
@@ -417,7 +417,7 @@ function ThermalColumnsSection({ settings: s, onChange }) {
                     </svg>
                   )}
                 </div>
-                <span className={`text-[11px] font-black ${active ? "text-slate-800" : "text-slate-500"}`}>
+                <span className={`text-[11px] font-black ${active ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}>
                   {col.label}
                 </span>
               </button>
@@ -427,7 +427,7 @@ function ThermalColumnsSection({ settings: s, onChange }) {
                   type="button"
                   onClick={() => moveUp(col.key)}
                   disabled={!active || currentKeys.indexOf(col.key) === 0}
-                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-default transition-all"
+                  className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-input-hover)] disabled:opacity-20 disabled:cursor-default transition-all"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
@@ -437,7 +437,7 @@ function ThermalColumnsSection({ settings: s, onChange }) {
                   type="button"
                   onClick={() => moveDown(col.key)}
                   disabled={!active || currentKeys.indexOf(col.key) >= currentKeys.length - 1}
-                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-20 disabled:cursor-default transition-all"
+                  className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-input-hover)] disabled:opacity-20 disabled:cursor-default transition-all"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
@@ -782,12 +782,12 @@ function PagePreview({ settings: s, hovered, onElementClick, size, customBlocks 
 
 function DocTypeNav({ activeDocType, onSelect }) {
   return (
-    <div className="w-[220px] shrink-0 overflow-y-auto border-l border-slate-200 bg-white pl-3">
+    <div className="w-[220px] shrink-0 overflow-y-auto border-l border-[var(--border-normal)] bg-[var(--bg-surface)] pl-3">
       <div className="space-y-1">
         {DOC_TYPES.map((doc) => (
           <button key={doc.key} type="button" onClick={() => onSelect(doc.key)}
-            className={`flex w-full items-center gap-2 rounded-sm px-3 py-2 text-right text-[11px] font-black transition-colors ${activeDocType === doc.key ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"}`}>
-            <span className={`min-w-8 rounded-sm px-1.5 py-0.5 text-center text-[9px] ${activeDocType === doc.key ? "bg-white/15" : "bg-slate-100 text-slate-400"}`}>{doc.icon}</span>
+            className={`flex w-full items-center gap-2 rounded-sm px-3 py-2 text-right text-[11px] font-black transition-colors ${activeDocType === doc.key ? "bg-primary text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]"}`}>
+            <span className={`min-w-8 rounded-sm px-1.5 py-0.5 text-center text-[9px] ${activeDocType === doc.key ? "bg-white/15" : "bg-[var(--bg-input)] text-[var(--text-muted)]"}`}>{doc.icon}</span>
             <span className="truncate">{doc.label}</span>
           </button>
         ))}
@@ -1415,10 +1415,10 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
   return (
     <div className="flex flex-1 min-w-0 gap-4 overflow-hidden pr-4">
       {/* Controls */}
-      <div className="w-[380px] shrink-0 overflow-y-auto space-y-4 rounded-sm border border-slate-200 bg-white p-4">
+      <div className="w-[380px] shrink-0 overflow-y-auto space-y-4 rounded-sm border border-[var(--border-normal)] bg-[var(--bg-surface)] p-4">
         <div>
-          <div className="text-sm font-black text-slate-900">تجاوزات خاصة بـ "{label}"</div>
-          <div className="text-[11px] font-bold text-slate-400">الإعدادات غير المحددة ترث من ⚙ الإعدادات العامة تلقائياً.</div>
+          <div className="text-sm font-black text-[var(--text-primary)]">تجاوزات خاصة بـ "{label}"</div>
+          <div className="text-[11px] font-bold text-[var(--text-muted)]">الإعدادات غير المحددة ترث من ⚙ الإعدادات العامة تلقائياً.</div>
         </div>
 
         <button type="button" onClick={() => setDesignerOpen(true)}
@@ -1429,8 +1429,8 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
         {/* Paper size selector — valid sizes only for this doc type */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-[11px] font-black text-slate-600">حجم الورق المقبول</label>
-            <span className="text-[9px] font-bold text-slate-400">الافتراضي: <span className="text-violet-600">{effectiveDefault}</span></span>
+            <label className="text-[11px] font-black text-[var(--text-secondary)]">حجم الورق المقبول</label>
+            <span className="text-[9px] font-bold text-[var(--text-muted)]">الافتراضي: <span className="text-violet-600">{effectiveDefault}</span></span>
           </div>
           <div className="flex flex-wrap gap-2">
             {cfg.sizes.map((size) => {
@@ -1443,37 +1443,37 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
                     isDefault
                       ? "border-violet-600 bg-violet-600 text-white shadow-md"
                       : isPreviewing
-                      ? "border-slate-700 bg-slate-700 text-white"
-                      : "border-slate-200 text-slate-600 hover:border-slate-400"
+                      ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--bg-surface)]"
+                      : "border-[var(--border-normal)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
                   }`}>
                   {size}
                   {isDefault && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400 text-[7px] font-black text-white">✓</span>
+                    <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--success-text)] text-[7px] font-black text-white">✓</span>
                   )}
                 </button>
               );
             })}
           </div>
-          <div className="mt-2 text-[9px] font-bold text-slate-400">
+          <div className="mt-2 text-[9px] font-bold text-[var(--text-muted)]">
             اضغط على حجم لمعاينته ← وحفظه كافتراضي لهذا المستند
           </div>
         </div>
 
         {[["receipt_header", "رأس المستند"], ["receipt_footer", "تذييل المستند"], ["watermark_text", "نص الطابع المائي"]].map(([key, labelText]) => (
           <label key={key} className="block space-y-1">
-            <span className="text-[11px] font-black text-slate-600">{labelText}</span>
+            <span className="text-[11px] font-black text-[var(--text-secondary)]">{labelText}</span>
             <input value={settings[key] || ""} onChange={(e) => set(key, e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-300 px-3 text-2sm outline-none focus:border-violet-500" />
+              className="h-10 w-full rounded-xl border border-[var(--border-strong)] px-3 text-2sm outline-none focus:border-violet-500" />
           </label>
         ))}
         {[["show_logo", "إظهار الشعار"], ["show_address", "إظهار العنوان"], ["show_phone", "إظهار الهاتف"], ["show_payment_details", "إظهار تفاصيل الدفع"], ["show_signature_lines", "إظهار خطوط التوقيع"], ["show_watermark", "طابع مائي"]].map(([key, labelText]) => (
-          <label key={key} className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50">
-            <span className="text-2sm font-bold text-slate-700">{labelText}</span>
+          <label key={key} className="flex cursor-pointer items-center justify-between rounded-xl border border-[var(--border-normal)] px-4 py-3 hover:bg-[var(--bg-input-hover)]">
+            <span className="text-2sm font-bold text-[var(--text-secondary)]">{labelText}</span>
             <input type="checkbox" checked={settings[key] !== undefined ? Boolean(settings[key]) : true} onChange={(e) => set(key, e.target.checked)} />
           </label>
         ))}
         <button type="button" onClick={() => setDesignerOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-2sm font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50">
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-surface)] py-3 text-2sm font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)]">
           <Maximize2 size={14} /> المحرر المتقدم (ملء الشاشة)
         </button>
         <button type="button" onClick={() => onSave(docType, settings)}
@@ -1497,15 +1497,15 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
       )}
 
       {/* Preview with pan & zoom */}
-      <div className="flex flex-1 min-w-0 flex-col rounded-sm border border-slate-200 overflow-hidden">
+      <div className="flex flex-1 min-w-0 flex-col rounded-sm border border-[var(--border-normal)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between bg-primary text-white px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4 text-slate-400" />
+            <Eye className="h-4 w-4 text-white/70" />
             <span className="text-[11px] font-black uppercase tracking-widest">معاينة حية — {label}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[9px] font-bold text-slate-400">عجلة الفأرة للتكبير • اسحب للتنقل</span>
+            <span className="text-[9px] font-bold text-white/70">عجلة الفأرة للتكبير • اسحب للتنقل</span>
             <button type="button" onClick={() => setDesignerOpen(true)}
               className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-black text-white hover:bg-violet-500">
               <Maximize2 size={13} /> المحرر المتقدم
@@ -1543,15 +1543,15 @@ function PerDocSettingsPanel({ docType, globalSettings, docSettings, onChange, o
           </div>
 
           {/* Zoom controls */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-0 rounded-sm bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm overflow-hidden z-10">
+          <div className="absolute bottom-3 left-3 flex items-center gap-0 rounded-sm bg-[var(--bg-surface)]/90 border border-[var(--border-normal)] shadow-md backdrop-blur-sm overflow-hidden z-10">
             <button type="button" onClick={() => setViewZoom((v) => Math.min(2, v + 0.1))}
-              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 border-l border-slate-200">+</button>
+              className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-l border-[var(--border-normal)]">+</button>
             <button type="button" onClick={resetView}
-              className="px-2.5 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-100 min-w-[46px] text-center">
+              className="px-2.5 py-1.5 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] min-w-[46px] text-center">
               {Math.round(viewZoom * 100)}%
             </button>
             <button type="button" onClick={() => setViewZoom((v) => Math.max(0.2, v - 0.1))}
-              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 border-r border-slate-200">−</button>
+              className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] border-r border-[var(--border-normal)]">−</button>
           </div>
         </div>
       </div>
@@ -1758,17 +1758,17 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         <section>
           <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
           {!isElectronPrint() ? (
-            <div className="mb-3 flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3 py-2 text-[11px] font-bold text-[var(--warning-text)]">
               <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
               هذه الميزة تعمل فقط داخل تطبيق سطح المكتب (.exe) — قائمة الطابعات المتصلة بجهازك ستظهر هنا عند فتح التطبيق
             </div>
           ) : printers.length === 0 ? (
-            <div className="mb-3 flex items-center gap-2 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2 text-[11px] font-bold text-[var(--text-secondary)]">
               <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
               جارٍ تحميل الطابعات المتصلة بجهازك...
             </div>
           ) : (
-            <div className="mb-3 flex items-center gap-2 rounded-sm border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">
+            <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--success-border)] bg-[var(--success-bg)] px-3 py-2 text-[11px] font-bold text-[var(--success-text)]">
               <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
               تم اكتشاف {printers.length} طابعة متصلة — اختر طابعة لكل حجم لتفعيل الطباعة الفورية
             </div>
@@ -1785,10 +1785,10 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               const cal = isRollSize ? resolveCalibration(assignedPrinter, size) : null;
               const isCalibrated = !!(cal && cal.printAreaWidthMm > 0);
               return (
-                <div key={size} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <div key={size} className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
-                    <span className="text-[11px] font-bold text-slate-500">{sub}</span>
+                    <span className="text-[11px] font-bold text-[var(--text-secondary)]">{sub}</span>
                   </div>
                   <StyledSelect
                     value={sizePrinterMap[size] || ""}
@@ -1804,12 +1804,12 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                         type="button"
                         onClick={() => openCalibrationWizard(size)}
                         disabled={!assignedPrinter}
-                        className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        className="flex items-center gap-1 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                       >
                         <Wrench size={11} /> معايرة
                       </button>
                       <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-black ${
-                        isCalibrated ? "bg-success-bg text-success-text" : "bg-slate-100 text-slate-400"
+                        isCalibrated ? "bg-success-bg text-success-text" : "bg-[var(--bg-input-hover)] text-[var(--text-muted)]"
                       }`}>
                         {isCalibrated ? `معايَر: ${cal.printAreaWidthMm}mm` : "غير معاير"}
                       </span>
@@ -1822,11 +1822,11 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" onClick={handleExportDeviceProfile}
-              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all">
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
               <Download size={12} /> تصدير ملف الجهاز
             </button>
             <button type="button" onClick={() => importFileRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all">
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
               <Upload size={12} /> استيراد ملف الجهاز
             </button>
             <input ref={importFileRef} type="file" accept="application/json" className="hidden" onChange={handleImportDeviceProfile} />
@@ -1839,30 +1839,30 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             <div className="flex-1">
               <SectionLabel icon={History} title="سجل الطباعة" hint="آخر عمليات الطباعة الصامتة على هذا الجهاز" />
             </div>
-            {logOpen ? <ChevronUp size={14} className="text-slate-400 mb-4" /> : <ChevronDown size={14} className="text-slate-400 mb-4" />}
+            {logOpen ? <ChevronUp size={14} className="text-[var(--text-muted)] mb-4" /> : <ChevronDown size={14} className="text-[var(--text-muted)] mb-4" />}
           </button>
           {logOpen && (
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{printJobLog.length} عملية</span>
+            <div className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-input)] px-3 py-2">
+                <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{printJobLog.length} عملية</span>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={refreshPrintLog}
-                    className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-100 transition-all">
+                    className="flex items-center gap-1 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-all">
                     <RefreshCw size={11} /> تحديث
                   </button>
                   <button type="button" onClick={handleClearPrintLog}
-                    className="flex items-center gap-1 rounded-md border border-danger-border bg-danger-bg px-2 py-1 text-[10px] font-black text-danger-text hover:bg-red-100 transition-all">
+                    className="flex items-center gap-1 rounded-md border border-danger-border bg-danger-bg px-2 py-1 text-[10px] font-black text-danger-text hover:bg-[var(--danger-light)] transition-all">
                     <Trash2 size={11} /> مسح
                   </button>
                 </div>
               </div>
               {printJobLog.length === 0 ? (
-                <div className="px-3 py-6 text-center text-[11px] font-bold text-slate-400">لا توجد عمليات طباعة بعد</div>
+                <div className="px-3 py-6 text-center text-[11px] font-bold text-[var(--text-muted)]">لا توجد عمليات طباعة بعد</div>
               ) : (
                 <div className="max-h-[280px] overflow-y-auto">
                   <table className="w-full text-[10px]">
-                    <thead className="sticky top-0 bg-slate-50">
-                      <tr className="text-slate-400 font-black uppercase tracking-widest">
+                    <thead className="sticky top-0 bg-[var(--bg-input)]">
+                      <tr className="text-[var(--text-muted)] font-black uppercase tracking-widest">
                         <th className="px-2 py-1.5 text-right">الوقت</th>
                         <th className="px-2 py-1.5 text-right">المستند</th>
                         <th className="px-2 py-1.5 text-right">الطابعة</th>
@@ -1878,7 +1878,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                           ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`
                           : "";
                         return (
-                          <tr key={idx} className={`border-t border-slate-100 font-bold ${entry.ok ? "text-slate-600" : "bg-danger-bg text-danger-text"}`}>
+                          <tr key={idx} className={`border-t border-[var(--border-subtle)] font-bold ${entry.ok ? "text-[var(--text-secondary)]" : "bg-danger-bg text-danger-text"}`}>
                             <td className="px-2 py-1.5 whitespace-nowrap">{timeLabel}</td>
                             <td className="px-2 py-1.5">{entry.doc_label || entry.doc_type || "—"}</td>
                             <td className="px-2 py-1.5 truncate max-w-[100px]">{entry.printer || "—"}</td>
@@ -1907,7 +1907,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           <div className="mt-4">
             {cf("accent_color", "لون النظام (A4/A5)", "رأس الجدول، الفواجز، العناوين",
               <div className="flex items-center gap-2">
-                <input type="color" value={get(s,"accent_color")} onChange={e => onChange("accent_color", e.target.value)} className="h-9 w-14 rounded-sm border border-slate-200 cursor-pointer" />
+                <input type="color" value={get(s,"accent_color")} onChange={e => onChange("accent_color", e.target.value)} className="h-9 w-14 rounded-sm border border-[var(--border-normal)] cursor-pointer" />
                 <StyledInput value={get(s,"accent_color")} onChange={e => onChange("accent_color", e.target.value)} />
               </div>
             )}
@@ -1943,7 +1943,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {/* Visibility */}
         <section>
           <SectionLabel icon={ListChecks} title="عناصر الظهور" hint="مرر فأرتك على مفتاح لتمييز مكانه في المعاينة — أو اضغط على عنصر المعاينة مباشرة" />
-          <div className="mb-3 flex items-center gap-2 rounded-sm border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-700">
+          <div className="mb-3 flex items-center gap-2 rounded-sm border border-info-border bg-info-bg px-3 py-2 text-[11px] font-bold text-info-text">
             <Zap className="h-3.5 w-3.5 shrink-0" />
             اضغط على أي عنصر في المعاينة للانتقال إلى إعداده المقابل هنا والعكس صحيح
           </div>
@@ -2044,7 +2044,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
       </div>
 
       {/* ── Separator ── */}
-      <div className="w-px self-stretch bg-slate-100 mx-2 shrink-0" />
+      <div className="w-px self-stretch bg-[var(--border-subtle)] mx-2 shrink-0" />
 
       {/* ── Preview (left in RTL) — fixed height, no sticky needed ── */}
       <div className="w-[520px] shrink-0 flex flex-col" style={{ height: "100%" }}>
@@ -2052,43 +2052,43 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {/* Preview Header */}
         <div className="flex items-center justify-between bg-primary text-white px-4 py-3 rounded-t-sm">
           <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4 text-slate-400" />
+            <Eye className="h-4 w-4 text-white/70" />
             <span className="text-2sm font-black uppercase tracking-widest">معاينة حية</span>
           </div>
           <div className="text-[11px] font-bold">
             {hovered && VISUAL_FIELDS.has(hovered)
-              ? <span className="flex items-center gap-1.5 text-amber-400"><MousePointerClick className="h-3 w-3" />يتم التمييز</span>
-              : <span className="text-slate-500">مرر على الإعدادات</span>
+              ? <span className="flex items-center gap-1.5 text-[var(--warning-border)]"><MousePointerClick className="h-3 w-3" />يتم التمييز</span>
+              : <span className="text-white/70">مرر على الإعدادات</span>
             }
           </div>
         </div>
 
         {/* Tab Bar */}
-        <div className="flex overflow-hidden border-x border-slate-200">
+        <div className="flex overflow-hidden border-x border-[var(--border-normal)]">
           {PAPER_OPTIONS.map(({ value: v, label }) => (
             <button key={v} type="button" onClick={() => switchPreviewTab(v)}
-              className={`flex-1 py-2 text-[11px] font-black uppercase tracking-widest transition-all border-l last:border-l-0 border-slate-200 ${previewTab === v ? "bg-amber-400 text-white" : "bg-white text-slate-400 hover:bg-slate-50"}`}>
+              className={`flex-1 py-2 text-[11px] font-black uppercase tracking-widest transition-all border-l last:border-l-0 border-[var(--border-normal)] ${previewTab === v ? "bg-[var(--warning-text)] text-white" : "bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)]"}`}>
               {label}
             </button>
           ))}
         </div>
 
         {/* Status Bar */}
-        <div className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border-x border-slate-200 ${width === previewTab ? "bg-emerald-50 text-emerald-700 border-b border-emerald-100" : "bg-amber-50 text-amber-700 border-b border-amber-100"}`}>
+        <div className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border-x border-[var(--border-normal)] ${width === previewTab ? "bg-success-bg text-success-text border-b border-success-border" : "bg-[var(--warning-bg)] text-[var(--warning-text)] border-b border-[var(--warning-border)]"}`}>
           <div className="h-1.5 w-1.5 rounded-full bg-current" />
           {width === previewTab ? `المقاس الافتراضي للنظام (${width})` : `تعاين: ${previewTab} | الافتراضي: ${width}`}
         </div>
 
         {/* Hint */}
-        <div className="border-x border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[9px] font-bold text-slate-500 flex items-center gap-1.5">
-          <MousePointerClick className="h-3 w-3 text-slate-400 shrink-0" />
+        <div className="border-x border-b border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-1.5 text-[9px] font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+          <MousePointerClick className="h-3 w-3 text-[var(--text-muted)] shrink-0" />
           اضغط على أي عنصر لتحديد إعداده في القائمة
         </div>
 
         {/* Preview Viewport — interactive pan & zoom canvas */}
         <div
           ref={viewportRef}
-          className="relative flex-1 overflow-hidden border border-t-0 border-slate-200 bg-[var(--bg-overlay)]"
+          className="relative flex-1 overflow-hidden border border-t-0 border-[var(--border-normal)] bg-[var(--bg-overlay)]"
           style={{ cursor: "grab" }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -2116,23 +2116,23 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           </div>
 
           {/* Zoom Overlay Controls */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-sm bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm overflow-hidden">
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-sm bg-[var(--bg-surface)]/90 border border-[var(--border-normal)] shadow-md backdrop-blur-sm overflow-hidden">
             <button
               type="button"
               onClick={() => setViewZoom(v => Math.min(2, v + 0.1))}
-              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200"
+              className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-colors border-l border-[var(--border-normal)]"
               title="تكبير"
             >+</button>
             <button
               type="button"
               onClick={resetView}
-              className="px-2 py-1.5 text-[9px] font-black text-slate-600 hover:bg-slate-100 transition-colors min-w-[42px] text-center"
+              className="px-2 py-1.5 text-[9px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-colors min-w-[42px] text-center"
               title="إعادة ضبط"
             >{Math.round(viewZoom * 100)}%</button>
             <button
               type="button"
               onClick={() => setViewZoom(v => Math.max(0.2, v - 0.1))}
-              className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200"
+              className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-colors border-r border-[var(--border-normal)]"
               title="تصغير"
             >−</button>
           </div>
@@ -2144,8 +2144,8 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         </div>
 
         {/* Quick Toggles */}
-        <div className="border border-t-0 border-slate-200 bg-white px-3 py-2.5">
-          <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400">تبديل سريع من المعاينة</div>
+        <div className="border border-t-0 border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 py-2.5">
+          <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">تبديل سريع من المعاينة</div>
           <div className="flex flex-wrap gap-1.5">
             {[["show_logo","شعار"],["show_tax","ضريبة"],["show_qr","QR"],["show_footer","تذييل"],["show_payment_details","دفع"],["show_cashier_name","كاشير"],["show_customer_name","عميل"],["show_discount_line","خصم"]].map(([key, label]) => {
               const on = get(s, key) !== false;
@@ -2153,7 +2153,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                 <button key={key} type="button"
                   onClick={() => onChange(key, !on)}
                   onMouseEnter={() => hover(key)} onMouseLeave={leave}
-                  className={`rounded-sm border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${on ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"}`}>
+                  className={`rounded-sm border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest transition-all ${on ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-input-hover)]"}`}>
                   {label}
                 </button>
               );

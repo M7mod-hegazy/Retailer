@@ -426,7 +426,7 @@ export default function PrintPreviewModal({
             {/* Preview viewport */}
             <div
               ref={viewportRef}
-              className="flex-1 bg-[var(--bg-overlay)] rounded-[12px] border border-slate-200/60 shadow-inner relative overflow-hidden"
+              className="flex-1 bg-[var(--bg-overlay)] rounded-[12px] border border-[var(--border-normal)] shadow-inner relative overflow-hidden"
               style={{ cursor: "grab" }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -461,13 +461,13 @@ export default function PrintPreviewModal({
               </div>
 
               {/* Zoom controls */}
-              <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-[10px] bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm overflow-hidden z-50">
+              <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-[10px] bg-[var(--bg-surface)]/90 border border-[var(--border-normal)] shadow-md backdrop-blur-sm overflow-hidden z-50">
                 <button type="button" onClick={() => setViewZoom((v) => Math.min(2, v + 0.1))}
-                  className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200">+</button>
+                  className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-colors border-l border-[var(--border-normal)]">+</button>
                 <button type="button" onClick={resetView}
-                  className="px-2.5 py-1.5 text-[9px] font-black text-slate-600 hover:bg-slate-100 min-w-[40px] text-center">{Math.round(viewZoom * 100)}%</button>
+                  className="px-2.5 py-1.5 text-[9px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] min-w-[40px] text-center">{Math.round(viewZoom * 100)}%</button>
                 <button type="button" onClick={() => setViewZoom((v) => Math.max(0.2, v - 0.1))}
-                  className="px-2.5 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100 transition-colors border-r border-slate-200">−</button>
+                  className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] transition-colors border-r border-[var(--border-normal)]">−</button>
               </div>
 
               <div className="absolute top-3 right-3 flex items-center gap-1 rounded-md bg-black/40 px-2 py-1 text-[9px] font-bold text-white backdrop-blur-sm pointer-events-none z-50">
@@ -475,24 +475,24 @@ export default function PrintPreviewModal({
               </div>
 
               {/* Page indicator overlay — always visible */}
-              <div className="absolute bottom-4 right-4 flex items-center gap-0.5 rounded-[10px] bg-white/90 border border-slate-200 shadow-md backdrop-blur-sm px-2 py-1 z-50" dir="ltr">
+              <div className="absolute bottom-4 right-4 flex items-center gap-0.5 rounded-[10px] bg-[var(--bg-surface)]/90 border border-[var(--border-normal)] shadow-md backdrop-blur-sm px-2 py-1 z-50" dir="ltr">
                 <button onClick={() => goToPage(1)} disabled={printPage <= 1}
-                  className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <SkipBack size={12} />
                 </button>
                 <button onClick={() => goToPage(printPage - 1)} disabled={printPage <= 1}
-                  className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <ChevronRight size={14} />
                 </button>
-                <span className="text-[11px] font-bold text-slate-700 tabular-nums min-w-[44px] text-center mx-1">
+                <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums min-w-[44px] text-center mx-1">
                   {formatNumber(printPage, { decimals: 0 })} / {formatNumber(totalPrintPages, { decimals: 0 })}
                 </span>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
-                  className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <ChevronLeft size={14} />
                 </button>
                 <button onClick={() => goToPage(totalPrintPages)} disabled={printPage >= totalPrintPages}
-                  className="p-1 rounded text-slate-500 hover:text-slate-900 disabled:opacity-25 transition-colors">
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <SkipForward size={12} />
                 </button>
               </div>
@@ -515,7 +515,7 @@ export default function PrintPreviewModal({
                     ref={saveOnlyBtnRef}
                     onClick={() => { onSaveOnly(); onClose(); }}
                     disabled={isSaving}
-                    className="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-3 rounded-[12px] text-sm font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-4 focus:ring-slate-400/50 focus:ring-offset-2"
+                    className="w-full flex items-center justify-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] text-[var(--text-secondary)] py-3 rounded-[12px] text-sm font-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:ring-4 focus:ring-[var(--border-strong)]/50 focus:ring-offset-2"
                   >
                     {isSaving ? "جاري الحفظ..." : "حفظ بدون طباعة"}
                   </button>
@@ -530,8 +530,8 @@ export default function PrintPreviewModal({
               )}
 
               {/* Template selector */}
-              <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2">
-                <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">قالب الطباعة</h4>
+              <div className="bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-3 space-y-2">
+                <h4 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest">قالب الطباعة</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {validTemplates.map((t) => {
                     const isDefault = cfg ? (resolveDocPaperSize(docType, docSettings) === t.id) : false;
@@ -544,16 +544,16 @@ export default function PrintPreviewModal({
                         className={`relative flex flex-col items-center gap-1 rounded-sm border py-3 transition-all ${
                           active
                             ? "border-primary bg-primary shadow-lg scale-[1.02]"
-                            : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
+                            : "border-[var(--border-normal)] bg-[var(--bg-input)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)]"
                         }`}
                       >
-                        <Icon className={`h-4 w-4 ${active ? "text-white" : "text-slate-400"}`} />
+                        <Icon className={`h-4 w-4 ${active ? "text-white" : "text-[var(--text-muted)]"}`} />
                         <div className="text-center">
-                          <div className={`text-2sm font-black tracking-widest leading-none ${active ? "text-white" : "text-slate-800"}`}>{t.label}</div>
-                          <div className={`text-[9px] font-bold mt-0.5 ${active ? "text-slate-300" : "text-slate-400"}`}>{t.sub}</div>
+                          <div className={`text-2sm font-black tracking-widest leading-none ${active ? "text-white" : "text-[var(--text-primary)]"}`}>{t.label}</div>
+                          <div className={`text-[9px] font-bold mt-0.5 ${active ? "text-white/70" : "text-[var(--text-muted)]"}`}>{t.sub}</div>
                         </div>
                         {isDefault && (
-                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--success-text)]" />
                         )}
                       </button>
                     );
@@ -563,11 +563,11 @@ export default function PrintPreviewModal({
 
               {/* Column controls for invoice docs (A4/A5 only — thermal has no meaningful columns) */}
               {!isReportDoc && docType && !isThermal && (
-                <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
+                <div className="bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>
+                    <h4 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest">الأعمدة</h4>
                     <div className="flex items-center gap-1">
-                      <span className="text-[9px] font-bold text-slate-400">{invoicePrintKeys.length}/{invoiceMax}</span>
+                      <span className="text-[9px] font-bold text-[var(--text-muted)]">{invoicePrintKeys.length}/{invoiceMax}</span>
                       <button type="button" onClick={() => setInvoicePrintKeys(smartInvoiceKeys())}
                         className="px-2 py-1 rounded-[6px] bg-slate-900 text-[9px] font-bold text-white flex items-center gap-1">
                         <Wand2 size={10} /> تلقائي
@@ -581,19 +581,19 @@ export default function PrintPreviewModal({
                       if (!col) return null;
                       return (
                         <div key={key}
-                          className="flex items-center gap-0.5 px-2 py-1 rounded-[6px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold transition-all"
+                          className="flex items-center gap-0.5 px-2 py-1 rounded-[6px] bg-success-bg text-success-text border border-success-border text-[11px] font-bold transition-all"
                         >
                           <button type="button" onClick={() => {
                             const next = [...invoicePrintKeys];
                             if (idx > 0) { [next[idx-1], next[idx]] = [next[idx], next[idx-1]]; setInvoicePrintKeys(next); }
                           }} disabled={idx === 0}
-                            className="p-0.5 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+                            className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-default"
                           ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7"/></svg></button>
                           <button type="button" onClick={() => {
                             const next = [...invoicePrintKeys];
                             if (idx < next.length - 1) { [next[idx], next[idx+1]] = [next[idx+1], next[idx]]; setInvoicePrintKeys(next); }
                           }} disabled={idx >= invoicePrintKeys.length - 1}
-                            className="p-0.5 rounded text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+                            className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-default"
                           ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7"/></svg></button>
                           {editingColIdx === idx ? (
                             <input type="number" min={1} max={invoicePrintKeys.length} autoFocus
@@ -603,21 +603,21 @@ export default function PrintPreviewModal({
                                 if (e.key === "Enter") { e.target.blur(); }
                                 if (e.key === "Escape") { setEditingColIdx(null); }
                               }}
-                              className="w-9 h-5 rounded border border-emerald-400 bg-white text-[10px] font-black text-emerald-800 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              className="w-9 h-5 rounded border border-success-border bg-[var(--bg-surface)] text-[10px] font-black text-success-text text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                           ) : (
                             <button type="button" onClick={() => setEditingColIdx(idx)}
-                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-200 text-[10px] font-black text-emerald-800 shrink-0 hover:bg-emerald-300 hover:ring-2 hover:ring-emerald-400/40 cursor-pointer"
+                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-success-light text-[10px] font-black text-success-text shrink-0 hover:bg-success-border/50 hover:ring-2 hover:ring-success-border/40 cursor-pointer"
                               title="اضغط لتغيير الترتيب"
                             >{idx + 1}</button>
                           )}
                           <button type="button" onClick={() => setInvoicePrintKeys(keys => keys.filter(k => k !== key))}
                             className="flex items-center gap-1 flex-1 min-w-0 text-right"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500" />
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success-text" />
                             <span className="truncate">{col.label}</span>
                           </button>
-                          <span className="text-[8px] font-bold text-indigo-400">
+                          <span className="text-[8px] font-bold text-info-text">
                             {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
                           </span>
                         </div>
@@ -629,18 +629,18 @@ export default function PrintPreviewModal({
                       return (
                         <div key={col.key}
                           className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-bold transition-all ${
-                            atMax ? "text-slate-300 border border-transparent" : "text-slate-500 border border-transparent hover:border-slate-200"
+                            atMax ? "text-[var(--text-muted)] border border-transparent" : "text-[var(--text-secondary)] border border-transparent hover:border-[var(--border-normal)]"
                           }`}
                         >
                           <button type="button" onClick={() => { if (!atMax) setInvoicePrintKeys(keys => [...keys, col.key]); }}
                             disabled={atMax}
                             className={`flex items-center gap-1.5 flex-1 min-w-0 text-right ${atMax ? "cursor-not-allowed" : "cursor-pointer"}`}
                           >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-300" />
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--border-strong)]" />
                             <span className="truncate">{col.label}</span>
                           </button>
                           <span className={`text-[8px] font-bold px-1 ${
-                            col.printPriority === "essential" ? "text-indigo-300" : col.printPriority === "useful" ? "text-slate-300" : "text-slate-200"
+                            col.printPriority === "essential" ? "text-info-text/70" : "text-[var(--text-muted)]"
                           }`}>
                             {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
                           </span>
@@ -654,23 +654,23 @@ export default function PrintPreviewModal({
               {/* Advanced designer launcher (invoice-style docs only) */}
               {docType && !isReportDoc && (
                 <button type="button" onClick={() => setDesignerOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-slate-300 bg-white px-3 py-2.5 text-[11px] font-black text-slate-700 hover:border-slate-500 hover:bg-slate-50 transition-all">
+                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-2.5 text-[11px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
                   <Maximize2 size={13} /> المحرر المتقدم
                 </button>
               )}
 
               {/* Column controls for report docs */}
               {isReportDoc && reportColumns.length > 0 && (
-                <div className="bg-white rounded-[12px] border border-slate-200 p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
+                <div className="bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأعمدة</h4>
+                    <h4 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest">الأعمدة</h4>
                     <div className="flex items-center gap-1">
                       <button type="button" onClick={() => setReportPrintKeys(smartKeys("essential"))}
                         className="px-2 py-1 rounded-[6px] bg-slate-900 text-[9px] font-bold text-white flex items-center gap-1">
                         <Wand2 size={10} /> أساسي
                       </button>
                       <button type="button" onClick={() => setReportPrintKeys(smartKeys("useful"))}
-                        className="px-2 py-1 rounded-[6px] border border-slate-200 bg-slate-50 text-[9px] font-bold text-slate-600">
+                        className="px-2 py-1 rounded-[6px] border border-[var(--border-normal)] bg-[var(--bg-input)] text-[9px] font-bold text-[var(--text-secondary)]">
                         مهم
                       </button>
                     </div>
@@ -678,20 +678,20 @@ export default function PrintPreviewModal({
 
                   {/* Fit indicator */}
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-input)] overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
-                          reportFitTone === "green" ? "bg-emerald-500" :
-                          reportFitTone === "amber" ? "bg-amber-500" : "bg-red-500"
+                          reportFitTone === "green" ? "bg-success-text" :
+                          reportFitTone === "amber" ? "bg-[var(--warning-text)]" : "bg-danger"
                         }`}
                         style={{ width: `${Math.min(100, Math.round((reportFitScore / (reportCapacity || 1)) * 100))}%` }}
                       />
                     </div>
                     <span
                       className={`shrink-0 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-black ${
-                        reportFitTone === "green" ? "bg-emerald-50 text-emerald-700" :
-                        reportFitTone === "amber" ? "bg-amber-50 text-amber-700" :
-                        "bg-red-50 text-red-700"
+                        reportFitTone === "green" ? "bg-success-bg text-success-text" :
+                        reportFitTone === "amber" ? "bg-[var(--warning-bg)] text-[var(--warning-text)]" :
+                        "bg-danger-bg text-danger-text"
                       }`}
                     >
                       {reportFitTone === "green" ? "مناسب" : reportFitTone === "amber" ? "مزدحم" : "ضيق"}
@@ -721,8 +721,8 @@ export default function PrintPreviewModal({
                           key={key}
                           className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-bold transition-all ${
                             active
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "text-slate-500 border border-transparent"
+                              ? "bg-success-bg text-success-text border border-success-border"
+                              : "text-[var(--text-secondary)] border border-transparent"
                           }`}
                         >
                           <button
@@ -732,17 +732,17 @@ export default function PrintPreviewModal({
                             )}
                             className="flex items-center gap-1.5 flex-1 min-w-0 text-right"
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-emerald-500" : "bg-slate-300"}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-success-text" : "bg-[var(--border-strong)]"}`} />
                             <span className="truncate">{col.label || col.header}</span>
                           </button>
                           {active && (
                             <button
                               type="button"
                               onClick={nextWeight}
-                              className={`shrink-0 px-1.5 py-0.5 rounded-[4px] text-[8px] font-bold border transition-all hover:bg-slate-100 ${
+                              className={`shrink-0 px-1.5 py-0.5 rounded-[4px] text-[8px] font-bold border transition-all hover:bg-[var(--bg-input-hover)] ${
                                 weight != null
-                                  ? "bg-indigo-50 border-indigo-200 text-indigo-600"
-                                  : "bg-slate-50 border-slate-200 text-slate-400"
+                                  ? "bg-info-bg border-info-border text-info-text"
+                                  : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-muted)]"
                               }`}
                               title="اضغط لتغيير العرض"
                             >
@@ -759,7 +759,7 @@ export default function PrintPreviewModal({
                     <button
                       type="button"
                       onClick={() => setColumnWeights({})}
-                      className="w-full text-[9px] font-bold text-slate-400 hover:text-slate-700 transition-colors py-1"
+                      className="w-full text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-1"
                     >
                       إعادة ضبط العرض التلقائي
                     </button>
@@ -770,7 +770,7 @@ export default function PrintPreviewModal({
               {/* Excel + Close */}
               {onExportAllColumns && (
                 <button type="button" onClick={onExportAllColumns}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-[10px] border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition-all">
+                  className="w-full flex items-center justify-center gap-1.5 rounded-[10px] border border-success-border bg-success-bg px-3 py-2.5 text-[11px] font-bold text-success-text hover:bg-success-light transition-all">
                   <FileSpreadsheet size={13} /> إكسيل للكل
                 </button>
               )}
@@ -783,15 +783,15 @@ export default function PrintPreviewModal({
 
           {/* Bottom bar: page navigation + thumbnails */}
           {totalPrintPages > 1 && (
-            <div className="flex items-center gap-3 shrink-0 bg-white rounded-[12px] border border-slate-200 p-2">
+            <div className="flex items-center gap-3 shrink-0 bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-2">
               {/* Page navigation */}
               <div className="flex items-center gap-1">
                 <button onClick={() => goToPage(1)} disabled={printPage <= 1}
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">
+                  className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <SkipBack size={14} />
                 </button>
                 <button onClick={() => goToPage(printPage - 1)} disabled={printPage <= 1}
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">
+                  className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <ChevronRight size={14} />
                 </button>
                 <div className="flex items-center gap-1 mx-2">
@@ -802,18 +802,18 @@ export default function PrintPreviewModal({
                       const v = parseInt(e.target.value, 10);
                       if (v >= 1 && v <= totalPrintPages) goToPage(v);
                     }}
-                    className="w-10 h-8 text-center rounded-lg border border-slate-200 bg-white text-2sm font-bold"
+                    className="w-10 h-8 text-center rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] text-2sm font-bold"
                     min={1}
                     max={totalPrintPages}
                   />
-                  <span className="text-[11px] font-bold text-slate-500">/ {formatNumber(totalPrintPages, { decimals: 0 })}</span>
+                  <span className="text-[11px] font-bold text-[var(--text-secondary)]">/ {formatNumber(totalPrintPages, { decimals: 0 })}</span>
                 </div>
                 <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">
+                  className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <ChevronLeft size={14} />
                 </button>
                 <button onClick={() => goToPage(totalPrintPages)} disabled={printPage >= totalPrintPages}
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30">
+                  className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <SkipForward size={14} />
                 </button>
               </div>
@@ -829,8 +829,8 @@ export default function PrintPreviewModal({
                       onClick={() => goToPage(pageNum)}
                       className={`relative shrink-0 flex items-center justify-center rounded-md border transition-all ${
                         isActive
-                          ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm"
-                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                          ? "bg-info-bg border-info-border text-info-text shadow-sm"
+                          : "bg-[var(--bg-surface)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]"
                       }`}
                       style={{ width: 36, height: 48 }}
                       title={`صفحة ${pageNum}`}
