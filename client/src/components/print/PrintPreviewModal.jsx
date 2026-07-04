@@ -10,8 +10,8 @@ import toast from "react-hot-toast";
 import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
 import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
-import PrintDesigner from "./designer/PrintDesigner";
-import { familyForSize, resolveEffectiveLayout } from "./layout/layoutModel";
+import PrintStudio from "./studio/PrintStudio";
+import { resolveEffectiveLayout } from "./layout/layoutModel";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
 
@@ -21,18 +21,6 @@ const ALL_TEMPLATES = [
   { id: "A5",   label: "A5",   sub: "نصف صفحة",   icon: FileText      },
   { id: "A4",   label: "A4",   sub: "ورقة كاملة", icon: FileBarChart2 },
 ];
-
-const INVOICE_COLUMNS = [
-  { key: "code",  label: "الكود",       type: "code",  printPriority: "useful"   },
-  { key: "name",  label: "المنتج",      type: "text",  printPriority: "essential"},
-  { key: "unit",  label: "الوحدة",      type: "text",  printPriority: "optional" },
-  { key: "qty",   label: "الكمية",      type: "qty",   printPriority: "essential"},
-  { key: "price", label: "السعر",       type: "money", printPriority: "essential"},
-  { key: "discount", label: "الخصم",    type: "money", printPriority: "optional" },
-  { key: "total", label: "الإجمالي",    type: "money", printPriority: "essential"},
-];
-
-const MAX_COLUMNS = { "58mm": 3, "80mm": 4, "A5": 5, "A4": 7 };
 
 export default function PrintPreviewModal({
   open,
@@ -65,14 +53,9 @@ export default function PrintPreviewModal({
   const [printPage, setPrintPage] = useState(1);
   const [totalPrintPages, setTotalPrintPages] = useState(1);
   const [columnWeights, setColumnWeights] = useState({});
-  const [invoicePrintKeys, setInvoicePrintKeys] = useState([]);
-  const [editingColIdx, setEditingColIdx] = useState(null);
-  const [designerOpen, setDesignerOpen] = useState(false);
-
-  const saveDesigner = async (next) => {
-    setDocSettings(next);
-    try { await api.put(`/api/print-settings-per-doc/${docType}`, next); } catch { /* keep local edits */ }
-  };
+  const [docSettingsLoaded, setDocSettingsLoaded] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const instantFired = useRef(false);
 
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -108,9 +91,13 @@ export default function PrintPreviewModal({
   useEffect(() => {
     if (!docType || !open) {
       setDocSettings({});
+      setDocSettingsLoaded(false);
+      instantFired.current = false;
       return;
     }
     let cancelled = false;
+    instantFired.current = false;
+    setDocSettingsLoaded(false);
     api.get(`/api/print-settings-per-doc/${docType}`)
       .then((r) => {
         if (!cancelled) {
@@ -119,12 +106,14 @@ export default function PrintPreviewModal({
           const resolved = resolveDocPaperSize(docType, saved);
           setTemplate(resolved);
           setViewZoom(resolved === "A4" ? 0.55 : resolved === "A5" ? 0.72 : 1);
+          setDocSettingsLoaded(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setDocSettings({});
           setTemplate(cfg ? cfg.defaultSize : "A4");
+          setDocSettingsLoaded(true);
         }
       });
     api.get("/api/settings").then((r) => {
@@ -137,6 +126,16 @@ export default function PrintPreviewModal({
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [docType, open]);
+
+  // Re-read saved designs after the Studio closes (it saves rows itself).
+  const reloadAfterStudio = () => {
+    setStudioOpen(false);
+    if (!docType) return;
+    api.get(`/api/print-settings-per-doc/${docType}`)
+      .then((r) => setDocSettings(r.data.data || {})).catch(() => {});
+    api.get("/api/print-settings-per-doc/_global")
+      .then((r) => { if (r.data?.data) setGlobalScopeSettings(r.data.data); }).catch(() => {});
+  };
 
   useEffect(() => {
     if (!docType && open && template === null) {
@@ -186,38 +185,6 @@ export default function PrintPreviewModal({
     });
   }, [open, isReportDoc, reportColumns, smartKeys]);
 
-  const invoiceMax = MAX_COLUMNS[activeTemplate] || 5;
-  const smartInvoiceKeys = useCallback(() => {
-    const priority = ["essential", "useful", "optional"];
-    const selected = [];
-    for (const p of priority) {
-      for (const col of INVOICE_COLUMNS) {
-        if (col.printPriority === p && !selected.includes(col.key)) {
-          if (selected.length < invoiceMax) selected.push(col.key);
-        }
-      }
-    }
-    return selected.length ? selected : INVOICE_COLUMNS.slice(0, invoiceMax).map(c => c.key);
-  }, [invoiceMax]);
-
-  useEffect(() => {
-    if (!open || isReportDoc || !docType) return;
-    setInvoicePrintKeys((current) => {
-      const valid = new Set(INVOICE_COLUMNS.map(c => c.key));
-      const next = current.filter(k => valid.has(k));
-      return next.length ? next : smartInvoiceKeys();
-    });
-  }, [open, isReportDoc, docType, smartInvoiceKeys]);
-
-  const moveToIdx = useCallback((key, target, keys, setter) => {
-    const currentIdx = keys.indexOf(key);
-    if (currentIdx === -1 || target < 0 || target >= keys.length || target === currentIdx) return;
-    const next = [...keys];
-    next.splice(currentIdx, 1);
-    next.splice(target, 0, key);
-    setter(next);
-  }, []);
-
   const hiddenReportColumns = isReportDoc
     ? reportColumns.filter((c) => !reportPrintKeys.includes(c.key || c.id))
     : [];
@@ -252,9 +219,6 @@ export default function PrintPreviewModal({
       template: activeTemplate,
       columnWeights: Object.keys(columnWeights).length > 0 ? columnWeights : undefined,
     } : {}),
-    ...(!isReportDoc && !isThermal && invoicePrintKeys.length > 0 ? {
-      invoice_print_column_keys: invoicePrintKeys,
-    } : {}),
   };
 
   // Inject the mapped printer's calibration (printable band + shift) so the
@@ -280,7 +244,6 @@ export default function PrintPreviewModal({
     setViewZoom(t === "A4" ? 0.55 : t === "A5" ? 0.72 : 1);
     setPan({ x: 0, y: 0 });
     setPrintPage(1);
-    if (t === "58mm" || t === "80mm") setInvoicePrintKeys([]);
   };
 
   const handleWheel = useCallback((e) => {
@@ -385,6 +348,7 @@ export default function PrintPreviewModal({
       contentHtml: withReprintStamp(contentHtml),
       pageSizeStr,
       deviceName: getPrinterForPageSize(pageSizeStr),
+      copies: Math.max(1, Number(combinedSettings.print_copies) || 1),
       title: operationLabel || "طباعة",
       afterPrint,
       docType: docType || "",
@@ -398,6 +362,23 @@ export default function PrintPreviewModal({
       toast(FALLBACK_REASON_LABELS[result.reason] || FALLBACK_REASON_LABELS.print_failed, { icon: "🖨️" });
     }
   }
+
+  // "طباعة فورية" per-doc mode (settings hub): skip the preview step entirely —
+  // once the doc design is loaded and rendered, fire the same print action the
+  // user would click, exactly once per open. Report docs keep the preview
+  // (their column choices are print-time decisions).
+  const instantMode = (docSettings.print_mode || "preview") === "instant";
+  useEffect(() => {
+    if (!open || !docType || isReportDoc || !instantMode || !docSettingsLoaded) return;
+    if (studioOpen || instantFired.current) return;
+    instantFired.current = true;
+    // Creation mode closes via afterPrint (save callback); view mode closes on
+    // a delay so the print capture (rAF + async job) finishes first.
+    const t = setTimeout(() => { handlePrint(); }, 450);
+    const closeT = !onConfirmPrint ? setTimeout(() => onClose(), 2000) : null;
+    return () => { clearTimeout(t); if (closeT) clearTimeout(closeT); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, docType, isReportDoc, instantMode, docSettingsLoaded, studioOpen]);
 
   return (
     <>
@@ -561,101 +542,11 @@ export default function PrintPreviewModal({
                 </div>
               </div>
 
-              {/* Column controls for invoice docs (A4/A5 only — thermal has no meaningful columns) */}
-              {!isReportDoc && docType && !isThermal && (
-                <div className="bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-3 space-y-2 flex-1 overflow-y-auto min-h-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-widest">الأعمدة</h4>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[9px] font-bold text-[var(--text-muted)]">{invoicePrintKeys.length}/{invoiceMax}</span>
-                      <button type="button" onClick={() => setInvoicePrintKeys(smartInvoiceKeys())}
-                        className="px-2 py-1 rounded-[6px] bg-slate-900 text-[9px] font-bold text-white flex items-center gap-1">
-                        <Wand2 size={10} /> تلقائي
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-0.5 max-h-[180px] overflow-y-auto scrollbar-thin">
-                    {/* Active columns in order */}
-                    {invoicePrintKeys.map((key, idx) => {
-                      const col = INVOICE_COLUMNS.find(c => c.key === key);
-                      if (!col) return null;
-                      return (
-                        <div key={key}
-                          className="flex items-center gap-0.5 px-2 py-1 rounded-[6px] bg-success-bg text-success-text border border-success-border text-[11px] font-bold transition-all"
-                        >
-                          <button type="button" onClick={() => {
-                            const next = [...invoicePrintKeys];
-                            if (idx > 0) { [next[idx-1], next[idx]] = [next[idx], next[idx-1]]; setInvoicePrintKeys(next); }
-                          }} disabled={idx === 0}
-                            className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-default"
-                          ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7"/></svg></button>
-                          <button type="button" onClick={() => {
-                            const next = [...invoicePrintKeys];
-                            if (idx < next.length - 1) { [next[idx], next[idx+1]] = [next[idx+1], next[idx]]; setInvoicePrintKeys(next); }
-                          }} disabled={idx >= invoicePrintKeys.length - 1}
-                            className="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-secondary)] disabled:opacity-20 disabled:cursor-default"
-                          ><svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7"/></svg></button>
-                          {editingColIdx === idx ? (
-                            <input type="number" min={1} max={invoicePrintKeys.length} autoFocus
-                              defaultValue={idx + 1}
-                              onBlur={(e) => { setEditingColIdx(null); moveToIdx(key, Number(e.target.value) - 1, invoicePrintKeys, setInvoicePrintKeys); }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") { e.target.blur(); }
-                                if (e.key === "Escape") { setEditingColIdx(null); }
-                              }}
-                              className="w-9 h-5 rounded border border-success-border bg-[var(--bg-surface)] text-[10px] font-black text-success-text text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            />
-                          ) : (
-                            <button type="button" onClick={() => setEditingColIdx(idx)}
-                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-success-light text-[10px] font-black text-success-text shrink-0 hover:bg-success-border/50 hover:ring-2 hover:ring-success-border/40 cursor-pointer"
-                              title="اضغط لتغيير الترتيب"
-                            >{idx + 1}</button>
-                          )}
-                          <button type="button" onClick={() => setInvoicePrintKeys(keys => keys.filter(k => k !== key))}
-                            className="flex items-center gap-1 flex-1 min-w-0 text-right"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success-text" />
-                            <span className="truncate">{col.label}</span>
-                          </button>
-                          <span className="text-[8px] font-bold text-info-text">
-                            {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {/* Inactive columns */}
-                    {INVOICE_COLUMNS.filter(c => !invoicePrintKeys.includes(c.key)).map(col => {
-                      const atMax = invoicePrintKeys.length >= invoiceMax;
-                      return (
-                        <div key={col.key}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-bold transition-all ${
-                            atMax ? "text-[var(--text-muted)] border border-transparent" : "text-[var(--text-secondary)] border border-transparent hover:border-[var(--border-normal)]"
-                          }`}
-                        >
-                          <button type="button" onClick={() => { if (!atMax) setInvoicePrintKeys(keys => [...keys, col.key]); }}
-                            disabled={atMax}
-                            className={`flex items-center gap-1.5 flex-1 min-w-0 text-right ${atMax ? "cursor-not-allowed" : "cursor-pointer"}`}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--border-strong)]" />
-                            <span className="truncate">{col.label}</span>
-                          </button>
-                          <span className={`text-[8px] font-bold px-1 ${
-                            col.printPriority === "essential" ? "text-info-text/70" : "text-[var(--text-muted)]"
-                          }`}>
-                            {col.printPriority === "essential" ? "أساسي" : col.printPriority === "useful" ? "مفيد" : "اختياري"}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Advanced designer launcher (invoice-style docs only) */}
-              {docType && !isReportDoc && (
-                <button type="button" onClick={() => setDesignerOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-2.5 text-[11px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
-                  <Maximize2 size={13} /> المحرر المتقدم
+              {/* Design lives in ONE place — the Studio. The modal only prints. */}
+              {docType && (
+                <button type="button" onClick={() => setStudioOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-[var(--border-accent)] bg-[var(--accent-soft)] px-3 py-2.5 text-[11px] font-black text-primary hover:opacity-80 transition-all">
+                  <Maximize2 size={13} /> تحرير التصميم في الاستوديو
                 </button>
               )}
 
@@ -848,17 +739,12 @@ export default function PrintPreviewModal({
         </div>
       </Modal>
 
-      {designerOpen && docType && !isReportDoc && (
-        <PrintDesigner
-          open={designerOpen}
-          docType={docType}
-          label={operationLabel || docType}
-          initialFamily={familyForSize(activeTemplate)}
-          globalSettings={{ ...(fetchedGlobalSettings || {}), ...(globalSettings || {}) }}
-          value={docSettings}
-          onChange={setDocSettings}
-          onSave={saveDesigner}
-          onClose={() => setDesignerOpen(false)}
+      {studioOpen && docType && (
+        <PrintStudio
+          open={studioOpen}
+          onClose={reloadAfterStudio}
+          initialScope={isReportDoc ? "reports_generic" : docType}
+          initialSize={activeTemplate}
         />
       )}
     </>
