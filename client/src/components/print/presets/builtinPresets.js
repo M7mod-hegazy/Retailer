@@ -132,17 +132,20 @@ const ROLL_PRESETS = [
     table: "lines",
     perBlock: {
       company_name: { fontSize: 24, bold: true, align: "center", fontFamily: "Cairo" },
-      grand_total: { fontSize: 16 },
+      items_table: { headerVariant: "light" },
+      grand_total: { variant: "plain", fontSize: 16 },
       doc_number: { fontFamily: "monospace", fontSize: 13, align: "center" },
     },
     inserted: [div("d1", "receipt_header_text", "dash")],
-    flat: { print_font: "Cairo" },
+    flat: { print_font: "Cairo", show_branch: false },
     tags: ["modern"],
   }),
   rollPreset("roll-minimal", "بسيط هوائي", "Airy minimal", {
     table: "open",
     perBlock: {
       company_name: { fontSize: 13, align: "center" },
+      items_table: { headerVariant: "none" },
+      grand_total: { variant: "plain" },
       footer_text: { fontSize: 9, align: "center" },
     },
     inserted: [div("d1", "cashier", "wave"), div("d2", "grand_total", "wave"), gap("s1", "company_name", 8)],
@@ -154,7 +157,8 @@ const ROLL_PRESETS = [
     perBlock: {
       company_name: { ...frame(2, "solid", 6), align: "center", bold: true, fontSize: 16, marginBottom: 6 },
       doc_number: { ...frame(1, "dashed", 4), align: "center", fontFamily: "monospace" },
-      grand_total: { ...frame(3, "double", 8), fontSize: 16 },
+      items_table: { headerVariant: "light" },
+      grand_total: { variant: "boxed", fontSize: 16 },
     },
     tags: ["framed"],
   }),
@@ -162,7 +166,8 @@ const ROLL_PRESETS = [
     table: "lines",
     perBlock: {
       company_name: { ...frame(3, "double", 10), fontSize: 20, bold: true, align: "center", fontFamily: "Noto Sans Arabic", marginBottom: 8 },
-      grand_total: { ...frame(3, "double", 8), fontSize: 18 },
+      items_table: { headerVariant: "light" },
+      grand_total: { variant: "boxed", fontSize: 18 },
       footer_text: { italic: true, align: "center" },
     },
     inserted: [gap("s1", "tax_id", 8), gap("s2", "payments", 8)],
@@ -175,7 +180,8 @@ const ROLL_PRESETS = [
       company_name: { fontSize: 18, align: "center", fontFamily: "Noto Sans Arabic", lineHeight: 1.9 },
       branch: { align: "center" }, address: { align: "center" }, doc_number: { align: "center" },
       doc_date: { align: "center" }, customer: { align: "center" },
-      grand_total: { fontSize: 15 },
+      items_table: { headerVariant: "none" },
+      grand_total: { variant: "huge" },
     },
     inserted: [div("d1", "cashier", "wave"), div("d2", "payments", "wave")],
     flat: { print_font: "Noto Sans Arabic", logo_alignment: "center" },
@@ -184,9 +190,9 @@ const ROLL_PRESETS = [
   rollPreset("roll-mono", "محطة — أرقام واضحة", "Station mono", {
     table: "lines",
     perBlock: {
-      items_table: { fontFamily: "monospace" },
+      items_table: { fontFamily: "monospace", headerVariant: "light" },
       doc_number: { fontFamily: "monospace", fontSize: 14, bold: true },
-      grand_total: { fontFamily: "monospace", fontSize: 16 },
+      grand_total: { variant: "plain", fontFamily: "monospace", fontSize: 16 },
       payments: { fontFamily: "monospace" },
     },
     inserted: [div("d1", "cashier", "dash"), div("d2", "payments", "dash")],
@@ -196,13 +202,13 @@ const ROLL_PRESETS = [
   // ── paper savers ──
   rollPreset("roll-compact", "موفر", "Compact", {
     table: "lines", density: "compact",
-    perBlock: { items_table: { columns: R3 } },
+    perBlock: { items_table: { columns: R3 }, grand_total: { variant: "plain" } },
     flat: { show_branch: false, show_cashier_name: false, show_address: false },
     tags: ["compact"],
   }),
   rollPreset("roll-ultra", "موفر — أقصى توفير", "Ultra saver", {
     table: "open", density: "ultra", sizes: ["58mm"],
-    perBlock: { items_table: { columns: R3 }, company_name: { fontSize: 12, align: "center" } },
+    perBlock: { items_table: { columns: R3, headerVariant: "none" }, company_name: { fontSize: 12, align: "center" }, grand_total: { variant: "plain" } },
     flat: { show_logo: false, show_branch: false, show_address: false, show_tax_id: false, show_cashier_name: false, show_footer: false },
     tags: ["compact", "ultra"],
   }),
@@ -210,7 +216,7 @@ const ROLL_PRESETS = [
     table: "grid", density: "compact",
     perBlock: {
       items_table: { columns: R3 },
-      grand_total: { ...frame(2, "solid", 5), fontSize: 14 },
+      grand_total: { variant: "boxed", fontSize: 14 },
       company_name: { bold: true, fontSize: 14, align: "center" },
     },
     flat: { show_cashier_name: false },
@@ -226,7 +232,7 @@ const ROLL_PRESETS = [
   }),
   rollPreset("roll-bilingual-compact", "ثنائي اللغة — مضغوط", "Bilingual compact", {
     table: "lines", density: "compact",
-    perBlock: { items_table: { columns: R_BILINGUAL_3 } },
+    perBlock: { items_table: { columns: R_BILINGUAL_3, headerVariant: "light" }, grand_total: { variant: "plain" } },
     inserted: [note("n1", "footer_text", "Thank you!", { fontSize: 9, italic: true })],
     tags: ["bilingual", "compact"],
   }),
@@ -245,8 +251,8 @@ const ROLL_PRESETS = [
     table: "lines", order: TICKET_ORDER,
     perBlock: {
       order_number: { fontSize: 40 },
-      items_table: { columns: R3 },
-      grand_total: { ...frame(2, "solid", 6), fontSize: 16 },
+      items_table: { columns: R3, headerVariant: "light" },
+      grand_total: { variant: "boxed", fontSize: 16 },
     },
     tags: ["ticket", "restaurant"],
   }),
@@ -275,23 +281,25 @@ const ROLL_PRESETS = [
     table: "grid", density: "compact", sizes: ["80mm"],
     order: without(RO, "receipt_header_text", "notes"),
     perBlock: { items_table: { columns: R_SUPERMARKET, fontSize: 9 }, company_name: { fontSize: 14, bold: true } },
-    flat: { show_cashier_name: true },
+    flat: { show_cashier_name: true, show_logo: false },
     tags: ["dense", "supermarket"],
   }),
   rollPreset("roll-wholesale", "جملة", "Wholesale", {
     table: "grid", density: "compact", sizes: ["80mm"],
     perBlock: {
-      items_table: { columns: R_WHOLESALE, fontSize: 9 },
+      items_table: { columns: R_WHOLESALE, fontSize: 9, headerVariant: "light" },
+      grand_total: { variant: "plain" },
       doc_number: { ...frame(1, "solid", 3), fontFamily: "monospace", fontSize: 12 },
     },
+    flat: { show_logo: false },
     tags: ["dense", "wholesale"],
   }),
   rollPreset("roll-cafe", "كافيه", "Cafe", {
     table: "lines",
     perBlock: {
       company_name: { fontSize: 22, bold: true, align: "center", fontFamily: "Cairo" },
-      items_table: { columns: R3, fontSize: 12 },
-      grand_total: { fontSize: 15 },
+      items_table: { columns: R3, fontSize: 12, headerVariant: "none" },
+      grand_total: { variant: "huge" },
     },
     inserted: [
       div("d1", "receipt_header_text", "wave"),
@@ -303,7 +311,8 @@ const ROLL_PRESETS = [
   rollPreset("roll-pharmacy", "صيدلية", "Pharmacy", {
     table: "grid",
     perBlock: {
-      items_table: { columns: R3_PRICE, fontSize: 10 },
+      items_table: { columns: R3_PRICE, fontSize: 10, headerVariant: "light" },
+      grand_total: { variant: "boxed" },
       tax_id: { ...frame(1, "solid", 3), fontSize: 10, bold: true, align: "center" },
       company_name: { fontSize: 15, bold: true },
     },
@@ -314,8 +323,8 @@ const ROLL_PRESETS = [
     table: "open",
     perBlock: {
       company_name: { fontSize: 19, align: "center", fontFamily: "Noto Sans Arabic", lineHeight: 2 },
-      items_table: { columns: R3 },
-      grand_total: { fontSize: 15, align: "center" },
+      items_table: { columns: R3, headerVariant: "none" },
+      grand_total: { variant: "huge" },
       footer_text: { italic: true, align: "center", fontSize: 10 },
     },
     inserted: [gap("s1", "logo", 6), div("d1", "customer", "wave"), gap("s2", "grand_total", 6)],
@@ -325,7 +334,7 @@ const ROLL_PRESETS = [
   rollPreset("roll-electronics", "إلكترونيات + ضمان", "Electronics + warranty", {
     table: "grid", sizes: ["80mm"],
     order: ELECTRONICS_ROLL_ORDER,
-    perBlock: { items_table: { columns: R_ELECTRONICS, fontSize: 10 } },
+    perBlock: { items_table: { columns: R_ELECTRONICS, fontSize: 10 }, grand_total: { variant: "boxed" } },
     inserted: [note("n1", "grand_total", "الضمان سنتان من تاريخ الفاتورة — يرجى الاحتفاظ بالإيصال", { ...frame(1, "dashed", 4), fontSize: 10, bold: true })],
     flat: { show_barcode_line: true },
     tags: ["electronics", "warranty"],
@@ -336,7 +345,7 @@ const ROLL_PRESETS = [
     perBlock: {
       order_number: { fontSize: 36 },
       customer: { ...frame(2, "solid", 5), fontSize: 13, bold: true },
-      items_table: { columns: R3 },
+      items_table: { columns: R3, headerVariant: "light" },
     },
     flat: { address_position: "top" },
     tags: ["delivery"],
@@ -344,7 +353,8 @@ const ROLL_PRESETS = [
   rollPreset("roll-services", "خدمات وصيانة", "Services", {
     table: "lines",
     perBlock: {
-      items_table: { columns: R3 },
+      items_table: { columns: R3, headerVariant: "none" },
+      grand_total: { variant: "plain" },
       notes: { ...frame(1, "solid", 5), fontSize: 11, marginTop: 4 },
       doc_number: { fontFamily: "monospace", bold: true },
     },
@@ -362,16 +372,16 @@ const ROLL_PRESETS = [
   }),
   rollPreset("roll-barcode-retail", "تجزئة بباركود", "Retail barcode", {
     table: "grid", density: "compact",
-    perBlock: { items_table: { columns: R3_PRICE, fontSize: 9 } },
-    flat: { show_barcode_line: true, show_qr: false },
+    perBlock: { items_table: { columns: R3_PRICE, fontSize: 9, headerVariant: "light" }, grand_total: { variant: "plain" } },
+    flat: { show_barcode_line: true, show_qr: false, show_logo: false },
     tags: ["retail", "dense"],
   }),
   rollPreset("roll-grab", "سريع — بيع خاطف", "Grab & go", {
     table: "lines", order: GRAB_ORDER,
     perBlock: {
       company_name: { fontSize: 13, align: "center" },
-      items_table: { columns: R_KITCHEN, fontSize: 13, bold: true },
-      grand_total: { fontSize: 18, ...frame(2, "solid", 6) },
+      items_table: { columns: R_KITCHEN, fontSize: 13, bold: true, headerVariant: "none" },
+      grand_total: { variant: "huge" },
     },
     tags: ["compact", "kiosk"],
   }),
@@ -380,8 +390,8 @@ const ROLL_PRESETS = [
     order: without(RO, "branch", "address", "tax_id", "cashier", "notes"),
     perBlock: {
       company_name: { fontSize: 16, align: "center", bold: true },
-      grand_total: { fontSize: 16, align: "center" },
-      items_table: { columns: R3 },
+      grand_total: { variant: "plain", fontSize: 16 },
+      items_table: { columns: R3, headerVariant: "none" },
     },
     inserted: [div("d1", "receipt_header_text", "dash"), div("d2", "items_table", "dash")],
     tags: ["kiosk", "simple"],
@@ -417,7 +427,7 @@ const PAGE_PRESETS = [
   }),
   pagePreset("page-minimal", "بسيط", "Minimal", {
     headerStyle: "minimal", table: "open", headerMetaAlign: "left",
-    perBlock: { items_table: { columns: P_SIMPLE } },
+    perBlock: { items_table: { columns: P_SIMPLE, headerVariant: "light" }, grand_total: { variant: "plain" } },
     flat: { accent_color: "#0f172a" },
     tags: ["simple", "whitespace"],
   }),
@@ -436,7 +446,8 @@ const PAGE_PRESETS = [
   pagePreset("page-elegant", "أنيق", "Elegant", {
     headerStyle: "minimal", table: "open", headerMetaAlign: "center",
     perBlock: {
-      items_table: { columns: P_SIMPLE },
+      items_table: { columns: P_SIMPLE, headerVariant: "light" },
+      grand_total: { variant: "huge" },
       company_name: { fontFamily: "Noto Sans Arabic", fontSize: 22 },
       footer_text: { italic: true, align: "center" },
     },
@@ -450,6 +461,8 @@ const PAGE_PRESETS = [
       company_name: { fontSize: 26, bold: true, fontFamily: "Cairo" },
       branch: { fontSize: 12 },
       receipt_header_text: { italic: true },
+      items_table: { headerVariant: "light" },
+      grand_total: { variant: "boxed" },
     },
     inserted: [div("d1", "receipt_header_text", "solid")],
     flat: { accent_color: "#78350f", show_signature_lines: true },
@@ -498,14 +511,14 @@ const PAGE_PRESETS = [
     perBlock: {
       items_table: { columns: P_STD },
       doc_number: { fontFamily: "monospace", fontSize: 14 },
-      grand_total: { ...frame(2, "solid", 6), borderColor: "#111827" },
+      grand_total: { variant: "boxed" },
     },
     flat: { accent_color: "#111827" },
     tags: ["dark", "simple"],
   }),
   pagePreset("page-brown", "بني دافئ", "Warm brown", {
     headerStyle: "classic", table: "linesZebra",
-    perBlock: { items_table: { columns: P_SIMPLE } },
+    perBlock: { items_table: { columns: P_SIMPLE }, grand_total: { variant: "plain" } },
     flat: { accent_color: "#78350f" },
     tags: ["classic"],
   }),
@@ -546,7 +559,7 @@ const PAGE_PRESETS = [
   }),
   pagePreset("page-statement", "كشف مفصَّل", "Detailed statement", {
     headerStyle: "classic", table: "grid",
-    perBlock: { items_table: { columns: P_DETAILED, fontSize: 9 } },
+    perBlock: { items_table: { columns: P_DETAILED, fontSize: 9, headerVariant: "light" }, grand_total: { variant: "plain" } },
     flat: { accent_color: "#334155", body_font_size: 10, item_font_size: 9 },
     tags: ["statement", "dense"],
   }),
@@ -600,8 +613,8 @@ const PAGE_PRESETS = [
     headerStyle: "minimal", table: "open", headerMetaAlign: "center",
     perBlock: {
       company_name: { fontFamily: "Cairo", fontSize: 24 },
-      items_table: { columns: P_SIMPLE },
-      grand_total: { ...frame(1, "solid", 8), borderColor: "#7f1d1d" },
+      items_table: { columns: P_SIMPLE, headerVariant: "none" },
+      grand_total: { variant: "boxed" },
     },
     inserted: [div("d1", "customer", "wave"), div("d2", "payments", "wave")],
     flat: { accent_color: "#7f1d1d", print_font: "Cairo" },

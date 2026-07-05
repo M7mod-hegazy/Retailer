@@ -1,7 +1,8 @@
 import React from "react";
 import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
-export default function TaxBlock({ invoice = {}, settings: s, family }) {
+// props.label renames the line; props.showRate=false hides "(15%)".
+export default function TaxBlock({ invoice = {}, settings: s, props = {}, family }) {
   if (g(s, "show_tax") === false) return null;
   // computeTotals is snapshot-aware: stored tax_amount is authoritative (0 = no tax line),
   // settings-derived tax only applies to ad-hoc preview objects without a stored total.
@@ -9,17 +10,20 @@ export default function TaxBlock({ invoice = {}, settings: s, family }) {
   if (taxAmount <= 0) return null;
   const inclusive = invoice.tax_type === "inclusive";
   const currency = g(s, "currency_symbol");
+  const rate = props.showRate === false ? "" : ` (${taxRate}%${inclusive ? " شاملة" : ""})`;
   if (family === "page") {
+    const label = props.label !== undefined ? props.label : "الضريبة";
     return (
       <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-        <span style={{ color: "#64748b" }}>الضريبة ({taxRate}%{inclusive ? " شاملة" : ""})</span>
+        <span style={{ color: "#64748b" }}>{label}{rate}</span>
         <span style={{ fontWeight: 700 }}>{currency} {smartFormat(taxAmount, s)}</span>
       </div>
     );
   }
+  const rollLabel = props.label !== undefined ? props.label : "ضريبة";
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span style={{ fontWeight: 700 }}>ضريبة ({taxRate}%{inclusive ? " شاملة" : ""}):</span><span style={HEAVY_VAL}>{currency} {smartFormat(taxAmount, s)}</span>
+      <span style={{ fontWeight: 700 }}>{(rollLabel || rate) ? `${rollLabel}${rate}:` : ""}</span><span style={HEAVY_VAL}>{currency} {smartFormat(taxAmount, s)}</span>
     </div>
   );
 }

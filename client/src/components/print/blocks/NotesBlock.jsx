@@ -1,21 +1,23 @@
 import React from "react";
 import { g } from "./blockUtils";
 
-export default function NotesBlock({ invoice = {}, settings: s, family }) {
+// props.label renames the caption (empty string hides it).
+export default function NotesBlock({ invoice = {}, settings: s, props = {}, family }) {
   if (g(s, "show_notes") === false) return null;
   const notes = invoice.notes;
   if (!notes || !String(notes).trim()) return null;
+  const label = props.label !== undefined ? props.label : "ملاحظات";
   if (family === "page") {
     return (
       <div style={{ marginTop: 4, padding: "4px 0", borderTop: "1px solid #e2e8f0" }}>
-        <div style={{ fontSize: "9px", color: "#94a3b8", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>ملاحظات</div>
+        {label && <div style={{ fontSize: "9px", color: "#94a3b8", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>}
         <div style={{ fontSize: "11px", color: "#334155", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{notes}</div>
       </div>
     );
   }
   return (
     <div style={{ marginTop: 5, fontSize: "10px" }}>
-      <div style={{ fontWeight: 700 }}>ملاحظات:</div>
+      {label && <div style={{ fontWeight: 700 }}>{label}:</div>}
       <div style={{ whiteSpace: "pre-wrap" }}>{notes}</div>
     </div>
   );

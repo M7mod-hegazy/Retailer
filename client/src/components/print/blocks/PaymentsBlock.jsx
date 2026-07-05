@@ -8,7 +8,8 @@ const fmtDate = (d) => {
   return day && m && y ? `${day}/${m}/${y}` : s;
 };
 
-export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
+// props.label renames the "طريقة الدفع" title on page (empty hides it).
+export default function PaymentsBlock({ invoice = {}, settings: s, props = {}, family }) {
   if (g(s, "show_payment_details") === false) return null;
   const payments = invoice.payments || [];
   const plan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan : [];
@@ -23,7 +24,7 @@ export default function PaymentsBlock({ invoice = {}, settings: s, family }) {
       <div style={{ marginTop: "8px" }}>
         {payments.length > 0 && (
           <>
-            <div style={{ fontWeight: 700, marginBottom: "3px", color: accent }}>طريقة الدفع</div>
+            {props.label !== "" && <div style={{ fontWeight: 700, marginBottom: "3px", color: accent }}>{props.label !== undefined ? props.label : "طريقة الدفع"}</div>}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               {payments.map((p, i) => (
                 <span key={i}>{p.method_name || "نقداً"}: {currency} {smartFormat(p.amount, s)}</span>

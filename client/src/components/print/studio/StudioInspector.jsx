@@ -6,8 +6,22 @@ import {
 } from "lucide-react";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import { PLACEHOLDER_KEYS } from "../blocks/placeholders";
+import { COMPUTED_FIELDS } from "../blocks/CustomFieldBlock";
 import { PRINT_FONT_FAMILIES } from "../../../services/printFonts";
 import { COLUMN_CATALOG } from "./studioData";
+
+// Where an inserted element sits in the flow — any block, or the very top.
+function InsertPosition({ st, ins, fam, inputCls }) {
+  return (
+    <label className="mt-2 flex items-center justify-between gap-2 py-1 text-[11px] font-bold text-[var(--text-secondary)]">
+      <span className="shrink-0">الموضع</span>
+      <select value={ins.after} onChange={(e) => st.setInsert(ins.id, { after: e.target.value })} className={`${inputCls} w-40`}>
+        <option value="__top__">أعلى المستند</option>
+        {fam.order.map((t) => <option key={t} value={t}>بعد: {BLOCK_REGISTRY[t]?.label || t}</option>)}
+      </select>
+    </label>
+  );
+}
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -83,6 +97,7 @@ export default function StudioInspector({ st }) {
   const selType = selInsert ? selInsert.type : selected;
   const selOv = isBlockSel ? st.ov(selected) : {};
   const isAbs = isBlockSel && selOv.abs && selOv.abs.xMm != null;
+  const isNudged = isBlockSel && selOv.rel && (selOv.rel.dxMm || selOv.rel.dyMm);
   const hasTypography = isBlockSel && !NO_TYPOGRAPHY.has(selType);
   const hasBox = isBlockSel && !NO_BOX.has(selType);
   const selLabel = selected
@@ -215,7 +230,20 @@ export default function StudioInspector({ st }) {
 
           {/* free position — every block, every paper size */}
           <Section title="الموضع">
-            <Toggle label="وضع حر — ضعه في أي مكان بالمليمتر" checked={!!isAbs} onChange={(v) => st.setFreePosition(selected, v)} />
+            {/* relative nudge (default): stays in the flow, respects neighbors */}
+            {!isAbs && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">إزاحة أفقية (مم)
+                  <input type="number" value={selOv.rel?.dxMm ?? 0} onChange={(e) => setOv({ rel: { ...(selOv.rel || {}), dxMm: Number(e.target.value) || 0 } })} className={`${inputCls} w-full`} />
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">إزاحة رأسية (مم)
+                  <input type="number" value={selOv.rel?.dyMm ?? 0} onChange={(e) => setOv({ rel: { ...(selOv.rel || {}), dyMm: Number(e.target.value) || 0 } })} className={`${inputCls} w-full`} />
+                </label>
+              </div>
+            )}
+            <div className="mt-2">
+              <Toggle label="تثبيت مطلق (فوق التدفق — لا يتأثر بما فوقه)" checked={!!isAbs} onChange={(v) => st.setPinMode(selected, v)} />
+            </div>
             {isAbs && (
               <>
                 <div className="mt-2 grid grid-cols-3 gap-2">
@@ -228,16 +256,17 @@ export default function StudioInspector({ st }) {
                 <div className="mt-1.5">
                   <Toggle label="حجز مساحته الأصلية (لا يُزاح الباقي)" checked={Number(selOv.abs.holdMm) > 0}
                     onChange={(v) => setAbs({ holdMm: v ? Math.max(2, Number(selOv.abs.holdMm) || 6) : 0 })} />
-                  {Number(selOv.abs.holdMm) > 0 && (
-                    <Row label="ارتفاع المساحة (مم)">
-                      <input type="number" value={selOv.abs.holdMm} onChange={(e) => setAbs({ holdMm: Math.max(0, Number(e.target.value) || 0) })} className={`${inputCls} w-16`} />
-                    </Row>
-                  )}
                 </div>
               </>
             )}
-            <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold text-[var(--text-muted)]">
-              <Move size={10} /> اسحب العنصر مباشرة على الورقة لتحريكه بحرية{family === "roll" ? " — Ctrl+سحب لإعادة الترتيب" : ""}. ينجذب تلقائياً لمنتصف الورقة.
+            {(isNudged || isAbs) && (
+              <button type="button" onClick={() => st.resetPosition(selected)}
+                className="mt-2 w-full rounded-lg border border-[var(--border-normal)] py-1.5 text-[10px] font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                إعادة العنصر لمكانه الطبيعي
+              </button>
+            )}
+            <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold leading-relaxed text-[var(--text-muted)]">
+              <Move size={10} /> اسحب العنصر على الورقة لتحريكه — يبقى ضمن التدفق ويحترم ما فوقه ما لم تفعّل "التثبيت المطلق"{family === "roll" ? "، و Ctrl+سحب لإعادة الترتيب" : ""}.
             </div>
           </Section>
 
@@ -346,11 +375,56 @@ export default function StudioInspector({ st }) {
                   </button>
                 ))}
               </div>
-              <Row label="الموضع بعد">
-                <select value={selInsert.after} onChange={(e) => st.setInsert(selInsert.id, { after: e.target.value })} className={`${inputCls} w-36`}>
-                  {fam.order.map((t) => <option key={t} value={t}>{BLOCK_REGISTRY[t]?.label || t}</option>)}
+              <InsertPosition st={st} ins={selInsert} fam={fam} inputCls={inputCls} />
+            </Section>
+          )}
+
+          {selInsert && selInsert.type === "custom_field" && (
+            <Section title="الحقل المخصص">
+              <Row label="المصدر">
+                <select value={selInsert.props?.source || "text"} onChange={(e) => st.setInsert(selInsert.id, { props: { source: e.target.value } })} className={`${inputCls} w-36`}>
+                  <option value="text">نص/رقم ثابت</option>
+                  <option value="token">متغير ديناميكي</option>
+                  <option value="computed">قيمة محسوبة</option>
                 </select>
               </Row>
+              <label className="mt-1 block space-y-1">
+                <span className="text-[10px] font-bold text-[var(--text-muted)]">التسمية (يمين — فارغة = القيمة فقط)</span>
+                <input value={selInsert.props?.label ?? ""} onChange={(e) => st.setInsert(selInsert.id, { props: { label: e.target.value } })} className={`${inputCls} w-full`} />
+              </label>
+              {(selInsert.props?.source || "text") === "computed" ? (
+                <>
+                  <Row label="القيمة">
+                    <select value={selInsert.props?.compute || "grand_total"} onChange={(e) => st.setInsert(selInsert.id, { props: { compute: e.target.value } })} className={`${inputCls} w-40`}>
+                      {COMPUTED_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                    </select>
+                  </Row>
+                  <Toggle label="عرضها كعملة" checked={selInsert.props?.money !== false} onChange={(v) => st.setInsert(selInsert.id, { props: { money: v } })} />
+                </>
+              ) : (
+                <label className="mt-1 block space-y-1">
+                  <span className="text-[10px] font-bold text-[var(--text-muted)]">{(selInsert.props?.source === "token") ? "النص مع المتغيرات {…}" : "القيمة الثابتة"}</span>
+                  <input value={selInsert.props?.value ?? ""} onChange={(e) => st.setInsert(selInsert.id, { props: { value: e.target.value } })} className={`${inputCls} w-full`} />
+                </label>
+              )}
+              {selInsert.props?.source === "token" && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {PLACEHOLDER_KEYS.map((k) => (
+                    <button key={k} type="button"
+                      onClick={() => st.setInsert(selInsert.id, { props: { value: `${selInsert.props?.value || ""}{${k}}` } })}
+                      className="rounded border border-dashed border-[var(--border-strong)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)]">
+                      {`{${k}}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Row label="التخطيط">
+                <select value={selInsert.props?.align || "between"} onChange={(e) => st.setInsert(selInsert.id, { props: { align: e.target.value } })} className={`${inputCls} w-28`}>
+                  <option value="between">تسمية ⟷ قيمة</option>
+                  <option value="right">يمين</option><option value="center">وسط</option><option value="left">يسار</option>
+                </select>
+              </Row>
+              <InsertPosition st={st} ins={selInsert} fam={fam} inputCls={inputCls} />
             </Section>
           )}
 
@@ -362,6 +436,7 @@ export default function StudioInspector({ st }) {
                     className={btnCls((selInsert.props?.style || "solid") === v)}>{lbl}</button>
                 ))}
               </div>
+              <InsertPosition st={st} ins={selInsert} fam={fam} inputCls={inputCls} />
             </Section>
           )}
 
@@ -371,6 +446,7 @@ export default function StudioInspector({ st }) {
                 <input type="number" value={selInsert.props?.height ?? 8}
                   onChange={(e) => st.setInsert(selInsert.id, { props: { height: clamp(Number(e.target.value) || 8, 2, 120) } })} className={`${inputCls} w-20`} />
               </Row>
+              <InsertPosition st={st} ins={selInsert} fam={fam} inputCls={inputCls} />
             </Section>
           )}
 
@@ -418,17 +494,112 @@ export default function StudioInspector({ st }) {
                 </div>
               )}
               <div className="mt-2 space-y-1.5">
-                <Toggle label="تظليل الصفوف (زيبرا)" checked={st.ov("items_table").zebra !== false} onChange={(v) => st.setOverride("items_table", { zebra: v })} />
                 <Row label="الحدود">
-                  <select value={st.ov("items_table").tableBorder || "none"} onChange={(e) => st.setOverride("items_table", { tableBorder: e.target.value })} className={`${inputCls} w-24`}>
-                    <option value="none">بلا</option><option value="lines">خطوط</option><option value="grid">شبكة</option>
+                  <select value={st.ov("items_table").tableBorder || (family === "roll" ? "grid" : "none")} onChange={(e) => st.setOverride("items_table", { tableBorder: e.target.value })} className={`${inputCls} w-24`}>
+                    <option value="none">بلا</option><option value="lines">خطوط أفقية</option><option value="grid">شبكة كاملة</option>
                   </select>
                 </Row>
+                <Row label="رأس الجدول">
+                  <select value={st.ov("items_table").headerVariant || "dark"} onChange={(e) => st.setOverride("items_table", { headerVariant: e.target.value })} className={`${inputCls} w-24`}>
+                    <option value="dark">شريط معبّأ</option><option value="light">خط سفلي</option><option value="none">بلا رأس</option>
+                  </select>
+                </Row>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">سماكة الخطوط (px)
+                    <input type="number" value={st.ov("items_table").lineWidth ?? ""} placeholder="1"
+                      onChange={(e) => st.setOverride("items_table", { lineWidth: e.target.value === "" ? undefined : clamp(Number(e.target.value), 1, 4) })} className={`${inputCls} w-full`} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">ارتفاع الصفوف (px)
+                    <input type="number" value={st.ov("items_table").rowPad ?? ""} placeholder={family === "roll" ? "2" : "3"}
+                      onChange={(e) => st.setOverride("items_table", { rowPad: e.target.value === "" ? undefined : clamp(Number(e.target.value), 0, 16) })} className={`${inputCls} w-full`} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">عرض عمود الصنف %
+                    <input type="number" value={st.ov("items_table").nameWidth ?? ""} placeholder="60"
+                      onChange={(e) => st.setOverride("items_table", { nameWidth: e.target.value === "" ? undefined : clamp(Number(e.target.value), 20, 85) })} className={`${inputCls} w-full`} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">حجم خط الرأس
+                    <input type="number" value={st.ov("items_table").headerFontSize ?? ""} placeholder="10"
+                      onChange={(e) => st.setOverride("items_table", { headerFontSize: e.target.value === "" ? undefined : clamp(Number(e.target.value), 7, 20) })} className={`${inputCls} w-full`} />
+                  </label>
+                </div>
                 <Row label="حجم خط الجدول">
                   <input type="number" value={st.ov("items_table").fontSize || ""} placeholder={String(merged.item_font_size || 13)}
                     onChange={(e) => st.setOverride("items_table", { fontSize: e.target.value === "" ? undefined : clamp(Number(e.target.value), 7, 24) })} className={`${inputCls} w-16`} />
                 </Row>
+                {family === "page" && (
+                  <>
+                    <Toggle label="تظليل الصفوف (زيبرا)" checked={st.ov("items_table").zebra !== false} onChange={(v) => st.setOverride("items_table", { zebra: v })} />
+                    <Toggle label="عمود الترقيم #" checked={st.ov("items_table").showRowNum !== false} onChange={(v) => st.setOverride("items_table", { showRowNum: v })} />
+                    <div className="grid grid-cols-3 gap-2">
+                      <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">لون الخطوط
+                        <ColorField value={st.ov("items_table").lineColor} fallback="#e2e8f0"
+                          onChange={(v) => st.setOverride("items_table", { lineColor: v })} onClear={() => st.setOverride("items_table", { lineColor: undefined })} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">خلفية الرأس
+                        <ColorField value={st.ov("items_table").headerBg} fallback={merged.accent_color || "#0f172a"}
+                          onChange={(v) => st.setOverride("items_table", { headerBg: v })} onClear={() => st.setOverride("items_table", { headerBg: undefined })} />
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">نص الرأس
+                        <ColorField value={st.ov("items_table").headerColor} fallback="#ffffff"
+                          onChange={(v) => st.setOverride("items_table", { headerColor: v })} onClear={() => st.setOverride("items_table", { headerColor: undefined })} />
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
+            </Section>
+          )}
+
+          {selected === "grand_total" && (
+            <Section title="سطر الإجمالي">
+              <Row label="الشكل">
+                <select value={st.ov("grand_total").variant || "band"} onChange={(e) => st.setOverride("grand_total", { variant: e.target.value })} className={`${inputCls} w-32`}>
+                  <option value="band">شريط معبّأ</option>
+                  <option value="boxed">صندوق مزدوج</option>
+                  <option value="plain">سطر بخط علوي</option>
+                  <option value="huge">رقم ضخم متمركز</option>
+                </select>
+              </Row>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">التسمية
+                  <input value={st.ov("grand_total").label ?? ""} placeholder="الإجمالي"
+                    onChange={(e) => st.setOverride("grand_total", { label: e.target.value })} className={`${inputCls} w-full`} />
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">الزخرفة (فارغة = بلا)
+                  <input value={st.ov("grand_total").decor ?? "✦"} placeholder="✦"
+                    onChange={(e) => st.setOverride("grand_total", { decor: e.target.value })} className={`${inputCls} w-full`} />
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">موضع الزخرفة
+                  <select value={st.ov("grand_total").decorPos || "both"} onChange={(e) => st.setOverride("grand_total", { decorPos: e.target.value })} className={`${inputCls} w-full`}>
+                    <option value="both">قبل وبعد</option>
+                    <option value="before">قبل فقط</option>
+                    <option value="after">بعد فقط</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">حجم التسمية (px)
+                  <input type="number" value={st.ov("grand_total").labelSize ?? ""} placeholder="تلقائي"
+                    onChange={(e) => st.setOverride("grand_total", { labelSize: e.target.value === "" ? undefined : clamp(Number(e.target.value), 7, 40) })} className={`${inputCls} w-full`} />
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">حجم الرقم (px)
+                  <input type="number" value={st.ov("grand_total").amountSize ?? ""} placeholder="تلقائي"
+                    onChange={(e) => st.setOverride("grand_total", { amountSize: e.target.value === "" ? undefined : clamp(Number(e.target.value), 8, 60) })} className={`${inputCls} w-full`} />
+                </label>
+                {family === "page" && (
+                  <>
+                    <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">لون الشريط/الإطار
+                      <ColorField value={st.ov("grand_total").background} fallback={merged.accent_color || "#0f172a"}
+                        onChange={(v) => st.setOverride("grand_total", { background: v })} onClear={() => st.setOverride("grand_total", { background: undefined })} />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[10px] font-bold text-[var(--text-muted)]">لون النص
+                      <ColorField value={st.ov("grand_total").textColor} fallback="#ffffff"
+                        onChange={(v) => st.setOverride("grand_total", { textColor: v })} onClear={() => st.setOverride("grand_total", { textColor: undefined })} />
+                    </label>
+                  </>
+                )}
+              </div>
+              {family === "roll" && (
+                <div className="mt-1 text-[9px] font-bold text-[var(--text-muted)]">على الرول الحراري تبقى الألوان أسود/أبيض — لكن الشكل والأحجام والزخرفة والتسمية كلها حرة.</div>
+              )}
             </Section>
           )}
 
@@ -561,9 +732,11 @@ export default function StudioInspector({ st }) {
                 {SYSTEM_FONTS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
             </Row>
-            <Row label="لون العناوين">
-              <ColorField value={merged.accent_color} fallback="#0f172a" onChange={(v) => st.setFlat("accent_color", v)} />
-            </Row>
+            {family === "page" && (
+              <Row label="لون العناوين">
+                <ColorField value={merged.accent_color} fallback="#0f172a" onChange={(v) => st.setFlat("accent_color", v)} />
+              </Row>
+            )}
             <Row label="الأرقام">
               <select value={merged.print_numerals || "western"} onChange={(e) => st.setFlat("print_numerals", e.target.value)} className={`${inputCls} w-32`}>
                 <option value="western">1 2 3</option>
@@ -578,6 +751,9 @@ export default function StudioInspector({ st }) {
                     onChange={(e) => st.setFlat(k, clamp(Number(e.target.value) || dflt, min, max))} className={`${inputCls} w-full`} />
                 </label>
               ))}
+            </div>
+            <div className="mt-1 text-[9px] font-bold leading-relaxed text-[var(--text-muted)]">
+              إن حدّدت حجم خط لعنصر بعينه (بالنقر عليه) فهو يتقدّم على هذه القيم العامة.
             </div>
           </Section>
 

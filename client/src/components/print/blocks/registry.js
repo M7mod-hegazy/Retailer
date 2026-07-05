@@ -27,6 +27,7 @@ import SignatureLinesBlock from "./SignatureLinesBlock";
 import BarcodeBlock from "./BarcodeBlock";
 import OrderNumberBlock from "./OrderNumberBlock";
 import ImageBlock from "./ImageBlock";
+import CustomFieldBlock from "./CustomFieldBlock";
 
 const ALL = ["roll", "page"];
 
@@ -53,6 +54,7 @@ export const BLOCK_REGISTRY = {
   footer_text:         { component: FooterTextBlock,        label: "نص التذييل",     group: "foot",     families: ALL },
   qr:                  { component: QrBlock,                label: "رمز QR",         group: "foot",     families: ALL },
   custom_text:         { component: CustomTextBlock,        label: "نص مخصص",        group: "inserted", families: ALL },
+  custom_field:        { component: CustomFieldBlock,       label: "حقل مخصص",       group: "inserted", families: ALL },
   divider:             { component: DividerBlock,           label: "فاصل",           group: "inserted", families: ALL },
   spacer:              { component: SpacerBlock,            label: "مسافة",          group: "inserted", families: ALL },
   watermark:           { component: WatermarkBlock,         label: "علامة مائية",    group: "foot",     families: ["page"] },

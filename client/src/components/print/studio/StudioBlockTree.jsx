@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { GripVertical, Eye, EyeOff, Trash2, Type, Minus, Square, QrCode, Link2, Unlink, Move } from "lucide-react";
+import { GripVertical, Eye, EyeOff, Trash2, Type, Minus, Square, QrCode, Link2, Unlink, Move, Variable } from "lucide-react";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 
 const INSERTABLE = [
   { type: "custom_text", label: "نص", icon: Type },
+  { type: "custom_field", label: "حقل مخصص", icon: Variable },
   { type: "divider", label: "فاصل", icon: Minus },
   { type: "spacer", label: "مسافة", icon: Square },
   { type: "qr", label: "QR إضافي", icon: QrCode },
@@ -75,8 +76,8 @@ export default function StudioBlockTree({ st }) {
                 )}
                 <GripVertical size={12} className="shrink-0 text-[var(--text-muted)]" />
                 <span className="flex-1 truncate">{entry.label}</span>
-                {(fam.perBlock || {})[type]?.abs?.xMm != null && (
-                  <Move size={11} className="shrink-0 text-[var(--primary)]" title="موضع حر" />
+                {(() => { const o = (fam.perBlock || {})[type] || {}; return (o.abs?.xMm != null || (o.rel && (o.rel.dxMm || o.rel.dyMm))); })() && (
+                  <Move size={11} className="shrink-0 text-[var(--primary)]" title="تم تحريكه" />
                 )}
                 <button type="button" title={vis ? "إخفاء" : "إظهار"}
                   onClick={(e) => { e.stopPropagation(); st.toggleVisible(type); }}

@@ -250,7 +250,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const insert = (type) => {
     const id = newInsertId();
     const after = (selected && fam.order.includes(selected)) ? selected : fam.order[fam.order.length - 1];
-    const props = type === "custom_text" ? { text: "نص جديد", align: "center" } : {};
+    const props = type === "custom_text" ? { text: "نص جديد", align: "center" }
+      : type === "custom_field" ? { label: "حقل", source: "text", value: "قيمة", align: "between" }
+      : {};
     setFamLayout((c) => ({ inserted: [...(c.inserted || []), { id, type, after, props }] }));
     setSelected(id);
   };
@@ -321,11 +323,12 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   };
 
   // ── direct mouse interactions on the canvas ────────────────────────────
-  // Dragging a block on the canvas moves it FREELY on every paper size —
-  // the first drag converts the flow block to an absolute mm position
-  // (perBlock[key].abs) while reserving its original slot (abs.holdMm) so the
-  // rest of the document does not reflow. Ctrl+drag on roll reorders the flow
-  // instead. The tree always reorders.
+  // Dragging a block moves it FREELY on every paper size. By default this is a
+  // RELATIVE nudge (perBlock[key].rel = {dxMm, dyMm}): the block stays in the
+  // flow, keeps its slot, and still respects whatever grows above/below it — so
+  // a nudged total still moves down when the table gets longer. A block put in
+  // "absolute pin" mode (perBlock[key].abs) instead leaves the flow and stays
+  // at fixed coordinates. Ctrl+drag on roll reorders the flow. Tree reorders.
   const [dragSnap, setDragSnap] = useState(null); // {centerX: bool} while free-dragging
   const mmGeom = () => {
     const sheet = sheetElRef.current;
@@ -355,36 +358,44 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const base = withFamBase();
     const famBase = base.layout[family];
     const curOv = (famBase.perBlock || {})[key] || {};
-    const elRect = el.getBoundingClientRect();
-    const startAbs = curOv.abs && curOv.abs.xMm != null
-      ? { ...curOv.abs }
-      : {
-          xMm: half((elRect.left - geom.rect.left) * geom.mmPerPx),
-          yMm: half((elRect.top - geom.rect.top) * geom.mmPerPx),
-          widthMm: half(Math.min(elRect.width * geom.mmPerPx, geom.sheetWmm)),
-          // reserve the original slot so the document doesn't reflow
-          holdMm: half(Math.max(2, elRect.height * geom.mmPerPx)),
-        };
+    const pinned = curOv.abs && curOv.abs.xMm != null;
     let moved = false;
+
+    if (pinned) {
+      // absolute-pin mode: update fixed mm coordinates
+      const startAbs = { ...curOv.abs };
+      const move = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+        if (!moved) { setPast((p) => [...p, { scope, draft: cur }]); setFuture([]); moved = true; }
+        const dx = (ev.clientX - startX) * geom.mmPerPx;
+        const dy = (ev.clientY - startY) * geom.mmPerPx;
+        const w = startAbs.widthMm || 20;
+        let x = clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm));
+        const centered = Math.abs((x + Math.min(w, geom.sheetWmm) / 2) - geom.sheetWmm / 2) < 1.5;
+        if (centered) x = geom.sheetWmm / 2 - Math.min(w, geom.sheetWmm) / 2;
+        setDragSnap({ centerX: centered });
+        writeOv(base, famBase, key, { abs: { ...startAbs, xMm: half(x), yMm: half(Math.max(0, startAbs.yMm + dy)) } });
+      };
+      const up = () => { setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+      return;
+    }
+
+    // relative-nudge mode (default): accumulate a mm offset, staying in flow
+    const startRel = curOv.rel || { dxMm: 0, dyMm: 0 };
     const move = (ev) => {
       if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
       if (!moved) { setPast((p) => [...p, { scope, draft: cur }]); setFuture([]); moved = true; }
       const dx = (ev.clientX - startX) * geom.mmPerPx;
       const dy = (ev.clientY - startY) * geom.mmPerPx;
-      const w = startAbs.widthMm || 20;
-      let x = clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm));
-      // magnetic center snap (±1.5mm) with a visual guide line
-      const centered = Math.abs((x + Math.min(w, geom.sheetWmm) / 2) - geom.sheetWmm / 2) < 1.5;
-      if (centered) x = geom.sheetWmm / 2 - Math.min(w, geom.sheetWmm) / 2;
-      setDragSnap({ centerX: centered });
-      writeOv(base, famBase, key, {
-        abs: { ...startAbs, xMm: half(x), yMm: half(Math.max(0, startAbs.yMm + dy)) },
-      });
+      let nx = (startRel.dxMm || 0) + dx;
+      // snap the horizontal nudge back to zero (its natural x) within ±1.5mm
+      const snapZero = Math.abs(nx) < 1.5;
+      if (snapZero) nx = 0;
+      setDragSnap({ centerX: snapZero });
+      writeOv(base, famBase, key, { rel: { dxMm: half(nx), dyMm: half((startRel.dyMm || 0) + dy) } });
     };
-    const up = () => {
-      setDragSnap(null);
-      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
-    };
+    const up = () => { setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
@@ -419,10 +430,10 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
-  // Toggle free positioning from the inspector: ON captures the block's
-  // current rendered position (and reserves its slot); OFF returns it to
-  // the flow.
-  const setFreePosition = (key, on) => {
+  // Absolute-pin toggle: ON captures the block's current on-canvas position and
+  // pins it there (leaves the flow, holds its slot); OFF drops back into the
+  // flow keeping any relative nudge.
+  const setPinMode = (key, on) => {
     if (!on) {
       setFamLayout((c) => {
         const pb = { ...(c.perBlock || {}) };
@@ -443,7 +454,22 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
         holdMm: half(Math.max(2, r.height * geom.mmPerPx)),
       };
     }
-    setOverride(key, { abs });
+    // moving to a pin clears the relative nudge (position is now absolute)
+    setFamLayout((c) => {
+      const prev = (c.perBlock || {})[key] || {};
+      const { rel, ...rest } = prev;
+      return { perBlock: { ...(c.perBlock || {}), [key]: { ...rest, abs } } };
+    });
+  };
+
+  // Return a block to its natural flow position (clear both nudge and pin).
+  const resetPosition = (key) => {
+    setFamLayout((c) => {
+      const prev = (c.perBlock || {})[key];
+      if (!prev) return {};
+      const { rel, abs, ...rest } = prev;
+      return { perBlock: { ...(c.perBlock || {}), [key]: rest } };
+    });
   };
 
   const onResizeStart = (key, dir, e) => {
@@ -605,7 +631,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     invoiceData, canvasSettings, renderLayout, designer,
     zoom, setZoom, showRuler, compare, sampleId, showBand, setShowBand,
     calibration, printerName, openCalibration: () => setCalibOpen(true),
-    resetFamily, applyPresetToDraft, sheetElRef, setFreePosition, dragSnap,
+    resetFamily, applyPresetToDraft, sheetElRef, setPinMode, resetPosition, dragSnap,
     editingKey, startEditText: setEditingKey,
   };
 

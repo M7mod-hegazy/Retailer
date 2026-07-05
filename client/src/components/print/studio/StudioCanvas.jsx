@@ -48,8 +48,8 @@ function FloatingToolbar({ st }) {
         </>
       )}
       <span className="mx-0.5 h-4 w-px bg-[var(--border-subtle)]" />
-      <button type="button" className={btn(!!isAbs)} title={isAbs ? "إلغاء الوضع الحر (عودة للتدفق)" : "وضع حر — حرِّكه في أي مكان"}
-        onClick={() => st.setFreePosition(selected, !isAbs)}><Move size={12} /></button>
+      <button type="button" className={btn(!!isAbs)} title={isAbs ? "إلغاء التثبيت المطلق" : "تثبيت مطلق (فوق التدفق)"}
+        onClick={() => st.setPinMode(selected, !isAbs)}><Move size={12} /></button>
       {editable && (
         <button type="button" className={btn(false)} title="تحرير النص مباشرة"
           onClick={() => st.startEditText(selected)}><Pencil size={12} /></button>

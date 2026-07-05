@@ -13,7 +13,11 @@ export default function RollWrapper({ settings: s, children, overlay }) {
   const bandMm = rollPrintWidthMm(s);
   const bandLeftMm = rollBandLeftMm(s);
   return (
-    <div style={{
+    // dir="ltr" is load-bearing: the paper div sits inside the app's RTL tree,
+    // and in RTL over-constrained block layout the browser IGNORES margin-left
+    // and honors margin-right — which slammed the band flush right (preview
+    // AND paper). Physical band geometry must resolve left-based.
+    <div dir="ltr" style={{
       width: `${paperMm}mm`,
       boxSizing: "border-box",
       background: "#fff",

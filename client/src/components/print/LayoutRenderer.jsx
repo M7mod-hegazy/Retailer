@@ -66,11 +66,25 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     // On page family every element is grabbable (drag = free move); on roll
     // only flow-order blocks move (drag = reorder).
     if (editing && designer) node = wrapSelectable(node, selKey, type, entry.label, family === "page" || orderSet.has(selKey), designer);
-    // Free positioning (both families): a block with an `abs` override leaves
-    // the flow and renders at exact mm coordinates inside the sheet — this is
-    // what makes "drag anything anywhere" real. `holdMm` optionally keeps the
-    // block's original slot as empty space so the rest of the document does
-    // not reflow when a part is moved out.
+    // Relative free-move (default): the block STAYS in the flow — it keeps its
+    // slot and still respects whatever grows above/below it — but is visually
+    // nudged by a mm offset. This is what "move a part freely without it going
+    // fixed" means; a longer table still pushes a nudged total down with it.
+    const rel = ov.rel && (ov.rel.dxMm || ov.rel.dyMm) ? ov.rel : null;
+    if (rel && !(ov.abs && ov.abs.xMm != null)) {
+      items.push({
+        type, group: entry.group,
+        node: (
+          <div key={`rel-${selKey}-${key}`} style={{ transform: `translate(${rel.dxMm || 0}mm, ${rel.dyMm || 0}mm)` }}>
+            {node}
+          </div>
+        ),
+      });
+      return;
+    }
+    // Absolute pin: the block LEAVES the flow and renders at fixed mm
+    // coordinates (for stamps/badges/watermarks that must sit at an exact spot).
+    // `holdMm` optionally keeps the original slot as empty space.
     const abs = ov.abs && ov.abs.xMm != null && ov.abs.yMm != null ? ov.abs : null;
     if (abs) {
       absBlocks.push(
@@ -101,6 +115,8 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     items.push({ type, group: entry.group, node: <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment> });
   };
 
+  // Inserts anchored to "__top__" render before everything (top of document).
+  inserts.filter((ins) => ins.after === "__top__").forEach((ins) => pushBlock(ins.type, ins.props, ins.id));
   order.forEach((type) => {
     pushBlock(type);
     inserts.filter((ins) => ins.after === type).forEach((ins) => pushBlock(ins.type, ins.props, ins.id));
