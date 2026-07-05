@@ -134,7 +134,7 @@ export default function POSDetailedView({ vm }) {
     detailedItemResults, detailedCategories,
     getItemImage, handleGridItemClick, handleSelectItem,
     multiTotal, paymentMethods,
-    multiUnitEnabled, setConfigLine,
+    multiUnitEnabled, restaurantEnabled, setConfigLine,
     customerInputRef,
     discountModes, setDiscountModes,
     stockLevels, stockLoaded,
@@ -915,13 +915,17 @@ export default function POSDetailedView({ vm }) {
                         </button>
                       </div>
 
-                      {/* Row 2: code + multi-unit */}
+                      {/* Row 2: code + config button (multi-unit / restaurant modifiers) */}
                       <div className="flex items-center gap-2 px-2.5 pb-1">
                         <span className="text-[10px] font-bold text-slate-400 font-mono truncate">{line.code || "—"}</span>
-                        {multiUnitEnabled && (
+                        {(multiUnitEnabled || restaurantEnabled) && (
                           <button type="button" onClick={() => setConfigLine(line)}
                             className="shrink-0 text-[10px] font-black text-sky-600 hover:underline">
-                            {line.sold_unit_name || line.unit_name || "أساسية"} ▾
+                            {multiUnitEnabled && restaurantEnabled
+                              ? (line.sold_unit_name || line.unit_name || "أساسية") + " + إضافات"
+                              : multiUnitEnabled
+                                ? (line.sold_unit_name || line.unit_name || "أساسية")
+                                : "إضافات"} ▾
                           </button>
                         )}
                       </div>

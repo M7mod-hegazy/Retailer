@@ -21,7 +21,7 @@ import ReportPrintTemplate from "./templates/ReportPrintTemplate";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
-import { SCOPE_OPTIONS } from "./reportsCenterConfig";
+import { SCOPE_OPTIONS, formatReportCellValue } from "./reportsCenterConfig";
 import { formatNumber } from "../../utils/currency";
 
 function formatDate(date) {
@@ -953,9 +953,9 @@ export default function ReportWorkspacePage() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="mb-6"
+            className={`mb-6 ${filtersOpen ? "overflow-visible" : "overflow-hidden"}`}
           >
-            <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm">
+            <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm relative z-20">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Search */}
@@ -1135,9 +1135,9 @@ export default function ReportWorkspacePage() {
                           const val = row[c.id];
                           if (val == null || val === "") return <span className="text-zinc-300">—</span>;
                           const num = Number(val);
-                          const isNum = !isNaN(num) && String(val).trim() !== "";
+                          const isNum = !isNaN(num) && String(val).trim() !== "" && c.type !== "code" && c.type !== "text" && !c.id.includes("date") && !c.id.includes("status") && !c.id.includes("type") && !c.id.includes("method");
                           if (isNum) return (<span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{formatNumber(num)}</span>);
-                          return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
+                          return <span className="text-sm font-medium text-zinc-700">{String(formatReportCellValue(c.id, val))}</span>;
                         },
                   }))}
                   rowKey={(row) => row.id || JSON.stringify(row)}

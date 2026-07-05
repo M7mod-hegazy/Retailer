@@ -1,5 +1,10 @@
-import React, { useState, useRef } from "react";
-import { Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed, Gem, BadgePercent, CalendarClock, ScrollText, Lock, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed,
+  Gem, CalendarClock, ScrollText, Lock, AlertTriangle,
+  CheckCircle2, ChevronDown, ChevronUp, Info, Shield,
+  Link2, XCircle, Settings2, TriangleAlert,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -7,12 +12,12 @@ import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
+// ─── Feature definitions ──────────────────────────────────────────────────────
 const FEATURES = [
   {
     key: "feature_multi_unit",
     icon: Package,
-    color: "bg-sky-600",
-    ringColor: "ring-sky-200",
+    colorRole: "info",
     name: "وحدات القياس المتعددة",
     desc: "بيع الصنف بوحدات مختلفة — كرتونة، دستة، قطعة — لكل منها سعر بيع وباركود مستقل. المخزون يُحسب دائماً بالوحدة الأساسية فقط.",
     recommendedFor: ["سوبر ماركت", "بقالة", "جملة ونصف جملة"],
@@ -23,12 +28,12 @@ const FEATURES = [
       "الفواتير والمرتجعات ← حفظ الوحدة المباعة وعرضها في تفاصيل الفاتورة",
       "التقارير ← تقرير «تشكيلة وحدات البيع»",
     ],
+    worksWellWith: ["feature_variants"],
   },
   {
     key: "feature_variants",
     icon: Shirt,
-    color: "bg-violet-600",
-    ringColor: "ring-violet-200",
+    colorRole: "primary",
     name: "المتغيرات (مقاسات وألوان)",
     desc: "إنشاء مصفوفة مقاسات × ألوان لكل صنف أب، مع مخزون وسعر وباركود مستقل لكل متغير فرعي.",
     recommendedFor: ["ملابس", "أحذية", "إكسسوارات"],
@@ -39,13 +44,13 @@ const FEATURES = [
       "نقطة البيع ← نافذة اختيار المتغير عند اختيار الصنف الأب",
       "التقارير ← تجميع المبيعات حسب الصنف الأب + معدل تصريف لكل متغير",
     ],
-    disableWarning: "البيانات تُحفظ — أصناف المتغيرات تعمل كأصناف عادية عند الإيقاف.",
+    existingDataNote: "تحذير: مولّد المصفوفة على الأصناف الموجودة قد يُضيف متغيرات جديدة ولن يحذف المتغيرات القديمة. الأصناف الحالية تبقى كما هي حتى تحوّلها يدوياً لصنف أب.",
+    worksWellWith: ["feature_multi_unit"],
   },
   {
     key: "feature_serials",
     icon: Smartphone,
-    color: "bg-rose-600",
-    ringColor: "ring-rose-200",
+    colorRole: "danger",
     name: "تتبع السيريال / IMEI",
     desc: "ربط رقم سيريال أو IMEI بكل قطعة مباعة ومشتراة، مع سجل كامل للحركة وحالة الضمان لكل رقم.",
     recommendedFor: ["محلات موبايل", "إلكترونيات", "أجهزة"],
@@ -56,27 +61,28 @@ const FEATURES = [
       "المشتريات ← إدخال السيريالات عند استلام البضاعة",
       "الشريط الجانبي ← صفحة «بحث السيريال / IMEI» مع السجل وحالة الضمان (جديدة)",
     ],
+    existingDataNote: "تنبيه: الأصناف التي لديها مخزون حالي لن تحتوي على أرقام سيريال تلقائياً — السجلات السابقة تبقى بدون تتبع حتى تُدخلها يدوياً من شاشة المخزون.",
+    conflictsWith: ["feature_multi_unit"],
   },
   {
     key: "feature_scale_barcodes",
     icon: Scale,
-    color: "bg-amber-600",
-    ringColor: "ring-amber-200",
+    colorRole: "warning",
     name: "باركود الميزان",
     desc: "قراءة باركود EAN-13 الصادر من الميزان الإلكتروني واستخراج الوزن أو السعر تلقائياً عند المسح في نقطة البيع.",
     recommendedFor: ["سوبر ماركت", "جزارة", "خضار وفاكهة", "أجبان"],
     affectedPages: [
       "نقطة البيع ← قراءة باركود الميزان واستخراج الوزن/السعر تلقائياً عند المسح",
       "قاعدة الأصناف ← حقل «كود الميزان (PLU)» لربط الصنف بالميزان",
-      "الإعدادات ← لوح إعدادات الميزان (البادئة، طول الكود، نوع القيمة، الخانات العشرية)",
       "التقارير ← مبيعات أصناف الميزان بالوزن",
     ],
+    // hasInlineConfig: renders ScaleConfigPanel inside the card when enabled
+    hasInlineConfig: "scale",
   },
   {
     key: "feature_repair_orders",
     icon: Wrench,
-    color: "bg-orange-600",
-    ringColor: "ring-orange-200",
+    colorRole: "warning",
     name: "أوامر الصيانة والإصلاح",
     desc: "نظام متكامل لإدارة طلبات الصيانة: استلام الجهاز، التشخيص، قطع الغيار، العمالة، الإيداع، وإصدار فاتورة عند التسليم.",
     recommendedFor: ["صيانة موبايل وكمبيوتر", "أجهزة منزلية", "ترزي"],
@@ -91,8 +97,7 @@ const FEATURES = [
   {
     key: "feature_restaurant",
     icon: UtensilsCrossed,
-    color: "bg-emerald-600",
-    ringColor: "ring-emerald-200",
+    colorRole: "success",
     name: "وضع المطعم (طاولات + وصفات)",
     desc: "إدارة الطاولات والطلبات، المعدّلات (إضافات وتخصيصات)، الوصفات واستهلاك المكونات تلقائياً عند البيع، وطباعة تذكرة المطبخ.",
     recommendedFor: ["كافيه", "مطعم", "عصائر", "كشري"],
@@ -103,12 +108,12 @@ const FEATURES = [
       "المطبخ ← طباعة تذكرة المطبخ موجّهة حسب القسم",
       "الفواتير والخزينة ← إظهار رسوم الخدمة ضمن تفاصيل الفاتورة",
     ],
+    existingDataNote: "ملاحظة: حقول الطاولة ونوع الطلب موجودة في قاعدة البيانات بشكل دائم (مشتركة مع النظام الأساسي). تفعيل هذه الميزة يُظهر الواجهة فقط ولا يُنشئ جداول منفصلة.",
   },
   {
     key: "feature_gold",
     icon: Gem,
-    color: "bg-yellow-600",
-    ringColor: "ring-yellow-200",
+    colorRole: "warning",
     name: "تسعير الذهب والمجوهرات",
     desc: "تسعير أصناف الذهب بالوزن × سعر عيار اليوم مع المصنعية. إدخال يومي للأسعار، وتسعير تلقائي في نقطة البيع.",
     recommendedFor: ["محلات الذهب", "المجوهرات"],
@@ -117,109 +122,143 @@ const FEATURES = [
       "قاعدة الأصناف ← حقول الذهب (العيار، الوزن بالجرام، المصنعية)",
       "نقطة البيع ← تسعير تلقائي: وزن × سعر العيار + المصنعية + تنبيه إدخال سعر اليوم",
       "الفواتير ← حفظ تفاصيل الذهب وعرضها في التفاصيل والمطبوعات",
+      "التقارير ← هامش الربح على أصناف الذهب يُحسب من وزن × سعر العيار",
     ],
+    existingDataNote: "ملاحظة: أصناف الذهب الموجودة حالياً ستحتاج إلى إدخال بيانات العيار والوزن يدوياً من شاشة قاعدة الأصناف بعد التفعيل.",
   },
   {
     key: "feature_expiry",
     icon: CalendarClock,
-    color: "bg-orange-500",
-    ringColor: "ring-orange-200",
+    colorRole: "warning",
     name: "تتبع تواريخ الانتهاء (FEFO)",
     desc: "تتبع دفعات الأصناف بتاريخ صلاحية لكل دفعة، مع صرف الأقرب انتهاءً أولاً (FEFO) عند البيع، وتنبيهات بالأصناف المنتهية أو القريبة من الانتهاء.",
     recommendedFor: ["سوبر ماركت", "صيدلية", "أغذية ومشروبات", "ألبان"],
     affectedPages: [
-      "قاعدة الأصناف ← خانة «تتبع تواريخ الانتهاء (FEFO)» لكل صنف (نافذة الصنف + مفتاح سريع في القائمة)",
+      "قاعدة الأصناف ← خانة «تتبع تواريخ الانتهاء (FEFO)» لكل صنف (يجب تفعيلها على كل صنف منفرداً)",
       "المشتريات ← إدخال تاريخ الانتهاء ورقم الدفعة عند استلام الأصناف المتتبَّعة",
-      "فواتير المبيعات ← خصم المخزون من الدفعة الأقرب انتهاءً أولاً (FEFO) تلقائياً",
+      "فواتير المبيعات ← خصم المخزون من الدفعة الأقرب انتهاءً أولاً (FEFO) للأصناف المفعّل عليها التتبع فقط",
       "المرتجعات ← إعادة الكمية المرتجعة إلى أحدث دفعة للصنف",
       "التقارير ← تقرير «انتهاء الصلاحية» (منتهي / حرج / تحذير / ساري)",
       "لوحة التحليلات ← بطاقة رصد صلاحية الدفعات القريبة من الانتهاء",
     ],
-    disableWarning: "البيانات تُحفظ — دفعات الصلاحية تبقى مخزّنة وتعمل فور التفعيل.",
-  },
-  {
-    key: "feature_promotions",
-    icon: BadgePercent,
-    color: "bg-pink-600",
-    ringColor: "ring-pink-200",
-    name: "العروض والتخفيضات",
-    desc: "إدارة العروض الترويجية والخصومات على الأصناف والأقسام مع تطبيقها تلقائياً في نقطة البيع.",
-    recommendedFor: ["سوبر ماركت", "ملابس", "تجزئة"],
-    affectedPages: [
-      "الشريط الجانبي ← صفحة «العروض والتخفيضات» (تظهر فور التفعيل)",
-      "نقطة البيع ← تطبيق العروض والخصومات تلقائياً على الفاتورة",
-      "لوحة العمل ← بطاقة العروض والتخفيضات",
-    ],
+    existingDataNote: "تنبيه: المخزون الحالي لن يحتوي على دفعات أو تواريخ انتهاء تلقائياً — FEFO يبدأ العمل فقط على المشتريات الجديدة بعد التفعيل. الأصناف القديمة تستمر بالصرف العادي حتى تُنشئ دفعة لها.",
   },
   {
     key: "feature_cheques",
     icon: ScrollText,
-    color: "bg-blue-600",
-    ringColor: "ring-blue-200",
+    colorRole: "info",
     name: "إدارة الشيكات",
-    desc: "نظام متكامل لتسجيل الشيكات الواردة والصادرة، متابعة تواريخ الاستحقاق وحالات التحصيل والارتداد، واستبدال الشيكات المرتدة. مناسب لمن يتعامل بالشيكات الآجلة.",
+    desc: "نظام متكامل لتسجيل الشيكات الواردة والصادرة، متابعة تواريخ الاستحقاق وحالات التحصيل والارتداد، واستبدال الشيكات المرتدة.",
     recommendedFor: ["جملة", "شركات", "تجارة بالآجل"],
     affectedPages: [
       "الشريط الجانبي ← صفحة «إدارة الشيكات» (تظهر فور التفعيل)",
       "ملف العميل / المورد ← تبويب «الشيكات»",
       "التقارير ← تقرير سجل الشيكات",
     ],
-    disableWarning: "البيانات تُحفظ — الشيكات المسجّلة تبقى مخزّنة وتعود فور التفعيل.",
   },
 ];
 
-function ConfirmEnableModal({ feature, onConfirm, onCancel, saving }) {
+// ─── Semantic color role → Tailwind class map ─────────────────────────────────
+// Uses only bg-*/text-*/border-* semantic classes where possible.
+// Tailwind raw tokens only for icon backgrounds since semantic doesn't cover all hues.
+const COLOR_ROLE = {
+  info:    { icon: "bg-info-bg text-info-text", border: "border-info-border", badge: "bg-info-bg text-info-text", tag: "bg-info-bg text-info-text" },
+  primary: { icon: "bg-primary-50 text-primary", border: "border-primary", badge: "bg-primary-50 text-primary", tag: "bg-primary-50 text-primary" },
+  danger:  { icon: "bg-danger-bg text-danger-text", border: "border-danger-border", badge: "bg-danger-bg text-danger-text", tag: "bg-danger-bg text-danger-text" },
+  warning: { icon: "bg-warning-bg text-warning-text", border: "border-warning-border", badge: "bg-warning-bg text-warning-text", tag: "bg-warning-bg text-warning-text" },
+  success: { icon: "bg-success-bg text-success-text", border: "border-success-border", badge: "bg-success-bg text-success-text", tag: "bg-success-bg text-success-text" },
+};
+
+// ─── Compute bidirectional conflict keys for a feature ────────────────────────
+function getConflictKeys(feature) {
+  const direct = feature.conflictsWith || [];
+  const reverse = FEATURES
+    .filter(f => f.conflictsWith?.includes(feature.key))
+    .map(f => f.key);
+  return [...new Set([...direct, ...reverse])];
+}
+
+// ─── Confirmation modal ───────────────────────────────────────────────────────
+function ConfirmEnableModal({ feature, onConfirm, onCancel, saving, hasActiveConflict, activeConflictNames }) {
   const Icon = feature.icon;
+  const role = COLOR_ROLE[feature.colorRole] || COLOR_ROLE.info;
+
   return (
     <Modal open title={`تفعيل ${feature.name}`} onClose={onCancel} maxWidth="max-w-lg" showDetach={false}>
       <div className="space-y-5">
+        <p className="text-sm text-text-secondary font-bold leading-relaxed border-b border-border-subtle pb-4">
+          {feature.desc}
+        </p>
 
-        <p className="text-[13px] text-slate-600 leading-relaxed border-b border-slate-100 pb-4">{feature.desc}</p>
-
-        {/* Affected pages */}
         <div className="space-y-2">
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">كل التغييرات والتأثيرات التي ستحدث عند التفعيل:</p>
+          <p className="text-xs font-black text-text-muted uppercase tracking-wider">كل الصفحات والتغييرات المتأثرة:</p>
           <ul className="space-y-1.5 max-h-64 overflow-y-auto pl-1">
             {feature.affectedPages.map((p, i) => (
-              <li key={i} className="flex items-start gap-2 text-[12px] text-slate-700 font-bold">
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
+              <li key={i} className="flex items-start gap-2 text-xs text-text-primary font-bold">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-success-text" />
                 {p}
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Irreversibility warning */}
-        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
+        {/* Existing data warning */}
+        {feature.existingDataNote && (
+          <div className="flex items-start gap-3 rounded-xl bg-warning-bg border border-warning-border p-3">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning-text" />
+            <p className="text-xs font-bold text-warning-text leading-relaxed">
+              {feature.existingDataNote}
+            </p>
+          </div>
+        )}
+
+        {/* Active conflict warning — shown in modal too */}
+        {hasActiveConflict && (
+          <div className="flex items-start gap-3 rounded-xl bg-danger-bg border border-danger-border p-3">
+            <XCircle className="h-4 w-4 shrink-0 mt-0.5 text-danger-text" />
+            <div>
+              <p className="text-xs font-black text-danger-text">تعارض مع ميزة مفعّلة</p>
+              <p className="text-xs font-bold text-danger-text opacity-80 mt-0.5 leading-relaxed">
+                هذه الميزة تتعارض جزئياً مع: {activeConflictNames.join("، ")}. يمكنك تفعيلها لكن بعض الخيارات قد تكون مقيّدة.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Permission note */}
+        <div className="flex items-start gap-3 rounded-xl bg-info-bg border border-info-border p-4">
+          <Info className="h-4 w-4 shrink-0 mt-0.5 text-info-text" />
           <div className="space-y-1">
-            <p className="text-[12px] font-black text-red-800">تحذير هام — لا يمكن التراجع</p>
-            <p className="text-[11px] text-red-700 font-bold leading-relaxed">
-              بعد تفعيل هذه الميزة <strong>لن تتمكن من إيقافها</strong> لاحقاً.
-              البيانات التي تُضاف بعد التفعيل (أرقام سيريال، وحدات، وصفات...) مرتبطة بالميزة وقد تتأثر إن أُوقفت.
-              إذا لم تكن متأكداً، استشر مسؤول النظام أولاً.
+            <p className="text-xs font-black text-info-text">التحكم بالصلاحيات</p>
+            <p className="text-xs font-bold text-info-text opacity-80 leading-relaxed">
+              بعد التفعيل، يمكنك التحكم في وصول المستخدمين لهذه الميزة من خلال شاشة «المستخدمين» ← إدارة الصلاحيات.
             </p>
           </div>
         </div>
 
-        {/* Recommended for */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">موصى به لـ:</span>
+        {/* Irreversible warning — shown once here, not repeated at page bottom */}
+        <div className="flex items-start gap-3 rounded-xl border border-danger-border bg-danger-bg p-4">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-danger-text" />
+          <div className="space-y-1">
+            <p className="text-xs font-black text-danger-text">تحذير هام — لا يمكن التراجع</p>
+            <p className="text-xs font-bold text-danger-text leading-relaxed opacity-80">
+              بعد تفعيل هذه الميزة <strong>لن تتمكن من إيقافها</strong> لاحقاً.
+              البيانات التي تُضاف بعد التفعيل مرتبطة بالميزة وقد تتأثر إن أوقفت.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-black text-text-muted uppercase tracking-wider">موصى به لـ:</span>
           {feature.recommendedFor.map((tag) => (
-            <span key={tag} className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{tag}</span>
+            <span key={tag} className="inline-flex items-center rounded-full bg-bg-input px-2 py-0.5 text-xs font-bold text-text-secondary">{tag}</span>
           ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-1 border-t border-slate-100">
-          <Button type="button" variant="danger" onClick={onCancel} disabled={saving} className="flex-1">إلغاء</Button>
-          <Button
-            type="button"
-            disabled={saving}
-            onClick={onConfirm}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            {saving ? "جاري التفعيل..." : "تفعيل نهائياً ←"}
+        <div className="flex gap-3 pt-1 border-t border-border-subtle">
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={saving} className="flex-1">إلغاء</Button>
+          <Button type="button" disabled={saving} onClick={onConfirm} className="flex-1">
+            {saving ? "جاري التفعيل..." : "تفعيل ←"}
           </Button>
         </div>
       </div>
@@ -227,101 +266,233 @@ function ConfirmEnableModal({ feature, onConfirm, onCancel, saving }) {
   );
 }
 
-function FeatureCard({ feature, enabled, onRequestEnable }) {
+// ─── Inline config panels ─────────────────────────────────────────────────────
+function ScaleConfigPanel({ settings, onInlineChange, handleKeyDown }) {
+  const prefixRef = React.useRef(null);
+  const codeLengthRef = React.useRef(null);
+  const valueTypeRef = React.useRef(null);
+  const decimalsRef = React.useRef(null);
+
+  return (
+    <div className="rounded-xl border border-warning-border bg-warning-bg p-4 space-y-3">
+      <h5 className="text-xs font-black text-warning-text flex items-center gap-2">
+        <Settings2 className="h-3.5 w-3.5" /> إعدادات الميزان
+      </h5>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Input
+          ref={prefixRef}
+          label="بادئة الباركود (prefix)"
+          value={settings.scale_prefix ?? "22"}
+          onChange={(e) => onInlineChange("scale_prefix", e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, { nextRef: codeLengthRef })}
+          placeholder="22"
+        />
+        <Input
+          ref={codeLengthRef}
+          label="طول كود الصنف (PLU)"
+          type="number" min={1} max={8}
+          value={settings.scale_item_code_length ?? 5}
+          onChange={(e) => onInlineChange("scale_item_code_length", Number(e.target.value))}
+          onKeyDown={(e) => handleKeyDown(e, { nextRef: valueTypeRef, prevRef: prefixRef })}
+        />
+        <Select
+          ref={valueTypeRef}
+          label="نوع القيمة"
+          value={settings.scale_value_type ?? "weight"}
+          onChange={(e) => onInlineChange("scale_value_type", e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, { nextRef: decimalsRef, prevRef: codeLengthRef })}
+        >
+          <option value="weight">وزن (كيلو)</option>
+          <option value="price">سعر (جنيه)</option>
+        </Select>
+        <Input
+          ref={decimalsRef}
+          label="عدد الخانات العشرية"
+          type="number" min={0} max={4}
+          value={settings.scale_value_decimals ?? 3}
+          onChange={(e) => onInlineChange("scale_value_decimals", Number(e.target.value))}
+          onKeyDown={(e) => handleKeyDown(e, { prevRef: valueTypeRef })}
+        />
+      </div>
+      <p className="text-xs text-warning-text font-bold opacity-80">
+        مثال: باركود <span dir="ltr" className="font-mono">2200123001500x</span> ← بادئة 22 + كود 00123 + قيمة 00150 (150 جرام).
+      </p>
+    </div>
+  );
+}
+
+function SerialConfigPanel({ settings, onInlineChange }) {
+  return (
+    <div className="rounded-xl border border-danger-border bg-danger-bg p-4 space-y-3">
+      <h5 className="text-xs font-black text-danger-text flex items-center gap-2">
+        <Settings2 className="h-3.5 w-3.5" /> إعدادات السيريال / IMEI
+      </h5>
+      <label className="flex items-center gap-3 cursor-pointer">
+        <div
+          role="checkbox"
+          aria-checked={settings.serials_strict_mode !== 0}
+          tabIndex={0}
+          onClick={() => onInlineChange("serials_strict_mode", settings.serials_strict_mode !== 0 ? 0 : 1)}
+          onKeyDown={(e) => e.key === " " && onInlineChange("serials_strict_mode", settings.serials_strict_mode !== 0 ? 0 : 1)}
+          className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer shrink-0 ${settings.serials_strict_mode !== 0 ? "bg-danger-text" : "bg-border-normal"}`}
+        >
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${settings.serials_strict_mode !== 0 ? "right-0.5" : "left-0.5"}`} />
+        </div>
+        <span className="text-xs font-bold text-danger-text">الوضع الصارم — يتطلب إدخال سيريال لكل وحدة من الصنف</span>
+      </label>
+      <p className="text-xs text-danger-text opacity-80 font-bold">
+        عند التفعيل، يجب مسح أو إدخال رقم سيريال لكل كمية عند البيع والاستلام. عند الإيقاف، يمكن ترك بعض السيريالات فارغة.
+      </p>
+    </div>
+  );
+}
+
+// ─── Feature card ─────────────────────────────────────────────────────────────
+function FeatureCard({ feature, enabled, settings, onRequestEnable, onInlineChange, handleKeyDown }) {
   const Icon = feature.icon;
-  const [expanded, setExpanded] = useState(false);
+  const role = COLOR_ROLE[feature.colorRole] || COLOR_ROLE.info;
+  // Enabled cards start expanded; disabled start collapsed
+  const [expanded, setExpanded] = useState(enabled);
+
+  // Bidirectional conflict keys (fix #8)
+  const allConflictKeys = getConflictKeys(feature);
+  // Only show chips for features that are currently active (fix #9)
+  const activeConflictKeys = allConflictKeys.filter(k => Boolean(settings[k]));
+  const activeConflictNames = activeConflictKeys.map(k => FEATURES.find(f => f.key === k)?.name || k);
+  const hasActiveConflict = activeConflictKeys.length > 0;
+
+  // Works-well-with — only show for enabled peers
+  const activeWorksWellKeys = (feature.worksWellWith || []).filter(k => Boolean(settings[k]));
 
   return (
     <div className={`rounded-xl border-2 transition-all ${
       enabled
-        ? `border-emerald-200 bg-white shadow-sm ring-4 ${feature.ringColor}`
-        : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white hover:shadow-sm"
+        ? `${role.border} bg-bg-surface shadow-card`
+        : hasActiveConflict
+          ? "border-warning-border bg-warning-bg/30 hover:border-warning-border hover:shadow-sm"
+          : "border-border-subtle bg-bg-surface hover:border-primary hover:bg-white hover:shadow-sm"
     }`}>
       <div className="p-5 space-y-4">
-        {/* Top row: icon + name + status/action */}
+
+        {/* Header row */}
         <div className="flex items-start gap-3">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${feature.color} text-white mt-0.5`}>
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${role.icon} mt-0.5`}>
             <Icon className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h4 className={`text-sm font-black ${enabled ? "text-slate-900" : "text-slate-700"}`}>{feature.name}</h4>
+              <h4 className="text-sm font-black text-text-primary">{feature.name}</h4>
+
               {enabled ? (
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black text-emerald-700">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success-bg px-3 py-1 text-xs font-black text-success-text">
                   <Lock className="h-3 w-3" />
-                  مُفعّل نهائياً
+                  مُفعّل
                 </span>
+              ) : hasActiveConflict ? (
+                // Fix #10 — conflict warning button instead of plain activate
+                <button
+                  type="button"
+                  onClick={onRequestEnable}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-warning-bg border border-warning-border hover:bg-warning-border active:scale-95 transition-all px-3 py-1.5 text-xs font-black text-warning-text"
+                >
+                  <TriangleAlert className="h-3 w-3" />
+                  تفعيل (تعارض)
+                </button>
               ) : (
                 <button
                   type="button"
                   onClick={onRequestEnable}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary-600 active:scale-95 transition-all px-3 py-1.5 text-[11px] font-black text-white"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary-600 active:scale-95 transition-all px-3 py-1.5 text-xs font-black text-white"
                 >
                   تفعيل ←
                 </button>
               )}
             </div>
-            <p className={`mt-1 text-[12px] font-bold leading-relaxed ${enabled ? "text-slate-600" : "text-slate-400"}`}>
+
+            <p className="mt-1 text-xs font-bold leading-relaxed text-text-muted">
               {feature.desc}
             </p>
+
+            {/* Relationship chips — only for active peers (fix #8, #9) */}
+            {(activeConflictKeys.length > 0 || activeWorksWellKeys.length > 0) && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {activeWorksWellKeys.map(k => {
+                  const name = FEATURES.find(f => f.key === k)?.name || k;
+                  return (
+                    <span key={k} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-info-bg text-info-text border border-info-border">
+                      <Link2 className="h-2.5 w-2.5 shrink-0" /> يعمل مع: {name}
+                    </span>
+                  );
+                })}
+                {activeConflictKeys.map(k => {
+                  const name = FEATURES.find(f => f.key === k)?.name || k;
+                  return (
+                    <span key={k} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-warning-bg text-warning-text border border-warning-border">
+                      <XCircle className="h-2.5 w-2.5 shrink-0" /> تعارض مع: {name}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Affected pages — collapsible when disabled, always visible when enabled */}
-        {enabled ? (
-          <ul className="space-y-1.5 border-t border-slate-100 pt-3">
-            {feature.affectedPages.map((p, i) => (
-              <li key={i} className="flex items-start gap-2 text-[11px] text-slate-600 font-bold">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-emerald-500" />
-                {p}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div>
-            <button
-              type="button"
-              onClick={() => setExpanded(p => !p)}
-              className="flex items-center gap-1 text-[11px] font-black text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {expanded ? "إخفاء التفاصيل" : `عرض الصفحات المتأثرة (${feature.affectedPages.length})`}
-            </button>
-            {expanded && (
-              <ul className="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
-                {feature.affectedPages.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[11px] text-slate-500 font-bold">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* Recommended for tags */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">موصى به لـ:</span>
+        {/* Recommended-for tags */}
+        <div className={`flex flex-wrap items-center gap-1.5 border-t pt-3 ${enabled ? "border-border-subtle" : "border-border-subtle"}`}>
+          <span className="text-xs font-black text-text-muted uppercase tracking-wider">موصى به لـ:</span>
           {feature.recommendedFor.map((tag) => (
-            <span key={tag} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+            <span key={tag} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
+              enabled ? "bg-success-bg text-success-text" : "bg-bg-input text-text-secondary"
+            }`}>
               {tag}
             </span>
           ))}
         </div>
+
+        {/* Affected pages — collapsible for both enabled AND disabled (fix #6) */}
+        <div className="border-t border-border-subtle pt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(p => !p)}
+            className="flex items-center gap-1 text-xs font-black text-text-muted hover:text-text-secondary transition-colors"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? "إخفاء التفاصيل" : `عرض الصفحات المتأثرة (${feature.affectedPages.length})`}
+          </button>
+          {expanded && (
+            <ul className="mt-2 space-y-1.5">
+              {feature.affectedPages.map((p, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs font-bold text-text-secondary">
+                  {enabled
+                    ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-success-text" />
+                    : <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-border-normal" />}
+                  {p}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Inline config panel — rendered inside card when enabled (fix #12) */}
+        {enabled && feature.hasInlineConfig === "scale" && (
+          <ScaleConfigPanel settings={settings} onInlineChange={onInlineChange} handleKeyDown={handleKeyDown} />
+        )}
+        {enabled && feature.key === "feature_serials" && (
+          <SerialConfigPanel settings={settings} onInlineChange={onInlineChange} />
+        )}
+
       </div>
     </div>
   );
 }
 
+// ─── Main tab component ───────────────────────────────────────────────────────
 export default function FeaturesTab({ settings, onChange, onSilentSave }) {
   const [confirmFeature, setConfirmFeature] = useState(null);
   const [saving, setSaving] = useState(false);
   const handleKeyDown = useFieldNavigation();
-  const prefixRef = useRef(null);
-  const codeLengthRef = useRef(null);
-  const valueTypeRef = useRef(null);
-  const decimalsRef = useRef(null);
+
+  const enabledCount = FEATURES.filter((f) => Boolean(settings[f.key])).length;
 
   async function handleEnable(key) {
     setSaving(true);
@@ -329,134 +500,93 @@ export default function FeaturesTab({ settings, onChange, onSilentSave }) {
     try {
       await onSilentSave({ ...settings, [key]: 1 });
       toast.success("تم تفعيل الميزة بنجاح");
+      setConfirmFeature(null);
     } catch {
-      toast.error("تعذر تفعيل الميزة — تحقق من الاتصال");
+      toast.error("تعذر التفعيل — تحقق من الاتصال");
       onChange(key, 0);
     } finally {
       setSaving(false);
-      setConfirmFeature(null);
     }
   }
 
-  const handleScaleChange = async (key, value) => {
+  const handleInlineChange = async (key, value) => {
     onChange(key, value);
     try {
       await onSilentSave({ ...settings, [key]: value });
     } catch {
-      toast.error("تعذر حفظ إعداد الميزان");
+      toast.error("تعذر حفظ الإعداد");
     }
   };
 
-  const enabledCount = FEATURES.filter(f => Boolean(settings[f.key])).length;
+  // Conflict data for the confirmation modal
+  const confirmConflictKeys = confirmFeature ? getConflictKeys(confirmFeature).filter(k => Boolean(settings[k])) : [];
+  const confirmConflictNames = confirmConflictKeys.map(k => FEATURES.find(f => f.key === k)?.name || k);
 
   return (
     <div className="space-y-6">
-      {/* Header summary */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
+
+      {/* Header — simple count, no misleading progress bar (fix #5) */}
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-border-subtle bg-bg-surface px-5 py-4">
         <div>
-          <p className="text-sm font-black text-slate-800">وحدات النظام القابلة للتفعيل</p>
-          <p className="text-[12px] text-slate-500 font-bold mt-0.5">
+          <p className="text-sm font-black text-text-primary">وحدات النظام القابلة للتفعيل</p>
+          <p className="text-xs text-text-muted font-bold mt-0.5">
             {enabledCount === 0
-              ? "لم يتم تفعيل أي ميزة بعد — النظام يعمل بالإعداد الافتراضي"
-              : `${enabledCount} من ${FEATURES.length} ميزات مُفعّلة`}
+              ? "لم يتم تفعيل أي ميزة بعد — النظام يعمل بوظائفه الأساسية فقط"
+              : `${enabledCount} ميزة مفعّلة من أصل ${FEATURES.length} — كل ميزة تُضيف صفحات وخيارات إضافية`}
           </p>
         </div>
-        <div className="flex gap-1">
-          {FEATURES.map(f => (
-            <span
-              key={f.key}
-              title={f.name}
-              className={`h-2.5 w-2.5 rounded-full transition-colors ${Boolean(settings[f.key]) ? "bg-emerald-400" : "bg-slate-200"}`}
-            />
-          ))}
-        </div>
+        {enabledCount > 0 && (
+          <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1.5 text-sm font-black text-success-text">
+            <Lock className="h-3.5 w-3.5" />
+            {enabledCount}/{FEATURES.length}
+          </span>
+        )}
       </div>
 
-      {/* Warning banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-500" />
-        <div className="space-y-1">
-          <p className="text-[12px] font-black text-amber-900">تفعيل الميزات غير قابل للتراجع</p>
-          <p className="text-[11px] font-bold text-amber-700 leading-relaxed">
-            بعد تفعيل أي ميزة <strong>لن تتمكن من إيقافها</strong>.
-            كل ميزة مستقلة ولا تؤثر على الميزات الأخرى.
-            البيانات لا تُحذف أبداً — الميزات تُضيف صفحات وإمكانيات جديدة فقط.
-          </p>
+      {/* Permission management note — only when something is enabled */}
+      {enabledCount > 0 && (
+        <div className="flex items-start gap-3 rounded-xl bg-info-bg border border-info-border p-4">
+          <Shield className="h-5 w-5 shrink-0 mt-0.5 text-info-text" />
+          <div className="space-y-1">
+            <p className="text-xs font-black text-info-text">التحكم بصلاحيات الميزات للمستخدمين</p>
+            <p className="text-xs font-bold text-info-text opacity-80 leading-relaxed">
+              بعد تفعيل أي ميزة، يمكنك تحديد المستخدمين المسموح لهم بالوصول إليها من خلال
+              {' '}<strong>الإعدادات ← المستخدمين ← إدارة الصلاحيات</strong>.
+              كل صفحة جديدة مرتبطة بميزة تظهر كبند مستقل في قائمة الصلاحيات.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Feature cards grid */}
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 items-start">
+      {/* Feature grid */}
+      <div className="grid gap-4 md:grid-cols-2">
         {FEATURES.map((feature) => (
           <FeatureCard
             key={feature.key}
             feature={feature}
             enabled={Boolean(settings[feature.key])}
+            settings={settings}
             onRequestEnable={() => setConfirmFeature(feature)}
+            onInlineChange={handleInlineChange}
+            handleKeyDown={handleKeyDown}
           />
         ))}
       </div>
 
-      {/* Scale barcode config — only shown when feature is on */}
-      {Boolean(settings.feature_scale_barcodes) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 space-y-4">
-          <h4 className="text-sm font-black text-amber-800 flex items-center gap-2">
-            <Scale className="h-4 w-4" />
-            إعدادات الميزان
-          </h4>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Input
-              ref={prefixRef}
-              label="بادئة الباركود (prefix)"
-              value={settings.scale_prefix ?? "22"}
-              onChange={e => handleScaleChange("scale_prefix", e.target.value)}
-              onKeyDown={e => handleKeyDown(e, { nextRef: codeLengthRef })}
-              placeholder="22"
-            />
-            <Input
-              ref={codeLengthRef}
-              label="طول كود الصنف (PLU)"
-              type="number"
-              min={1} max={8}
-              value={settings.scale_item_code_length ?? 5}
-              onChange={e => handleScaleChange("scale_item_code_length", Number(e.target.value))}
-              onKeyDown={e => handleKeyDown(e, { nextRef: valueTypeRef, prevRef: prefixRef })}
-            />
-            <Select
-              ref={valueTypeRef}
-              label="نوع القيمة"
-              value={settings.scale_value_type ?? "weight"}
-              onChange={e => handleScaleChange("scale_value_type", e.target.value)}
-              onKeyDown={e => handleKeyDown(e, { nextRef: decimalsRef, prevRef: codeLengthRef })}
-            >
-              <option value="weight">وزن (كيلو)</option>
-              <option value="price">سعر (جنيه)</option>
-            </Select>
-            <Input
-              ref={decimalsRef}
-              label="عدد الخانات العشرية"
-              type="number"
-              min={0} max={4}
-              value={settings.scale_value_decimals ?? 3}
-              onChange={e => handleScaleChange("scale_value_decimals", Number(e.target.value))}
-              onKeyDown={e => handleKeyDown(e, { prevRef: valueTypeRef })}
-            />
-          </div>
-          <p className="text-[11px] text-amber-700 font-bold">
-            مثال: باركود <span dir="ltr" className="font-mono">2200123001500x</span> ← بادئة 22 + كود 00123 + قيمة 00150 (150 جرام).
-          </p>
-        </div>
-      )}
-
-      {/* Confirm enable modal */}
+      {/* Confirmation modal */}
       {confirmFeature && (
         <ConfirmEnableModal
           feature={confirmFeature}
           saving={saving}
+          hasActiveConflict={confirmConflictKeys.length > 0}
+          activeConflictNames={confirmConflictNames}
           onConfirm={() => handleEnable(confirmFeature.key)}
-          onCancel={() => !saving && setConfirmFeature(null)}
+          onCancel={() => setConfirmFeature(null)}
         />
       )}
+
+      {/* Global irreversible warning REMOVED — shown in the modal at point-of-action only (fix #7) */}
+
     </div>
   );
 }

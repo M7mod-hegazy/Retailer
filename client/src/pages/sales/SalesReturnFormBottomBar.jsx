@@ -146,18 +146,19 @@ export default function SalesReturnFormBottomBar({
               { value: "store_credit", label: "رصيد حساب" },
               { value: "split", label: "مختلط" },
             ].map(opt => {
-              const disabled = isLocked || (opt.value !== "cash_back" && !customer);
+              const noCustomerBlocked = !isLocked && opt.value !== "cash_back" && !customer;
               const active = refundMethod === opt.value;
               return (
                 <button key={opt.value} type="button"
-                  onClick={() => !disabled && onRefundMethodChange?.(opt.value)}
-                  disabled={disabled}
+                  onClick={() => !(isLocked || noCustomerBlocked) && onRefundMethodChange?.(opt.value)}
+                  disabled={isLocked || noCustomerBlocked}
+                  title={noCustomerBlocked ? "يجب اختيار عميل أولاً" : ""}
                   className={`rounded-lg border px-1.5 py-0.5 text-[10px] font-bold transition-all shrink-0 ${
                     active
                       ? "bg-emerald-600 text-white border-transparent shadow-sm"
-                      : disabled
-                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
-                        : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:shadow-sm"
+                      : noCustomerBlocked
+                        ? "cursor-not-allowed bg-red-50 border-dashed border-red-300 text-red-400"
+                        : "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
                   }`}>
                   {opt.label}
                 </button>

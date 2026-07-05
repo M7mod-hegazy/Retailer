@@ -253,7 +253,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-bold text-zinc-400">الاسم</span>
-                  <Link to={`/definitions/suppliers/${d.supplier_id}`} className="font-black text-emerald-600 hover:underline">
+                  <Link to={`/accounts/suppliers/${d.supplier_id}`} className="font-black text-emerald-600 hover:underline">
                     {d.supplier_name || "مورد نقدي"}
                   </Link>
                 </div>
@@ -427,7 +427,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
           
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
             {row.supplier_id ? (
-              <Link to={`/definitions/suppliers/${row.supplier_id}`} className="text-zinc-600 hover:text-emerald-600 hover:underline truncate">
+              <Link to={`/accounts/suppliers/${row.supplier_id}`} className="text-zinc-600 hover:text-emerald-600 hover:underline truncate">
                 {row.supplier_name || `مورد #${row.supplier_id}`}
               </Link>
             ) : (

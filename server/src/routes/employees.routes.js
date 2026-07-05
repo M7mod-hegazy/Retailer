@@ -402,7 +402,7 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
         `INSERT INTO expenses (doc_no, amount, category_id, notes, description, payment_method, employee_id, treasury_id, created_at, created_by)
          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
       )
-      .run(docNo, netSalary, null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
+      .run(docNo, netSalary, payload.category_id || null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
 
     // تسوية الخصومات لمرة واحدة
     db.prepare(

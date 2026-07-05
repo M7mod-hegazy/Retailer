@@ -17,7 +17,7 @@ function formatMoney(v) {
   return formatNumber(v, { decimals: 3 });
 }
 function formatArabicDateTime(date) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }).format(date);
 }
 function toDateInput(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
@@ -124,24 +124,28 @@ export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
               </tbody>
             </table>
           </div>
-          {/* Payment breakdown card */}
-          {detail && (Number(detail.cash_amount || 0) > 0 || Number(detail.credit_amount || 0) > 0) && (
+          {/* Payment breakdown */}
+          {detail && (detail.refund_method === "split" ? (
             <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة الاسترداد</p>
-              {Number(detail.cash_amount || 0) > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />نقداً (صندوق)</span>
-                  <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
-                </div>
-              )}
-              {Number(detail.credit_amount || 0) > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />رصيد حساب العميل</span>
-                  <span className="number-fmt-primary text-blue-700">{formatMoney(detail.credit_amount)} ج.م</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">نقداً</span>
+                <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">رصيد حساب</span>
+                <span className="number-fmt-primary text-blue-700">{formatMoney(detail.credit_amount)} ج.م</span>
+              </div>
             </div>
-          )}
+          ) : detail.refund_method === "cash_back" ? (
+            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">طريقة الاسترداد</p>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">نقداً</span>
+                <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.total)} ج.م</span>
+              </div>
+            </div>
+          ) : null)}
           {(detail || ret).notes && (
             <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
               <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{(detail || ret).notes}
@@ -347,20 +351,17 @@ export default function SalesReturnTodayModal({ open, onClose, onNavigate: propN
     { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (r) => formatMoney(r.total) },
     { id: "refund_method", header: "طريقة الرد", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
       const info = REFUND_LABELS[r.refund_method] || REFUND_LABELS.cash_back;
-      const cashAmt = Number(r.cash_amount || 0);
-      const creditAmt = Number(r.credit_amount || 0);
+      const isSplit = r.refund_method === "split";
+      const cashAmt = isSplit ? Number(r.cash_amount || 0) : 0;
+      const creditAmt = isSplit ? Number(r.credit_amount || 0) : 0;
       return (
         <div className="flex flex-col gap-0.5">
           <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          {r.refund_method === "split" && (<>
-            {cashAmt > 0 && <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>}
-            {creditAmt > 0 && <span className="text-[11px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>}
-          </>)}
-          {(r.refund_method === "credit_note" || r.refund_method === "store_credit") && creditAmt > 0 && (
-            <span className="text-[11px] text-blue-600 font-bold">رصيد: {formatMoney(creditAmt)}</span>
-          )}
-          {r.refund_method === "cash_back" && cashAmt > 0 && (
-            <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>
+          {isSplit && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold text-emerald-600">نقداً: {formatMoney(cashAmt)}</span>
+              <span className="text-[11px] font-bold text-blue-600">رصيد: {formatMoney(creditAmt)}</span>
+            </div>
           )}
         </div>
       );

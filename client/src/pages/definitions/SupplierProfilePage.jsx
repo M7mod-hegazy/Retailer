@@ -56,7 +56,7 @@ export default function SupplierProfilePage() {
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--bg-base)" }} dir="rtl" data-help-root="supplier_profile">
       <div className="flex items-center gap-2 px-4 lg:px-6 py-3 border-b text-2sm font-bold shrink-0" style={{ backgroundColor: "var(--bg-surface)", borderBottomColor: "var(--border-subtle)", color: "var(--text-secondary)" }} data-help="breadcrumb">
-        <Link to="/definitions/suppliers" className="flex items-center gap-1 hover:text-slate-800"><ChevronLeft className="h-3.5 w-3.5" /> الموردين</Link>
+        <Link to="/accounts/suppliers" className="flex items-center gap-1 hover:text-slate-800"><ChevronLeft className="h-3.5 w-3.5" /> حسابات الموردين</Link>
         <span>/</span><span style={{ color: "var(--text-primary)" }}>{supplier.name}</span>
       </div>
 

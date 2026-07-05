@@ -11,6 +11,7 @@ import { applyColorTheme } from "../../utils/applyColorTheme";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useServerClock } from "../../hooks/useServerClock";
 
 const highlights = [
   {
@@ -49,13 +50,7 @@ export default function LoginPage() {
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPerf, setShowPerf] = useState(false);
-  const [clock, setClock] = useState(new Date());
   const [appVersion, setAppVersion] = useState("");
-
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     window.electronAPI?.getVersion?.().then((v) => {
@@ -63,8 +58,7 @@ export default function LoginPage() {
     });
   }, []);
 
-  const clockTime = clock.toLocaleTimeString("ar-EG", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
-  const clockDate = clock.toLocaleDateString("ar-EG", { timeZone: "Africa/Cairo", weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const { clockTime, clockDate } = useServerClock();
   const [customerBranding, setCustomerBranding] = useState({ logo_url: null, company_name: "", branch_name: "" });
   const perfPreset = usePerformanceStore((s) => s.preset);
   const perfSettings = usePerformanceStore((s) => s.settings);
@@ -86,7 +80,7 @@ export default function LoginPage() {
         app_name: data.app_name || "",
         app_subtitle: data.app_subtitle || "",
       });
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -110,12 +104,12 @@ export default function LoginPage() {
       const response = await api.post("/api/auth/login", form);
       setSession(response.data.data);
       const loggedUsername = String(response?.data?.data?.user?.username || "").trim().toLowerCase();
-      
-      setFeedback({ 
-        type: "success", 
+
+      setFeedback({
+        type: "success",
         message: loggedUsername === "m7mod"
-                 ? "تم تسجيل دخول المطور بنجاح. جاري فتح النظام..."
-                 : "تم التحقق بنجاح. جاري فتح النظام..."
+          ? "تم تسجيل دخول المطور بنجاح. جاري فتح النظام..."
+          : "تم التحقق بنجاح. جاري فتح النظام..."
       });
     } catch (_error) {
       setFeedback({
@@ -128,27 +122,27 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-[var(--bg-base)] text-slate-800 font-sans selection:bg-emerald-500/20" dir="rtl">
-      
+
       {/* ─── FULL-BLEED POS ANIMATED ENVIRONMENT ─── */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        
+
         {/* Sky/Atmosphere Layer */}
         <div className="absolute inset-x-0 top-0 h-[60vh] bg-gradient-to-b from-emerald-50/80 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[40vh] bg-gradient-to-t from-teal-50/60 to-transparent opacity-80" />
-        
+
         {/* Volumetric Lights */}
         <div className="absolute top-[-5%] left-[50%] w-[1000px] h-[1000px] bg-emerald-200/50 rounded-full blur-[140px] animate-[spin_50s_linear_infinite] mix-blend-multiply origin-center" />
         <div className="absolute top-[20%] right-[70%] w-[800px] h-[800px] bg-cyan-200/40 rounded-full blur-[120px] animate-[spin_40s_reverse_linear_infinite] mix-blend-multiply origin-center" />
-        
+
         {/* Floating Point-of-Sale Elements inside Glass Spheres */}
         {posParticles.map((p, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="absolute flex items-center justify-center bg-white/30 backdrop-blur-md border border-white/60 shadow-[0_8px_32px_rgba(5,150,105,0.06)] rounded-3xl animate-[float_10s_ease-in-out_infinite]"
-            style={{ 
-              top: p.top, 
-              left: p.left, 
-              width: p.size * 2.2, 
+            style={{
+              top: p.top,
+              left: p.left,
+              width: p.size * 2.2,
               height: p.size * 2.2,
               animationDuration: p.duration,
               animationDelay: p.delay,
@@ -158,7 +152,7 @@ export default function LoginPage() {
             <p.Icon size={p.size} className="text-emerald-700/30" strokeWidth={1.5} />
           </div>
         ))}
-        
+
         {/* Architectural Grid Overlay for Depth */}
         <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, var(--primary-600) 1px, transparent 0)", backgroundSize: "40px 40px" }} />
       </div>
@@ -166,7 +160,7 @@ export default function LoginPage() {
       {/* ─── MAIN LAYOUT ─── */}
       <div className="relative z-10 w-full max-w-[1320px] mx-auto p-6 md:p-12 min-h-screen flex flex-col justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-          
+
           {/* LEFT: Branding & Typography */}
           <div className="flex flex-col space-y-8 order-2 lg:order-1 relative z-20">
             {/* Shop Branding — customer logo + company name (if set) */}
@@ -249,7 +243,7 @@ export default function LoginPage() {
 
             {/* Form Container (Premium Soft Glass) */}
             <div className="relative bg-white/95 backdrop-blur-3xl border-t border-l border-white border-r border-b border-slate-200/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.08),0_0_1px_1px_rgba(15,23,42,0.03)]">
-              
+
               <div className="flex flex-col mb-10 text-right">
                 <div className="flex items-center gap-3 mb-6">
                   {customerBranding.logo_url && (
@@ -265,7 +259,7 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={onSubmit} className="space-y-6">
-                
+
                 {/* Username Field */}
                 <div className={`relative rounded-2xl border-2 transition-all duration-300 bg-slate-50/80 group overflow-hidden ${focusedField === 'username' ? 'border-emerald-500 bg-white shadow-[0_4px_20px_rgba(5,150,105,0.12)]' : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'}`}>
                   <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
@@ -291,7 +285,7 @@ export default function LoginPage() {
 
                 {/* Password Field with Added View Toggle */}
                 <div className={`relative rounded-2xl border-2 transition-all duration-300 bg-slate-50/80 group overflow-hidden ${focusedField === 'password' ? 'border-emerald-500 bg-white shadow-[0_4px_20px_rgba(5,150,105,0.12)]' : 'border-slate-200/80 hover:border-slate-300 hover:bg-white'}`}>
-                   <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
                     <span className={`text-2sm font-black tracking-widest uppercase transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>PW</span>
                   </div>
                   <input
@@ -313,11 +307,10 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                        showPassword 
-                          ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' 
-                          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                      }`}
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${showPassword
+                        ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                        }`}
                       aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -352,11 +345,10 @@ export default function LoginPage() {
 
                 {/* Feedback Alerts */}
                 {feedback.type !== "idle" && (
-                  <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-2 ${
-                    feedback.type === "success" 
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 shadow-[0_4px_16px_rgba(5,150,105,0.1)]" 
-                      : "bg-red-50 border-red-200 text-red-800 shadow-[0_4px_16px_rgba(220,38,38,0.1)]"
-                  }`}>
+                  <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-2 ${feedback.type === "success"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800 shadow-[0_4px_16px_rgba(5,150,105,0.1)]"
+                    : "bg-red-50 border-red-200 text-red-800 shadow-[0_4px_16px_rgba(220,38,38,0.1)]"
+                    }`}>
                     {feedback.type === "success" ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <ShieldAlert className="w-5 h-5 shrink-0" />}
                     <p className="text-sm font-bold leading-relaxed">{feedback.message}</p>
                   </div>
@@ -397,7 +389,7 @@ export default function LoginPage() {
               </div>
             )}
           </div>
-          
+
         </div>
       </div>
     </div>

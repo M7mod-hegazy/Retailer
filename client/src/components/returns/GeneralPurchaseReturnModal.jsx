@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
-import { Search, Trash2 } from "lucide-react";
+import { Search, Trash2, AlertCircle } from "lucide-react";
 import api from "../../services/api";
 import TitleBar from "../ui/TitleBar";
 import toast from "react-hot-toast";
@@ -261,10 +261,14 @@ export default function GeneralPurchaseReturnModal({ open, onClose, onSuccess })
                 className={`flex-1 rounded-xl border py-2.5 text-sm font-black transition-colors ${
                   refundMethod === "credit_note"
                     ? "border-amber-500 bg-amber-50 text-amber-800"
-                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                } ${!supplier ? "opacity-40 cursor-not-allowed" : ""}`}
+                    : !supplier
+                      ? "border-rose-300 border-dashed text-rose-500 bg-rose-50 cursor-not-allowed"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
               >
-                خصم من ذمة المورد
+                {!supplier ? (
+                  <span className="flex items-center justify-center gap-1"><AlertCircle className="h-4 w-4" /> خصم من ذمة المورد</span>
+                ) : "خصم من ذمة المورد"}
               </button>
             </div>
           </div>

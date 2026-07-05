@@ -22,7 +22,7 @@ import AccountStatementLedger from "./templates/AccountStatementLedger";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
-import { SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, getReportDescription } from "./reportsCenterConfig";
+import { SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, getReportDescription, formatReportCellValue } from "./reportsCenterConfig";
 import { formatNumber } from "../../utils/currency";
 
 const CLS_ARABIC = {
@@ -1018,7 +1018,7 @@ export default function SourceWorkspacePage() {
         {/* Row 3: Filters Tray (Collapsible) */}
         <AnimatePresence>
           {filtersOpen && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden border-t border-slate-100 bg-slate-50/50">
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className={`border-t border-slate-100 bg-slate-50/50 ${filtersOpen ? "overflow-visible" : "overflow-hidden"}`}>
               <div className="p-6">
                 
                 {/* Search & Dates Row */}
@@ -1223,50 +1223,45 @@ export default function SourceWorkspacePage() {
                 columns={displayColumns.map((c, colIdx) => ({
                   ...c,
                   width: c.width || (c.type === "date" ? 90 : c.type === "cur" ? 130 : c.type === "num" ? 80 : c.type === "code" ? 110 : c.type === "percent" ? 80 : (c.key?.includes("name") || c.key?.includes("item") || c.key?.includes("label") || c.key?.includes("description") ? 220 : 140)),
-                  render: c.id === "type"
-                    ? (row) => {
-                        const raw = row[c.id];
-                        return <span className="text-sm font-medium text-zinc-700">{TYPE_LABELS[raw] || raw || "-"}</span>;
+                  render: (row, idx) => {
+                    const raw = row[c.id];
+                    if (raw == null || raw === "") return <span className="text-zinc-300">—</span>;
+                    if (ID_TO_NAME_COLUMNS.has(c.id)) {
+                      const nameKey = c.id.replace("_id", "_name");
+                      const displayName = row[nameKey] || row[c.id];
+                      if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
+                      return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
+                    }
+                    if (c.type === "cur" || c.type === "num" || c.type === "percent" || c.type === "money" || c.type === "number") {
+                      const num = Number(raw);
+                      if (!isNaN(num) && String(raw).trim() !== "") {
+                        const suffix = c.type === "percent" ? "%" : "";
+                        return (
+                          <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                            {formatNumber(num)}{suffix}
+                          </span>
+                        );
                       }
-                    : ID_TO_NAME_COLUMNS.has(c.id)
-                      ? (row) => {
-                          const nameKey = c.id.replace("_id", "_name");
-                          const displayName = row[nameKey] || row[c.id];
-                          if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
-                          return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
-                        }
-                      : c.type === "cur" || c.type === "num" || c.type === "percent" || c.type === "money" || c.type === "number"
-                        ? (row) => {
-                            const val = row[c.id];
-                            if (val == null || val === "") return <span className="text-zinc-300">—</span>;
-                            const num = Number(val);
-                            if (isNaN(num)) return <span className="text-sm font-medium text-zinc-700">{String(val)}</span>;
-                            const suffix = c.type === "percent" ? "%" : "";
-                            return (
-                              <span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
-                                {formatNumber(num)}{suffix}
-                              </span>
-                            );
-                          }
-                        : colIdx === 0 && hasItemsRows
-                          ? (row, idx) => {
-                              const rowId = row.id ?? idx;
-                              const hasItems = row._items?.length > 0;
-                              const isExpanded = expandedRows.has(rowId);
-                              const raw = row[c.id];
-                              return (
-                                <div className="flex items-center gap-1.5">
-                                  {hasItems ? (
-                                    <button onClick={(e) => { e.stopPropagation(); toggleExpand(rowId); }}
-                                      className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors">
-                                      <ChevronDown size={13} className={`text-zinc-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                                    </button>
-                                  ) : <span className="w-5 shrink-0" />}
-                                  <span className="text-sm font-medium text-zinc-700 truncate">{raw != null ? String(raw) : "-"}</span>
-                                </div>
-                              );
-                            }
-                          : undefined,
+                    }
+                    const formatted = formatReportCellValue(c.id, TYPE_LABELS[raw] || a(raw) || raw);
+                    if (colIdx === 0 && hasItemsRows) {
+                      const rowId = row.id ?? idx;
+                      const hasItems = row._items?.length > 0;
+                      const isExpanded = expandedRows.has(rowId);
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          {hasItems ? (
+                            <button onClick={(e) => { e.stopPropagation(); toggleExpand(rowId); }}
+                              className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors">
+                              <ChevronDown size={13} className={`text-zinc-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+                          ) : <span className="w-5 shrink-0" />}
+                          <span className="text-sm font-medium text-zinc-700 truncate">{formatted != null ? String(formatted) : "-"}</span>
+                        </div>
+                      );
+                    }
+                    return <span className="text-sm font-medium text-zinc-700">{String(formatted)}</span>;
+                  },
                 }))}
                 data={rows}
                 rowKey="id"

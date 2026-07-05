@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
-  AlertCircle, CheckCircle2, X, ArrowDownRight, Calculator,
+  CheckCircle2, X, ArrowDownRight, Calculator,
   Calendar, ChevronRight, ChevronDown, ChevronUp, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
   FileText, Coins, Banknote, History, Info,
   Edit3, RotateCcw, Eye, Sparkles, CreditCard,
-  Save, Trash2, Check, StickyNote,
+  Save, Trash2, Check, StickyNote, BarChart3,
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -19,7 +19,7 @@ import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import { formatNumber } from "../../utils/currency";
-import { todayCairo } from "../../utils/dateHelpers";
+import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
 
 const fmt = (n) => formatNumber(n);
 const todayStr = () => todayCairo();
@@ -118,14 +118,16 @@ function getEquationRowAffects(tx) {
     case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
     case "sales_return": {
       const creditAmt = Number(tx.credit_amount ?? 0);
-      if (ce !== 0) affects.push({ id: "sales_returns_cash", amount: Math.abs(ce) });
+      const cashAmt = ce !== 0 ? Math.abs(ce) : 0;
+      if (cashAmt > 0) affects.push({ id: "sales_returns_cash", amount: cashAmt });
       if (creditAmt > 0) affects.push({ id: "sales_returns_account", amount: creditAmt });
       else if (ce === 0) affects.push({ id: "sales_returns_account", amount: total });
       break;
     }
     case "purchase_return": {
       const creditAmt = Number(tx.credit_amount ?? 0);
-      if (ce !== 0) affects.push({ id: "purchase_returns_cash", amount: Math.abs(ce) });
+      const cashAmt = ce !== 0 ? Math.abs(ce) : 0;
+      if (cashAmt > 0) affects.push({ id: "purchase_returns_cash", amount: cashAmt });
       if (creditAmt > 0) affects.push({ id: "purchase_returns_payable", amount: creditAmt });
       else if (ce === 0) affects.push({ id: "purchase_returns_payable", amount: total });
       break;
@@ -360,10 +362,6 @@ export default function DailyTreasuryPage() {
   const [withdrawalSubmitting, setWithdrawalSubmitting] = useState(false);
   const [withdrawalCategories, setWithdrawalCategories] = useState([]);
 
-  // Alerts
-  const [yesterdayAlert, setYesterdayAlert] = useState(null);
-  const [closingYesterday, setClosingYesterday] = useState(false);
-
   // Slide-over
   const [slideOver, setSlideOver] = useState(null);
   const [slideOverDetails, setSlideOverDetails] = useState(null);
@@ -447,7 +445,8 @@ export default function DailyTreasuryPage() {
   const loadTransactions = useCallback(async () => {
     setTxLoading(true);
     try {
-      const searchParam = globalAmountSearch || txSearch;
+      // txSearch takes priority; globalAmountSearch is used only when txSearch is empty
+      const searchParam = txSearch || globalAmountSearch;
       const dateParam = isToday ? "" : `&date=${date}`;
       const typeParam = activeTab === "all" ? "all" : activeTab;
       const r = await api.get(
@@ -486,15 +485,6 @@ export default function DailyTreasuryPage() {
     }
   }, [date]);
 
-  async function loadYesterdayAlert() {
-    try {
-      const r = await api.get("/api/daily-sessions/yesterday/alert");
-      setYesterdayAlert(r.data.data);
-    } catch {
-      setYesterdayAlert(null);
-    }
-  }
-
   async function loadPastSessions() {
     try {
       const params = new URLSearchParams();
@@ -511,7 +501,6 @@ export default function DailyTreasuryPage() {
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
   useEffect(() => { loadMethodTotals(); }, [loadMethodTotals]);
   useEffect(() => { loadCashCounts(); }, [loadCashCounts]);
-  useEffect(() => { loadYesterdayAlert(); }, []);
   useEffect(() => { if (historyOpen) loadPastSessions(); }, [historyOpen, historySearch, historyStatus]);
   useEffect(() => { setCurrentPage(1); }, [activeTab, globalAmountSearch, txSearch, txSort, showCancelled]);
 
@@ -571,10 +560,12 @@ export default function DailyTreasuryPage() {
       });
     }
     cashCounts.forEach(c => {
-      notes.push({ id: `c-${c.id}`, time: (c.created_at || '').slice(11, 16), text: c.note, type: 'count', source: 'عد', sortKey: (c.created_at || '').slice(11, 16), amount: c.amount, discrepancy: c.discrepancy, expected_cash: c.expected_cash });
+      const rawHhmm = (c.created_at || '').slice(11, 16);
+      notes.push({ id: `c-${c.id}`, time: formatHHMM(rawHhmm), text: c.note, type: 'count', source: 'عد', sortKey: rawHhmm, amount: c.amount, discrepancy: c.discrepancy, expected_cash: c.expected_cash });
     });
     if (summary?.session?.notes) {
-      notes.push({ id: 'close', time: (summary.session.closed_at || '').slice(11, 16), text: summary.session.notes, type: 'close', source: 'إغلاق', sortKey: (summary.session.closed_at || '99:99').slice(11, 16) });
+      const closeRaw = (summary.session.closed_at || '').slice(11, 16);
+      notes.push({ id: 'close', time: formatHHMM(closeRaw), text: summary.session.notes, type: 'close', source: 'إغلاق', sortKey: closeRaw || '99:99' });
     }
     notes.sort((a, b) => b.sortKey.localeCompare(a.sortKey) || (a.id > b.id ? -1 : 1));
     return notes;
@@ -725,20 +716,6 @@ export default function DailyTreasuryPage() {
     }
   }
 
-  async function handleForceCloseYesterday() {
-    setClosingYesterday(true);
-    try {
-      await api.post("/api/daily-sessions/yesterday/force-close");
-      toast.success("تم إغلاق يوم أمس بالقوة");
-      setYesterdayAlert(null);
-      loadSummary(); // Refresh today's opening balance
-    } catch (e) {
-      toast.error(e.response?.data?.message || "خطأ");
-    } finally {
-      setClosingYesterday(false);
-    }
-  }
-
   function handlePrint() {
     setPrintOpen(true);
   }
@@ -748,7 +725,7 @@ export default function DailyTreasuryPage() {
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
   const startIdx = (safePage - 1) * ITEMS_PER_PAGE;
   const paginatedTransactions = sortedTransactions.slice(startIdx, startIdx + ITEMS_PER_PAGE);
-  const txTotal = sortedTransactions.reduce((s, t) => s + Number(t.cash_effect ?? t.amount ?? 0), 0);
+  const txTotal = paginatedTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const draftDiscrepancy = actualCash !== "" ? Number(actualCash || 0) - Number(expected || 0) : null;
   const cashIn = Number(summary?.cash_in || 0);
   const cashOut = Number(summary?.cash_out || 0);
@@ -809,7 +786,6 @@ export default function DailyTreasuryPage() {
     loadSummary();
     loadTransactions();
     loadMethodTotals();
-    loadYesterdayAlert();
   }
 
   // Calculator functions
@@ -1034,6 +1010,16 @@ export default function DailyTreasuryPage() {
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-surface)] border border-[var(--border-normal)] hover:bg-[var(--bg-overlay)] text-[var(--text-secondary)] transition-colors shadow-sm"
             >
               <RefreshCw className="h-3.5 w-3.5" />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/daily-treasury/cashflow?date=${date}`)}
+              className="flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors shadow-sm"
+              title="كشف الحركات التفصيلي مع الرصيد الجاري"
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> كشف الحركات
             </motion.button>
 
             <motion.button
@@ -1877,7 +1863,7 @@ export default function DailyTreasuryPage() {
                                   </td>
                                   <td className="px-3 py-3.5 text-[var(--text-muted)] text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
                                     {t.created_at
-                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })
                                       : "—"}
                                   </td>
                                   <td className="px-3 py-3.5 text-center">

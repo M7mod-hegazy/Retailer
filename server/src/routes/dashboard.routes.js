@@ -153,7 +153,7 @@ router.get("/cash-flow", requirePagePermission("analytics", "view"), (req, res) 
     cteParams.push(start_date);
   } else {
     const d = new Date(); d.setDate(d.getDate() - 13);
-    cteParams.push(d.toISOString().slice(0, 10));
+    cteParams.push(today(d));
   }
   if (end_date) {
     cteParams.push(end_date);

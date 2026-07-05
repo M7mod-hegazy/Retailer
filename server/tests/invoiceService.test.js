@@ -169,4 +169,50 @@ describe("invoice service", () => {
     const active = db.prepare("SELECT original_amount FROM ajal_debts WHERE invoice_id = ? AND source_type='invoice' AND status != 'voided'").get(inv.id);
     expect(active.original_amount).toBe(4000);
   });
+
+  test("editing a credit invoice to cash + null customer detaches the customer", () => {
+    const db = getDb();
+    const custId = db.prepare("INSERT INTO customers (name) VALUES ('Detach Me')").run().lastInsertRowid;
+    db.prepare("UPDATE stock_levels SET quantity = 100000 WHERE item_id = 1").run();
+    const tre = db.prepare("SELECT id FROM treasuries LIMIT 1").get()?.id;
+    if (tre) db.prepare("UPDATE settings SET default_treasury_id = ? WHERE id = 1").run(tre);
+
+    // 1. Credit invoice bound to the customer.
+    const inv = createInvoice({
+      customer_id: custId, payment_type: "credit",
+      lines: [{ item_id: 1, quantity: 1, unit_price: 1000 }],
+    });
+    expect(db.prepare("SELECT customer_id FROM invoices WHERE id = ?").get(inv.id).customer_id).toBe(custId);
+
+    // 2. Edit → cash and explicitly remove the customer (client sends customer_id: null).
+    editInvoice(inv.id, {
+      customer_id: null, payment_type: "cash",
+      amount_paid: 1000,
+      lines: [{ item_id: 1, quantity: 1, unit_price: 1000 }],
+    });
+
+    // 3. Customer is truly detached — not silently reverted to the original.
+    expect(db.prepare("SELECT customer_id FROM invoices WHERE id = ?").get(inv.id).customer_id).toBeNull();
+    // ...and the old credit debt is voided (no phantom balance left on the customer).
+    const openDebt = db.prepare("SELECT 1 FROM ajal_debts WHERE invoice_id = ? AND source_type='invoice' AND status != 'voided'").get(inv.id);
+    expect(openDebt).toBeUndefined();
+    expect(db.prepare("SELECT opening_balance AS b FROM customers WHERE id = ?").get(custId).b).toBe(0);
+  });
+
+  test("editing a cash invoice to credit without a customer is rejected", () => {
+    const db = getDb();
+    db.prepare("UPDATE stock_levels SET quantity = 100000 WHERE item_id = 1").run();
+    const tre = db.prepare("SELECT id FROM treasuries LIMIT 1").get()?.id;
+    if (tre) db.prepare("UPDATE settings SET default_treasury_id = ? WHERE id = 1").run(tre);
+    const inv = createInvoice({
+      payment_type: "cash", amount_paid: 1000,
+      lines: [{ item_id: 1, quantity: 1, unit_price: 1000 }],
+    });
+    expect(() =>
+      editInvoice(inv.id, {
+        customer_id: null, payment_type: "credit",
+        lines: [{ item_id: 1, quantity: 1, unit_price: 1000 }],
+      }),
+    ).toThrow(/تتطلب تحديد العميل/);
+  });
 });

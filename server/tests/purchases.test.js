@@ -102,4 +102,31 @@ describe("Purchases Routes", () => {
     const afterFull = await request(app).get(`/api/purchase-orders/${poId}`).set("Authorization", `Bearer ${token}`);
     expect(afterFull.body.data.status).toBe("received");
   });
+
+  it("PUT /api/purchases/:id → cash + null supplier truly detaches the supplier", async () => {
+    // Credit purchase bound to the supplier.
+    const created = await request(app)
+      .post("/api/purchases")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        supplier_id: supplierId, warehouse_id: 1, payment_method: "credit",
+        lines: [{ item_id: itemId, quantity: 2, unit_cost: 30 }],
+      });
+    expect(created.status).toBe(201);
+    const purchaseId = created.body.data.id;
+
+    // Edit → cash and explicitly remove the supplier (client sends supplier_id: null).
+    const edited = await request(app)
+      .put(`/api/purchases/${purchaseId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        supplier_id: null, payment_method: "cash",
+        lines: [{ item_id: itemId, quantity: 2, unit_cost: 30 }],
+      });
+    expect(edited.status).toBe(200);
+
+    // The supplier is truly detached — not silently reverted to the original.
+    const row = getDb().prepare("SELECT supplier_id FROM purchases WHERE id = ?").get(purchaseId);
+    expect(row.supplier_id).toBeNull();
+  });
 });

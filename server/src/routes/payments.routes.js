@@ -78,6 +78,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       const amount = Number(payload.amount || 0);
       const partyType = payload.party_type || "customer";
       const partyId = Number(payload.party_id || 0);
+      const direction = payload.direction || "subtract";
       const createdDate = normalizeDate(payload.created_at);
       assertCanWriteForDate(db, createdDate);
       let method = payload.method || "cash";
@@ -95,7 +96,7 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       const openInvoices = getOpenInvoices(db, partyType, partyId);
       let allocations = Array.isArray(payload.allocations) ? payload.allocations : [];
 
-      if (partyType === "customer" && allocations.length === 0) {
+      if (partyType === "customer" && allocations.length === 0 && direction !== "add") {
         let remaining = amount;
         allocations = [];
         for (const invoice of openInvoices) {
@@ -139,17 +140,20 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
           payload.treasury_id ||
           db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
         if (treasuryId) {
-          const sign = partyType === "supplier" ? -1 : 1;
+          const baseSign = partyType === "supplier" ? -1 : 1;
+          const sign = direction === "add" ? -baseSign : baseSign;
           db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(sign * amount, treasuryId);
         }
       }
 
       if (method === "bank_transfer" || method === "cheque" || method === "card") {
         if (payload.bank_id) {
-          // customer payment = money in (deposit); supplier payment = money out (withdrawal)
+          const bankType = direction === "add"
+            ? (partyType === "supplier" ? "deposit" : "withdrawal")
+            : (partyType === "supplier" ? "withdrawal" : "deposit");
           recordBankMovement(db, {
             bankId: payload.bank_id,
-            type: partyType === "supplier" ? "withdrawal" : "deposit",
+            type: bankType,
             amount,
             reference: payload.reference_number || payload.reference || null,
             notes: payload.notes || `تحصيل ${partyType === "supplier" ? "مورد" : "عميل"}`,
@@ -178,10 +182,11 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
         recalculateInvoiceStatus(db, invoice.id);
       }
 
+      const balDelta = direction === "add" ? amount : -amount;
       if (partyType === "customer") {
-        db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(amount, partyId);
+        db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(balDelta, partyId);
       } else if (partyType === "supplier") {
-        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(amount, partyId);
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(balDelta, partyId);
       }
 
       if (method === "cheque") {
@@ -194,7 +199,8 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       return db.prepare("SELECT * FROM payments WHERE id = ?").get(paymentResult.lastInsertRowid);
     })();
 
-    const paymentAuditId = req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id }, `💰 تم تسجيل دفعة بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
+    const directionLabel = payload.direction === "add" ? "رد/استرداد" : "تحصيل/سداد";
+    const paymentAuditId = req.audit("create", "payment", { id: payment?.id, amount: payment?.amount, party_type: payment?.party_type, party_id: payment?.party_id, direction: payment?.direction || "subtract" }, `💰 ${directionLabel} بمبلغ ${payment?.amount} (${payment?.party_type === "supplier" ? "مورد" : "عميل"} #${payment?.party_id})`);
     try {
       const db = getDb();
       const pType = payload.party_type || "customer";
@@ -204,8 +210,8 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
         : db.prepare("SELECT name FROM customers WHERE id = ?").get(pId);
       const partyName = partyRow?.name || '';
       NotificationModel.create({
-        title: "💰 تم تسجيل دفعة",
-        body: `دفعة بمبلغ ${payment?.amount || 0}${partyName ? ' — ' + partyName : ''}`,
+        title: `💰 ${directionLabel}`,
+        body: `${directionLabel} بمبلغ ${payment?.amount || 0}${partyName ? ' — ' + partyName : ''}`,
         type: "info",
         link: paymentAuditId ? `/history?log_id=${paymentAuditId}` : `/payments`,
       });

@@ -80,4 +80,4 @@ function userHasPagePermission(user, page, action) {
   return perms[page]?.includes(action) ?? false;
 }
 
-module.exports = { requirePermission, requirePagePermission, userHasPagePermission };
+module.exports = { requirePermission, requirePagePermission, userHasPagePermission, getUserPermissions };

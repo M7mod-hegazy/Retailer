@@ -1,4 +1,5 @@
 const { getDb } = require("../config/database");
+const { assertNotVariantParent } = require("../routes/variants.routes");
 
 let _columnsEnsured = false;
 function ensureExtraColumns() {
@@ -191,6 +192,7 @@ function create(payload = {}) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     lines.forEach((line) => {
+      assertNotVariantParent(db, line.item_id);
       insertLine.run(
         quotationId,
         line.item_id,
@@ -256,6 +258,7 @@ function update(id, payload = {}) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     lines.forEach((line) => {
+      assertNotVariantParent(db, line.item_id);
       insertLine.run(
         id,
         line.item_id,

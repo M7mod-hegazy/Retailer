@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Printer, Loader2, Save, ShoppingCart, Banknote, Wallet, Layers, User, Plus, Building2, Lock, Wand2 } from "lucide-react";
+import { Printer, Loader2, Save, ShoppingCart, Banknote, Wallet, Layers, User, Plus, Building2, Lock, Wand2, AlertCircle } from "lucide-react";
 import { formatNumber } from "../../utils/currency";
 import PermissionGate from "../../components/ui/PermissionGate";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -171,21 +171,21 @@ export default function PurchaseFormBottomBar({
           {/* Payment type pills */}
           <div className="flex items-center gap-0.5 shrink-0">
             {PAYMENT_PILLS.map(({ value, label, Icon, requiresSupplier }) => {
-              const disabled = isLocked || (requiresSupplier && !supplier);
+              const noSupplierBlocked = requiresSupplier && !supplier;
               const active = paymentMode === value || (value === "credit" && isCreditMode);
               return (
                 <button key={value} type="button"
-                  onClick={() => !disabled && onPaymentModeChange?.(value)}
-                  disabled={disabled}
-                  title={requiresSupplier && !supplier ? "يجب اختيار مورد أولاً" : label}
+                  onClick={() => !(isLocked || noSupplierBlocked) && onPaymentModeChange?.(value)}
+                  disabled={isLocked || noSupplierBlocked}
+                  title={noSupplierBlocked ? "يجب اختيار مورد أولاً" : label}
                   className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 text-[10px] font-bold transition-all shrink-0 ${
                     active
                       ? "bg-[var(--primary)] text-white border-transparent shadow-sm"
-                      : disabled
-                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
+                      : noSupplierBlocked
+                        ? "cursor-not-allowed bg-red-50 border-dashed border-red-300 text-red-400"
                         : "border-[var(--primary-100)] text-[var(--primary)] bg-[var(--primary-50)] hover:shadow-sm"
                   }`}>
-                  {requiresSupplier && !supplier ? <Lock className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
+                  {noSupplierBlocked ? <AlertCircle className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
                   {label}
                 </button>
               );

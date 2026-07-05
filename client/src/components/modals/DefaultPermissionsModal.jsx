@@ -12,6 +12,7 @@ import {
   ACTION_DESCRIPTIONS,
 } from "../../constants/pagePermissions";
 import SmartTooltip from "../ui/SmartTooltip";
+import { REPORT_SOURCES, REPORT_SOURCE_KEYS } from "../../constants/reportPermissions";
 
 const ACTION_LABELS = {
   view: "رؤية",
@@ -22,10 +23,12 @@ const ACTION_LABELS = {
 };
 
 function buildEmptyPermissions() {
-  return Object.keys(PAGE_PERMISSIONS).reduce((acc, key) => {
+  const base = Object.keys(PAGE_PERMISSIONS).reduce((acc, key) => {
     acc[key] = [];
     return acc;
   }, {});
+  REPORT_SOURCE_KEYS.forEach((key) => { base[key] = []; });
+  return base;
 }
 
 function applyTemplate(template) {
@@ -252,6 +255,33 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                               </tr>
                             )
                           )}
+                          {/* Report source permission rows */}
+                          {REPORT_SOURCES.map(source => {
+                            const sourceKey = "report_" + source.id;
+                            const enabled = (permissions[sourceKey] || []).includes("view");
+                            return (
+                              <tr key={sourceKey} className="border-t border-slate-100 hover:bg-slate-50/60">
+                                <td className="text-right p-2 text-2sm font-bold text-slate-600">
+                                  تقرير: {source.label}
+                                </td>
+                                {ALL_ACTIONS.map((a) => {
+                                  if (a === "view") {
+                                    return (
+                                      <td key={a} className="text-center p-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={enabled}
+                                          onChange={() => toggleAction(sourceKey, "view")}
+                                          className="h-4 w-4 accent-zinc-900 cursor-pointer"
+                                        />
+                                      </td>
+                                    );
+                                  }
+                                  return <td key={a} className="text-center p-2"><span className="text-slate-200">—</span></td>;
+                                })}
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

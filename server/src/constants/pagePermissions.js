@@ -36,9 +36,15 @@ const PAGE_PERMISSIONS = {
   dashboard: { label: 'لوحة التحكم', actions: ['view'] },
   stock: { label: 'المخزون', actions: ['view','add','edit','delete','adjust','transfer','print'] },
   payments: { label: 'المدفوعات', actions: ['view','add','edit','delete','print'] },
+  restaurant_tables: { label: 'طاولات المطعم', actions: ['view','add','edit','delete'] },
+  restaurant_modifiers: { label: 'إضافات المطعم (موديفير)', actions: ['view','add','edit','delete'] },
+  gold_pricing: { label: 'تسعير الذهب', actions: ['view','add','edit','delete'] },
+  repair_orders: { label: 'أوامر الصيانة', actions: ['view','add','edit','delete','print'] },
+  serial_search: { label: 'بحث سيريال / IMEI', actions: ['view'] },
   notifications: { label: 'الإشعارات', actions: ['view','edit'] },
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view','add'] },
   backup: { label: 'النسخ الاحتياطي', actions: ['view','create','restore','export','empty'] },
+  whatsapp_crm: { label: 'واتساب للأعمال', actions: ['view','add','edit','delete'] },
 };
 
 // Default permissions for new user role (POS only)

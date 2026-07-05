@@ -334,4 +334,86 @@ router.put("/shortcuts-config", authRequired, (req, res, next) => {
   }
 });
 
+// ── Feature metadata (pricing + store-type mapping) ──────────────────────
+const STORE_TYPE_FEATURES = {
+  supermarket:  ["feature_multi_unit", "feature_scale_barcodes", "feature_expiry", "feature_promotions"],
+  clothing:     ["feature_variants", "feature_multi_unit", "feature_promotions"],
+  mobile:       ["feature_serials", "feature_repair_orders"],
+  gold:         ["feature_gold"],
+  restaurant:   ["feature_restaurant"],
+  pharmacy:     ["feature_expiry", "feature_multi_unit"],
+  wholesale:    ["feature_multi_unit", "feature_cheques", "feature_promotions"],
+  general:      ["feature_promotions"],
+};
+
+const STORE_TYPE_META = {
+  supermarket:  { name_ar: "سوبر ماركت",     name_en: "Supermarket",      icon: "ShoppingCart" },
+  clothing:     { name_ar: "ملابس وأحذية",    name_en: "Clothing & Shoes", icon: "Shirt" },
+  mobile:       { name_ar: "موبايل وإلكترونيات", name_en: "Mobile & Electronics", icon: "Smartphone" },
+  gold:         { name_ar: "ذهب ومجوهرات",    name_en: "Gold & Jewelry",   icon: "Gem" },
+  restaurant:   { name_ar: "مطعم وكافيه",     name_en: "Restaurant & Cafe", icon: "UtensilsCrossed" },
+  pharmacy:     { name_ar: "صيدلية",          name_en: "Pharmacy",         icon: "Pill" },
+  wholesale:    { name_ar: "جملة وشركات",     name_en: "Wholesale & Corporate", icon: "Building" },
+  general:      { name_ar: "متجر عام",        name_en: "General Retail",   icon: "Store" },
+};
+
+router.get("/feature-metadata", authRequired, (_req, res) => {
+  const db = getDb();
+  const pricingRow = db.prepare("SELECT value FROM settings_kv WHERE key = 'feature_pricing'").get();
+  const codesRow = db.prepare("SELECT value FROM settings_kv WHERE key = 'activation_codes'").get();
+  const pricing = pricingRow ? JSON.parse(pricingRow.value) : {};
+  const activationCodes = codesRow ? JSON.parse(codesRow.value) : {};
+  res.json({
+    success: true,
+    data: {
+      storeTypes: STORE_TYPE_META,
+      storeTypeFeatures: STORE_TYPE_FEATURES,
+      pricing,
+      activationCodes: Object.keys(activationCodes).length,
+    },
+  });
+});
+
+router.post("/activate-feature-code", authRequired, (req, res) => {
+  const { code } = req.body || {};
+  if (!code || typeof code !== "string") {
+    return res.status(400).json({ success: false, message: "كود التفعيل مطلوب" });
+  }
+  const db = getDb();
+  const codesRow = db.prepare("SELECT value FROM settings_kv WHERE key = 'activation_codes'").get();
+  const codes = codesRow ? JSON.parse(codesRow.value) : {};
+  const entry = codes[code.trim()];
+  if (!entry) {
+    return res.status(404).json({ success: false, message: "كود التفعيل غير صالح" });
+  }
+  if (entry.expires && new Date(entry.expires) < new Date()) {
+    return res.status(410).json({ success: false, message: "كود التفعيل منتهي الصلاحية" });
+  }
+  if (entry.max_uses && entry.used_count >= entry.max_uses) {
+    return res.status(410).json({ success: false, message: "كود التفعيل استُنفذ بالكامل" });
+  }
+  const features = entry.features || [];
+  if (features.length === 0) {
+    return res.status(400).json({ success: false, message: "الكود لا يحتوي على ميزات" });
+  }
+  const current = getSettings();
+  const updates = {};
+  for (const f of features) {
+    if (!(f in current)) continue;
+    if (current[f] === 1) continue;
+    updates[f] = 1;
+  }
+  if (Object.keys(updates).length > 0) {
+    const { sql, params } = buildUpdate(current, updates);
+    db.prepare(sql).run(...params);
+  }
+  entry.used_count = (entry.used_count || 0) + 1;
+  codes[code.trim()] = entry;
+  db.prepare("INSERT INTO settings_kv (key, value) VALUES ('activation_codes', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .run(JSON.stringify(codes));
+
+  req.audit("activate_code", "settings", { code: code.trim(), features }, `🔑 تم تفعيل كود التفعيل — ${features.length} ميزة`);
+  res.json({ success: true, data: { features, activated: Object.keys(updates).length } });
+});
+
 module.exports = router;

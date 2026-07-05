@@ -8,7 +8,7 @@ const { getReportColumns, getReportTitle, getReportDescription, normalizeStructu
 const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
-const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
+const { requirePagePermission, userHasPagePermission, getUserPermissions } = require("../middleware/permission");
 const { featureGate } = require("../utils/features");
 
 const router = express.Router();
@@ -117,6 +117,56 @@ function hydrateReportDefinition(report) {
   };
 }
 
+function resolveReportSource(slug) {
+  return REPORT_REGISTRY.reportSlugToSource[slug] || null;
+}
+
+function requireReportAccess(sourceKeyOrParam) {
+  const fromParam = sourceKeyOrParam === true;
+  return (req, res, next) => {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "unauthorized" });
+    if (user.role === "dev" || user.role === "admin") return next();
+
+    const sourceKey = fromParam ? req.params.sourceKey : sourceKeyOrParam;
+    if (!sourceKey) return next();
+
+    const perms = getUserPermissions(user);
+
+    if (!perms["reports"]?.includes("view")) {
+      return res.status(403).json({ error: "permission_denied", page: "reports", action: "view" });
+    }
+
+    const reportKey = "report_" + sourceKey;
+    if (perms[reportKey]?.includes("view")) return next();
+
+    return res.status(403).json({ error: "permission_denied", page: reportKey, action: "view" });
+  };
+}
+
+function requireReportExportAccess(sourceKeyOrParam) {
+  const fromParam = sourceKeyOrParam === true;
+  return (req, res, next) => {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "unauthorized" });
+    if (user.role === "dev" || user.role === "admin") return next();
+
+    const sourceKey = fromParam ? req.params.sourceKey : sourceKeyOrParam;
+    if (!sourceKey) return next();
+
+    const perms = getUserPermissions(user);
+
+    if (!perms["reports"]?.includes("print")) {
+      return res.status(403).json({ error: "permission_denied", page: "reports", action: "print" });
+    }
+
+    const reportKey = "report_" + sourceKey;
+    if (perms[reportKey]?.includes("view")) return next();
+
+    return res.status(403).json({ error: "permission_denied", page: reportKey, action: "view" });
+  };
+}
+
 // GET /api/reports/registry — return all report definitions
 router.get("/registry", requirePagePermission("reports", "view"), (_req, res) => {
   res.json({
@@ -137,7 +187,14 @@ router.get("/registry/:slug", requirePagePermission("reports", "view"), (req, re
 
 // GET /api/reports/run/:slug — execute a report with optional filters
 // Query params: start_date, end_date, page, pageSize, cost_method, plus per-report filters
-router.get("/run/:slug", requirePagePermission("reports", "view"), (req, res, next) => {
+router.get("/run/:slug", (req, res, next) => {
+  requirePagePermission("reports", "view")(req, res, (err) => {
+    if (err) return next(err);
+    const sk = resolveReportSource(req.params.slug);
+    if (sk) return requireReportAccess(sk)(req, res, next);
+    next();
+  });
+}, (req, res, next) => {
   try {
     const { start_date, end_date, page, pageSize } = req.query;
     const slug = req.params.slug;
@@ -181,7 +238,14 @@ router.get("/run/:slug", requirePagePermission("reports", "view"), (req, res, ne
 });
 
 // GET /api/reports/export-slug/:slug — export any report by slug
-router.get("/export-slug/:slug", requirePagePermission("reports", "print"), async (req, res, next) => {
+router.get("/export-slug/:slug", (req, res, next) => {
+  requirePagePermission("reports", "print")(req, res, (err) => {
+    if (err) return next(err);
+    const sk = resolveReportSource(req.params.slug);
+    if (sk) return requireReportExportAccess(sk)(req, res, next);
+    next();
+  });
+}, async (req, res, next) => {
   try {
     const { start_date, end_date, format } = req.query;
     const slug = String(req.params.slug || "");
@@ -270,7 +334,7 @@ router.get("/export-rows-stream", requirePagePermission("reports", "print"), asy
 
 // GET /api/reports/source/:sourceKey/run — run a specific classification within a source
 // Query params: classification (required), dataMode (detailed|summary), start_date, end_date, plus per-classification filters
-router.get("/source/:sourceKey/run", requirePagePermission("reports", "view"), (req, res, next) => {
+router.get("/source/:sourceKey/run", requireReportAccess(true), (req, res, next) => {
   try {
     const { sourceKey } = req.params;
     const { classification, dataMode, start_date, end_date, page, pageSize, ...rest } = req.query;

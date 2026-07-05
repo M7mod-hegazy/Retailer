@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
+import { formatHHMM } from "../../utils/dateHelpers";
 
 const FADE_UP = {
   hidden: { opacity: 0, y: 20 },
@@ -49,8 +50,8 @@ function formatDateTime(d) {
   const raw = d.split(".")[0].replace("T", " ");
   const [ymd, hms = "00:00"] = raw.split(" ");
   const [y, m, day] = ymd.split("-");
-  const [hh, min] = hms.split(":");
-  return `${day}/${m}/${y}, ${hh}:${min}`;
+  const hhmm = `${hms.split(":")[0]}:${hms.split(":")[1]}`;
+  return `${day}/${m}/${y}, ${formatHHMM(hhmm)}`;
 }
 function formatQty(v) {
   return formatNumber(v, { decimals: 0 });

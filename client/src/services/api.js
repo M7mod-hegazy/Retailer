@@ -112,6 +112,43 @@ api.interceptors.response.use(
 
     const isAuthLoginRequest = reqUrl.includes("/api/auth/login");
 
+    // 403 → show a specific, helpful Arabic message instead of silent failure.
+    // The server sends { code: "permission_denied"|"feature_disabled", page, action } in the body.
+    if (status === 403 && typeof window !== "undefined") {
+      const data = error?.response?.data || {};
+      const code = data.error || data.code || data.error_code;
+      if (code === "feature_disabled") {
+        toast.error("هذه الميزة غير مفعّلة — راجع إعدادات الميزات لتفعيلها.", {
+          id: "403-feature",
+          duration: 4000,
+        });
+      } else if (code === "permission_denied" || data.error === "permission_denied") {
+        // Try to map the server's page key to a human label using the same PAGE_PERMISSIONS constant.
+        // Import is async-safe because PAGE_PERMISSIONS is a plain object (no React deps).
+        const page = data.page || data.required_page || "";
+        const action = data.action || data.required_action || "";
+        const ACTION_AR = { view: "عرض", add: "إضافة", edit: "تعديل", delete: "حذف", print: "طباعة" };
+        const PAGE_LABEL_FALLBACK = {
+          pos: "نقطة البيع", daily_treasury: "الخزينة اليومية", purchases: "المشتريات",
+          expenses: "المصروفات", revenues: "الإيرادات", reports: "التقارير",
+          items: "الأصناف", customers: "العملاء", suppliers: "الموردين",
+          users: "المستخدمين", settings: "الإعدادات", stock: "المخزون",
+          restaurant_tables: "طاولات المطعم", restaurant_modifiers: "الإضافات والمقادير",
+          gold_pricing: "أسعار الذهب", repair_orders: "أوامر الصيانة",
+          serial_search: "بحث السيريال", sales_returns: "مرتجعات المبيعات",
+          purchase_returns: "مرتجعات المشتريات", payments: "المدفوعات",
+          employees: "الموظفون", stock_transfer: "تحويل مخزني",
+          withdrawals: "المسحوبات", cheques: "الشيكات",
+        };
+        const pageLabel = PAGE_LABEL_FALLBACK[page] || page || "هذه الصفحة";
+        const actionLabel = ACTION_AR[action] || action;
+        const msg = actionLabel
+          ? `ليس لديك صلاحية ${actionLabel} على «${pageLabel}» — تواصل مع المدير.`
+          : `ليس لديك صلاحية الوصول إلى «${pageLabel}» — تواصل مع المدير.`;
+        toast.error(msg, { id: `403-perm-${page}`, duration: 5000 });
+      }
+    }
+
     if (status === 401 && !isAuthLoginRequest) {
       const { logout } = useAuthStore.getState();
       logout();

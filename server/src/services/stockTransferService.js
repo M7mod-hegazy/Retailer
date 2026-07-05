@@ -1,5 +1,6 @@
 const { getDb } = require("../config/database");
-const { adjustStock } = require("./stockService");
+const { adjustStock, deductBatches, createTransferBatch } = require("./stockService");
+const { isFeatureEnabled } = require("../utils/features");
 
 function transferStock({ item_id, from_warehouse_id, to_warehouse_id, quantity, notes = null, user_id = null }) {
   const db = getDb();
@@ -27,6 +28,11 @@ function transferStock({ item_id, from_warehouse_id, to_warehouse_id, quantity, 
       throw err;
     }
 
+    const expiryEnabled = isFeatureEnabled(db, "feature_expiry");
+
+    // FEFO: deduct from source warehouse batches
+    if (expiryEnabled) deductBatches(db, item_id, from_warehouse_id, normalizedQuantity);
+
     adjustStock({
       item_id,
       warehouse_id: from_warehouse_id,
@@ -37,6 +43,9 @@ function transferStock({ item_id, from_warehouse_id, to_warehouse_id, quantity, 
       notes,
       user_id,
     });
+
+    // FEFO: create batch entry at destination warehouse
+    if (expiryEnabled) createTransferBatch(db, item_id, to_warehouse_id, normalizedQuantity, from_warehouse_id);
 
     adjustStock({
       item_id,

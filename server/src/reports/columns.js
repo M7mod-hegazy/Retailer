@@ -500,6 +500,7 @@ const AR_LABELS = {
   other_revenues: "إيرادات أخرى",
   overdue: "المتأخر",
   overdue_amount: "المبلغ المتأخر",
+  overdue_count: "عدد المتأخرات",
   overdue_receivables_count: "عدد الذمم المتأخرة",
   override_count: "عدد التعديلات",
   paid_amount: "المبلغ المدفوع",
@@ -812,7 +813,7 @@ const REPORT_COLUMN_KEYS = {
   // ── Installments ──
   "installment-plans": ["id", "customer_name", "total", "paid_amount", "remaining", "down_payment", "frequency", "installment_count", "installment_amount", "due_date", "status_label", "remaining_pct", "created_date", "paid_at"],
   "installment-collections": ["id", "customer_name", "installment_amount", "method_name", "due_date", "paid_at", "status_label", "remaining", "total"],
-  "installments-by-customer": ["customer_name", "plan_count", "total_amount", "total_paid", "total_remaining", "last_due_date", "paid_count", "pending_count"],
+  "installments-by-customer": ["customer_name", "plan_count", "total_amount", "total_paid", "total_remaining", "last_due_date", "paid_count", "pending_count", "overdue_count"],
   "installment-delinquent": ["id", "customer_name", "total", "remaining", "installment_amount", "due_date", "days_overdue", "overdue_bucket"],
 
   // ── Warehouses ──

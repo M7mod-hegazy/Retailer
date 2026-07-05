@@ -48,6 +48,7 @@ export function formatDateTime(iso) {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     });
   } catch {
     return String(iso);
@@ -57,7 +58,7 @@ export function formatDateTime(iso) {
 export function formatTime(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: true });
   } catch {
     return String(iso);
   }

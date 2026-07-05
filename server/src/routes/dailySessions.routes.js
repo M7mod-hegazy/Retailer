@@ -10,6 +10,7 @@ const {
   ensureSessionForDate,
   getSession,
   liveOpeningBalance,
+  batchLiveOpeningBalances,
   localDate,
   normalizeDate,
   listCashCounts,
@@ -430,17 +431,21 @@ function buildUnionParts(targetDate, search) {
                  sr.created_at, c.name AS party, NULL AS status, sr.reason AS description,
                  'sales_return' AS doc_type,
                  CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN 'out'
-                      WHEN sr.refund_method = 'split' THEN 'split'
+                      WHEN sr.refund_method IN ('split', 'multi') THEN 'split'
                       ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(sr.refund_method, 'cash_back') = 'cash_back' THEN -sr.total
-                      WHEN sr.refund_method = 'split' THEN -COALESCE(sr.cash_amount, 0)
+                      WHEN sr.refund_method IN ('split', 'multi') THEN -COALESCE(sr.cash_amount, 0)
                       ELSE 0 END AS cash_effect,
                  COALESCE(sr.cash_amount, 0) AS cash_amount,
                  COALESCE(sr.credit_amount, 0) AS credit_amount,
                  sr.invoice_id,
                  i.invoice_no AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name,
+                 CASE WHEN sr.refund_method = 'multi' THEN (
+                   SELECT GROUP_CONCAT(json_extract(p.value, '$.method') || ':' || CAST(ROUND(json_extract(p.value, '$.amount'), 2) AS TEXT), '|||')
+                   FROM json_each(sr.payments) p
+                 ) ELSE NULL END AS payment_splits
           FROM sales_returns sr
           LEFT JOIN customers c ON c.id = sr.customer_id
           LEFT JOIN invoices i ON i.id = sr.invoice_id
@@ -456,16 +461,20 @@ function buildUnionParts(targetDate, search) {
                  pr.created_at, s.name AS party, NULL AS status, NULL AS description,
                  'purchase_return' AS doc_type,
                  CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN 'in'
-                      WHEN pr.settlement_type = 'split' THEN 'split'
+                      WHEN pr.settlement_type IN ('split', 'multi') THEN 'split'
                       ELSE 'account' END AS cash_direction,
                  CASE WHEN COALESCE(pr.settlement_type, 'account') = 'cash' THEN pr.total
-                      WHEN pr.settlement_type = 'split' THEN COALESCE(pr.cash_amount, 0)
+                      WHEN pr.settlement_type IN ('split', 'multi') THEN COALESCE(pr.cash_amount, 0)
                       ELSE 0 END AS cash_effect,
                  COALESCE(pr.cash_amount, 0) AS cash_amount,
                  COALESCE(pr.credit_amount, 0) AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
-                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name, NULL AS payment_splits
+                 COALESCE(NULLIF(u.full_name, ''), u.username) AS seller_name, NULL AS cancelled_by_name,
+                 CASE WHEN pr.settlement_type = 'multi' THEN (
+                   SELECT GROUP_CONCAT(json_extract(p.value, '$.method') || ':' || CAST(ROUND(json_extract(p.value, '$.amount'), 2) AS TEXT), '|||')
+                   FROM json_each(pr.payments) p
+                 ) ELSE NULL END AS payment_splits
           FROM purchase_returns pr
           LEFT JOIN suppliers s ON s.id = pr.supplier_id
           LEFT JOIN users u ON u.id = pr.created_by
@@ -571,8 +580,9 @@ function buildUnionParts(targetDate, search) {
 }
 
 /**
- * Build a UNION ALL SQL + params covering all transaction types with no search filter
- * and no cancellation reversals. Used by /:date/cashflow for a complete ledger.
+ * Build a UNION ALL SQL + params covering all transaction types with no search filter,
+ * INCLUDING cancellation reversals so the running balance is correct on days
+ * where invoices were cancelled.
  * @param {string} targetDate - YYYY-MM-DD
  * @returns {{ sql: string, params: any[] }}
  */
@@ -582,8 +592,45 @@ function buildCashflowUnion(targetDate) {
   const types = Object.keys(parts).filter(
     (k) => !["customer_ajal_payments", "supplier_ajal_payments"].includes(k)
   );
-  const sql = types.map((k) => parts[k].sql).join("\nUNION ALL\n");
-  const params = types.flatMap((k) => parts[k].params);
+  let sql = types.map((k) => parts[k].sql).join("\nUNION ALL\n");
+  let params = types.flatMap((k) => parts[k].params);
+
+  // Include cancellation reversals: invoices created on a PREVIOUS day but
+  // cancelled on targetDate must appear as negative entries on targetDate.
+  const cancellationReversalSql = `
+    SELECT i.id, i.invoice_no AS doc_no, -(i.total) AS amount, i.payment_type,
+           i.cancelled_at AS created_at, c.name AS party, 'cancelled' AS status,
+           i.cancel_reason AS description,
+           'cancelled_invoice' AS doc_type, 'reversal' AS cash_direction,
+           CASE
+             WHEN i.payment_type = 'cash' THEN -(i.total)
+             WHEN i.payment_type = 'installments' THEN -(
+               SELECT COALESCE(SUM(pa.amount), 0) FROM payment_allocations pa WHERE pa.invoice_id = i.id
+             )
+             WHEN i.payment_type = 'multi' THEN -(
+               SELECT COALESCE(SUM(p.amount), 0)
+               FROM payments p
+               JOIN payment_allocations pa ON pa.payment_id = p.id AND pa.invoice_id = i.id
+               WHERE p.method = 'cash'
+             )
+             ELSE 0
+           END AS cash_effect,
+           0 AS cash_amount, 0 AS credit_amount,
+           NULL AS invoice_id, NULL AS original_invoice_no,
+           0 AS is_cancelled,
+           NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
+           NULL AS seller_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS cancelled_by_name,
+           NULL AS payment_splits
+    FROM invoices i
+    LEFT JOIN customers c ON c.id = i.customer_id
+    LEFT JOIN users     u ON u.id = i.cancelled_by
+    WHERE date(i.cancelled_at) = ?
+      AND date(i.created_at) != ?  -- only cross-day cancellations; same-day already excluded by pos union
+      AND i.payment_type IN ('cash','multi','installments','credit')
+  `;
+  sql = sql + "\nUNION ALL\n" + cancellationReversalSql;
+  params = [...params, targetDate, targetDate];
+
   return { sql, params };
 }
 
@@ -919,9 +966,14 @@ router.get("/", requirePagePermission("daily_treasury", "view"), (req, res) => {
       ORDER BY date DESC
       LIMIT ?
     `).all(...params, Number(limit));
+
+    // Batch-resolve opening balances in ~12 queries instead of N×12
+    const dates = rows.map(s => s.date);
+    const balanceMap = batchLiveOpeningBalances(db, dates);
+
     const data = rows.map(s => ({
       ...s,
-      previous_balance: liveOpeningBalance(db, s.date),
+      previous_balance: balanceMap.get(s.date) ?? liveOpeningBalance(db, s.date),
     }));
     res.json({ success: true, data });
   } catch (err) {
@@ -949,10 +1001,11 @@ router.get("/:date/cashflow", requirePagePermission("daily_treasury", "view"), (
 
     // Reuse the summary service so opening/expected match the equation exactly.
     const summary = calculateDailySummary(db, targetDate);
+    const hasSession = !!summary?.session;
     const openingBalance = Number(summary?.previous_balance ?? summary?.opening_balance ?? 0);
     const expectedCash = Number(summary?.expected_cash ?? 0);
 
-    // Build the same per-type union used by /today/transactions (empty search, no cancelled).
+    // Build the same per-type union used by /today/transactions (empty search, with cancellation reversals).
     const { sql, params } = buildCashflowUnion(targetDate);
     const raw = db.prepare(`
       SELECT * FROM (${sql}) ORDER BY created_at ASC
@@ -995,11 +1048,13 @@ router.get("/:date/cashflow", requirePagePermission("daily_treasury", "view"), (
     res.json({
       success: true,
       data: {
+        has_session: hasSession,
         opening_balance: openingBalance,
         expected_cash: expectedCash,
         rows,
         closing_balance: closingBalance,
-        reconciles: Math.abs(closingBalance - expectedCash) < 0.01,
+        // Only mark reconciles=true when a formal session exists and balances match
+        reconciles: hasSession && Math.abs(closingBalance - expectedCash) < 0.01,
       },
     });
   } catch (err) {

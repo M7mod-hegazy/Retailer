@@ -5,7 +5,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
-const { isFeatureEnabled } = require("../utils/features");
+const { isFeatureEnabled, featureGate } = require("../utils/features");
 const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
@@ -174,7 +174,7 @@ function computeCodeAndSequence({ categoryId, incomingCode, currentCode }) {
   return { code: `${prefix}.${next}`, skuSequence: next };
 }
 
-function buildItemsWhere({ search = "", categoryId = null, includeDeleted = false, inStockOnly = false } = {}) {
+function buildItemsWhere({ search = "", categoryId = null, includeDeleted = false, inStockOnly = false, excludeParents = false } = {}) {
   let where = " WHERE 1 = 1";
   const params = [];
 
@@ -196,18 +196,26 @@ function buildItemsWhere({ search = "", categoryId = null, includeDeleted = fals
   if (inStockOnly) {
     where += " AND (SELECT COALESCE(SUM(quantity), 0) FROM stock_levels sl WHERE sl.item_id = i.id) > 0";
   }
+  // Variant parents should not appear in POS/search results — only leaf variants
+  // are sellable. Check column existence for schema safety.
+  if (excludeParents) {
+    const col = getDb().prepare("PRAGMA table_info(items)").all().map(c => c.name);
+    if (col.includes("is_variant_parent")) {
+      where += " AND (i.is_variant_parent IS NULL OR i.is_variant_parent = 0)";
+    }
+  }
 
   return { where, params };
 }
 
-function getItemsTotal(search = "", categoryId = null, includeDeleted = false, inStockOnly = false) {
-  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly });
+function getItemsTotal(search = "", categoryId = null, includeDeleted = false, inStockOnly = false, excludeParents = false) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly, excludeParents });
   const row = getDb().prepare(`SELECT COUNT(*) AS total FROM items i ${where}`).get(...params);
   return Number(row?.total || 0);
 }
 
-function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0, inStockOnly = false } = {}) {
-  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly });
+function getItemsList(search = "", categoryId = null, includeDeleted = false, { limit = null, offset = 0, inStockOnly = false, excludeParents = false } = {}) {
+  const { where, params } = buildItemsWhere({ search, categoryId, includeDeleted, inStockOnly, excludeParents });
   let sql = `
     SELECT i.*, c.name AS category_name, c.sku_prefix, u.name AS unit_name,
            COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity,
@@ -251,10 +259,11 @@ router.get("/", requirePagePermission("items", "view"), (req, res) => {
   const categoryId = req.query.category_id ? Number(req.query.category_id) : null;
   const includeDeleted = req.query.include_deleted === "1" || req.query.include_deleted === "true";
   const inStockOnly = req.query.in_stock_only === "1" || req.query.in_stock_only === "true";
+  const excludeParents = req.query.exclude_parents === "1" || req.query.exclude_parents === "true";
   const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 200) : null;
   const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
-  const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset, inStockOnly });
-  const total = limit ? getItemsTotal(search, categoryId, includeDeleted, inStockOnly) : rows.length;
+  const rows = getItemsList(search, categoryId, includeDeleted, { limit, offset, inStockOnly, excludeParents });
+  const total = limit ? getItemsTotal(search, categoryId, includeDeleted, inStockOnly, excludeParents) : rows.length;
   res.json({
     success: true,
     data: rows,
@@ -271,7 +280,8 @@ router.get("/", requirePagePermission("items", "view"), (req, res) => {
 router.get("/search/detailed", requirePagePermission("items", "view"), (req, res) => {
   const query = String(req.query.q || "").trim();
   const limit = Math.min(Math.max(Number(req.query.limit || 30), 1), 200);
-  const rows = getItemsList(query, null, false, { limit, offset: 0 });
+  const excludeParents = req.query.exclude_parents === "1" || req.query.exclude_parents === "true";
+  const rows = getItemsList(query, null, false, { limit, offset: 0, excludeParents });
   res.json({ success: true, data: rows });
 });
 
@@ -305,6 +315,26 @@ router.get("/barcode/:barcode", requirePagePermission("items", "view"), (req, re
     }
   }
   return res.status(404).json({ success: false, message: "Item not found" });
+});
+
+router.get("/:id/variant-children", requirePagePermission("items", "view"), featureGate("feature_variants"), (req, res, next) => {
+  try {
+    const db = getDb();
+    const parentId = Number(req.params.id);
+    const children = db.prepare(`
+      SELECT i.id, i.name, i.name_en, i.barcode, i.code, i.sale_price, i.wholesale_price,
+             i.purchase_price, i.variant_attributes, i.is_active,
+             COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock_quantity
+      FROM items i
+      WHERE i.parent_item_id = ? AND i.deleted_at IS NULL
+      ORDER BY i.name ASC
+    `).all(parentId);
+    const rows = children.map(c => ({
+      ...c,
+      variant_attributes: c.variant_attributes ? JSON.parse(c.variant_attributes) : {},
+    }));
+    res.json({ success: true, data: withImages(rows) });
+  } catch (e) { next(e); }
 });
 
 router.get("/:id/operations", requirePagePermission("items", "view"), (req, res, next) => {
@@ -568,10 +598,10 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
 
   const info = getDb()
     .prepare(
-      `INSERT INTO items
-       (code, sku_sequence, name, name_en, barcode, category_id, unit_id, sale_price, wholesale_price, purchase_price, tax_rate, item_type, description, is_active, min_stock_qty, track_expiry)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
+       `INSERT INTO items
+        (code, sku_sequence, name, name_en, barcode, category_id, unit_id, sale_price, wholesale_price, purchase_price, tax_rate, item_type, description, is_active, min_stock_qty, track_expiry, scale_plu, is_gold_item, gold_karat, gold_weight_grams, gold_making_charge, is_menu_item, prep_time_mins)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     )
     .run(
       sku.code,
       sku.skuSequence,
@@ -589,6 +619,13 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
       payload.is_active === false ? 0 : 1,
       0,
       (isFeatureEnabled(getDb(), "feature_expiry") && payload.track_expiry) ? 1 : 0,
+      payload.scale_plu ? String(payload.scale_plu).trim() : null,
+      payload.is_gold_item ? 1 : 0,
+      payload.gold_karat ? Number(payload.gold_karat) : null,
+      payload.gold_weight_grams ? Number(payload.gold_weight_grams) : null,
+      payload.gold_making_charge ? Number(payload.gold_making_charge) : 0,
+      (isFeatureEnabled(getDb(), "feature_restaurant") && payload.is_menu_item) ? 1 : 0,
+      payload.prep_time_mins ? Number(payload.prep_time_mins) : null,
     );
 
   const imageUrls = normalizeImageUrls(payload);
@@ -611,6 +648,68 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
 
   req.audit("create", "items", { id: newItemId }, `📦 تم إضافة صنف: ${payload.name || ''}`);
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(info.lastInsertRowid);
+  return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
+});
+
+// Lightweight quick-create for POS scale barcode PLU-not-found flow
+router.post("/quick", requirePagePermission("items", "add"), featureGate("feature_scale_barcodes"), (req, res) => {
+  const payload = req.body || {};
+  const name = String(payload.name || "").trim();
+  if (!name) return res.status(400).json({ success: false, message: "Item name is required" });
+
+  const db = getDb();
+  const scalePlu = payload.scale_plu ? String(payload.scale_plu).trim() : null;
+  const categoryId = payload.category_id ? Number(payload.category_id) : null;
+
+  // Auto-generate a code using PLU prefix, or fallback to timestamp-based
+  const skuPrefix = categoryId ? getCategoryPrefix(categoryId) : null;
+  let code = payload.code ? String(payload.code).trim() : null;
+  let skuSeq = null;
+  if (code) {
+    skuSeq = parseCodeSuffixForPrefix(code, skuPrefix);
+  } else if (scalePlu) {
+    code = scalePlu;
+  } else if (skuPrefix) {
+    skuSeq = nextCategorySequence(skuPrefix);
+    code = `${skuPrefix}.${skuSeq}`;
+  }
+
+  const salePrice = Number(payload.sale_price || 0);
+  const info = db.prepare(
+    `INSERT INTO items
+     (code, sku_sequence, name, name_en, barcode, category_id, unit_id, sale_price, wholesale_price, purchase_price, tax_rate, item_type, description, is_active, min_stock_qty, track_expiry, scale_plu)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    code,
+    skuSeq,
+    name,
+    payload.name_en || null,
+    payload.barcode || null,
+    categoryId,
+    payload.unit_id ? Number(payload.unit_id) : null,
+    salePrice,
+    Number(payload.wholesale_price || 0),
+    Number(payload.purchase_price || payload.cost_price || 0),
+    Number(payload.tax_rate || 0),
+    payload.item_type || "product",
+    payload.description || null,
+    1,
+    0,
+    0,
+    scalePlu,
+  );
+
+  const newItemId = info.lastInsertRowid;
+  if (salePrice > 0) {
+    const createdBy = req.user?.name || req.user?.username || "غير محدد";
+    db.prepare(
+      `INSERT INTO price_history (item_id, field, old_value, new_value, adjustment_type, adjustment_value, source, operation_id, changed_by)
+       VALUES (?, 'sale_price', 0, ?, 'set', ?, 'quick_create', ?, ?)`
+    ).run(newItemId, salePrice, salePrice, `Q-${newItemId}`, createdBy);
+  }
+
+  req.audit("create", "items", { id: newItemId }, `📦 تم إضافة صنف سريع: ${name}`);
+  const row = db.prepare("SELECT * FROM items WHERE id = ?").get(newItemId);
   return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
 });
 
@@ -662,7 +761,7 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
 
   db.prepare(
       `UPDATE items
-       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, updated_at = ?
+       SET code = ?, sku_sequence = ?, name = ?, name_en = ?, barcode = ?, category_id = ?, unit_id = ?, sale_price = ?, wholesale_price = ?, purchase_price = ?, tax_rate = ?, item_type = ?, description = ?, is_active = ?, min_stock_qty = ?, track_expiry = ?, scale_plu = ?, is_gold_item = ?, gold_karat = ?, gold_weight_grams = ?, gold_making_charge = ?, is_menu_item = ?, prep_time_mins = ?, updated_at = ?
        WHERE id = ?`,
      )
     .run(
@@ -684,6 +783,15 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
       !isFeatureEnabled(db, "feature_expiry")
         ? (existing.track_expiry || 0)
         : payload.track_expiry === undefined ? (existing.track_expiry || 0) : payload.track_expiry ? 1 : 0,
+      payload.scale_plu !== undefined ? String(payload.scale_plu).trim() || null : existing.scale_plu,
+      payload.is_gold_item !== undefined ? (payload.is_gold_item ? 1 : 0) : (existing.is_gold_item || 0),
+      payload.gold_karat !== undefined ? (payload.gold_karat ? Number(payload.gold_karat) : null) : existing.gold_karat,
+      payload.gold_weight_grams !== undefined ? (payload.gold_weight_grams ? Number(payload.gold_weight_grams) : null) : existing.gold_weight_grams,
+      payload.gold_making_charge !== undefined ? (payload.gold_making_charge ? Number(payload.gold_making_charge) : 0) : (existing.gold_making_charge || 0),
+      !isFeatureEnabled(db, "feature_restaurant")
+        ? (existing.is_menu_item || 0)
+        : payload.is_menu_item === undefined ? (existing.is_menu_item || 0) : payload.is_menu_item ? 1 : 0,
+      payload.prep_time_mins !== undefined ? (payload.prep_time_mins ? Number(payload.prep_time_mins) : null) : existing.prep_time_mins,
       nowSql(), id,
     );
 
@@ -1796,6 +1904,230 @@ router.get("/bulk-price-history/:operationId/items", requirePagePermission("item
     res.json({ success: true, data: rows });
   } catch (err) {
     next(err);
+  }
+});
+
+// ── Item Analytics (smart insights data) ──────────────────────────────────────
+router.get("/:id/analytics", requirePagePermission("items", "view"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const itemId = Number(req.params.id);
+    const from = req.query.from || null;
+    const to = req.query.to || null;
+
+    // Resolve period boundaries and previous period
+    const now = new Date();
+    const periodFrom = from || new Date(now - 30 * 86400000).toISOString().split("T")[0];
+    const periodTo = to || now.toISOString().split("T")[0];
+    const periodDays = Math.max(1, Math.round((new Date(periodTo) - new Date(periodFrom)) / 86400000));
+    const prevEnd = new Date(periodFrom);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - periodDays + 1);
+    const prevFrom = prevStart.toISOString().split("T")[0];
+    const prevTo = prevEnd.toISOString().split("T")[0];
+
+    // 1. Item basics
+    const item = db.prepare(`
+      SELECT i.id, i.name, i.code, i.sale_price, i.purchase_price, i.wholesale_price,
+             c.name AS category_name,
+             COALESCE(SUM(sl.quantity), 0) AS current_stock
+      FROM items i
+      LEFT JOIN item_categories c ON c.id = i.category_id
+      LEFT JOIN stock_levels sl ON sl.item_id = i.id
+      WHERE i.id = ? AND i.deleted_at IS NULL
+      GROUP BY i.id
+    `).get(itemId);
+    if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+    // 2. Current period sales
+    const currentSales = db.prepare(`
+      SELECT COALESCE(SUM(il.quantity), 0) AS total_qty,
+             COALESCE(SUM(il.line_total), 0) AS total_amount,
+             COUNT(DISTINCT il.invoice_id) AS invoice_count
+      FROM invoice_lines il
+      JOIN invoices i ON i.id = il.invoice_id
+      WHERE il.item_id = ? AND i.status != 'cancelled'
+        AND i.created_at >= ? AND i.created_at <= ?
+    `).get(itemId, periodFrom, periodTo + " 23:59:59");
+
+    // 3. Previous period sales
+    const prevSales = db.prepare(`
+      SELECT COALESCE(SUM(il.quantity), 0) AS total_qty,
+             COALESCE(SUM(il.line_total), 0) AS total_amount,
+             COUNT(DISTINCT il.invoice_id) AS invoice_count
+      FROM invoice_lines il
+      JOIN invoices i ON i.id = il.invoice_id
+      WHERE il.item_id = ? AND i.status != 'cancelled'
+        AND i.created_at >= ? AND i.created_at <= ?
+    `).get(itemId, prevFrom, prevTo + " 23:59:59");
+
+    const avgDaily = periodDays > 0 ? currentSales.total_qty / periodDays : 0;
+    const qtyChangePct = prevSales.total_qty > 0
+      ? Math.round(((currentSales.total_qty - prevSales.total_qty) / prevSales.total_qty) * 100)
+      : (currentSales.total_qty > 0 ? 100 : 0);
+    const amountChangePct = prevSales.total_amount > 0
+      ? Math.round(((currentSales.total_amount - prevSales.total_amount) / prevSales.total_amount) * 100)
+      : (currentSales.total_amount > 0 ? 100 : 0);
+
+    // 4. Price history stats (period)
+    const priceStatsRaw = db.prepare(`
+      SELECT field,
+             ROUND(AVG(new_value), 2) AS avg_value,
+             MIN(new_value) AS min_value,
+             MAX(new_value) AS max_value,
+             COUNT(*) AS change_count,
+             ROUND(AVG(ABS(new_value - old_value)), 2) AS avg_change
+      FROM price_history
+      WHERE item_id = ? AND changed_at >= ? AND changed_at <= ?
+      GROUP BY field
+    `).all(itemId, periodFrom, periodTo + " 23:59:59");
+
+    // All-time price stats (for volatility)
+    const allTimePriceStats = db.prepare(`
+      SELECT field,
+             ROUND(AVG(new_value), 2) AS avg_value,
+             MIN(new_value) AS min_value,
+             MAX(new_value) AS max_value,
+             COUNT(*) AS change_count,
+             ROUND(AVG(ABS(new_value - old_value)), 2) AS avg_change,
+             ROUND(MAX(new_value) - MIN(new_value), 2) AS price_range,
+             ROUND((MAX(new_value) - MIN(new_value)) * 1.0 / NULLIF(AVG(new_value), 0), 4) AS volatility
+      FROM price_history
+      WHERE item_id = ?
+      GROUP BY field
+    `).all(itemId);
+
+    const priceStats = {};
+    for (const s of allTimePriceStats) {
+      const periodStat = priceStatsRaw.find(r => r.field === s.field);
+      priceStats[s.field] = {
+        avg: s.avg_value,
+        min: s.min_value,
+        max: s.max_value,
+        change_count: s.change_count,
+        period_changes: periodStat?.change_count || 0,
+        volatility: s.volatility || 0,
+        price_range: s.price_range || 0,
+        avg_change: s.avg_change || 0,
+        current: item[s.field] || 0,
+      };
+    }
+
+    // 5. Sales rank (percentile among all items in the period)
+    const rankData = db.prepare(`
+      SELECT COUNT(*) AS total_items,
+             SUM(CASE WHEN sq.qty >= ? THEN 1 ELSE 0 END) AS items_above_or_equal
+      FROM (SELECT COALESCE(SUM(il.quantity), 0) AS qty
+            FROM invoice_lines il
+            JOIN invoices i ON i.id = il.invoice_id
+            WHERE i.status != 'cancelled'
+              AND i.created_at >= ? AND i.created_at <= ?
+            GROUP BY il.item_id) sq
+    `).get(currentSales.total_qty, periodFrom, periodTo + " 23:59:59");
+
+    const rankPct = rankData.total_items > 0
+      ? Math.round((rankData.items_above_or_equal / rankData.total_items) * 100)
+      : null;
+
+    // 6. Stock health
+    const currentStock = Number(item.current_stock || 0);
+    const turnoverRatio = currentStock > 0 && currentSales.total_qty > 0
+      ? Math.round((currentSales.total_qty / currentStock) * 10) / 10
+      : 0;
+    const daysUntilStockout = avgDaily > 0
+      ? Math.round(currentStock / avgDaily)
+      : null;
+
+    // 7. Recommendation engine
+    const isStrongSeller = rankPct !== null && rankPct <= 25 && avgDaily >= 1;
+    const isSlowMover = avgDaily < 0.5 && currentSales.total_qty > 0;
+    const isDead = currentSales.total_qty === 0 && currentStock > 0;
+    const isOverstocked = currentStock > 50 && turnoverRatio < 0.5 && currentSales.total_qty > 0;
+    const isUnderstocked = currentStock < 10 && avgDaily > 1;
+    const isPriceVolatile = Object.values(priceStats).some(s => s.volatility > 0.15);
+    const salesDropping = qtyChangePct < -30;
+
+    let recType = "normal";
+    let recLabel = "منتظم";
+    let recDetail = "أداء طبيعي";
+    let recIcon = "activity";
+
+    if (isStrongSeller) {
+      recType = "strong_seller";
+      recLabel = "منتج مطلوب بكثافة";
+      recDetail = `في أعلى ${rankPct}% من الأصناف. حافظ على المخزون`;
+      recIcon = "trending_up";
+    } else if (isDead) {
+      recType = "no_sales";
+      recLabel = "بدون مبيعات";
+      recDetail = `لم يتم بيع أي وحدة. راجع التسعير أو ضع خطة تصفية`;
+      recIcon = "alert_circle";
+    } else if (isOverstocked) {
+      recType = "overstocked";
+      recLabel = "مخزون زائد";
+      recDetail = `يكفي ${daysUntilStockout} يوم بمعدل البيع الحالي. فكر في عرض ترويجي`;
+      recIcon = "package";
+    } else if (isUnderstocked) {
+      recType = "understocked";
+      recLabel = "مخزون غير كافٍ";
+      recDetail = `ينفذ خلال ${daysUntilStockout} يوم. أعد الطلب قريباً`;
+      recIcon = "alert_triangle";
+    } else if (salesDropping) {
+      recType = "sales_dropping";
+      recLabel = "انخفاض المبيعات";
+      recDetail = `المبيعات أقل بنسبة ${Math.abs(qtyChangePct)}% عن الفترة السابقة`;
+      recIcon = "trending_down";
+    } else if (isSlowMover) {
+      recType = "slow_mover";
+      recLabel = "بطيء الحركة";
+      recDetail = `معدل البيع ${avgDaily.toFixed(1)} وحدة/يوم. ${isOverstocked ? "فكر في تخفيض السعر" : ""}`;
+      recIcon = "clock";
+    }
+
+    if (isPriceVolatile && recType === "normal") {
+      recType = "price_volatile";
+      recLabel = "سعر متقلب";
+      recDetail = "تغيرات سعرية متكررة. ثبّت السعر إن أمكن";
+      recIcon = "activity";
+    } else if (isPriceVolatile) {
+      recDetail += " · أسعار متقلبة";
+    }
+
+    res.json({
+      success: true,
+      data: {
+        sales: {
+          current_qty: currentSales.total_qty,
+          current_amount: currentSales.total_amount,
+          current_count: currentSales.invoice_count,
+          prev_qty: prevSales.total_qty,
+          prev_amount: prevSales.total_amount,
+          qty_change_pct: qtyChangePct,
+          amount_change_pct: amountChangePct,
+          avg_daily: Math.round(avgDaily * 100) / 100,
+        },
+        rank: {
+          percentile: rankPct,
+          total_items: rankData.total_items,
+          items_above: rankData.total_items - rankData.items_above_or_equal,
+        },
+        stock: {
+          current: currentStock,
+          turnover_ratio: turnoverRatio,
+          days_until_stockout: daysUntilStockout,
+        },
+        prices: priceStats,
+        recommendation: {
+          type: recType,
+          label: recLabel,
+          detail: recDetail,
+          icon: recIcon,
+        },
+      },
+    });
+  } catch (e) {
+    next(e);
   }
 });
 

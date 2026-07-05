@@ -50,6 +50,7 @@ const posDraftsRoutes = require("./routes/posDrafts");
 const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
+const whatsappCrmRoutes = require("./routes/whatsappCrm.routes");
 const leadsRoutes = require("./routes/leads.routes");
 const itemUnitsRoutes = require("./routes/itemUnits.routes");
 const variantsRoutes = require("./routes/variants.routes");
@@ -59,6 +60,9 @@ const restaurantRoutes = require("./routes/restaurant.routes");
 const goldRoutes = require("./routes/gold.routes");
 const maintenanceRoutes = require("./routes/maintenance.routes");
 const assistantRoutes = require("./routes/assistant.routes");
+const syncRoutes = require("./routes/sync.routes");
+const webhookRoutes = require("./routes/webhook.routes");
+const { router: sseRouter } = require("./routes/sse.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const { licenseEnforce } = require("./middleware/licenseEnforce");
 const logger = require("./config/logger");
@@ -125,6 +129,19 @@ function createApp() {
     res.json({ ok: true });
   });
 
+  // Authoritative server time via Unix timestamp (timezone-independent). The
+  // renderer uses this to derive a clock-skew delta so live clocks (dashboard,
+  // login) show the correct Egypt time even when the host machine clock or
+  // timezone is misconfigured. Unauthenticated — mounted before the license gate.
+  app.get("/api/time", (_req, res) => {
+    try {
+      const { today } = require("./utils/datetime");
+      res.json({ ok: true, server_time_ms: Date.now(), server_date: today(), timezone: "Africa/Cairo" });
+    } catch (_e) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.use(rateLimit({
     windowMs: 60 * 1000,
     max: Number(process.env.API_RATE_LIMIT_MAX || 300),
@@ -189,12 +206,16 @@ function createApp() {
   app.use("/api/pos", posRoutes);
   app.use("/api/pricing", pricingRoutes);
   app.use("/api/whatsapp", whatsappRoutes);
+  app.use("/api/whatsapp/crm", whatsappCrmRoutes);
   app.use("/api/leads", leadsRoutes);
   app.use("/api/repair-orders", repairOrdersRoutes);
   app.use("/api/restaurant", restaurantRoutes);
   app.use("/api/gold", goldRoutes);
   app.use("/api/maintenance", maintenanceRoutes);
   app.use("/api/assistant", assistantRoutes);
+  app.use("/api/sync", syncRoutes);
+  app.use("/api/webhooks", webhookRoutes);
+  app.use("/api/sse", sseRouter);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

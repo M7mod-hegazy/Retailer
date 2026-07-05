@@ -410,7 +410,7 @@ export default function PurchaseOrdersPage() {
               </div>
               <div>
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">تاريخ الإصدار</span>
-                <span className="text-sm font-black font-mono text-slate-900">{new Date(detailOrder.created_at).toLocaleString("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="text-sm font-black font-mono text-slate-900">{new Date(detailOrder.created_at).toLocaleString("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}</span>
               </div>
               <div>
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">المخزن المقترح</span>

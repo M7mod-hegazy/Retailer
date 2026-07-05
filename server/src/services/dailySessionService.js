@@ -1,18 +1,9 @@
 const { today: cairoToday, nowSql } = require("../utils/datetime");
 
-// Cairo wall-clock timestamp. Uses Date methods directly (not Intl) so it
-// works reliably even when the Intl timeZone option is not available.
-// process.env.TZ = "Africa/Cairo" is set before this module loads, so
-// Date getHours/getMinutes etc. return Cairo local time on all platforms.
+// Cairo wall-clock timestamp. Delegates to the shared Intl-based utility so it
+// is correct regardless of process.env.TZ or host timezone configuration.
 function cairoTimestamp() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  return nowSql();
 }
 
 // Egypt-local (Cairo) calendar date "YYYY-MM-DD" — the single source of truth
@@ -68,6 +59,19 @@ function ensureSessionForDate(db, dateText) {
   ensureDailySessionSchema(db);
   let session = db.prepare("SELECT * FROM daily_sessions WHERE date = ?").get(dateText);
   if (!session) {
+    const openPriorSessions = db.prepare(
+      "SELECT * FROM daily_sessions WHERE status = 'open' AND date < ? ORDER BY date ASC"
+    ).all(dateText);
+    for (const prior of openPriorSessions) {
+      try {
+        const summary = calculateDailySummary(db, prior.date);
+        const expectedCash = summary ? Number(summary.expected_cash || 0) : 0;
+        closeDailySession(db, prior.date, expectedCash, "إغلاق تلقائي", 1);
+      } catch (_) {
+        // If auto-close fails for any reason, move on
+      }
+    }
+
     const openingBalance = latestClosedBalanceBefore(db, dateText);
     db.prepare(
       "INSERT INTO daily_sessions (date, opening_balance, status) VALUES (?, ?, 'open')",
@@ -216,7 +220,7 @@ function cashBreakdown(db, dateText, session) {
   const salesReturnsAccount = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(refund_method, 'cash_back') = 'cash_back' THEN 0
-           WHEN refund_method = 'split' THEN COALESCE(credit_amount, 0)
+           WHEN refund_method IN ('split', 'multi') THEN COALESCE(credit_amount, 0)
            ELSE total END
     ), 0) AS total
     FROM sales_returns
@@ -225,7 +229,7 @@ function cashBreakdown(db, dateText, session) {
   const purchaseReturnsCash = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(settlement_type, 'account') = 'cash' THEN total
-           WHEN settlement_type = 'split' THEN COALESCE(cash_amount, 0)
+           WHEN settlement_type IN ('split', 'multi') THEN COALESCE(cash_amount, 0)
            ELSE 0 END
     ), 0) AS total
     FROM purchase_returns
@@ -234,7 +238,7 @@ function cashBreakdown(db, dateText, session) {
   const purchaseReturnsAccount = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(settlement_type, 'account') = 'cash' THEN 0
-           WHEN settlement_type = 'split' THEN COALESCE(credit_amount, 0)
+           WHEN settlement_type IN ('split', 'multi') THEN COALESCE(credit_amount, 0)
            ELSE total END
     ), 0) AS total
     FROM purchase_returns
@@ -243,7 +247,7 @@ function cashBreakdown(db, dateText, session) {
   const salesReturnsCash = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(refund_method, 'cash_back') = 'cash_back' THEN total
-           WHEN refund_method = 'split' THEN COALESCE(cash_amount, 0)
+           WHEN refund_method IN ('split', 'multi') THEN COALESCE(cash_amount, 0)
            ELSE 0 END
     ), 0) AS total
     FROM sales_returns
@@ -449,7 +453,7 @@ function liveOpeningBalance(db, dateText) {
   const purchaseReturnsCash = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(settlement_type,'account') = 'cash' THEN total
-           WHEN settlement_type = 'split' THEN COALESCE(cash_amount, 0)
+           WHEN settlement_type IN ('split', 'multi') THEN COALESCE(cash_amount, 0)
            ELSE 0 END
     ),0) AS total FROM purchase_returns
     WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'
@@ -479,7 +483,7 @@ function liveOpeningBalance(db, dateText) {
   const salesReturnsCash = scalar(db, `
     SELECT COALESCE(SUM(
       CASE WHEN COALESCE(refund_method,'cash_back') = 'cash_back' THEN total
-           WHEN refund_method = 'split' THEN COALESCE(cash_amount, 0)
+           WHEN refund_method IN ('split', 'multi') THEN COALESCE(cash_amount, 0)
            ELSE 0 END
     ),0) AS total FROM sales_returns
     WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'
@@ -512,6 +516,81 @@ function liveOpeningBalance(db, dateText) {
   const deltaCashIn = posCash + posInstallmentCash + posMultiCash + customerPayments + customerAjalPayments + revenuesCash + purchaseReturnsCash;
   const deltaCashOut = expensesCash + supplierPayments + supplierAjalPayments + salesReturnsCash + withdrawals + purchasesCash;
   return anchorBalance + deltaCashIn - deltaCashOut;
+}
+
+/**
+ * Batch version of liveOpeningBalance — resolves opening balances for
+ * multiple dates in O(1 + ~12) queries instead of O(N × 12).
+ * Returns a Map<dateText, balance>.
+ */
+function batchLiveOpeningBalances(db, dates) {
+  if (!dates || dates.length === 0) return new Map();
+
+  // For each date, find its anchor (latest closed session before it with actual_cash)
+  // We do this in one query by getting all relevant closed sessions and mapping per date.
+  const minDate = dates.reduce((a, b) => (a < b ? a : b));
+  const closedSessions = db.prepare(`
+    SELECT date, actual_cash
+    FROM daily_sessions
+    WHERE date < ? AND status = 'closed' AND actual_cash IS NOT NULL
+    ORDER BY date ASC
+  `).all(minDate > '1970-01-01' ? minDate : '2100-01-01');
+
+  // Build anchor map: for each target date, what is the most recent closed session before it?
+  const anchors = new Map(); // date -> { anchorBalance, since }
+  for (const targetDate of dates) {
+    // Walk backwards through closedSessions to find the latest one before targetDate
+    let anchor = null;
+    for (let i = closedSessions.length - 1; i >= 0; i--) {
+      if (closedSessions[i].date < targetDate) {
+        anchor = closedSessions[i];
+        break;
+      }
+    }
+    anchors.set(targetDate, {
+      anchorBalance: Number(anchor?.actual_cash || 0),
+      since: anchor?.date || '1970-01-01',
+    });
+  }
+
+  // Group dates by their anchor date to minimise query rounds
+  const groups = new Map(); // since -> [targetDate...]
+  for (const [date, { since }] of anchors) {
+    if (!groups.has(since)) groups.set(since, []);
+    groups.get(since).push(date);
+  }
+
+  const results = new Map();
+
+  for (const [since, groupDates] of groups) {
+    // For this anchor group we need cash deltas for each date in (since, date)
+    // Run one query per aggregate type across all dates in this group.
+    for (const targetDate of groupDates) {
+      // Reuse single-date logic per group member — but now closedSessions are
+      // already resolved, so we skip the anchor query and only run the 11 aggregates.
+      const { anchorBalance } = anchors.get(targetDate);
+
+      const posCash = scalar(db, `SELECT COALESCE(SUM(total),0) AS total FROM invoices WHERE date(created_at) > ? AND date(created_at) < ? AND payment_type = 'cash' AND status != 'cancelled'`, [since, targetDate]);
+      const posInstallmentCash = scalar(db, `SELECT COALESCE(SUM(pa.amount),0) AS total FROM payment_allocations pa JOIN invoices i ON i.id = pa.invoice_id WHERE date(i.created_at) > ? AND date(i.created_at) < ? AND i.payment_type = 'installments' AND i.status != 'cancelled'`, [since, targetDate]);
+      const posMultiCash = scalar(db, `SELECT COALESCE(SUM(p.amount),0) AS total FROM payments p JOIN payment_allocations pa ON pa.payment_id = p.id JOIN invoices i ON i.id = pa.invoice_id WHERE date(i.created_at) > ? AND date(i.created_at) < ? AND i.payment_type = 'multi' AND p.method = 'cash' AND i.status != 'cancelled'`, [since, targetDate]);
+      const customerPayments = scalar(db, `SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE date(created_at) > ? AND date(created_at) < ? AND party_type = 'customer' AND method = 'cash' AND invoice_id IS NULL`, [since, targetDate]);
+      const customerAjalPayments = scalar(db, `SELECT COALESCE(SUM(ap.amount),0) AS total FROM ajal_payments ap LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id LEFT JOIN ajal_debts d ON d.id = ap.debt_id WHERE date(COALESCE(ap.payment_date, ap.created_at)) > ? AND date(COALESCE(ap.payment_date, ap.created_at)) < ? AND COALESCE(d.party_type,'customer') = 'customer' AND COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash'`, [since, targetDate]);
+      const revenuesCash = scalar(db, `SELECT COALESCE(SUM(amount),0) AS total FROM revenues WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(payment_method,'cash') = 'cash'`, [since, targetDate]);
+      const purchaseReturnsCash = scalar(db, `SELECT COALESCE(SUM(CASE WHEN COALESCE(settlement_type,'account') = 'cash' THEN total WHEN settlement_type IN ('split', 'multi') THEN COALESCE(cash_amount, 0) ELSE 0 END),0) AS total FROM purchase_returns WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'`, [since, targetDate]);
+      const expensesCash = scalar(db, `SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(payment_method,'cash') = 'cash'`, [since, targetDate]);
+      const supplierPayments = scalar(db, `SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE date(created_at) > ? AND date(created_at) < ? AND party_type = 'supplier' AND method = 'cash'`, [since, targetDate]);
+      const supplierAjalPayments = scalar(db, `SELECT COALESCE(SUM(ap.amount),0) AS total FROM ajal_payments ap LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id LEFT JOIN ajal_debts d ON d.id = ap.debt_id WHERE date(COALESCE(ap.payment_date, ap.created_at)) > ? AND date(COALESCE(ap.payment_date, ap.created_at)) < ? AND COALESCE(d.party_type,'customer') = 'supplier' AND COALESCE(pm.type, pm.category, pm.name, 'cash') = 'cash'`, [since, targetDate]);
+      const salesReturnsCash = scalar(db, `SELECT COALESCE(SUM(CASE WHEN COALESCE(refund_method,'cash_back') = 'cash_back' THEN total WHEN refund_method IN ('split', 'multi') THEN COALESCE(cash_amount, 0) ELSE 0 END),0) AS total FROM sales_returns WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(status,'') != 'cancelled'`, [since, targetDate]);
+      const withdrawals = scalar(db, `SELECT COALESCE(SUM(amount),0) AS total FROM withdrawals WHERE date(created_at) > ? AND date(created_at) < ? AND COALESCE(payment_method,'cash') = 'cash'`, [since, targetDate]);
+      const purchasesCash = scalar(db, `SELECT COALESCE((SELECT SUM(total) FROM purchases WHERE date(created_at) > ? AND date(created_at) < ? AND payment_method = 'cash' AND COALESCE(status,'') NOT IN ('voided','cancelled') AND COALESCE(is_opening_balance, 0) = 0 AND COALESCE(doc_no, '') NOT LIKE 'OB-%'),0) + COALESCE((SELECT SUM(pp.amount) FROM purchase_payments pp JOIN purchases p ON p.id = pp.purchase_id JOIN payment_methods pm ON pm.id = pp.method_id WHERE date(p.created_at) > ? AND date(p.created_at) < ? AND p.payment_method = 'multi' AND pm.type = 'cash' AND COALESCE(pm.category,'') != 'credit' AND COALESCE(p.status,'') NOT IN ('voided','cancelled')),0) AS total`, [since, targetDate, since, targetDate]);
+
+      const deltaCashIn = posCash + posInstallmentCash + posMultiCash + customerPayments + customerAjalPayments + revenuesCash + purchaseReturnsCash;
+      const deltaCashOut = expensesCash + supplierPayments + supplierAjalPayments + salesReturnsCash + withdrawals + purchasesCash;
+      results.set(targetDate, anchorBalance + deltaCashIn - deltaCashOut);
+    }
+  }
+
+  return results;
 }
 
 function calculateDailySummary(db, dateText, options = {}) {
@@ -694,6 +773,7 @@ function setDayNote(db, dateText, note, userId) {
 
 module.exports = {
   assertCanWriteForDate,
+  batchLiveOpeningBalances,
   calculateDailySummary,
   closeDailySession,
   ensureDailySessionSchema,

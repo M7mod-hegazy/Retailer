@@ -67,3 +67,9 @@ nul
 
 # ── Junk data files ──
 *.xls
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+
+__check_db.js
+__test_*

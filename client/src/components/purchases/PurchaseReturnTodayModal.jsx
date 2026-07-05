@@ -17,7 +17,7 @@ function formatMoney(v) {
   return formatNumber(v, { decimals: 3 });
 }
 function formatArabicDateTime(date) {
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }).format(date);
 }
 function toDateInput(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
@@ -124,33 +124,27 @@ export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
             </table>
           </div>
           {/* Payment breakdown */}
-          {detail && (() => {
-            const st = detail.settlement_type || "account";
-            const cashAmt   = st === "cash"    ? Number(detail.total || 0)
-                            : st === "split"   ? Number(detail.cash_amount || 0)
-                            : 0;
-            const creditAmt = st === "account" ? Number(detail.total || 0)
-                            : st === "split"   ? Number(detail.credit_amount || 0)
-                            : 0;
-            if (!cashAmt && !creditAmt) return null;
-            return (
-              <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة التسوية</p>
-                {cashAmt > 0.005 && (
-                  <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />نقداً للمورد</span>
-                    <span className="number-fmt-primary text-emerald-700">{formatMoney(cashAmt)} ج.م</span>
-                  </div>
-                )}
-                {creditAmt > 0.005 && (
-                  <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />حساب المورد (خصم من المديونية)</span>
-                    <span className="number-fmt-primary text-amber-700">{formatMoney(creditAmt)} ج.م</span>
-                  </div>
-                )}
+          {detail && (detail.settlement_type === "split" ? (
+            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة التسوية</p>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">نقداً</span>
+                <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
               </div>
-            );
-          })()}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">رصيد حساب</span>
+                <span className="number-fmt-primary text-amber-700">{formatMoney(detail.credit_amount)} ج.م</span>
+              </div>
+            </div>
+          ) : detail.settlement_type === "cash" ? (
+            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">طريقة التسوية</p>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">نقداً</span>
+                <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.total)} ج.م</span>
+              </div>
+            </div>
+          ) : null)}
           {(detail || ret).notes && (
             <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
               <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{(detail || ret).notes}
@@ -357,24 +351,17 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
     { id: "settlement_type", header: "طريقة التسوية", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
       const settlementType = r.settlement_type || "account";
       const info = SETTLEMENT_LABELS[settlementType] || SETTLEMENT_LABELS.account;
-      const cashAmt   = settlementType === "cash"    ? Number(r.total || 0)
-                      : settlementType === "split"   ? Number(r.cash_amount || 0)
-                      : 0;
-      const creditAmt = settlementType === "account" ? Number(r.total || 0)
-                      : settlementType === "split"   ? Number(r.credit_amount || 0)
-                      : 0;
+      const isSplit = settlementType === "split";
+      const cashAmt = isSplit ? Number(r.cash_amount || 0) : 0;
+      const creditAmt = isSplit ? Number(r.credit_amount || 0) : 0;
       return (
         <div className="flex flex-col gap-0.5">
           <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          {settlementType === "split" && (<>
-            {cashAmt > 0 && <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>}
-            {creditAmt > 0 && <span className="text-[11px] text-amber-600 font-bold">حساب: {formatMoney(creditAmt)}</span>}
-          </>)}
-          {settlementType === "account" && creditAmt > 0 && (
-            <span className="text-[11px] text-amber-600 font-bold">حساب: {formatMoney(creditAmt)}</span>
-          )}
-          {settlementType === "cash" && cashAmt > 0 && (
-            <span className="text-[11px] text-emerald-600 font-bold">نقداً: {formatMoney(cashAmt)}</span>
+          {isSplit && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold text-emerald-600">نقداً: {formatMoney(cashAmt)}</span>
+              <span className="text-[11px] font-bold text-amber-600">حساب: {formatMoney(creditAmt)}</span>
+            </div>
           )}
         </div>
       );

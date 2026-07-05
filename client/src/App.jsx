@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import WelcomeWizard from "./components/welcome/WelcomeWizard";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import { usePerformanceStore } from "./stores/performanceStore";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -24,6 +24,7 @@ import AssistantLauncher from "./components/assistant/AssistantLauncher";
 import { useAssistantStore } from "./stores/assistantStore";
 
 import api from "./services/api";
+import { useSSE } from "./hooks/useSSE";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallbackPage from "./pages/error/ErrorFallbackPage";
 const UnauthorizedPage = lazy(() => import("./pages/auth/UnauthorizedPage"));
@@ -42,15 +43,12 @@ const OperationsWorkspacePage = lazy(() => import("./pages/workspaces/Operations
 const ItemOperationsPage = lazy(() => import("./pages/operations/ItemOperationsPage"));
 const OwnerStatementPage = lazy(() => import("./pages/owner/OwnerStatementPage"));
 const CatalogWorkspacePage = lazy(() => import("./pages/workspaces/CatalogWorkspacePage"));
-const PartiesWorkspacePage = lazy(() => import("./pages/workspaces/PartiesWorkspacePage"));
 const ResourcesWorkspacePage = lazy(() => import("./pages/workspaces/ResourcesWorkspacePage"));
 const TeamWorkspacePage = lazy(() => import("./pages/workspaces/TeamWorkspacePage"));
 const CategoriesPage = lazy(() => import("./pages/definitions/CategoriesPage"));
 const ItemsListPage = lazy(() => import("./pages/items/ItemsListPage"));
 const ItemDetailPage = lazy(() => import("./pages/items/ItemDetailPage"));
 const ItemImportPage = lazy(() => import("./pages/items/import/ItemImportPage"));
-const CustomersListPage = lazy(() => import("./pages/customers/CustomersListPage"));
-const SuppliersListPage = lazy(() => import("./pages/suppliers/SuppliersListPage"));
 const RevenueCategoriesPage = lazy(() => import("./pages/definitions/RevenueCategoriesPage"));
 const FinancialCategoriesPage = lazy(() => import("./pages/definitions/FinancialCategoriesPage"));
 const WithdrawalsListPage = lazy(() => import("./pages/expenses/WithdrawalsListPage"));
@@ -96,10 +94,12 @@ const ExpiryReportPage = lazy(() => import("./pages/reports/ExpiryReportPage"));
 const ReportWorkspacePage = lazy(() => import("./pages/reports/ReportWorkspacePage"));
 const SourceWorkspacePage = lazy(() => import("./pages/reports/SourceWorkspacePage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const WhatsAppCrmPage = lazy(() => import("./pages/whatsapp/WhatsAppCrmPage"));
 const NotificationsPage = lazy(() => import("./pages/notifications/NotificationsPage"));
 const PromotionsPage = lazy(() => import("./pages/definitions/PromotionsPage"));
 const FeatureRoute = lazy(() => import("./components/ui/FeatureRoute"));
 const DailyTreasuryPage = lazy(() => import("./pages/pos/DailyTreasuryPage"));
+const CashflowLedgerPage = lazy(() => import("./pages/pos/CashflowLedgerPage"));
 const PaymentMethodsPage = lazy(() => import("./pages/operations/PaymentMethodsPage"));
 const PaymentTransactionsPage = lazy(() => import("./pages/operations/PaymentTransactionsPage"));
 const CustomerProfilePage = lazy(() => import("./pages/definitions/CustomerProfilePage"));
@@ -110,6 +110,8 @@ const SupplierAccountsPage = lazy(() => import("./pages/accounts/SupplierAccount
 const AccountImportPage = lazy(() => import("./pages/accounts/import/AccountImportPage"));
 const UpdatesPage = lazy(() => import("./pages/updates/UpdatesPage"));
 const HistoryPage = lazy(() => import("./pages/history/HistoryPage"));
+const SyncPage = lazy(() => import("./pages/sync/SyncPage"));
+const SyncConfigPage = lazy(() => import("./pages/sync/SyncConfig"));
 
 // Resets the error boundary on every route change by keying it to the pathname.
 // Without this, an error on page A persists when navigating to page B.
@@ -126,6 +128,12 @@ function PermissionRoute({ page, children }) {
   const canView = useCanView(page);
   if (!canView) return <Navigate to="/unauthorized" replace />;
   return children;
+}
+
+// Redirect a legacy /:id path to its new base, preserving the id param.
+function RedirectWithId({ to }) {
+  const { id } = useParams();
+  return <Navigate to={`${to}/${id}`} replace />;
 }
 
 
@@ -365,6 +373,29 @@ export default function App() {
     useAssistantStore.getState().toggle();
   });
 
+  useSSE({
+    onOrderNew: (notification, order) => {
+      toast.custom(
+        (t) => (
+          <div
+            onClick={() => toast.dismiss(t.id)}
+            className="bg-bg-surface shadow-modal border border-border-normal rounded-2xl p-4 max-w-sm cursor-pointer hover:shadow-elevated transition-shadow"
+            style={{ direction: "rtl" }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🛒</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-text-primary mb-0.5">{notification?.title}</p>
+                <p className="text-xs text-text-secondary">{order?.customer} — {Number(order?.total || 0).toFixed(2)} ر.س ({order?.itemsCount || 0} منتجات)</p>
+              </div>
+            </div>
+          </div>
+        ),
+        { duration: 6000, position: "top-left" }
+      );
+    },
+  });
+
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
     {/* Top-level safety net: catches crashes in the gates, AppShell, and the
@@ -403,17 +434,23 @@ export default function App() {
                     <Route path="workspace/inventory" element={<InventoryWorkspacePage />} />
                     <Route path="workspace/operations" element={<OperationsWorkspacePage />} />
                     <Route path="workspace/catalog" element={<CatalogWorkspacePage />} />
-                    <Route path="workspace/parties" element={<PartiesWorkspacePage />} />
+                    {/* Parties workspace embedded the removed customer/supplier lists; consolidated into /accounts/*. */}
+                    <Route path="workspace/parties" element={<Navigate to="/accounts/customers" replace />} />
                     <Route path="workspace/resources" element={<ResourcesWorkspacePage />} />
                     <Route path="workspace/team" element={<TeamWorkspacePage />} />
                     <Route path="definitions/categories" element={<PermissionRoute page="categories"><CategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/items" element={<PermissionRoute page="items"><ItemsListPage /></PermissionRoute>} />
                     <Route path="definitions/items/import" element={<PermissionRoute page="items"><ItemImportPage /></PermissionRoute>} />
                     <Route path="definitions/items/:id" element={<PermissionRoute page="items"><ItemDetailPage /></PermissionRoute>} />
-                    <Route path="definitions/customers" element={<PermissionRoute page="customers"><CustomersListPage /></PermissionRoute>} />
-                    <Route path="definitions/customers/:id" element={<PermissionRoute page="customers"><CustomerProfilePage /></PermissionRoute>} />
-                    <Route path="definitions/suppliers" element={<PermissionRoute page="suppliers"><SuppliersListPage /></PermissionRoute>} />
-                    <Route path="definitions/suppliers/:id" element={<PermissionRoute page="suppliers"><SupplierProfilePage /></PermissionRoute>} />
+                    {/* Customers/suppliers were consolidated into /accounts/*. The redundant
+                        SimpleCrud list pages were removed; the profile detail pages moved under
+                        /accounts/*. Legacy /definitions/* paths redirect for old links/bookmarks. */}
+                    <Route path="accounts/customers/:id" element={<PermissionRoute page="customers"><CustomerProfilePage /></PermissionRoute>} />
+                    <Route path="accounts/suppliers/:id" element={<PermissionRoute page="suppliers"><SupplierProfilePage /></PermissionRoute>} />
+                    <Route path="definitions/customers" element={<Navigate to="/accounts/customers" replace />} />
+                    <Route path="definitions/suppliers" element={<Navigate to="/accounts/suppliers" replace />} />
+                    <Route path="definitions/customers/:id" element={<RedirectWithId to="/accounts/customers" />} />
+                    <Route path="definitions/suppliers/:id" element={<RedirectWithId to="/accounts/suppliers" />} />
                     <Route path="definitions/expense-categories" element={<PermissionRoute page="financial_categories"><ExpenseCategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/revenue-categories" element={<PermissionRoute page="financial_categories"><RevenueCategoriesPage /></PermissionRoute>} />
                     <Route path="definitions/financial-categories" element={<PermissionRoute page="financial_categories"><FinancialCategoriesPage /></PermissionRoute>} />
@@ -427,6 +464,8 @@ export default function App() {
                     <Route path="pos" element={<PermissionRoute page="pos"><POSPage /></PermissionRoute>} />
                     <Route path="invoices/:id" element={<PermissionRoute page="pos"><InvoiceDetailPage /></PermissionRoute>} />
                     <Route path="daily-treasury" element={<PermissionRoute page="daily_treasury"><DailyTreasuryPage /></PermissionRoute>} />
+                    {/* Cashflow ledger: accessible only via the button in DailyTreasuryPage — not in sidebar nav */}
+                    <Route path="daily-treasury/cashflow" element={<PermissionRoute page="daily_treasury"><CashflowLedgerPage /></PermissionRoute>} />
                     <Route path="owner-statement" element={<Navigate to="/reports/owner-statement" replace />} />
                     <Route path="operations/payment-methods" element={<PermissionRoute page="payment_methods"><PaymentMethodsPage /></PermissionRoute>} />
                     <Route path="operations/payment-transactions" element={<PermissionRoute page="payments"><PaymentTransactionsPage /></PermissionRoute>} />
@@ -472,9 +511,12 @@ export default function App() {
                     <Route path="reports/expiry-report" element={<PermissionRoute page="reports"><FeatureRoute featureKey="feature_expiry"><ExpiryReportPage /></FeatureRoute></PermissionRoute>} />
                     <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
+                    <Route path="whatsapp-crm" element={<PermissionRoute page="whatsapp_crm"><WhatsAppCrmPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />
                     <Route path="updates" element={<PermissionRoute page="updates"><UpdatesPage /></PermissionRoute>} />
                     <Route path="history" element={<PermissionRoute page="history"><HistoryPage /></PermissionRoute>} />
+                    <Route path="sync" element={<PermissionRoute page="sync"><SyncPage /></PermissionRoute>} />
+                    <Route path="sync/config" element={<PermissionRoute page="sync"><SyncConfigPage /></PermissionRoute>} />
                     <Route path="definitions/promotions" element={<PermissionRoute page="promotions"><FeatureRoute featureKey="feature_promotions"><PromotionsPage /></FeatureRoute></PermissionRoute>} />
                     <Route path="expenses" element={<PermissionRoute page="expenses"><ExpensesListPage /></PermissionRoute>} />
                     <Route path="revenues" element={<PermissionRoute page="revenues"><RevenuesListPage /></PermissionRoute>} />
@@ -483,10 +525,11 @@ export default function App() {
                     <Route path="stock/movements" element={<PermissionRoute page="stock"><StockMovementsPage /></PermissionRoute>} />
                     <Route path="stock/transfer" element={<PermissionRoute page="stock_transfer"><StockTransferPage /></PermissionRoute>} />
                     <Route path="stock/physical-count" element={<PermissionRoute page="physical_count"><PhysicalCountPage /></PermissionRoute>} />
-                    <Route path="stock/serials" element={<PermissionRoute page="items"><SerialLookupPage /></PermissionRoute>} />
+                    <Route path="stock/serials" element={<PermissionRoute page="serial_search"><SerialLookupPage /></PermissionRoute>} />
                     <Route path="repairs/*" element={<PermissionRoute page="repair_orders"><RepairOrdersPage /></PermissionRoute>} />
-                    <Route path="restaurant/tables" element={<PermissionRoute page="pos"><TableMapPage /></PermissionRoute>} />
-                    <Route path="gold/rates" element={<PermissionRoute page="settings"><GoldRatesPage /></PermissionRoute>} />
+                    <Route path="restaurant/tables" element={<PermissionRoute page="restaurant_tables"><TableMapPage /></PermissionRoute>} />
+                    <Route path="restaurant/modifier-groups" element={<PermissionRoute page="restaurant_modifiers"><Navigate to="/settings" replace /></PermissionRoute>} />
+                    <Route path="gold/rates" element={<PermissionRoute page="gold_pricing"><GoldRatesPage /></PermissionRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                   </RouteErrorBoundary>

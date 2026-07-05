@@ -2,6 +2,7 @@ const express = require("express");
 const { createInvoice, getInvoiceWithLines, editInvoice, cancelInvoice, amendInvoice } = require("../services/invoiceService");
 const { applyReturnAdjustment, createReturn, createGeneralReturn, getReturns, getReturnDetails, cancelSalesReturn, amendSalesReturn, editSalesReturn } = require("../services/returnService");
 const { adjustStock } = require("../services/stockService");
+const { recordBankMovement } = require("../services/bankService");
 const { getDb } = require("../config/database");
 const { requirePagePermission } = require("../middleware/permission");
 const { generateDocNumber } = require("../utils/docNumber");
@@ -91,6 +92,28 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// Get invoices by customer phone (for WhatsApp CRM invoice sending)
+router.get("/by-phone", requirePagePermission("pos", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const { phone } = req.query;
+    if (!phone) return res.json({ success: true, data: [] });
+    const rows = db.prepare(`
+      SELECT i.id, i.invoice_no, i.total, i.status, i.created_at, i.subtotal, i.discount,
+             i.tax_amount, i.amount_received, i.payment_type,
+             c.name AS customer_name, c.phone AS customer_phone
+      FROM invoices i
+      LEFT JOIN customers c ON c.id = i.customer_id
+      WHERE i.status != 'cancelled'
+        AND c.phone IS NOT NULL AND c.phone != ''
+        AND (REPLACE(REPLACE(c.phone,' ',''),'-','') LIKE ?)
+      ORDER BY i.created_at DESC
+      LIMIT 50
+    `).all(`%${phone.replace(/[\s-]/g, '')}%`);
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // Returns the most recent unit_price this item was sold at
@@ -255,31 +278,82 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
       }
 
       const { discount, increase, total } = applyReturnAdjustment(subtotal, req.body);
-      const cashAmt = sType === 'cash' ? total : sType === 'split' ? Math.max(0, Number(req.body.cash_amount ?? 0)) : 0;
-      const creditAmt = sType === 'account' ? total : sType === 'split' ? Math.max(0, total - cashAmt) : 0;
+      const payments = Array.isArray(req.body.payments) ? req.body.payments : [];
+      let cashAmt = 0, creditAmt = 0, paymentsJson = '[]';
+
+      if (sType === 'multi' && payments.length > 0) {
+        const paySum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+        if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+          const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي المرتجع (${total})`);
+          e.status = 400; throw e;
+        }
+        const defaultTid = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+        for (const pmt of payments) {
+          const amount = Number(pmt.amount || 0);
+          if (amount <= 0) continue;
+          if (pmt.method === 'credit') {
+            creditAmt += amount;
+            continue;
+          }
+          let pm;
+          if (pmt.method_id) {
+            pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+          }
+          if (!pm && pmt.method === 'cash') {
+            pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+          }
+          if (!pm) {
+            pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+          }
+          if (pm.type === 'cash' && pm.target_id) {
+            db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amount, pm.target_id);
+            cashAmt += amount;
+          } else if (pm.type === 'bank' && pm.target_id) {
+            recordBankMovement(db, {
+              bankId: pm.target_id, type: "deposit", amount,
+              reference: docNo, notes: `مرتجع مشتريات ${docNo}`,
+              userId: userId || 1, source: "purchase_return", refType: "purchase_return", refId: null,
+            });
+            cashAmt += amount;
+          } else {
+            cashAmt += amount;
+          }
+        }
+        paymentsJson = JSON.stringify(payments.map(p => ({
+          method: p.method_name || p.method,
+          method_id: p.method_id || null,
+          amount: Number(p.amount || 0),
+        })));
+      } else {
+        cashAmt = sType === 'cash' ? total : sType === 'split' ? Math.max(0, Number(req.body.cash_amount ?? 0)) : 0;
+        creditAmt = sType === 'account' ? total : sType === 'split' ? Math.max(0, total - cashAmt) : 0;
+      }
 
       const ret = db.prepare(`
-        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, refund_method, cash_amount, credit_amount, reason, notes, created_by, created_at)
-        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(docNo, supplier_id || null, total, discount, increase, sType, sType, cashAmt, creditAmt, reason || 'other', notes || null, userId, nowSql());
+        INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, refund_method, cash_amount, credit_amount, payments, reason, notes, created_by, created_at)
+        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(docNo, supplier_id || null, total, discount, increase, sType, sType, cashAmt, creditAmt, paymentsJson, reason || 'other', notes || null, userId, nowSql());
 
       for (const line of lines) {
         const cost = Number(line.unit_cost || line.unit_price);
         const lineTotal = Number(line.quantity) * cost;
         db.prepare("INSERT INTO purchase_return_lines (purchase_return_id, purchase_line_id, item_id, quantity, unit_cost, unit_price, line_total) VALUES (?, NULL, ?, ?, ?, ?, ?)").run(ret.lastInsertRowid, line.item_id, line.quantity, cost, cost, lineTotal);
-        // Stock goes out on purchase return
         adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id || 1, quantityDelta: -Number(line.quantity), movement_type: "purchase_return", reference_type: "purchase_return", reference_id: ret.lastInsertRowid });
       }
 
-      if (cashAmt > 0) {
+      if (cashAmt > 0 && sType !== 'multi') {
         const tId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
         if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(cashAmt, tId);
       }
-      if (creditAmt > 0 && supplier_id) {
+      if (creditAmt > 0 && supplier_id && sType !== 'multi') {
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(creditAmt, supplier_id);
+      }
+      // For multi, financial effects are applied per-payment inside the loop above
+      if (creditAmt > 0 && supplier_id && sType === 'multi') {
         db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(creditAmt, supplier_id);
       }
 
-      return { id: ret.lastInsertRowid, doc_no: docNo, total };
+      return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(ret.lastInsertRowid);
     })();
 
     req.audit("create", "purchase_return", { id: result.id, doc_no: result.doc_no, total: result.total }, `↩️ تم إنشاء مرتجع مشتريات عام #${result.id} بمبلغ ${result.total}`);

@@ -21,10 +21,12 @@ export default function RepairOrderForm() {
     serial_number: "", reported_issue: "", priority: "normal",
     estimated_cost: "", deposit_amount: "", notes: "",
     estimated_delivery: "", warranty_days: "0",
+    treasury_id: "", payment_method: "cash",
   });
   const [saving, setSaving] = useState(false);
 
   const { data: customers } = useQuery({ queryKey: ["customers-list"], queryFn: () => api.get("/api/customers?limit=500").then(r => r.data?.data || []) });
+  const { data: treasuries } = useQuery({ queryKey: ["treasuries"], queryFn: () => api.get("/api/treasuries").then(r => r.data?.data || []) });
 
   useEffect(() => {
     if (isEdit) {
@@ -40,6 +42,8 @@ export default function RepairOrderForm() {
           priority: o.priority || "normal",
           estimated_cost: o.estimated_cost || "",
           deposit_amount: o.deposit_amount || "",
+          treasury_id: o.treasury_id || "",
+          payment_method: o.payment_method || "cash",
           notes: o.notes || "",
           estimated_delivery: o.estimated_delivery ? o.estimated_delivery.slice(0, 10) : "",
           warranty_days: o.warranty_days || "0",
@@ -55,7 +59,7 @@ export default function RepairOrderForm() {
     if (!form.reported_issue.trim()) { toast.error("يرجى وصف العطل"); return; }
     setSaving(true);
     try {
-      const payload = { ...form, customer_id: form.customer_id || null, estimated_cost: Number(form.estimated_cost || 0), deposit_amount: Number(form.deposit_amount || 0), warranty_days: Number(form.warranty_days || 0) };
+      const payload = { ...form, customer_id: form.customer_id || null, estimated_cost: Number(form.estimated_cost || 0), deposit_amount: Number(form.deposit_amount || 0), warranty_days: Number(form.warranty_days || 0), treasury_id: form.treasury_id ? Number(form.treasury_id) : null, payment_method: form.payment_method };
       if (isEdit) {
         await api.put(`/api/repair-orders/${id}`, payload);
         toast.success("تم تحديث الطلب");
@@ -109,6 +113,19 @@ export default function RepairOrderForm() {
           <Input label="الدفعة الأولى (إيداع)" type="number" step="0.01" value={form.deposit_amount} onChange={e => set("deposit_amount", e.target.value)} />
           <Input label="أيام الضمان" type="number" min="0" value={form.warranty_days} onChange={e => set("warranty_days", e.target.value)} />
         </div>
+        {Number(form.deposit_amount) > 0 && (
+          <div className="grid gap-4 md:grid-cols-2 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+            <Select label="الخزنة" value={form.treasury_id} onChange={e => set("treasury_id", e.target.value)}>
+              <option value="">— اختر الخزنة —</option>
+              {(treasuries || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </Select>
+            <Select label="طريقة الدفع" value={form.payment_method} onChange={e => set("payment_method", e.target.value)}>
+              <option value="cash">نقدي</option>
+              <option value="card">بطاقة</option>
+              <option value="bank_transfer">تحويل بنكي</option>
+            </Select>
+          </div>
+        )}
       </section>
 
       <Textarea label="ملاحظات" value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} />

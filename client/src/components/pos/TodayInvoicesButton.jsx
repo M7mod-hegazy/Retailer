@@ -238,7 +238,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                         </td>
                         <td className="px-4 py-3 text-[11px] font-bold text-slate-400 whitespace-nowrap font-mono">
                           {inv.created_at
-                            ? new Date(inv.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+                            ? new Date(inv.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })
                             : "—"}
                         </td>
                       </tr>

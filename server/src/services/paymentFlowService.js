@@ -341,14 +341,24 @@ function buildLedgerSql(startDate, endDate) {
       'sales_returns' AS source_group,
       'customer' AS party_type,
       c.name AS party,
-      'credit' AS raw_method,
-      NULL AS resolved_method_id,
-      sr.total AS amount,
+      CASE WHEN sr.refund_method = 'multi' AND sr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.method')
+        ELSE 'credit'
+      END AS raw_method,
+      CASE WHEN sr.refund_method = 'multi' AND sr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.method_id')
+        ELSE NULL
+      END AS resolved_method_id,
+      CASE WHEN sr.refund_method = 'multi' AND sr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.amount')
+        ELSE sr.total
+      END AS amount,
       'out' AS direction,
       sr.created_at,
       sr.reason AS description
     FROM sales_returns sr
     LEFT JOIN customers c ON c.id = sr.customer_id
+    LEFT JOIN json_each(CASE WHEN sr.refund_method = 'multi' THEN sr.payments ELSE '[]' END) p ON 1=1
     WHERE COALESCE(sr.status, 'active') != 'cancelled'
       ${salesReturnDate}
   `;
@@ -361,14 +371,24 @@ function buildLedgerSql(startDate, endDate) {
       'purchase_returns' AS source_group,
       'supplier' AS party_type,
       s.name AS party,
-      'credit' AS raw_method,
-      NULL AS resolved_method_id,
-      pr.total AS amount,
+      CASE WHEN pr.settlement_type = 'multi' AND pr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.method')
+        ELSE 'credit'
+      END AS raw_method,
+      CASE WHEN pr.settlement_type = 'multi' AND pr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.method_id')
+        ELSE NULL
+      END AS resolved_method_id,
+      CASE WHEN pr.settlement_type = 'multi' AND pr.payments IS NOT NULL
+        THEN json_extract(p.value, '$.amount')
+        ELSE pr.total
+      END AS amount,
       'in' AS direction,
       pr.created_at,
       pr.reason AS description
     FROM purchase_returns pr
     LEFT JOIN suppliers s ON s.id = pr.supplier_id
+    LEFT JOIN json_each(CASE WHEN pr.settlement_type = 'multi' THEN pr.payments ELSE '[]' END) p ON 1=1
     WHERE COALESCE(pr.status, 'active') != 'cancelled'
       ${purchaseReturnDate}
   `;

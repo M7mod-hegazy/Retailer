@@ -5,7 +5,8 @@ import toast from "react-hot-toast";
 import api from "../../services/api";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import { Wrench, Plus, Trash2, CheckCircle2, ArrowRight } from "lucide-react";
+import Select from "../../components/ui/Select";
+import { Wrench, Plus, Trash2, CheckCircle2, ArrowRight, Search } from "lucide-react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const STATUS_FLOW = ["received", "diagnosing", "waiting_parts", "in_repair", "waiting_customer", "ready", "delivered"];
@@ -39,12 +40,25 @@ export default function RepairOrderDetail() {
     queryFn: () => api.get(`/api/repair-orders/${id}`).then(r => r.data.data),
   });
 
-  const [partForm, setPartForm] = useState({ part_name: "", quantity: "1", unit_cost: "" });
+  const [partForm, setPartForm] = useState({ part_name: "", quantity: "1", unit_cost: "", item_id: "", warehouse_id: "" });
   const [laborForm, setLaborForm] = useState({ description: "", amount: "" });
+  const [itemSearch, setItemSearch] = useState("");
+  const [showItemPicker, setShowItemPicker] = useState(false);
+
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: () => api.get("/api/warehouses").then(r => r.data?.data || []),
+  });
+  const { data: searchResults } = useQuery({
+    queryKey: ["item-search", itemSearch],
+    queryFn: () => itemSearch.length >= 2 ? api.get("/api/items", { params: { search: itemSearch, limit: 10 } }).then(r => r.data?.data || []) : [],
+    enabled: itemSearch.length >= 2,
+  });
 
   const partNameRef = useRef(null);
   const partQtyRef = useRef(null);
   const partCostRef = useRef(null);
+  const partWarehouseRef = useRef(null);
   const laborDescRef = useRef(null);
   const laborAmountRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
@@ -70,8 +84,10 @@ export default function RepairOrderDetail() {
   async function addPart(e) {
     e.preventDefault();
     try {
-      await api.post(`/api/repair-orders/${id}/parts`, { ...partForm, quantity: Number(partForm.quantity), unit_cost: Number(partForm.unit_cost) });
-      setPartForm({ part_name: "", quantity: "1", unit_cost: "" });
+      await api.post(`/api/repair-orders/${id}/parts`, { ...partForm, quantity: Number(partForm.quantity), unit_cost: Number(partForm.unit_cost), item_id: partForm.item_id ? Number(partForm.item_id) : null, warehouse_id: partForm.warehouse_id ? Number(partForm.warehouse_id) : null });
+      setPartForm({ part_name: "", quantity: "1", unit_cost: "", item_id: "", warehouse_id: "" });
+      setItemSearch("");
+      setShowItemPicker(false);
       qc.invalidateQueries(["repair-order", id]);
       toast.success("تمت إضافة القطعة");
     } catch (err) {
@@ -193,11 +209,30 @@ export default function RepairOrderDetail() {
           </div>
         )}
         {order.status !== "delivered" && order.status !== "cancelled" && (
-          <form onSubmit={addPart} className="flex gap-2 flex-wrap">
-            <input ref={partNameRef} className="flex-1 min-w-[160px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => setPartForm(p => ({ ...p, part_name: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partQtyRef })} />
-            <input ref={partQtyRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partCostRef, prevRef: partNameRef })} />
-            <input ref={partCostRef} className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { prevRef: partQtyRef, onEnter: () => addPart(e) })} />
-            <Button type="submit" size="sm"><Plus className="h-4 w-4 me-1" />إضافة قطعة</Button>
+          <form onSubmit={addPart} className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <input ref={partNameRef} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ps-8" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => { setPartForm(p => ({ ...p, part_name: e.target.value })); setItemSearch(e.target.value); setShowItemPicker(e.target.value.length >= 2); }} required onKeyDown={e => handleKeyDown(e, { nextRef: partQtyRef })} />
+                <Search className="absolute start-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                {showItemPicker && searchResults?.length > 0 && (
+                  <div className="absolute z-20 top-full mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-elevated max-h-48 overflow-y-auto">
+                    {searchResults.map(item => (
+                      <button key={item.id} type="button" className="w-full px-3 py-2 text-right text-sm hover:bg-slate-50 flex justify-between" onClick={() => { setPartForm(p => ({ ...p, part_name: item.name, item_id: String(item.id), unit_cost: item.cost_price || p.unit_cost })); setShowItemPicker(false); }}>
+                        <span className="font-bold">{item.name}</span>
+                        <span className="text-slate-400">{item.item_code || item.barcode}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <input ref={partQtyRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partCostRef, prevRef: partNameRef })} />
+              <input ref={partCostRef} className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partWarehouseRef, prevRef: partQtyRef })} />
+              <select ref={partWarehouseRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" value={partForm.warehouse_id} onChange={e => setPartForm(p => ({ ...p, warehouse_id: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: partCostRef, onEnter: () => addPart(e) })}>
+                <option value="">المخزن</option>
+                {(warehouses || []).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+              <Button type="submit" size="sm"><Plus className="h-4 w-4 me-1" />إضافة قطعة</Button>
+            </div>
           </form>
         )}
       </section>

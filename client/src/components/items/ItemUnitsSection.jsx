@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
-import { Plus, Trash2, Star } from "lucide-react";
+import { Plus, Trash2, Star, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -9,6 +9,7 @@ export default function ItemUnitsSection({ itemId }) {
   const enabled = useFeatureEnabled("feature_multi_unit");
   const [units, setUnits] = useState([]);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ unit_name: "", factor: 1, sale_price: "", wholesale_price: "", barcode: "", is_default_sale: false });
   const nameRef = useRef(null);
   const factorRef = useRef(null);
@@ -21,29 +22,56 @@ export default function ItemUnitsSection({ itemId }) {
 
   useEffect(() => {
     if (!enabled || !itemId) return;
-    api.get(`/api/items/${itemId}/units`).then(r => setUnits(r.data?.data || [])).catch(() => {});
+    loadUnits();
   }, [enabled, itemId]);
+
+  function loadUnits() {
+    api.get(`/api/items/${itemId}/units`).then(r => setUnits(r.data?.data || [])).catch(() => {});
+  }
 
   if (!enabled || !itemId) return null;
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleAdd = async (e) => {
+  const resetForm = () => {
+    setForm({ unit_name: "", factor: 1, sale_price: "", wholesale_price: "", barcode: "", is_default_sale: false });
+    setEditingId(null);
+    setAdding(false);
+  };
+
+  const startEdit = (u) => {
+    setForm({
+      unit_name: u.unit_name,
+      factor: u.factor,
+      sale_price: u.sale_price ?? "",
+      wholesale_price: u.wholesale_price ?? "",
+      barcode: u.barcode ?? "",
+      is_default_sale: Boolean(u.is_default_sale),
+    });
+    setEditingId(u.id);
+    setAdding(false);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     try {
-      await api.post(`/api/items/${itemId}/units`, {
+      const payload = {
         ...form,
         factor: Number(form.factor),
         sale_price: form.sale_price ? Number(form.sale_price) : null,
         wholesale_price: form.wholesale_price ? Number(form.wholesale_price) : null,
-      });
-      toast.success("تم إضافة الوحدة");
-      setAdding(false);
-      setForm({ unit_name: "", factor: 1, sale_price: "", wholesale_price: "", barcode: "", is_default_sale: false });
-      const r = await api.get(`/api/items/${itemId}/units`);
-      setUnits(r.data?.data || []);
+      };
+      if (editingId) {
+        await api.put(`/api/items/${itemId}/units/${editingId}`, payload);
+        toast.success("تم تحديث الوحدة");
+      } else {
+        await api.post(`/api/items/${itemId}/units`, payload);
+        toast.success("تم إضافة الوحدة");
+      }
+      resetForm();
+      loadUnits();
     } catch (err) {
-      toast.error(err.response?.data?.error || "فشل إضافة الوحدة");
+      toast.error(err.response?.data?.error || "فشل الحفظ");
     }
   };
 
@@ -62,9 +90,11 @@ export default function ItemUnitsSection({ itemId }) {
     <div className="border-t border-slate-200 pt-5 mt-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-700">وحدات إضافية</h3>
-        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-600">
-          <Plus className="h-3.5 w-3.5" /> إضافة وحدة
-        </button>
+        {!adding && !editingId && (
+          <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-600">
+            <Plus className="h-3.5 w-3.5" /> إضافة وحدة
+          </button>
+        )}
       </div>
 
       {units.length === 0 && !adding && (
@@ -93,9 +123,14 @@ export default function ItemUnitsSection({ itemId }) {
                   <td className="py-2 text-slate-500 font-mono text-xs">{u.barcode || "—"}</td>
                   <td className="py-2 text-center">{u.is_default_sale ? <Star className="h-3.5 w-3.5 text-amber-500 mx-auto" /> : null}</td>
                   <td className="py-2">
-                    <button type="button" onClick={() => handleDelete(u.id)} className="text-red-400 hover:text-red-600">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => startEdit(u)} className="text-slate-400 hover:text-slate-600">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" onClick={() => handleDelete(u.id)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -104,8 +139,8 @@ export default function ItemUnitsSection({ itemId }) {
         </div>
       )}
 
-      {adding && (
-        <form onSubmit={handleAdd} className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-lg border border-slate-200 bg-slate-50">
+      {(adding || editingId) && (
+        <form onSubmit={handleSave} className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-lg border border-slate-200 bg-slate-50">
           <label className="block">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">اسم الوحدة</span>
             <input ref={nameRef} onKeyDown={e => handleKeyDown(e, { nextRef: factorRef })} required value={form.unit_name} onChange={e => set("unit_name", e.target.value)} placeholder="كرتونة" className="mt-1 w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm font-bold outline-none focus:border-slate-800" />
@@ -128,7 +163,7 @@ export default function ItemUnitsSection({ itemId }) {
           </div>
           <div className="flex items-end gap-2">
             <button ref={saveBtnRef} onKeyDown={e => handleKeyDown(e, { nextRef: cancelBtnRef, prevRef: defaultSaleRef })} type="submit" className="rounded-lg bg-primary px-4 py-1.5 text-xs font-black text-white hover:bg-primary-600">حفظ</button>
-            <button ref={cancelBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: saveBtnRef })} type="button" onClick={() => setAdding(false)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
+            <button ref={cancelBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: saveBtnRef })} type="button" onClick={resetForm} className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
           </div>
         </form>
       )}

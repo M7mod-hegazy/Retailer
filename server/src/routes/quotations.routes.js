@@ -4,6 +4,7 @@ const QuotationModel = require("../models/quotation.model");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { adjustStock } = require("../services/stockService");
+const { assertNotVariantParent } = require("./variants.routes");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -43,6 +44,8 @@ function validateLines(lines) {
 
 function buildQuotationPayload(payload = {}) {
   const lines = validateLines(payload.lines);
+  const db = getDb();
+  lines.forEach(line => assertNotVariantParent(db, line.item_id));
   const linesTotal = lines.reduce((sum, line) => sum + line.line_total, 0);
   const increase = Math.max(0, Number(payload.increase || 0));
   const decrease = Math.max(0, Number(payload.decrease || 0));
@@ -255,6 +258,7 @@ router.post("/:id/convert-to-invoice", requirePagePermission("quotations", "add"
     const stockIssues = [];
     const defaultWhId = 1;
     quotation.lines.forEach(line => {
+      assertNotVariantParent(db, line.item_id);
       const whId = line.warehouse_id || defaultWhId;
       const item = db.prepare(`
         SELECT i.name,

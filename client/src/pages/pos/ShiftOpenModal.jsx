@@ -31,7 +31,7 @@ export default function ShiftOpenModal({ open, onClose, onSuccess, userId: propU
             <Clock3 className="h-7 w-7" />
           </div>
           <div className="text-sm text-text-secondary">الوقت الحالي</div>
-          <div className="mt-2 text-2xl font-black text-text-primary">{new Date().toLocaleTimeString("ar-EG-u-nu-latn")}</div>
+          <div className="mt-2 text-2xl font-black text-text-primary">{new Date().toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })}</div>
         </div>
         <div className="rounded-[20px] border border-border-subtle bg-[var(--bg-overlay)] p-5">
           <div className="mb-3 flex items-center gap-2 text-text-primary">

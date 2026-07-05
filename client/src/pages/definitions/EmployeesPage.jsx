@@ -213,7 +213,7 @@ export default function EmployeesPage() {
   ], []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] flex flex-col font-sans w-full max-w-full relative" dir="rtl">
+    <div className="min-h-screen flex flex-col font-sans w-full max-w-full relative pb-12" style={{ background: "linear-gradient(145deg, var(--bg-base) 0%, color-mix(in srgb, var(--primary) 3.5%, var(--bg-base)) 60%, var(--bg-surface) 100%)" }} dir="rtl">
       <PermissionDeniedModal open={permDenied} onClose={() => setPermDenied(false)} />
       <DeleteImpactModal
         open={!!deleteState}
@@ -225,91 +225,93 @@ export default function EmployeesPage() {
         onConfirm={performDelete}
       />
 
-      {/* Animated Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to_right,var(--border-subtle) 1px,transparent 1px),linear-gradient(to_bottom,var(--border-subtle) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
-        {!reduceMotion && (
-          <motion.div
-            animate={{ x: ["-150%", "200%"] }}
-            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 w-[40%] h-full skew-x-12"
-            style={{ background: "linear-gradient(to right,transparent,color-mix(in srgb,var(--text-primary) 8%,transparent),transparent)", mixBlendMode: "overlay" }}
-          />
-        )}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 70% at 50% 40%,transparent 0%,var(--bg-base) 100%)" }} />
+      {/* Premium Glassmorphic Ambient Background — theme-aware */}
+      <div className="fixed inset-0 pointer-events-none select-none z-0 overflow-hidden opacity-[0.95]">
+        {/* Primary brand blob — top right */}
+        <div 
+          className="absolute -top-[10%] -right-[15%] w-[70vw] h-[70vw] max-w-[850px] rounded-full blur-[140px]" 
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--primary) 28%, transparent) 0%, transparent 70%)" }}
+        />
+        {/* Info/secondary blob — bottom left */}
+        <div 
+          className="absolute -bottom-[15%] -left-[10%] w-[65vw] h-[65vw] max-w-[750px] rounded-full blur-[150px]" 
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--primary) 14%, transparent) 0%, transparent 70%)" }}
+        />
+        {/* Subtle mid blob — center */}
+        <div 
+          className="absolute top-[25%] left-[20%] w-[55vw] h-[55vw] max-w-[650px] rounded-full blur-[130px]" 
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--bg-overlay) 60%, transparent) 0%, transparent 70%)" }}
+        />
       </div>
 
-      {/* Hero Header */}
-      <header className="relative z-10 w-full pt-12 pb-6 px-4 md:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-[1600px] mx-auto"
-        >
-          <div className="flex items-center gap-3 mb-6" style={{ color: "var(--text-muted)" }}>
-            <motion.div initial={{ width: 0 }} animate={{ width: 32 }} transition={{ delay: 0.5, duration: 0.8 }} className="h-px" style={{ backgroundColor: "var(--text-muted)" }} />
-            <Database className="h-3 w-3" />
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] font-mono">نظام إدارة الموظفين</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl md:text-5xl font-black tracking-tighter leading-[1.1] text-[var(--text-primary)]">
-                الموظفون
-              </h1>
-              <p className="mt-3 text-sm font-medium text-[var(--text-secondary)] max-w-xl">
-                إدارة بيانات الموظفين والرواتب والسلفيات والخصومات والمكافآت
-              </p>
+      {/* Modern High-End Radial Masked Gridline Pattern */}
+      <div 
+        className="fixed inset-0 pointer-events-none select-none z-0 opacity-[0.55]" 
+        style={{ 
+          backgroundImage: `linear-gradient(to right, var(--border-normal) 1px, transparent 1px), 
+                            linear-gradient(to bottom, var(--border-normal) 1px, transparent 1px)`, 
+          backgroundSize: "45px 45px"
+        }} 
+      />
+
+      {/* Compact header with page description (Fully Transparent) */}
+      <header className="relative z-10 shrink-0 px-6 md:px-8 pt-6 pb-2" style={{ backgroundColor: "transparent" }}>
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+          <div className="flex flex-col gap-1 text-right">
+            <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest text-[var(--primary)] uppercase">
+              <Database className="h-3 w-3" />
+              <span>نظام إدارة الموظفين</span>
             </div>
-            <div className="flex items-center gap-2">
-              <SmartTooltip content="السجل الكامل للموظف">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate("/reports/source/employees/employee-full-history/detailed")}
-                  className="flex items-center gap-2 h-11 px-5 rounded-xl text-xs font-black transition-all shadow-sm border"
-                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
-                >
-                  <BarChart3 className="h-4 w-4" /> السجل الكامل
-                </motion.button>
-              </SmartTooltip>
-              <SmartTooltip content="تصدير CSV">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 h-11 px-5 rounded-xl text-xs font-black transition-all shadow-sm border"
-                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
-                >
-                  <Download className="h-4 w-4" /> تصدير
-                </motion.button>
-              </SmartTooltip>
-              {canAdd && (
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={startCreate}
-                  className="h-11 px-6 bg-primary text-white rounded-xl text-xs font-black shadow-lg flex items-center gap-2 transition-all"
-                >
-                  <Plus className="h-4 w-4" /> إضافة موظف
-                </motion.button>
-              )}
-            </div>
+            <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+              الموظفون
+            </h1>
+            <p className="text-[11px] font-bold" style={{ color: "var(--text-secondary)" }}>
+              إدارة بيانات الموظفين والرواتب والسلفيات والخصومات والمكافآت
+            </p>
           </div>
-        </motion.div>
+          <div className="flex items-center gap-2">
+            <SmartTooltip content="السجل الكامل للموظف">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/reports/source/employees/employee-full-history/detailed")}
+                className="flex items-center gap-2 h-10 px-4 rounded-xl text-xs font-black transition-all shadow-sm border hover:bg-[var(--accent-soft)]"
+                style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+              >
+                <BarChart3 className="h-4 w-4" /> السجل الكامل
+              </motion.button>
+            </SmartTooltip>
+            <SmartTooltip content="تصدير CSV">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 h-10 px-4 rounded-xl text-xs font-black transition-all shadow-sm border hover:bg-[var(--accent-soft)]"
+                style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
+              >
+                <Download className="h-4 w-4" /> تصدير
+              </motion.button>
+            </SmartTooltip>
+            {canAdd && (
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={startCreate}
+                className="h-10 px-5 bg-primary text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition-all hover:opacity-90 active:scale-[0.98]"
+              >
+                <Plus className="h-4 w-4" /> إضافة موظف جديد
+              </motion.button>
+            )}
+          </div>
+        </div>
       </header>
 
-      {/* Master-Detail Layout */}
-      <main className="relative z-10 w-full max-w-[1600px] mx-auto px-4 md:px-8 pb-8 flex flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="flex flex-col lg:flex-row gap-6"
-        >
-          {/* Left Panel — Employee List */}
-          <div className="lg:w-[420px] xl:w-[480px] flex-shrink-0 rounded-3xl border shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]"
+      {/* Main Layout Workspace with independent scrollings */}
+      <main className="relative z-10 w-full max-w-[1600px] mx-auto px-6 md:px-8 pb-12 flex-1">
+        <div className="flex flex-col lg:flex-row gap-8 w-full">
+          
+          {/* Right Panel — Employee Directory (List) */}
+          <div className="lg:w-[380px] shrink-0 flex flex-col rounded-3xl border overflow-hidden shadow-elevated backdrop-blur-md transition-all duration-300 hover:shadow-modal"
             style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
           >
             {/* Search */}
-            <div className="p-4 border-b" style={{ borderColor: "var(--border-subtle)" }}>
+            <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border-subtle)" }}>
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--text-muted)" }} />
                 <input
@@ -322,7 +324,7 @@ export default function EmployeesPage() {
               </div>
             </div>
 
-            {/* Employee List */}
+            {/* Employee List Scroll Container */}
             <div className="p-2 space-y-1">
               {filteredEmployees.map(emp => {
                 const isSelected = selectedEmployee?.id === emp.id;
@@ -331,28 +333,34 @@ export default function EmployeesPage() {
                     key={emp.id}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedEmployee(isSelected ? null : emp)}
-                    className={`w-full text-right p-3.5 rounded-2xl transition-all flex items-center gap-3 border ${
+                    className={`w-full text-right p-3 rounded-2xl transition-all flex items-center gap-3 border ${
                       isSelected
-                        ? "bg-blue-50 border-blue-200 shadow-sm"
-                        : "bg-transparent border-transparent hover:bg-slate-50 hover:border-slate-100"
+                        ? "border-[var(--primary)]"
+                        : "bg-transparent border-transparent hover:bg-[var(--bg-base)] hover:border-[var(--border-subtle)]"
                     }`}
+                    style={{
+                      backgroundColor: isSelected ? "var(--accent-soft)" : "transparent"
+                    }}
                   >
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0 ${
-                      isSelected ? "bg-blue-600" : "bg-gradient-to-br from-blue-500 to-indigo-600"
-                    }`}>
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0`}
+                         style={{
+                           background: isSelected 
+                             ? "var(--primary)" 
+                             : "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 60%, black) 100%)"
+                         }}>
                       {(emp.name || "?")?.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-800 truncate">{emp.name}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black truncate" style={{ color: "var(--text-primary)" }}>{emp.name}</span>
                         {emp.salary > 0 && (
-                          <span className="text-[10px] font-black text-emerald-600 font-mono">{Number(emp.salary).toLocaleString()}</span>
+                          <span className="text-[10px] font-black font-mono" style={{ color: "var(--success-text)" }}>{Number(emp.salary).toLocaleString()}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {emp.role && <span className="text-[11px] text-slate-500">{emp.role}</span>}
-                        {emp.phone && <span className="text-[11px] text-slate-400 font-mono">{emp.phone}</span>}
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {emp.role && <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{emp.role}</span>}
+                        {emp.phone && <span className="text-[10px] font-bold font-mono" style={{ color: "var(--text-muted)" }}>{emp.phone}</span>}
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded" style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)" }}>
                           {PERIOD_LABELS[emp.salary_period] || "شهري"}
                         </span>
                       </div>
@@ -362,19 +370,21 @@ export default function EmployeesPage() {
               })}
               {!loading && filteredEmployees.length === 0 && (
                 <div className="text-center py-12">
-                  <Users className="h-10 w-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-bold text-slate-400">لا يوجد موظفون</p>
+                  <Users className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--text-muted)" }} />
+                  <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>لا يوجد موظفون</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Panel — Employee Detail */}
-          <div className="flex-1 rounded-3xl border shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]"
+          {/* Left Panel — Employee Detail View */}
+          <div className="flex-1 rounded-3xl border shadow-elevated backdrop-blur-md flex flex-col overflow-hidden"
             style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}
           >
             <EmployeeDetail
               employee={selectedEmployee}
+              employees={employees}
+              onStartCreate={startCreate}
               onClose={() => setSelectedEmployee(null)}
               onUpdate={(updated) => {
                 setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
@@ -382,7 +392,7 @@ export default function EmployeesPage() {
               }}
             />
           </div>
-        </motion.div>
+        </div>
       </main>
 
       {/* Add/Edit Form Modal */}

@@ -5,7 +5,7 @@ import {
   Building, Search, Plus, X, Phone, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
-  Copy, Check, TrendingUp, TrendingDown, Info, AlertTriangle, Upload, Download
+  Copy, Check, TrendingUp, TrendingDown, Info, AlertTriangle, Upload, Download, Trash2
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddSupplierModal from "../../components/modals/AddSupplierModal";
 import SupplierInfoModal from "../../components/modals/SupplierInfoModal";
+import DeleteImpactModal from "../../components/ui/DeleteImpactModal";
 import { formatNumber } from "../../utils/currency";
 import AccountExportModal from "./AccountExportModal";
 import InstallmentsTab from "../../components/accounts/InstallmentsTab";
@@ -381,9 +382,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
       });
 
       (retsR.value?.data?.data || []).forEach(r => {
-        const isSplit = r.settlement_type === "split";
-        const isCashOnly = r.settlement_type === "cash";
-        const creditAmt = isSplit ? Number(r.credit_amount || 0) : (isCashOnly ? 0 : Number(r.total || 0));
+        const creditAmt = r.settlement_type === "split" ? Number(r.credit_amount || 0) : (r.settlement_type === "cash" ? 0 : Number(r.total || 0));
         items.push({
           id: `ret-${r.id}`,
           type: "return",
@@ -397,8 +396,8 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
           impactAmount: creditAmt,
           impactDir: creditAmt > 0.005 ? "subtract" : null,
           totalAmount: Number(r.total || 0),
-          isSplit,
-          isCashOnly,
+          isSplit: r.settlement_type === "split",
+          isCashOnly: r.settlement_type === "cash",
           cashAmount: Number(r.cash_amount || 0),
           raw: r,
         });
@@ -947,6 +946,37 @@ export default function SupplierAccountsPage() {
     finally { setLoading(false); }
   }, []);
 
+  // Delete / archive flow (mirrors SimpleCrudPage: preview impact → confirm → archive-or-delete)
+  const [deleteState, setDeleteState] = useState(null); // { id, itemName, impact, loading, confirming }
+
+  async function handleDeleteSupplier(supplier) {
+    if (!supplier) return;
+    setDeleteState({ id: supplier.id, itemName: supplier.name || `#${supplier.id}`, impact: null, loading: true, confirming: false });
+    try {
+      const res = await api.get(`/api/suppliers/${supplier.id}/delete-impact`);
+      setDeleteState((s) => (s && s.id === supplier.id ? { ...s, impact: res.data?.data || { mode: "unknown" }, loading: false } : s));
+    } catch {
+      setDeleteState((s) => (s && s.id === supplier.id ? { ...s, impact: { mode: "unknown" }, loading: false } : s));
+    }
+  }
+
+  async function performDeleteSupplier() {
+    const ds = deleteState;
+    if (!ds) return;
+    setDeleteState((s) => (s ? { ...s, confirming: true } : s));
+    try {
+      const res = await api.delete(`/api/suppliers/${ds.id}`);
+      toast.success(res.data?.archived ? (res.data?.message || "تم أرشفة المورد لأنه مرتبط ببيانات أخرى") : "تم حذف المورد بنجاح");
+      setDeleteState(null);
+      if (selected?.id === ds.id) setSelected(null);
+      loadSuppliers();
+    } catch (err) {
+      setDeleteState(null);
+      if (err?.response?.status >= 500) return; // interceptor already toasted
+      toast.error(err?.response?.data?.message || "فشل الحذف - المورد مرتبط ببيانات أخرى");
+    }
+  }
+
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
     try {
@@ -1047,10 +1077,11 @@ export default function SupplierAccountsPage() {
         amount: Number(payForm.amount),
         method_id: Number(payForm.method_id),
         notes: payForm.notes || null,
+        direction: payForm.direction || "subtract",
       });
       toast.success("تم تسجيل السداد");
       setShowPayment(false);
-      setPayForm({ amount: "", method_id: "", notes: "" });
+      setPayForm({ amount: "", method_id: "", notes: "", direction: "subtract" });
       await refreshSelected();
     } catch (e) { toast.error(e.response?.data?.message || "فشل تسجيل السداد"); }
     finally { setSaving(false); }
@@ -1279,6 +1310,15 @@ export default function SupplierAccountsPage() {
                       >
                         <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
                       </button>
+                      <PermissionGate page="suppliers" action="delete">
+                        <button
+                          onClick={() => handleDeleteSupplier(selected)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                          title="حذف / أرشفة المورد"
+                        >
+                          <Trash2 className="h-4 w-4 stroke-[2.2px]" />
+                        </button>
+                      </PermissionGate>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
@@ -1346,11 +1386,11 @@ export default function SupplierAccountsPage() {
                       data-help="pay-button"
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "" }); setShowPayment(true); }}
+                      onClick={() => { setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "", direction: bal < 0 ? "add" : "subtract" }); setShowPayment(true); }}
                       className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(234,88,12,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
-                      <span>سداد دفعة</span>
+                      <span>{bal < 0 ? "استرداد دفعة" : "سداد دفعة"}</span>
                     </motion.button>
                   </PermissionGate>
                   <PermissionGate page="supplier_accounts" action="edit">
@@ -1683,7 +1723,7 @@ export default function SupplierAccountsPage() {
 
       {/* Payment Modal */}
       {showPayment && selected && (
-        <Modal onClose={() => setShowPayment(false)} title="سداد دفعة للمورد" showDetach={false}>
+        <Modal onClose={() => setShowPayment(false)} title={payForm.direction === "add" ? "استرداد دفعة من المورد" : "سداد دفعة للمورد"} showDetach={false}>
           <div className="p-6">
             <p className="text-2sm text-slate-500 font-bold mb-3">المورد: <span className="text-slate-800">{selected.name}</span></p>
             {bal !== 0 && (
@@ -1697,12 +1737,48 @@ export default function SupplierAccountsPage() {
                 </span>
               </div>
             )}
+
+            {/* Direction Toggle */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button onClick={() => setPayForm(f => ({ ...f, direction: "subtract" }))}
+                className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "subtract" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                <div className="text-[16px] mb-1">↑</div>سداد دفعة
+                <div className="text-[10px] font-medium mt-0.5 opacity-70">(دفع للمورد)</div>
+              </button>
+              <button onClick={() => setPayForm(f => ({ ...f, direction: "add" }))}
+                className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "add" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                <div className="text-[16px] mb-1">↓</div>استرداد دفعة
+                <div className="text-[10px] font-medium mt-0.5 opacity-70">(استلام من المورد)</div>
+              </button>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">المبلغ <span className="text-rose-500">*</span></label>
                 <input ref={payAmountRef} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
                   className="w-full h-11 rounded-xl border border-slate-200 px-4 text-[16px] number-fmt-primary outline-none focus:border-orange-500" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
               </div>
+
+              {/* Balance Preview */}
+              {Number(payForm.amount) > 0 && (() => {
+                const newBal = payForm.direction === "add" ? bal + Number(payForm.amount) : bal - Number(payForm.amount);
+                return (
+                  <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
+                    <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع بعد الدفعة:</p>
+                    <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
+                      {fmt(Math.abs(newBal))} ج.م
+                      {newBal > 0 ? (
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">دائن</span>
+                      ) : newBal < 0 ? (
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">مديون</span>
+                      ) : (
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200/60">صفر</span>
+                      )}
+                    </p>
+                  </div>
+                );
+              })()}
+
               <div>
                 <label className="text-2sm font-black text-slate-600 mb-1.5 block">وسيلة الدفع <span className="text-rose-500">*</span></label>
                 <select ref={payMethodRef} value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
@@ -1808,6 +1884,17 @@ export default function SupplierAccountsPage() {
         onClose={() => setShowExport(false)}
         entityType="suppliers"
         accounts={suppliers}
+      />
+
+      {/* Delete / archive confirmation */}
+      <DeleteImpactModal
+        open={Boolean(deleteState)}
+        itemName={deleteState?.itemName}
+        impact={deleteState?.impact}
+        loading={deleteState?.loading}
+        confirming={deleteState?.confirming}
+        onConfirm={performDeleteSupplier}
+        onCancel={() => setDeleteState(null)}
       />
     </div>
   );

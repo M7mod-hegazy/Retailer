@@ -406,6 +406,8 @@ export default function ItemsListPage() {
   const [unitsItem, setUnitsItem] = useState(null);
   const [variantsItem, setVariantsItem] = useState(null);
   const [editFullItem, setEditFullItem] = useState(null);
+  const [expandedParents, setExpandedParents] = useState({});
+  const [parentChildren, setParentChildren] = useState({});
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -1236,11 +1238,11 @@ export default function ItemsListPage() {
                  <SkeletonRows cols={COLS} />
               ) : tableRows.length === 0 ? (
                  <tr><td colSpan={COLS} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا يوجد بيانات لعرضها في هذه الفئة</td></tr>
-               ) : (
-                 tableRows.map((item) => {
-                   if (item.__gap) {
-                     return (
-                       <tr key={item.id} className="bg-violet-50/60">
+                ) : (
+                  tableRows.flatMap((item) => {
+                    if (item.__gap) {
+                      return [(
+                        <tr key={item.id} className="bg-violet-50/60">
                          <td colSpan={4} className="px-3 py-2 text-center text-[11px] font-black text-violet-500">فراغ SKU</td>
                          <td className="px-4 py-2 border-l border-violet-100">
                            <span className="font-mono text-2sm font-black text-violet-700">{item.code}</span>
@@ -1260,10 +1262,10 @@ export default function ItemsListPage() {
                              استخدام هذا الرقم
                            </button>
                          </td>
-                       </tr>
-                     );
-                   }
-                   const d = draftById[item.id] || {};
+                        </tr>
+                      )];
+                    }
+                    const d = draftById[item.id] || {};
                    const isDirty = dirtyRows.has(item.id);
                    const isSelected = selectedIds.has(item.id);
                    const isDeleted = !!item.deleted_at;
@@ -1272,8 +1274,8 @@ export default function ItemsListPage() {
                    const stock = stockBadge(item.stock_quantity, d.min_stock_qty);
                    const isDragTarget = dragOverId === item.id;
 
-                   return (
-                     <tr key={item.id}
+                   return [
+                      <tr key={item.id}
                        draggable={!isDeleted && !isAllCats}
                        onDragStart={(e) => !isDeleted && !isAllCats && onDragStart(e, item.id)}
                        onDragOver={(e) => !isDeleted && !isAllCats && onDragOver(e, item.id)}
@@ -1443,15 +1445,36 @@ export default function ItemsListPage() {
                                      <Package className="h-3.5 w-3.5" />
                                    </button>
                                  )}
-                                 {variantsEnabled && (
-                                   <button
-                                     onClick={() => setVariantsItem(item)}
-                                     title="المتغيرات"
-                                     className="flex h-8 w-8 items-center justify-center rounded-sm bg-violet-50 text-violet-600 hover:bg-violet-600 hover:text-white transition-all shadow-sm"
-                                   >
-                                     <Layers className="h-3.5 w-3.5" />
-                                   </button>
-                                 )}
+                                  {variantsEnabled && (
+                                    <button
+                                      onClick={() => setVariantsItem(item)}
+                                      title="المتغيرات"
+                                      className="flex h-8 w-8 items-center justify-center rounded-sm bg-violet-50 text-violet-600 hover:bg-violet-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                      <Layers className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                  {variantsEnabled && item?.is_variant_parent && (
+                                    <button
+                                      onClick={async () => {
+                                        setExpandedParents(p => ({ ...p, [item.id]: !p[item.id] }));
+                                        if (!parentChildren[item.id]) {
+                                          try {
+                                            const r = await api.get(`/api/items/${item.id}/variant-children`);
+                                            setParentChildren(pc => ({ ...pc, [item.id]: r.data.data || [] }));
+                                          } catch {}
+                                        }
+                                      }}
+                                      title={expandedParents[item.id] ? "إخفاء المتغيرات" : "عرض المتغيرات"}
+                                      className={`flex h-8 w-8 items-center justify-center rounded-sm transition-all shadow-sm ${
+                                        expandedParents[item.id]
+                                          ? "bg-violet-200 text-violet-800 hover:bg-violet-300"
+                                          : "bg-violet-50 text-violet-600 hover:bg-violet-600 hover:text-white"
+                                      }`}
+                                    >
+                                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedParents[item.id] ? "" : "-rotate-90"}`} />
+                                    </button>
+                                  )}
                                  <PermissionGate page="items" action="delete">
                                  <button
                                    onClick={() => deleteRow(item)}
@@ -1462,13 +1485,30 @@ export default function ItemsListPage() {
                                  </PermissionGate>
                                </>
                              )}
-                          </div>
-                       </td>
-                     </tr>
-                   );
-                 })
-               )}
-             </tbody>
+                            </div>
+                         </td>
+                       </tr>,
+                      ...(expandedParents[item.id] ? (parentChildren[item.id] || []).map(child => (
+                        <tr key={`child-${child.id}`} className="bg-violet-50/40">
+                          <td colSpan={2} />
+                          <td className="px-1 py-1 text-center border-l border-slate-100">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black text-violet-600 bg-violet-100">متغير</span>
+                          </td>
+                          <td className="px-4 py-1 border-l border-slate-100 pr-8">
+                            <span className="font-mono text-2sm font-bold text-violet-700">{child.code || "—"}</span>
+                          </td>
+                          <td className="px-4 border-l border-slate-100">
+                            <span className="text-sm font-medium text-slate-700">{child.name}</span>
+                          </td>
+                          <td className="px-3 py-1 border-l border-slate-100 text-xs text-slate-500">{child.barcode || "—"}</td>
+                          <td className="px-3 py-1 border-l border-slate-100 text-xs font-bold text-primary">{Number(child.sale_price || 0).toLocaleString()}</td>
+                          <td className="px-3 py-1 border-l border-slate-100 text-xs text-slate-500">{child.stock_quantity || 0}</td>
+                          <td colSpan={10} />
+                        </tr>
+                      )) : [])];
+                  })
+                )}
+              </tbody>
              
              {/* New Item Creation Row */}
              {!loading && (

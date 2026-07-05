@@ -480,7 +480,7 @@ function TransactionsTab() {
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="text-sm font-bold text-slate-400 font-mono tracking-tight group-hover:text-slate-600 transition-colors">
-                          {r.created_at ? new Date(r.created_at).toLocaleString("en-US", { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : "—"}
+                          {r.created_at ? new Date(r.created_at).toLocaleString("en-US", { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12: true }) : "—"}
                         </span>
                       </td>
                     </motion.tr>

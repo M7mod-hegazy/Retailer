@@ -10,6 +10,7 @@ import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPr
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { useAuthStore } from "../../stores/authStore";
 
 const SOURCE_CAT_MAP = {
   sales: "sales",
@@ -160,6 +161,10 @@ export default function ReportsCenter() {
 
   const classificationsBySource = CLASSIFICATIONS;
 
+  const currentUser = useAuthStore((s) => s.user);
+  const userPermissions = useAuthStore((s) => s.permissions);
+  const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
+
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -202,8 +207,14 @@ export default function ReportsCenter() {
     if (q) {
       rows = rows.filter((s) => s.label.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
     }
+    if (!isAdmin) {
+      rows = rows.filter((s) => {
+        const key = "report_" + s.id;
+        return Array.isArray(userPermissions?.[key]) && userPermissions[key].includes("view");
+      });
+    }
     return rows;
-  }, [activeCat, store.favorites, onlyFavs, search, expiryEnabled]);
+  }, [activeCat, store.favorites, onlyFavs, search, expiryEnabled, isAdmin, userPermissions]);
 
   const selectedSource = useMemo(() => filtered.find((s) => s.id === selectedId) || null, [filtered, selectedId]);
 

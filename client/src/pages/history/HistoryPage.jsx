@@ -529,7 +529,7 @@ function LogRow({ log, index, highlighted, autoExpand }) {
           <time dir="ltr" className="text-[11px] font-mono font-bold text-zinc-400" title={log.created_at}>
             {log.created_at
               ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-                  year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                  year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true
                 }).format(new Date(log.created_at))
               : "—"}
           </time>

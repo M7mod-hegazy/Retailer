@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Smartphone, Link, Unlink, RefreshCw, CheckCircle, AlertCircle, Clock,
-  MessageSquare, Users, Send, ChevronDown, ChevronUp, Wifi, WifiOff, Zap, Info
+  MessageSquare, Users, Send, ChevronDown, ChevronUp, Wifi, WifiOff, Zap, Info, ExternalLink
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -46,6 +47,7 @@ function SectionCard({ title, icon: Icon, accent = "#1e293b", open, onToggle, ba
 }
 
 export default function WhatsAppSettingsTab() {
+  const navigate = useNavigate();
   const [waStatus, setWaStatus] = useState({ status: "loading" });
   const [openSection, setOpenSection] = useState("connection");
   const [linking, setLinking] = useState(false);
@@ -176,6 +178,18 @@ export default function WhatsAppSettingsTab() {
 
   return (
     <div className="w-full space-y-4">
+
+      {/* ── Redirect banner to new CRM ─────────────────────────── */}
+      <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-gradient-to-l from-indigo-50 to-white px-5 py-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-indigo-800">✨ واتساب CRM — إدارة متكاملة</p>
+          <p className="text-[11px] font-bold text-indigo-600 mt-0.5">انتقل إلى صفحة واتساب CRM الجديدة للداشبورد، صندوق الوارد، الحملات، والمزيد</p>
+        </div>
+        <button onClick={() => navigate("/whatsapp-crm")}
+          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700 transition-all active:scale-95">
+          فتح واتساب CRM <ExternalLink className="h-4 w-4" />
+        </button>
+      </div>
 
       {/* ── Hero connection strip ───────────────────────────────── */}
       <div className={`relative overflow-hidden rounded-xl border p-6 ${

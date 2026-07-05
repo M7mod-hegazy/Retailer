@@ -41,6 +41,11 @@ export default function BarcodeListener() {
                 playBeep();
                 return;
               }
+              // PLU not found — let POSPage offer to create a new item
+              window.dispatchEvent(new CustomEvent("pos-plu-not-found", {
+                detail: { plu: parsed.plu, rawCode: code, parsed },
+              }));
+              return;
             }
           }
 

@@ -135,18 +135,19 @@ export default function PurchaseReturnFormBottomBar({
               { value: "account", label: "حساب المورد" },
               { value: "split", label: "مختلط" },
             ].map(opt => {
-              const disabled = isLocked || (opt.value !== "cash" && !supplier);
+              const noSupplierBlocked = !isLocked && opt.value !== "cash" && !supplier;
               const active = settlementType === opt.value;
               return (
                 <button key={opt.value} type="button"
-                  onClick={() => !disabled && onSettlementTypeChange?.(opt.value)}
-                  disabled={disabled}
+                  onClick={() => !(isLocked || noSupplierBlocked) && onSettlementTypeChange?.(opt.value)}
+                  disabled={isLocked || noSupplierBlocked}
+                  title={noSupplierBlocked ? "يجب اختيار مورد أولاً" : ""}
                   className={`rounded-lg border px-1.5 py-0.5 text-[10px] font-bold transition-all shrink-0 ${
                     active
                       ? "bg-amber-600 text-white border-transparent shadow-sm"
-                      : disabled
-                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
-                        : "border-amber-200 text-amber-700 bg-amber-50 hover:shadow-sm"
+                      : noSupplierBlocked
+                        ? "cursor-not-allowed bg-red-50 border-dashed border-red-300 text-red-400"
+                        : "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
                   }`}>
                   {opt.label}
                 </button>

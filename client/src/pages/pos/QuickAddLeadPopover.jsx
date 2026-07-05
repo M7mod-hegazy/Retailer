@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, RefreshCw } from "lucide-react";
+import { X, RefreshCw, Check, Smartphone } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
-// Quick-add a walk-by WhatsApp lead, independent of any sale. Phone required; name/tag/birthday optional.
 export default function QuickAddLeadPopover({ open, onClose }) {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [birthday, setBirthday] = useState("");
   const [saving, setSaving] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolvedName, setResolvedName] = useState(null);
   const phoneRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
   const nameRef = useRef(null);
@@ -21,9 +22,28 @@ export default function QuickAddLeadPopover({ open, onClose }) {
   useEffect(() => {
     if (open) {
       setPhone(""); setName(""); setTag(""); setBirthday(""); setSaving(false);
+      setResolvedName(null);
       setTimeout(() => phoneRef.current?.focus(), 50);
     }
   }, [open]);
+
+  // Resolve WhatsApp name when phone changes
+  useEffect(() => {
+    setResolvedName(null);
+    if (!phone.trim() || phone.trim().length < 10) return;
+    setResolving(true);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await api.post("/api/whatsapp/crm/contacts/resolve", { phone: phone.trim() });
+        const resolved = r.data?.data;
+        if (resolved) {
+          setResolvedName(resolved);
+          setName(resolved);
+        }
+      } catch {} finally { setResolving(false); }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [phone]);
 
   if (!open) return null;
 
@@ -56,7 +76,7 @@ export default function QuickAddLeadPopover({ open, onClose }) {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2">
-            <span className="text-lg">📱</span> رقم واتساب سريع
+            <Smartphone className="h-5 w-5 text-green-600" /> رقم واتساب سريع
           </h3>
           <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
             <X className="h-4 w-4" />
@@ -74,15 +94,27 @@ export default function QuickAddLeadPopover({ open, onClose }) {
             placeholder="* رقم الهاتف / واتساب"
             className="w-full rounded-lg border border-green-200 bg-green-50/50 px-3 py-2.5 text-sm font-bold text-right outline-none focus:border-green-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors"
           />
-          <input
-            ref={nameRef}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={e => handleKeyDown(e, { nextRef: tagRef, prevRef: phoneRef })}
-            placeholder="الاسم (اختياري)"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors"
-          />
+          <div className="relative">
+            <input
+              ref={nameRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={e => handleKeyDown(e, { nextRef: tagRef, prevRef: phoneRef })}
+              placeholder="الاسم (اختياري)"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white placeholder:text-slate-400 placeholder:font-normal transition-colors pl-8"
+            />
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2">
+              {resolving ? (
+                <RefreshCw className="h-4 w-4 animate-spin text-slate-400" />
+              ) : resolvedName ? (
+                <Check className="h-4 w-4 text-emerald-500" />
+              ) : null}
+            </div>
+          </div>
+          {resolvedName && (
+            <p className="text-[10px] font-bold text-emerald-600 -mt-1.5">تم العثور على الاسم من واتساب</p>
+          )}
           <input
             ref={tagRef}
             type="text"
@@ -110,7 +142,7 @@ export default function QuickAddLeadPopover({ open, onClose }) {
           onKeyDown={e => handleKeyDown(e, { onEnter: save, prevRef: birthdayRef })}
           className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-black text-white hover:bg-green-700 disabled:opacity-50 transition-all active:scale-95"
         >
-          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : "📲"}
+          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
           {saving ? "جاري الحفظ..." : "حفظ"}
         </button>
         <p className="mt-2 text-[10px] font-bold text-slate-400 text-center">

@@ -305,36 +305,32 @@ const QUERY_INTENTS = [
 
 function extractDateRange(text) {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const today = `${y}-${m}-${d}`;
+  const todayStr = today();
 
   if (/(النهارده|today|اليوم)/i.test(text)) {
-    return { start_date: today, end_date: today };
+    return { start_date: todayStr, end_date: todayStr };
   }
   if (/(امبارح|yesterday|البارح)/i.test(text)) {
     const yest = new Date(now); yest.setDate(yest.getDate() - 1);
-    const ys = yest.toISOString().slice(0, 10);
-    return { start_date: ys, end_date: ys };
+    return { start_date: today(yest), end_date: today(yest) };
   }
   if (/(الاسبوع ده|هذا الاسبوع|this week)/i.test(text)) {
     const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    return { start_date: weekStart.toISOString().slice(0, 10), end_date: today };
+    return { start_date: today(weekStart), end_date: todayStr };
   }
   if (/(الاسبوع الماضي|last week)/i.test(text)) {
     const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - weekStart.getDay() - 7);
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
-    return { start_date: weekStart.toISOString().slice(0, 10), end_date: weekEnd.toISOString().slice(0, 10) };
+    return { start_date: today(weekStart), end_date: today(weekEnd) };
   }
   if (/(الشهر ده|هذا الشهر|this month)/i.test(text)) {
-    return { start_date: `${y}-${m}-01`, end_date: today };
+    return { start_date: today(new Date(now.getFullYear(), now.getMonth(), 1)), end_date: todayStr };
   }
   if (/(الشهر الماضي|last month)/i.test(text)) {
     const lm = new Date(now.getFullYear(), now.getMonth(), 1);
     lm.setDate(lm.getDate() - 1);
-    const lmStart = `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, "0")}-01`;
-    return { start_date: lmStart, end_date: lm.toISOString().slice(0, 10) };
+    const lmStart = new Date(lm.getFullYear(), lm.getMonth(), 1);
+    return { start_date: today(lmStart), end_date: today(lm) };
   }
   return {};
 }

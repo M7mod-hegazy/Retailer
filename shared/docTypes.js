@@ -5,6 +5,7 @@ const DOC_TYPES = [
   "quotation", "branch_transfer", "bank_statement", "ajal_statement", "ajal_schedule",
   "ajal_full_statement", "cheque_register", "payment_receipt", "daily_treasury",
   "payment_methods_report", "reports_generic",
+  "kitchen_ticket",
 ];
 
 // Rows the print-settings store accepts: every doc type plus the pseudo-scope

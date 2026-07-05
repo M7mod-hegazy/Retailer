@@ -34,6 +34,10 @@ const EXTRA_BREADCRUMB_PARENTS = [
   { match: /^\/sales\/returns\/amend$/, parent: { label: "المبيعات", path: "/sales" }, current: "تعديل" },
   { match: /^\/purchases\/returns\/new$/, parent: { label: "المشتريات", path: "/purchases" }, current: "جديد" },
   { match: /^\/purchases\/returns\/amend$/, parent: { label: "المشتريات", path: "/purchases" }, current: "تعديل" },
+  { match: /^\/sync\/config$/, parents: [{ label: "المزامنة مع المتجر", path: "/sync" }], current: "إعداد المزامنة" },
+  { match: /^\/sync$/, current: "المزامنة مع المتجر" },
+  // Cashflow ledger — accessible only via DailyTreasuryPage button, not from sidebar nav
+  { match: /^\/daily-treasury\/cashflow$/, parents: [{ label: "الخزينة اليومية", path: "/daily-treasury" }], current: "كشف الحركات التفصيلي" },
 ];
 
 function useBreadcrumbs(pathname, dynamicBreadcrumb) {

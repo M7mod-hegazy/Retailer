@@ -178,9 +178,19 @@ router.post("/:id/parts", requirePagePermission("repair_orders", "edit"), (req, 
   res.status(201).json({ success: true, data: db.prepare("SELECT * FROM repair_order_parts WHERE id = ?").get(partId) });
 });
 
-// Delete part
+// Delete part (restore stock if item_id set)
 router.delete("/:id/parts/:partId", requirePagePermission("repair_orders", "edit"), (req, res) => {
-  getDb().prepare("DELETE FROM repair_order_parts WHERE id = ? AND repair_order_id = ?").run(Number(req.params.partId), Number(req.params.id));
+  const db = getDb();
+  const part = db.prepare("SELECT * FROM repair_order_parts WHERE id = ? AND repair_order_id = ?").get(Number(req.params.partId), Number(req.params.id));
+  if (part?.item_id) {
+    const order = db.prepare("SELECT status FROM repair_orders WHERE id = ?").get(Number(req.params.id));
+    if (order && order.status !== "delivered" && order.status !== "cancelled") {
+      try {
+        db.prepare("UPDATE stock SET quantity = quantity + ? WHERE item_id = ? AND warehouse_id = ?").run(Number(part.quantity), Number(part.item_id), Number(part.warehouse_id || 1));
+      } catch {}
+    }
+  }
+  db.prepare("DELETE FROM repair_order_parts WHERE id = ? AND repair_order_id = ?").run(Number(req.params.partId), Number(req.params.id));
   res.json({ success: true });
 });
 
@@ -254,10 +264,16 @@ router.post("/:id/deliver", requirePagePermission("repair_orders", "edit"), (req
   res.json({ success: true, data: { invoice_id: invoiceId, remaining_amount: remaining } });
 });
 
-// Delete (cancel only — soft)
+// Delete (cancel only — soft, restore stock for all parts)
 router.delete("/:id", requirePagePermission("repair_orders", "delete"), (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
+  const parts = db.prepare("SELECT * FROM repair_order_parts WHERE repair_order_id = ? AND item_id IS NOT NULL").all(id);
+  for (const part of parts) {
+    try {
+      db.prepare("UPDATE stock SET quantity = quantity + ? WHERE item_id = ? AND warehouse_id = ?").run(Number(part.quantity), Number(part.item_id), Number(part.warehouse_id || 1));
+    } catch {}
+  }
   db.prepare("UPDATE repair_orders SET status='cancelled', updated_at=? WHERE id=?").run(nowSql(), id);
   req.audit("delete", "repair_orders", { id }, `إلغاء طلب صيانة #${id}`);
   res.json({ success: true });

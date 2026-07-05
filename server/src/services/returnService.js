@@ -6,7 +6,111 @@ const { getSnapshotCosts } = require("./waccService");
 const { captureSalesReturnLineOverrides } = require("./overrideTrackingService");
 const { getMaxDiscountPercent, discountExceedsCap } = require("../utils/discountPolicy");
 const { isFeatureEnabled } = require("../utils/features");
+const { validateAndReturnSerials } = require("../utils/serialValidation");
 const { nowSql, toSql } = require("../utils/datetime");
+const { recordBankMovement } = require("./bankService");
+
+function isCreditMethod(pm) {
+  return !!pm && (pm.type === "credit" || pm.category === "credit");
+}
+
+function processSalesReturnPayments(db, payments, total, customerId, userId, invoiceNo, returnId) {
+  if (!payments || !Array.isArray(payments)) return { cashAmount: 0, creditAmount: 0, paymentsJson: '[]' };
+  const paySum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+    const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي المرتجع (${total})`);
+    e.status = 400;
+    throw e;
+  }
+  let cashAmount = 0, creditAmount = 0;
+  const defaultTid = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+  for (const pmt of payments) {
+    const amount = Number(pmt.amount || 0);
+    if (amount <= 0) continue;
+    if (pmt.method === 'credit' || isCreditMethod(pmt)) {
+      creditAmount += amount;
+      continue;
+    }
+    let pm;
+    if (pmt.method_id) {
+      pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+    }
+    if (!pm && pmt.method === 'cash') {
+      pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+    }
+    if (!pm) {
+      pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+    }
+    if (pm.type === 'cash' && pm.target_id) {
+      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+      cashAmount += amount;
+    } else if (pm.type === 'bank' && pm.target_id) {
+      recordBankMovement(db, {
+        bankId: pm.target_id,
+        type: "withdrawal",
+        amount,
+        reference: invoiceNo || `مرتجع #${returnId}`,
+        notes: `مرتجع مبيعات ${invoiceNo || `#${returnId}`}`,
+        userId: userId || 1,
+        source: "sales_return",
+        refType: "sales_return",
+        refId: returnId,
+      });
+      cashAmount += amount;
+    } else {
+      cashAmount += amount;
+    }
+  }
+  const paymentsJson = JSON.stringify(payments.map(p => ({
+    method: p.method_name || p.method,
+    method_id: p.method_id || null,
+    amount: Number(p.amount || 0),
+  })));
+  return { cashAmount, creditAmount, paymentsJson };
+}
+
+function reverseSalesReturnPayments(db, returnRecord) {
+  const defaultTid = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+  let payments;
+  try { payments = JSON.parse(returnRecord.payments || '[]'); } catch (_) { payments = []; }
+  if (!payments.length) {
+    payments = [];
+    if (Number(returnRecord.cash_amount || 0) > 0) payments.push({ method: 'cash', amount: Number(returnRecord.cash_amount) });
+    if (Number(returnRecord.credit_amount || 0) > 0) payments.push({ method: 'credit', amount: Number(returnRecord.credit_amount) });
+  }
+  const usrId = 1;
+  for (const p of payments) {
+    const amount = Number(p.amount || 0);
+    if (amount <= 0) continue;
+    if (p.method === 'credit' || p.method_type === 'credit') {
+      continue;
+    }
+    let pm;
+    if (p.method_id) {
+      pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(p.method_id));
+    }
+    if (!pm && p.method === 'cash') pm = { type: 'cash', target_id: defaultTid };
+    if (!pm) pm = { type: 'cash', target_id: defaultTid };
+    if (pm.type === 'cash' && pm.target_id) {
+      db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amount, pm.target_id);
+    } else if (pm.type === 'bank' && pm.target_id) {
+      recordBankMovement(db, {
+        bankId: pm.target_id,
+        type: "deposit",
+        amount,
+        reference: returnRecord.doc_no || `مرتجع #${returnRecord.id}`,
+        notes: `إلغاء مرتجع مبيعات ${returnRecord.doc_no || `#${returnRecord.id}`}`,
+        userId: usrId,
+        source: "cancel_sales_return",
+        refType: "sales_return",
+        refId: returnRecord.id,
+      });
+    }
+  }
+  if (Number(returnRecord.credit_amount || 0) > 0 && returnRecord.customer_id) {
+    db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(Number(returnRecord.credit_amount), returnRecord.customer_id);
+  }
+}
 
 function generateAmendmentDocNo(originalDocNo, db, table) {
   const base = originalDocNo.replace(/-A\d+$/, "");
@@ -96,6 +200,7 @@ function createReturn(invoiceId, payload) {
         cost_last_purchase: snap.cost_last_purchase,
         cost_fifo:          snap.cost_fifo,
         cost_lifo:          snap.cost_lifo,
+        serials: requestedLine.serials,
       });
     }
 
@@ -121,17 +226,26 @@ function createReturn(invoiceId, payload) {
     }
 
     const refundMethod = payload.refund_method || "cash_back";
-    const cashAmt = refundMethod === "cash_back" ? finalTotal
-      : refundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
-      : 0;
-    const creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? finalTotal
-      : refundMethod === "split" ? Math.max(0, finalTotal - cashAmt)
-      : 0;
+    let cashAmt = 0, creditAmt = 0, paymentsJson = '[]';
+
+    if (refundMethod === 'multi') {
+      const result = processSalesReturnPayments(db, payload.payments, finalTotal, invoice.customer_id, payload.user_id, invoice.invoice_no, null);
+      cashAmt = result.cashAmount;
+      creditAmt = result.creditAmount;
+      paymentsJson = result.paymentsJson;
+    } else {
+      cashAmt = refundMethod === "cash_back" ? finalTotal
+        : refundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+        : 0;
+      creditAmt = (refundMethod === "credit_note" || refundMethod === "store_credit") ? finalTotal
+        : refundMethod === "split" ? Math.max(0, finalTotal - cashAmt)
+        : 0;
+    }
 
     const docNo = generateDocNumber('sales_return');
     const result = db
       .prepare(
-        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, payments, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
       )
       .run(
         docNo,
@@ -144,6 +258,7 @@ function createReturn(invoiceId, payload) {
         refundMethod,
         cashAmt,
         creditAmt,
+        paymentsJson,
         payload.notes || null,
         payload.user_id || null,
         `${createdDate} ${toSql(new Date()).slice(11)}`,
@@ -177,6 +292,25 @@ function createReturn(invoiceId, payload) {
         reference_id: returnId,
       });
 
+      // Recipe ingredient stock restoration (feature_restaurant)
+      const recipeItem = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeItem?.has_recipe) {
+        const feRest = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (feRest?.feature_restaurant) {
+          const ingredients = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingredients) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: line.warehouse_id,
+              quantityDelta: ing.quantity * line.quantity,
+              movement_type: "recipe_restore",
+              reference_type: "sales_return",
+              reference_id: returnId,
+            });
+          }
+        }
+      }
+
       // FEFO batch restore: add returned qty to newest-expiry dated batch (only when feature enabled)
       const batchItem = isFeatureEnabled(db, "feature_expiry")
         ? db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id)
@@ -189,18 +323,15 @@ function createReturn(invoiceId, payload) {
           db.prepare("UPDATE item_batches SET quantity = quantity + ? WHERE id = ?").run(line.quantity, newestBatch.id);
         }
       }
+
+      // Serial return validation (feature_serials) — flag-guarded inside the helper
+      if (line.serials) {
+        validateAndReturnSerials(db, { item_id: line.item_id, serials: line.serials, quantity: line.quantity }, invoiceId);
+      }
     }
     captureSalesReturnLineOverrides(createdReturnLines, db);
 
-    const treasuryId =
-      payload.treasury_id ||
-      db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-
-    if (cashAmt > 0 && treasuryId) {
-      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(cashAmt, treasuryId);
-    }
     if (creditAmt > 0 && invoice.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(creditAmt, invoice.customer_id);
       if (invoice.payment_type === "credit") {
         db.prepare("UPDATE ajal_debts SET original_amount = original_amount - ? WHERE invoice_id = ? AND status = 'open'").run(creditAmt, invoiceId);
       }
@@ -244,16 +375,25 @@ function createGeneralReturn(payload) {
     const finalTotal = taxResult.total;
 
     const genRefundMethod = refund_method || 'cash_back';
-    const genCashAmt = genRefundMethod === 'cash_back' ? finalTotal
-      : genRefundMethod === 'split' ? Math.max(0, Number(payload.cash_amount || 0))
-      : 0;
-    const genCreditAmt = (genRefundMethod === 'credit_note' || genRefundMethod === 'store_credit') ? finalTotal
-      : genRefundMethod === 'split' ? Math.max(0, finalTotal - genCashAmt)
-      : 0;
+    let genCashAmt = 0, genCreditAmt = 0, genPaymentsJson = '[]';
+
+    if (genRefundMethod === 'multi') {
+      const gpResult = processSalesReturnPayments(db, payload.payments, finalTotal, customer_id, user_id, null, null);
+      genCashAmt = gpResult.cashAmount;
+      genCreditAmt = gpResult.creditAmount;
+      genPaymentsJson = gpResult.paymentsJson;
+    } else {
+      genCashAmt = genRefundMethod === 'cash_back' ? finalTotal
+        : genRefundMethod === 'split' ? Math.max(0, Number(payload.cash_amount || 0))
+        : 0;
+      genCreditAmt = (genRefundMethod === 'credit_note' || genRefundMethod === 'store_credit') ? finalTotal
+        : genRefundMethod === 'split' ? Math.max(0, finalTotal - genCashAmt)
+        : 0;
+    }
 
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)"
-    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, reason || 'other', notes || null, user_id || null, nowSql(), taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, payments, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)"
+    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, genPaymentsJson, reason || 'other', notes || null, user_id || null, nowSql(), taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
 
     const returnId = ret.lastInsertRowid;
 
@@ -276,6 +416,25 @@ function createGeneralReturn(payload) {
 
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: Number(line.quantity), movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
 
+      // Recipe ingredient stock restoration (feature_restaurant)
+      const recipeGen = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeGen?.has_recipe) {
+        const feRestGen = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (feRestGen?.feature_restaurant) {
+          const ingredientsGen = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingredientsGen) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: warehouseId,
+              quantityDelta: ing.quantity * Number(line.quantity),
+              movement_type: "recipe_restore",
+              reference_type: "sales_return",
+              reference_id: returnId,
+            });
+          }
+        }
+      }
+
       // FEFO batch restore for standalone returns (only when feature enabled)
       const batchItem2 = isFeatureEnabled(db, "feature_expiry")
         ? db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(line.item_id)
@@ -291,15 +450,7 @@ function createGeneralReturn(payload) {
     }
     captureSalesReturnLineOverrides(genReturnLines, db);
 
-    const genTreasuryId = treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-    if (genCashAmt > 0 && genTreasuryId) {
-      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(genCashAmt, genTreasuryId);
-    }
-    if (genCreditAmt > 0 && customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(genCreditAmt, customer_id);
-    }
-
-    return { id: returnId, doc_no: docNo, total: finalTotal };
+    return db.prepare("SELECT * FROM sales_returns WHERE id = ?").get(returnId);
   })();
 }
 
@@ -324,18 +475,29 @@ function cancelSalesReturn(returnId, reason, userId) {
         reference_type: "sales_return",
         reference_id: returnId,
       });
+
+      // Reverse recipe ingredient restoration (feature_restaurant)
+      const recipeCanc = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeCanc?.has_recipe) {
+        const feRestCanc = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (feRestCanc?.feature_restaurant) {
+          const ingredientsCanc = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingredientsCanc) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: line.warehouse_id || 1,
+              quantityDelta: -(ing.quantity * line.quantity),
+              movement_type: "cancel_recipe_restore",
+              reference_type: "sales_return",
+              reference_id: returnId,
+            });
+          }
+        }
+      }
     }
 
-    // Reverse financials
-    const cancelCashAmt = Number(sr.cash_amount || 0);
-    const cancelCreditAmt = Number(sr.credit_amount || 0);
-    const cancelTreasuryId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-    if (cancelCashAmt > 0 && cancelTreasuryId) {
-      db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(cancelCashAmt, cancelTreasuryId);
-    }
-    if (cancelCreditAmt > 0 && sr.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelCreditAmt, sr.customer_id);
-    }
+    // Reverse financials — handles multi-payment via payments JSON
+    reverseSalesReturnPayments(db, sr);
 
     const now = nowSql();
     db.prepare("UPDATE sales_returns SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
@@ -459,19 +621,29 @@ function editSalesReturn(returnId, payload, userId) {
     // 1. Reverse old stock
     for (const line of oldLines) {
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id || 1, quantityDelta: -line.quantity, movement_type: "cancel_sales_return", reference_type: "sales_return", reference_id: returnId });
+
+      // Reverse recipe ingredient restoration from old return (feature_restaurant)
+      const recipeOld = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeOld?.has_recipe) {
+        const feOld = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (feOld?.feature_restaurant) {
+          const ingsOld = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingsOld) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: line.warehouse_id || 1,
+              quantityDelta: -(ing.quantity * line.quantity),
+              movement_type: "cancel_recipe_restore",
+              reference_type: "sales_return",
+              reference_id: returnId,
+            });
+          }
+        }
+      }
     }
 
-    // 2. Reverse old financials
-    const editDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-    const oldCashAmt = Number(sr.cash_amount || 0);
-    const oldCreditAmt = Number(sr.credit_amount || 0);
-    if (oldCashAmt > 0) {
-      const tId = sr.treasury_id || editDefaultTId;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(oldCashAmt, tId);
-    }
-    if (oldCreditAmt > 0 && sr.customer_id) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance + ? WHERE id = ?").run(oldCreditAmt, sr.customer_id);
-    }
+    // 2. Reverse old financials — handles multi-payment via payments JSON
+    reverseSalesReturnPayments(db, sr);
 
     // 3. Build new lines
     const newLines = payload.lines || [];
@@ -484,7 +656,7 @@ function editSalesReturn(returnId, payload, userId) {
         const snap = getSnapshotCosts(requestedLine.item_id, db, Number(requestedLine.quantity));
         const lineTotal = Number(requestedLine.quantity) * Number(requestedLine.unit_price);
         newTotal += lineTotal;
-        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase, cost_fifo: snap.cost_fifo, cost_lifo: snap.cost_lifo });
+        preparedLines.push({ invoice_line_id: null, item_id: requestedLine.item_id, quantity: Number(requestedLine.quantity), unit_price: Number(requestedLine.unit_price), line_total: lineTotal, warehouse_id: requestedLine.warehouse_id || payload.warehouse_id || 1, item_name_ar: itemRow?.name || null, item_name_en: itemRow?.name_en || null, cost_wacc: snap.cost_wacc, cost_last_purchase: snap.cost_last_purchase, cost_fifo: snap.cost_fifo, cost_lifo: snap.cost_lifo, serials: requestedLine.serials });
       } else {
         const invoiceLine = db.prepare("SELECT * FROM invoice_lines WHERE id = ? AND invoice_id = ?").get(requestedLine.invoice_line_id, sr.invoice_id);
         if (!invoiceLine) continue;
@@ -496,7 +668,7 @@ function editSalesReturn(returnId, payload, userId) {
         if (qty <= 0) continue;
         const lineTotal = invoiceLine.unit_price * qty;
         newTotal += lineTotal;
-        preparedLines.push({ invoice_line_id: invoiceLine.id, item_id: invoiceLine.item_id, quantity: qty, unit_price: invoiceLine.unit_price, line_total: lineTotal, warehouse_id: payload.warehouse_id || invoiceLine.warehouse_id || 1, item_name_ar: invoiceLine.item_name_ar, item_name_en: invoiceLine.item_name_en, cost_wacc: invoiceLine.cost_wacc, cost_last_purchase: invoiceLine.cost_last_purchase, cost_fifo: invoiceLine.cost_fifo, cost_lifo: invoiceLine.cost_lifo });
+        preparedLines.push({ invoice_line_id: invoiceLine.id, item_id: invoiceLine.item_id, quantity: qty, unit_price: invoiceLine.unit_price, line_total: lineTotal, warehouse_id: payload.warehouse_id || invoiceLine.warehouse_id || 1, item_name_ar: invoiceLine.item_name_ar, item_name_en: invoiceLine.item_name_en, cost_wacc: invoiceLine.cost_wacc, cost_last_purchase: invoiceLine.cost_last_purchase, cost_fifo: invoiceLine.cost_fifo, cost_lifo: invoiceLine.cost_lifo, serials: requestedLine.serials });
       }
     }
 
@@ -508,6 +680,30 @@ function editSalesReturn(returnId, payload, userId) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(returnId, line.invoice_line_id, line.item_id, line.quantity, line.unit_price, line.line_total, line.warehouse_id, line.item_name_ar, line.item_name_en, line.cost_wacc || 0, line.cost_last_purchase || 0, line.cost_fifo || 0, line.cost_lifo || 0);
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id, quantityDelta: line.quantity, movement_type: "sales_return", reference_type: "sales_return", reference_id: returnId });
+
+      // Recipe ingredient stock restoration for new return lines (feature_restaurant)
+      const recipeNew = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+      if (recipeNew?.has_recipe) {
+        const feNew = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+        if (feNew?.feature_restaurant) {
+          const ingsNew = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+          for (const ing of ingsNew) {
+            adjustStock({
+              item_id: ing.ingredient_item_id,
+              warehouse_id: line.warehouse_id,
+              quantityDelta: ing.quantity * line.quantity,
+              movement_type: "recipe_restore",
+              reference_type: "sales_return",
+              reference_id: returnId,
+            });
+          }
+        }
+      }
+
+      // Serial return validation (feature_serials) — flag-guarded inside the helper
+      if (line.serials && sr.invoice_id) {
+        validateAndReturnSerials(db, { item_id: line.item_id, serials: line.serials, quantity: line.quantity }, sr.invoice_id);
+      }
     }
 
     // 5. Apply new financials — header خصم/زيادة fall back to existing values if not sent
@@ -551,27 +747,37 @@ function editSalesReturn(returnId, payload, userId) {
       finalAdjTotal = taxResult.total;
     }
 
+    const edDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
     const newRefundMethod = payload.refund_method || sr.refund_method;
     const newTreasuryId = payload.treasury_id || sr.treasury_id;
     const newCustomerId = payload.customer_id || sr.customer_id;
-    const newCashAmt = newRefundMethod === "cash_back" ? finalAdjTotal
-      : newRefundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
-      : 0;
-    const newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? finalAdjTotal
-      : newRefundMethod === "split" ? Math.max(0, finalAdjTotal - newCashAmt)
-      : 0;
-    if (newCashAmt > 0) {
-      const tId = newTreasuryId || editDefaultTId;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(newCashAmt, tId);
-    }
-    if (newCreditAmt > 0 && newCustomerId) {
-      db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(newCreditAmt, newCustomerId);
+    let newCashAmt = 0, newCreditAmt = 0, newPaymentsJson = '[]';
+
+    if (newRefundMethod === 'multi') {
+      const edResult = processSalesReturnPayments(db, payload.payments, finalAdjTotal, newCustomerId, userId, sr.doc_no, returnId);
+      newCashAmt = edResult.cashAmount;
+      newCreditAmt = edResult.creditAmount;
+      newPaymentsJson = edResult.paymentsJson;
+    } else {
+      newCashAmt = newRefundMethod === "cash_back" ? finalAdjTotal
+        : newRefundMethod === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+        : 0;
+      newCreditAmt = (newRefundMethod === "credit_note" || newRefundMethod === "store_credit") ? finalAdjTotal
+        : newRefundMethod === "split" ? Math.max(0, finalAdjTotal - newCashAmt)
+        : 0;
+      if (newCashAmt > 0) {
+        const tId = newTreasuryId || edDefaultTId;
+        if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(newCashAmt, tId);
+      }
+      if (newCreditAmt > 0 && newCustomerId) {
+        db.prepare("UPDATE customers SET opening_balance = opening_balance - ? WHERE id = ?").run(newCreditAmt, newCustomerId);
+      }
     }
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = ? WHERE id = ?"
-    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, nowSql(), returnId);
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, payments = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = ? WHERE id = ?"
+    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, newPaymentsJson, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, nowSql(), returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {

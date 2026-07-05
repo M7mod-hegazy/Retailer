@@ -5,7 +5,7 @@ import {
   Users, Search, Plus, X, Phone, AlertTriangle, SlidersHorizontal,
   MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
-  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle, Upload, Download
+  Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle, Upload, Download, Trash2
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import PermissionGate from "../../components/ui/PermissionGate";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
+import DeleteImpactModal from "../../components/ui/DeleteImpactModal";
 import { formatNumber } from "../../utils/currency";
 import AccountExportModal from "./AccountExportModal";
 import InstallmentsTab from "../../components/accounts/InstallmentsTab";
@@ -426,9 +427,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
       });
 
       (retsR.value?.data?.data || []).forEach(r => {
-        const isSplit = r.refund_method === "split";
-        const isCashOnly = r.refund_method === "cash_back";
-        const creditAmt = isSplit ? Number(r.credit_amount || 0) : (isCashOnly ? 0 : Number(r.total || 0));
+        const creditAmt = r.refund_method === "split" ? Number(r.credit_amount || 0) : (r.refund_method === "cash_back" ? 0 : Number(r.total || 0));
         items.push({
           id: `ret-${r.id}`,
           type: "return",
@@ -440,8 +439,8 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
           impactAmount: creditAmt,
           impactDir: creditAmt > 0.005 ? "subtract" : null,
           totalAmount: Number(r.total || 0),
-          isSplit,
-          isCashOnly,
+          isSplit: r.refund_method === "split",
+          isCashOnly: r.refund_method === "cash_back",
           cashAmount: Number(r.cash_amount || 0),
           raw: r,
         });
@@ -1032,6 +1031,37 @@ export default function CustomerAccountsPage() {
   // Copy badges state hook
   const [copiedBadge, setCopiedBadge] = useState(null);
 
+  // Delete / archive flow (mirrors SimpleCrudPage: preview impact → confirm → archive-or-delete)
+  const [deleteState, setDeleteState] = useState(null); // { id, itemName, impact, loading, confirming }
+
+  async function handleDeleteCustomer(customer) {
+    if (!customer) return;
+    setDeleteState({ id: customer.id, itemName: customer.name || `#${customer.id}`, impact: null, loading: true, confirming: false });
+    try {
+      const res = await api.get(`/api/customers/${customer.id}/delete-impact`);
+      setDeleteState((s) => (s && s.id === customer.id ? { ...s, impact: res.data?.data || { mode: "unknown" }, loading: false } : s));
+    } catch {
+      setDeleteState((s) => (s && s.id === customer.id ? { ...s, impact: { mode: "unknown" }, loading: false } : s));
+    }
+  }
+
+  async function performDeleteCustomer() {
+    const ds = deleteState;
+    if (!ds) return;
+    setDeleteState((s) => (s ? { ...s, confirming: true } : s));
+    try {
+      const res = await api.delete(`/api/customers/${ds.id}`);
+      toast.success(res.data?.archived ? (res.data?.message || "تم أرشفة العميل لأنه مرتبط ببيانات أخرى") : "تم حذف العميل بنجاح");
+      setDeleteState(null);
+      if (selected?.id === ds.id) setSelected(null);
+      loadCustomers();
+    } catch (err) {
+      setDeleteState(null);
+      if (err?.response?.status >= 500) return; // interceptor already toasted
+      toast.error(err?.response?.data?.message || "فشل الحذف - العميل مرتبط ببيانات أخرى");
+    }
+  }
+
   // ── Loaders ───────────────────────────────────────────────
   const loadCustomers = useCallback(async () => {
     try {
@@ -1187,11 +1217,12 @@ export default function CustomerAccountsPage() {
           amount: Number(payForm.amount),
           method_id: Number(payForm.method_id),
           notes: payForm.notes || null,
+          direction: payForm.direction || "subtract",
         });
       }
       toast.success("تم تسجيل الدفعة بنجاح");
       setShowPayment(false);
-      setPayForm({ amount: "", method_id: "", notes: "", schedule_id: "" });
+      setPayForm({ amount: "", method_id: "", notes: "", schedule_id: "", direction: "subtract" });
       setCustomerSchedules([]);
       await refreshSelected();
     } catch (e) { toast.error(e.response?.data?.message || "فشل تسجيل الدفعة"); }
@@ -1496,6 +1527,17 @@ export default function CustomerAccountsPage() {
                       >
                         <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
                       </button>
+                      {selected.id !== walkInId && (
+                        <PermissionGate page="customers" action="delete">
+                          <button
+                            onClick={() => handleDeleteCustomer(selected)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                            title="حذف / أرشفة العميل"
+                          >
+                            <Trash2 className="h-4 w-4 stroke-[2.2px]" />
+                          </button>
+                        </PermissionGate>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       {selected.phone && (
@@ -1584,7 +1626,7 @@ export default function CustomerAccountsPage() {
                       data-help="collect-button"
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { loadCustomerSchedules(selected?.id); setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "", schedule_id: "" }); setShowPayment(true); }}
+                      onClick={() => { loadCustomerSchedules(selected?.id); setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "", schedule_id: "", direction: bal < 0 ? "add" : "subtract" }); setShowPayment(true); }}
                       className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
@@ -1918,7 +1960,7 @@ export default function CustomerAccountsPage() {
       {/* Payment Modal */}
       <AnimatePresence>
       {showPayment && selected && (
-        <Modal onClose={() => setShowPayment(false)} title={bal < 0 ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"} showDetach={false}>
+        <Modal onClose={() => setShowPayment(false)} title={payForm.direction === "add" ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"} showDetach={false}>
           <div className="p-6">
               <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
               {bal !== 0 && (
@@ -1932,6 +1974,23 @@ export default function CustomerAccountsPage() {
                   </span>
                 </div>
               )}
+
+              {/* Direction Toggle */}
+              {!payForm.schedule_id && (
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button onClick={() => setPayForm(f => ({ ...f, direction: "subtract" }))}
+                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "subtract" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    <div className="text-[16px] mb-1">↑</div>تحصيل دفعة
+                    <div className="text-[10px] font-medium mt-0.5 opacity-70">(قبض من العميل)</div>
+                  </button>
+                  <button onClick={() => setPayForm(f => ({ ...f, direction: "add" }))}
+                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "add" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    <div className="text-[16px] mb-1">↓</div>رد دفعة
+                    <div className="text-[10px] font-medium mt-0.5 opacity-70">(دفع للعميل)</div>
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {customerSchedules.length > 0 && (
                   <div>
@@ -1962,6 +2021,27 @@ export default function CustomerAccountsPage() {
                     <p className="text-[10px] font-bold text-violet-600 mt-1">تم تعيين المبلغ تلقائياً حسب القسط المحدد</p>
                   )}
                 </div>
+
+                {/* Balance Preview */}
+                {Number(payForm.amount) > 0 && (() => {
+                  const newBal = payForm.direction === "add" ? bal + Number(payForm.amount) : bal - Number(payForm.amount);
+                  return (
+                    <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
+                      <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع بعد الدفعة:</p>
+                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
+                        {fmt(Math.abs(newBal))} ج.م
+                        {newBal > 0 ? (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
+                        ) : newBal < 0 ? (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
+                        ) : (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200/60">صفر</span>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
                   <select ref={payMethodRef} value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
@@ -2068,6 +2148,17 @@ export default function CustomerAccountsPage() {
         onClose={() => setShowExport(false)}
         entityType="customers"
         accounts={customers}
+      />
+
+      {/* Delete / archive confirmation */}
+      <DeleteImpactModal
+        open={Boolean(deleteState)}
+        itemName={deleteState?.itemName}
+        impact={deleteState?.impact}
+        loading={deleteState?.loading}
+        confirming={deleteState?.confirming}
+        onConfirm={performDeleteCustomer}
+        onCancel={() => setDeleteState(null)}
       />
     </div>
   );

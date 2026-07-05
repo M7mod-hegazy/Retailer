@@ -8,6 +8,7 @@ const { createApp } = require("./app");
 const { initDb, getDb } = require("./config/database");
 const { startAutoBackupJob } = require("./jobs/autoBackup");
 const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob, startBirthdayJob } = require("./jobs/notificationJobs");
+const { startSyncScheduler } = require("./jobs/syncScheduler");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const { nowSql } = require("./utils/datetime");
 const logger = require("./config/logger");
@@ -62,6 +63,64 @@ function ensureDefaultsExist() {
   }
 }
 
+/**
+ * Validate critical NOT NULL columns have DEFAULT values.
+ * Any column that is NOT NULL without a DEFAULT will silently fail on INSERT
+ * if the caller omits it — the order_type bug pattern.
+ * This runs AFTER migrations, so it catches newly-added columns too.
+ * Logs WARNINGs only — never crashes startup.
+ */
+function validateCriticalSchema() {
+  const CRITICAL_TABLES = [
+    "invoices", "purchases", "sales_returns", "purchase_returns",
+    "expenses", "revenues", "payments", "withdrawals",
+    "daily_sessions", "employees", "users",
+  ];
+
+  // Business-identity columns that are intentionally NOT NULL / no DEFAULT.
+  // Every INSERT in the codebase always provides these — route-level validation
+  // guarantees it. Listing them here suppresses false-positive warnings.
+  const SCHEMA_KNOWN_REQUIRED = new Set([
+    "invoices.invoice_no",
+    "expenses.amount", "revenues.amount",
+    "payments.party_type", "payments.party_id", "payments.amount",
+    "withdrawals.amount",
+    "daily_sessions.date",
+    "employees.name",
+    "users.username", "users.password_hash",
+  ]);
+
+  try {
+    const db = getDb();
+    const issues = [];
+    for (const table of CRITICAL_TABLES) {
+      let cols;
+      try { cols = db.prepare(`PRAGMA table_info(${table})`).all(); } catch { continue; }
+      for (const col of cols) {
+        // notnull=1 means NOT NULL; dflt_value=null means no DEFAULT
+        if (col.notnull === 1 && col.dflt_value === null && col.pk === 0) {
+          const key = `${table}.${col.name}`;
+          if (!SCHEMA_KNOWN_REQUIRED.has(key)) {
+            issues.push(`${key} — NOT NULL but no DEFAULT`);
+          }
+        }
+      }
+    }
+    if (issues.length > 0) {
+      logger.warn({
+        message: "Schema validation: NOT NULL columns without DEFAULT detected — INSERTs that omit these will 500",
+        issues,
+      });
+      console.warn("[SCHEMA WARN] NOT NULL / no DEFAULT columns:");
+      issues.forEach(i => console.warn("  ⚠", i));
+    } else {
+      logger.info({ message: "Schema validation passed — all critical NOT NULL columns have DEFAULTs or are known-required" });
+    }
+  } catch (err) {
+    logger.warn({ message: "Schema validation failed (non-fatal)", error: err.message });
+  }
+}
+
 function tryListen(app, port, host) {
   return new Promise((resolve, reject) => {
     const server = app.listen(port, host, () => resolve(server));
@@ -74,6 +133,7 @@ async function startServer() {
     initDb(process.env.DB_PATH);
     ensureSystemOwnerAccount();
     ensureDefaultsExist();
+    validateCriticalSchema();
   } catch (err) {
     throw new Error(`Database init failed: ${err.message}`);
   }
@@ -144,6 +204,7 @@ async function startServer() {
       startAuditLogCleanupJob();
       startOverdueDebtsJob();
       startBirthdayJob();
+      startSyncScheduler();
 
       return server;
     } catch (err) {

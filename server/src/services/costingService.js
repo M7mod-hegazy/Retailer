@@ -3,6 +3,7 @@
  * All monetary math goes through utils/money.js helpers.
  */
 const { roundMoney, multiplyMoney, divideMoney } = require("../utils/money");
+const { nowSql } = require("../utils/datetime");
 
 /**
  * Get the active cost method from settings (default: 'wacc').
@@ -22,7 +23,7 @@ function getActiveCostMethod(db) {
  * @returns {{ cost: number, method: string, computed_at: string }}
  */
 function computeCostByMethod(itemId, method, asOfDate, db) {
-  const computed_at = asOfDate || new Date().toISOString();
+  const computed_at = asOfDate || nowSql();
 
   switch (method) {
     case "last_purchase": {
@@ -73,7 +74,7 @@ function computeCostByMethod(itemId, method, asOfDate, db) {
  * @returns {number} cost per unit
  */
 function computeFifoLifoCost(itemId, asOfDate, direction, db) {
-  const cutoff = asOfDate || new Date().toISOString();
+  const cutoff = asOfDate || nowSql();
 
   // Collect all purchase lots in chronological order
   const purchases = db.prepare(`

@@ -55,6 +55,9 @@ export const usePosStore = create(
       activeCategory: "all",
       heldInvoices: [],
       _activeDraftDbId: null,
+      // Restaurant (feature_restaurant)
+      diningTableId: null,
+      orderType: null,
       evaluateCart: async () => {
         const { lines } = get();
         const requestSeq = ++promotionEvaluateSeq;
@@ -98,21 +101,22 @@ export const usePosStore = create(
           const lines = existing
             ? state.lines.map((line) =>
                 (line.line_key || cartLineKey(line)) === nextLineKey
-                  ? {
-                      ...line,
-                      quantity: line.quantity + nextQuantity,
-                      unit_price: nextPrice || line.unit_price,
-                      line_discount: nextDiscount || line.line_discount || 0,
-                      line_key: nextLineKey,
-                      warehouse_id: nextWarehouseId || line.warehouse_id,
-                      warehouse_name: item.warehouse_name || line.warehouse_name,
-                      category_name: item.category_name || line.category_name,
-                      unit_id: item.unit_id || line.unit_id,
-                      unit_name: item.unit_name || line.unit_name,
-                      item_barcode: item.barcode || item.item_barcode || line.item_barcode,
-                      code: item.code || line.code,
-                      primary_image_url: item.primary_image_url || line.primary_image_url || null,
-                    }
+                   ? {
+                       ...line,
+                       quantity: line.quantity + nextQuantity,
+                       unit_price: nextPrice || line.unit_price,
+                       line_discount: nextDiscount || line.line_discount || 0,
+                       line_key: nextLineKey,
+                       warehouse_id: nextWarehouseId || line.warehouse_id,
+                       warehouse_name: item.warehouse_name || line.warehouse_name,
+                       category_name: item.category_name || line.category_name,
+                       unit_id: item.unit_id || line.unit_id,
+                       unit_name: item.unit_name || line.unit_name,
+                       item_barcode: item.barcode || item.item_barcode || line.item_barcode,
+                       code: item.code || line.code,
+                       primary_image_url: item.primary_image_url || line.primary_image_url || null,
+                       serials: [...(line.serials || [])],
+                     }
                   : line,
               )
             : [
@@ -135,10 +139,19 @@ export const usePosStore = create(
                   unit_id: item.unit_id || null,
                   unit_name: item.unit_name || "",
                   stock_quantity: Number(item.stock_quantity || item.stock || 0),
-                  // Multi-unit snapshot (feature_multi_unit)
-                  sold_unit_id: soldUnitId,
-                  sold_unit_name: item.sold_unit_name || null,
-                  sold_unit_factor: item.sold_unit_factor || null,
+                   // Serial/IMEI capture (feature_serials)
+                   serials: [],
+                   // Modifier selections (feature_restaurant)
+                   modifiers: [],
+                   // Multi-unit snapshot (feature_multi_unit)
+                   sold_unit_id: soldUnitId,
+                   sold_unit_name: item.sold_unit_name || null,
+                   sold_unit_factor: item.sold_unit_factor || null,
+                   // Gold snapshot (feature_gold)
+                  is_gold_item: item.is_gold_item ? 1 : 0,
+                  gold_weight_grams: item.gold_weight_grams ? Number(item.gold_weight_grams) : null,
+                  gold_rate_per_gram: item.gold_rate_per_gram ? Number(item.gold_rate_per_gram) : null,
+                  gold_making_charge: item.gold_making_charge ? Number(item.gold_making_charge) : null,
                 },
               ];
           return { lines };
@@ -169,6 +182,8 @@ export const usePosStore = create(
       setInvoiceNotes: (invoiceNotes) => set({ invoiceNotes }),
       setTaxEnabled: (taxEnabled) => set({ taxEnabled }),
       setTaxRate: (taxRate) => set({ taxRate }),
+      setDiningTable: (diningTableId) => set({ diningTableId }),
+      setOrderType: (orderType) => set({ orderType }),
       setSearch: (search) => set({ search }),
       setActiveCategory: (activeCategory) => set({ activeCategory }),
       loadDraftsFromDB: async () => {
@@ -340,7 +355,7 @@ export const usePosStore = create(
         if (promotionEvaluateTimer) clearTimeout(promotionEvaluateTimer);
         promotionEvaluateTimer = null;
         promotionEvaluateSeq += 1;
-        set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", invoiceNotes: "", taxEnabled: null, taxRate: null, search: "", activeCategory: "all" });
+        set({ lines: [], customer: null, discount: 0, increase: 0, promotionDiscount: 0, appliedPromotions: [], paymentType: "cash", invoiceNotes: "", taxEnabled: null, taxRate: null, search: "", activeCategory: "all", diningTableId: null, orderType: null });
       },
       getTotals: () => computeTotals(
         get().lines,

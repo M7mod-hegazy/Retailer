@@ -34,4 +34,43 @@ function adjustStock({ item_id, warehouse_id, quantityDelta, movement_type, refe
   tx();
 }
 
-module.exports = { adjustStock };
+function deductBatches(db, item_id, warehouse_id, quantity) {
+  const item = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(item_id);
+  if (!item?.track_expiry) return;
+  let remaining = Number(quantity);
+  const batches = db.prepare(
+    `SELECT id, quantity FROM item_batches
+     WHERE item_id = ? AND warehouse_id = ? AND quantity > 0 AND expiry_date IS NOT NULL
+     ORDER BY expiry_date ASC`
+  ).all(item_id, warehouse_id);
+  for (const batch of batches) {
+    if (remaining <= 0) break;
+    const consume = Math.min(remaining, batch.quantity);
+    db.prepare("UPDATE item_batches SET quantity = quantity - ? WHERE id = ?").run(consume, batch.id);
+    remaining -= consume;
+  }
+}
+
+function createTransferBatch(db, item_id, warehouse_id, quantity, source_warehouse_id) {
+  const item = db.prepare("SELECT track_expiry FROM items WHERE id = ?").get(item_id);
+  if (!item?.track_expiry) return;
+  let expiryDate = null, batchNo = null, costPrice = 0;
+  if (source_warehouse_id) {
+    const sourceBatch = db.prepare(
+      `SELECT expiry_date, batch_no, cost_price FROM item_batches
+       WHERE item_id = ? AND warehouse_id = ? AND quantity > 0 AND expiry_date IS NOT NULL
+       ORDER BY expiry_date ASC LIMIT 1`
+    ).get(item_id, source_warehouse_id);
+    if (sourceBatch) {
+      expiryDate = sourceBatch.expiry_date;
+      batchNo = sourceBatch.batch_no;
+      costPrice = sourceBatch.cost_price;
+    }
+  }
+  db.prepare(
+    `INSERT INTO item_batches (item_id, warehouse_id, batch_no, expiry_date, quantity, cost_price, source)
+     VALUES (?, ?, ?, ?, ?, ?, 'transfer')`
+  ).run(item_id, warehouse_id, batchNo, expiryDate, Number(quantity), costPrice);
+}
+
+module.exports = { adjustStock, deductBatches, createTransferBatch };

@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff } from "lucide-react";
+import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, Wifi as WifiIcon, WifiOff as WifiOffIcon } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useSyncStore } from "../../stores/syncStore";
+import { useNotificationStore } from "../../stores/notificationStore";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import { motion, AnimatePresence, LayoutGroup, useMotionValue, useSpring } from "framer-motion";
 import api from "../../services/api";
@@ -15,6 +17,7 @@ import { useShortcut } from "../../shortcuts/useShortcut";
 import { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useElectron } from "../../hooks/useElectron";
+import { useServerClock } from "../../hooks/useServerClock";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 import AnnouncementBanner from "../../components/assistant/AnnouncementBanner";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
@@ -107,9 +110,9 @@ const MODAL_CONFIG = {
 };
 
 const COLOR_MAP = {
-  rose:    { ring: "ring-rose-200",    btn: "bg-primary hover:bg-primary-600",    icon: "bg-rose-100 text-rose-600",    badge: "bg-rose-50 text-rose-600 border-rose-200" },
-  emerald: { ring: "ring-emerald-200", btn: "bg-primary hover:bg-primary-600", icon: "bg-emerald-100 text-emerald-600", badge: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  amber:   { ring: "ring-amber-200",   btn: "bg-primary hover:bg-primary-600",  icon: "bg-amber-100 text-amber-600",  badge: "bg-amber-50 text-amber-600 border-amber-200" },
+  rose:    { ring: "ring-[var(--danger-border)]",    btn: "bg-primary hover:bg-primary-600",    icon: "bg-[var(--danger-light)] text-[var(--danger-text)]",    badge: "bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]" },
+  emerald: { ring: "ring-[var(--success-border)]", btn: "bg-primary hover:bg-primary-600", icon: "bg-[var(--success-light)] text-[var(--success-text)]", badge: "bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]" },
+  amber:   { ring: "ring-[var(--warning-border)]",   btn: "bg-primary hover:bg-primary-600",  icon: "bg-[var(--warning-light)] text-[var(--warning-text)]",  badge: "bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)]" },
 };
 
 // ─── Permission hook ──────────────────────────────────────────────────────────
@@ -191,7 +194,7 @@ function QuickEntryModal({ type, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
@@ -199,7 +202,7 @@ function QuickEntryModal({ type, onClose }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.92, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className={`relative bg-white rounded-3xl shadow-2xl w-full max-w-sm ring-1 ${colors.ring} overflow-hidden`}
+        className={`relative bg-[var(--bg-surface)] rounded-3xl shadow-[var(--shadow-modal)] w-full max-w-sm ring-1 ${colors.ring} overflow-hidden`}
       >
         {/* Header */}
         <div className="px-6 pt-6 pb-4 flex items-center gap-4">
@@ -207,24 +210,24 @@ function QuickEntryModal({ type, onClose }) {
             <Icon className="w-5 h-5" strokeWidth={2} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[17px] font-black text-zinc-900 leading-tight">{cfg.title}</h2>
-            <p className="text-[11px] font-bold text-zinc-400 mt-0.5">إدخال سريع — للتفاصيل اذهب للصفحة</p>
+            <h2 className="text-[17px] font-black text-[var(--text-primary)] leading-tight">{cfg.title}</h2>
+            <p className="text-[11px] font-bold text-[var(--text-muted)] mt-0.5">إدخال سريع — للتفاصيل اذهب للصفحة</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors shrink-0"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="h-px bg-zinc-100 mx-6" />
+        <div className="h-px bg-[var(--border-subtle)] mx-6" />
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* Amount */}
           <div>
-            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">{cfg.amountLabel}</label>
+            <label className="block text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-wider mb-2">{cfg.amountLabel}</label>
             <div className="relative">
               <input
                 ref={amountRef}
@@ -235,22 +238,22 @@ function QuickEntryModal({ type, onClose }) {
                 onChange={(e) => setAmount(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                 placeholder="0.00"
-                className="w-full text-3xl font-black text-zinc-900 placeholder:text-zinc-200 bg-zinc-50 border border-zinc-200 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all text-right"
+                className="w-full text-3xl font-black text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-[var(--bg-input)] border border-[var(--border-normal)] rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)] focus:border-transparent transition-all text-right"
                 required
               />
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">ج.م</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-[var(--text-muted)]">ج.م</span>
             </div>
           </div>
 
           {/* Category — required */}
           <div>
-            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">الفئة <span className="text-rose-500">*</span></label>
+            <label className="block text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-wider mb-2">الفئة <span className="text-[var(--danger-text)]">*</span></label>
             <select
               ref={categoryRef}
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: descriptionRef, prevRef: amountRef })}
-              className={`w-full text-sm font-bold text-zinc-900 bg-zinc-50 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all appearance-none ${!categoryId ? "border-rose-300" : "border-zinc-200"}`}
+              className={`w-full text-sm font-bold text-[var(--text-primary)] bg-[var(--bg-input)] border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)] focus:border-transparent transition-all appearance-none ${!categoryId ? "border-[var(--danger-border)]" : "border-[var(--border-normal)]"}`}
               required
             >
               <option value="">— اختر الفئة (مطلوب) —</option>
@@ -262,7 +265,7 @@ function QuickEntryModal({ type, onClose }) {
 
           {/* Description */}
           <div>
-            <label className="block text-[11px] font-black text-zinc-500 uppercase tracking-wider mb-2">{cfg.descLabel}</label>
+            <label className="block text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-wider mb-2">{cfg.descLabel}</label>
             <input
               ref={descriptionRef}
               type="text"
@@ -270,7 +273,7 @@ function QuickEntryModal({ type, onClose }) {
               onChange={(e) => setDescription(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: categoryRef })}
               placeholder="اكتب وصفاً مختصراً..."
-              className="w-full text-sm font-semibold text-zinc-900 placeholder:text-zinc-300 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
+              className="w-full text-sm font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-[var(--bg-input)] border border-[var(--border-normal)] rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)] focus:border-transparent transition-all"
             />
           </div>
 
@@ -330,7 +333,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
     `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${
       active
         ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
-        : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-primary hover:border-primary hover:text-white"
+        : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
     }`;
 
   return (
@@ -342,12 +345,16 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         onMouseLeave={handleMouseLeave}
         className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
           active
-            ? "bg-primary text-white shadow-xl shadow-zinc-900/20"
+            ? "bg-primary text-white shadow-[var(--shadow-elevated)]"
             : item.pageKey === "updates" && updateAvailable
-            ? "bg-white border-2 border-emerald-300 shadow-[0_0_30px_-8px_var(--primary-glow)] hover:shadow-[0_0_40px_-8px_var(--primary-glow)] hover:-translate-y-0.5"
-            : "bg-white border border-zinc-200/50 hover:border-transparent hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:z-10"
+            ? "bg-[var(--bg-surface)] border-2 border-[var(--success-border)] shadow-[var(--shadow-elevated),0_0_30px_-8px_var(--primary-glow)] hover:shadow-[var(--shadow-modal),0_0_40px_-8px_var(--primary-glow)] hover:-translate-y-1"
+            : "bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-elevated)] hover:shadow-[var(--shadow-modal)] hover:-translate-y-1 hover:border-[var(--border-accent)]"
         }`}
+        style={{ backgroundImage: "linear-gradient(180deg, var(--bg-surface) 55%, var(--accent-soft))" }}
       >
+        {/* Accent bar — slides in from the start edge on hover */}
+        <div className="absolute top-3 bottom-3 w-[3px] rounded-full bg-[var(--primary)] opacity-0 group-hover:opacity-100 transition-all duration-500 -translate-x-2 group-hover:translate-x-0" style={{ insetInlineStart: "0.75rem" }} />
+
         {/* Animated gradient */}
         <motion.div
           style={{ x: xSpring, y: ySpring }}
@@ -359,14 +366,14 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         <div className="relative z-10 flex flex-col h-full justify-between gap-8">
           <div className="flex justify-between items-start">
             <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
-              active ? "bg-white/10 text-accent" : "bg-zinc-50 text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:scale-110"
+              active ? "bg-[var(--chip-on-primary)] text-[var(--on-feature)]" : "bg-[var(--bg-input)] text-[var(--text-muted)] group-hover:bg-primary group-hover:text-white group-hover:scale-110"
             }`}>
               <item.icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
 
             <div className="flex items-start gap-2">
               {item.pageKey === "updates" && updateAvailable && (
-                <span className="flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-lg shadow-emerald-500/20 animate-pulse whitespace-nowrap self-center">
+                  <span className="flex items-center gap-1 bg-[var(--success-text)] text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-[var(--shadow-glow-green)] animate-pulse whitespace-nowrap self-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-white" />
                   تحديث
                 </span>
@@ -391,7 +398,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
                    className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${
                     active
                       ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
-                      : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-primary hover:border-primary hover:text-white"
+                      : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
                   }`}
                 >
                   <Zap className="w-3 h-3" />
@@ -401,7 +408,7 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
 
               {/* Arrow icon */}
               <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${
-                active ? "border-white/20 text-white" : "border-zinc-200 text-zinc-300 group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+                active ? "border-white/20 text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] group-hover:border-primary group-hover:bg-primary group-hover:text-white"
               }`}>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
@@ -409,11 +416,11 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
           </div>
 
           <div>
-            <h3 className={`text-lg font-black tracking-tight mb-2 transition-colors duration-500 ${active ? "text-white" : "text-zinc-900"}`}>
+            <h3 className={`text-lg font-black tracking-tight mb-2 transition-colors duration-500 ${active ? "text-white" : "text-[var(--text-primary)]"}`}>
               {item.label}
             </h3>
             <p className={`text-xs font-bold leading-relaxed line-clamp-2 transition-colors duration-500 ${
-              active ? "text-zinc-400" : "text-zinc-400 group-hover:text-zinc-500"
+              active ? "text-[var(--on-feature-muted)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
             }`}>
               {TOOLTIPS[item.pageKey]}
             </p>
@@ -421,6 +428,140 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
         </div>
 
       </Link>
+    </motion.div>
+  );
+}
+
+// ─── Sync Dashboard Widget ────────────────────────────────────────────────────
+function SyncDashboardWidget() {
+  const navigate = useNavigate();
+  const { status, connected, pendingChanges, configured, setStatus } = useSyncStore();
+  const { items: notifications, fetchNotifications } = useNotificationStore();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const { getSyncStatus } = await import("../../services/syncService");
+        const [statusRes] = await Promise.all([
+          getSyncStatus().catch(() => null),
+          fetchNotifications(),
+        ]);
+        if (!cancelled && statusRes) setStatus(statusRes);
+      } catch { /* ignore */ }
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!configured) return null;
+
+  const recentOrders = (notifications || [])
+    .filter((n) => n.type === "order" || n.type === "Order")
+    .slice(0, 3);
+
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return "";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "الآن";
+    if (mins < 60) return `${mins} د`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} س`;
+    const days = Math.floor(hrs / 24);
+    return `${days} ي`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
+    >
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-card rounded-[2rem] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              connected ? "bg-[var(--success-light)] text-[var(--success-text)]" : "bg-[var(--danger-light)] text-[var(--danger-text)]"
+            }`}>
+              {connected ? <WifiIcon className="h-5 w-5" /> : <WifiOffIcon className="h-5 w-5" />}
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-[var(--text-primary)]">المزامنة مع المتجر الإلكتروني</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`inline-flex items-center gap-1 text-xs font-bold ${
+                  connected ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    connected ? "bg-[var(--success-text)] animate-pulse" : "bg-[var(--danger-text)]"
+                  }`} />
+                  {connected ? "متصل" : "غير متصل"}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  آخر مزامنة: {status?.lastSyncAt ? timeAgo(status.lastSyncAt) : "لم تتم بعد"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/sync")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-black hover:opacity-90 transition-all active:scale-95"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              مزامنة الآن
+            </button>
+            <button
+              onClick={() => navigate("/sync/config")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--border-normal)] rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] hover:border-primary transition-all"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              إعدادات ←
+            </button>
+          </div>
+        </div>
+
+        {/* Pending changes */}
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold mb-4 ${
+          (pendingChanges?.length || 0) > 0
+            ? "bg-[var(--warning-bg)] text-[var(--warning-text)]"
+            : "bg-[var(--bg-base)] text-[var(--text-muted)]"
+        }`}>
+          <AlertCircle className="h-3.5 w-3.5" />
+          {(pendingChanges?.length || 0) > 0
+            ? `${pendingChanges.length} تغييرات معلقة تحتاج إلى المراجعة`
+            : "لا توجد تغييرات معلقة"}
+        </div>
+
+        {/* Recent orders */}
+        {recentOrders.length > 0 && (
+          <>
+            <div className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+              آخر الطلبات من المتجر
+            </div>
+            <div className="space-y-1.5 mb-4">
+              {recentOrders.map((order) => (
+                <div key={order.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-base)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer">
+                  <ShoppingCart className="h-3.5 w-3.5 text-[var(--primary)] shrink-0" />
+                  <span className="text-xs font-bold text-[var(--text-primary)] flex-1 truncate">
+                    {order.data?.customer_name || order.title || "طلب جديد"}
+                  </span>
+                  {order.data?.total && (
+                    <span className="text-xs font-bold text-[var(--text-secondary)] shrink-0">
+                      {Number(order.data.total).toLocaleString()} ر.س
+                    </span>
+                  )}
+                  <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                    {timeAgo(order.created_at || order.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -579,21 +720,17 @@ export default function DashboardPage() {
   const activeModule = visibleModules.find((m) => m.id === activeTabId) || visibleModules[0];
   const closeModal = useCallback(() => setQuickModal(null), []);
 
-  // ─── Live Clock ─────────────────────────────────────────────────────────────
-  const [clock, setClock] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const clockTime = useMemo(() => clock.toLocaleTimeString("ar-EG", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }), [clock]);
-  const clockDate = useMemo(() => clock.toLocaleDateString("ar-EG", { timeZone: "Africa/Cairo", weekday: "long", year: "numeric", month: "long", day: "numeric" }), [clock]);
+  // ─── Live Clock (server-authoritative, DST-aware) ───────────────────────────
+  const { clockTime, clockDate } = useServerClock();
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] overflow-x-hidden selection:bg-primary/30" dir="rtl">
+    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] overflow-x-hidden selection:bg-primary/30" dir="rtl" style={{ backgroundImage: "radial-gradient(ellipse 80% 50% at 50% 0%, var(--accent-soft) 0%, transparent 60%)" }}>
 
       {/* Feature hero — adaptive dark/elevated surface, correct on every theme */}
       <div className="bg-[var(--surface-feature)] px-6 md:px-12 pt-12 pb-24 rounded-b-[3rem] relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--primary-glow)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--primary-glow)_0%,transparent_40%)] rounded-b-[3rem] pointer-events-none hero-glow-anim" />
+        <div className="dash-grain opacity-[0.03]" />
+        <div className="dash-mesh opacity-[0.05]" />
 
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
@@ -630,11 +767,11 @@ export default function DashboardPage() {
             {appVersion && appVersion !== "web" && (
               <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
                 {isServerOnline ? (
-                  <Wifi className="w-3 h-3 text-emerald-400" />
+                  <Wifi className="w-3 h-3 text-[var(--success-border)]" />
                 ) : (
-                  <WifiOff className="w-3 h-3 text-red-400" />
+                  <WifiOff className="w-3 h-3 text-[var(--danger-text)]" />
                 )}
-                <span className={`text-[10px] font-black tracking-widest ${isServerOnline ? 'text-emerald-300' : 'text-red-300'}`}>
+                <span className={`text-[10px] font-black tracking-widest ${isServerOnline ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]'}`}>
                   {isServerOnline ? 'متصل' : 'غير متصل'}
                 </span>
                 <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
@@ -721,19 +858,19 @@ export default function DashboardPage() {
             exit="exit"
             className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
           >
-            <div className="relative rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-4 md:p-5 flex items-center justify-between gap-4 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
+            <div className="relative rounded-[2rem] border-2 border-[var(--success-border)] bg-[var(--success-bg)]/80 p-4 md:p-5 flex items-center justify-between gap-4 shadow-[var(--shadow-elevated)] backdrop-blur-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--success-light)] text-[var(--success-text)]">
                   <Wifi className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-emerald-900">تمت استعادة الاتصال بالخادم</p>
-                  <p className="text-[11px] font-bold text-emerald-700">النظام متصل ويعمل بشكل طبيعي</p>
+                  <p className="text-sm font-black text-[var(--success-text)]">تمت استعادة الاتصال بالخادم</p>
+                  <p className="text-[11px] font-bold text-[var(--success-text)]">النظام متصل ويعمل بشكل طبيعي</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowReconnectedMsg(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors shrink-0"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--success-light)] text-[var(--success-text)] hover:bg-[var(--success-bg)] transition-colors shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -752,20 +889,20 @@ export default function DashboardPage() {
             exit="exit"
             className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20"
           >
-            <div className="relative rounded-[2rem] border-2 border-emerald-200 bg-emerald-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-emerald-200/20 backdrop-blur-sm">
+            <div className="relative rounded-[2rem] border-2 border-[var(--success-border)] bg-[var(--success-bg)]/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[var(--shadow-elevated)] backdrop-blur-sm">
               <button
                 onClick={dismissBanner}
-                className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors"
+                className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--success-light)] text-[var(--success-text)] hover:bg-[var(--success-bg)] transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
               <div className="flex items-center gap-5">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--success-light)] text-[var(--success-text)]">
                   <ArrowDownCircle className="h-7 w-7" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-emerald-900">تحديث جديد متاح!</h3>
-                  <p className="mt-1 text-sm font-bold text-emerald-700">إصدار جديد من النظام متاح للتحميل. انتقل إلى صفحة التحديثات للتثبيت.</p>
+                  <h3 className="text-lg font-black text-[var(--success-text)]">تحديث جديد متاح!</h3>
+                  <p className="mt-1 text-sm font-bold text-[var(--success-text)]">إصدار جديد من النظام متاح للتحميل. انتقل إلى صفحة التحديثات للتثبيت.</p>
                 </div>
               </div>
               <Link
@@ -834,7 +971,7 @@ export default function DashboardPage() {
                 try { localStorage.setItem('retailer:settings-warning-dismissed', 'true'); } catch {}
                 setSettingsWarningDismissed(true);
               }}
-              className="absolute top-4 left-4 z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-200 text-amber-700 hover:bg-amber-300 transition-colors"
+              className="absolute top-4 left-4 z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--warning-light)] text-[var(--warning-text)] hover:bg-[var(--warning-bg)] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -850,23 +987,23 @@ export default function DashboardPage() {
       {/* Empty items banner — dismissible */}
       {(initialLoadDone.current || !checkingEmpty) && noItems && !noItemsDismissed && (
         <div className="max-w-7xl mx-auto w-full px-6 md:px-12 mt-6 relative z-20">
-          <div className="relative rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-amber-200/20 backdrop-blur-sm">
+          <div className="relative rounded-[2rem] border-2 border-dashed border-[var(--warning-border)] bg-[var(--warning-bg)]/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[var(--shadow-elevated)] backdrop-blur-sm">
             <button
               onClick={() => {
                 try { localStorage.setItem('retailer:no-items-dismissed', 'true'); } catch {}
                 setNoItemsDismissed(true);
               }}
-              className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors"
+              className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--warning-light)] text-[var(--warning-text)] hover:bg-[var(--warning-bg)] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--warning-light)] text-[var(--warning-text)]">
                 <Package className="h-7 w-7" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-amber-900">لم يتم إضافة أي أصناف بعد</h3>
-                <p className="mt-1 text-sm font-bold text-amber-700">ابدأ بتعريف الأصناف والمنتجات لتشغيل المخزون والمبيعات</p>
+                <h3 className="text-lg font-black text-[var(--warning-text)]">لم يتم إضافة أي أصناف بعد</h3>
+                <p className="mt-1 text-sm font-bold text-[var(--warning-text)]">ابدأ بتعريف الأصناف والمنتجات لتشغيل المخزون والمبيعات</p>
               </div>
             </div>
             <Link
@@ -882,29 +1019,32 @@ export default function DashboardPage() {
 
       <AnnouncementBanner />
 
+      {/* ⚡ Sync Dashboard Widget */}
+      <SyncDashboardWidget />
+
       {/* Command center */}
       <div className="max-w-7xl mx-auto w-full px-6 md:px-12 relative z-20 pb-20 mt-6">
 
         {/* Quick-action legend */}
         <div className="flex items-center gap-2 mb-5">
-          <Zap className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="text-[11px] font-bold text-zinc-400">مرّر على الكارت لتظهر أزرار الإجراء السريع</span>
+          <Zap className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <span className="text-[11px] font-bold text-[var(--text-muted)]">مرّر على الكارت لتظهر أزرار الإجراء السريع</span>
         </div>
 
         {/* Module tabs */}
         <LayoutGroup>
-          <div data-help="module-tabs" className="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-xl rounded-[2rem] border border-zinc-200/60 shadow-lg shadow-zinc-200/20 overflow-x-auto hide-scrollbar mb-8">
+          <div data-help="module-tabs" className="flex items-center gap-2 p-2 bg-[var(--bg-elevated)]/80 backdrop-blur-xl rounded-[2rem] border border-[var(--border-subtle)] shadow-[var(--shadow-elevated)] overflow-x-auto hide-scrollbar mb-8">
             {visibleModules.map((module) => (
               <button
                 key={module.id}
                 onClick={() => setActiveTabId(module.id)}
-                className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group transition-colors hover:bg-zinc-100"
+                className="relative px-6 py-4 rounded-3xl flex items-center gap-3 whitespace-nowrap outline-none group transition-colors hover:bg-[var(--bg-input)]"
               >
                 {activeTabId === module.id && (
                   <motion.div layoutId="active-tab" className="absolute inset-0 bg-primary rounded-3xl" transition={{ type: "spring", stiffness: 300, damping: 25 }} />
                 )}
-                <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-400 group-hover:text-zinc-900"}`} strokeWidth={2} />
-                <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-900"}`}>
+                <module.icon className={`w-5 h-5 relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"}`} strokeWidth={2} />
+                <span className={`text-sm font-black tracking-wide relative z-10 transition-colors duration-300 ${activeTabId === module.id ? "text-white" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"}`}>
                   {module.title}
                 </span>
               </button>
@@ -948,25 +1088,28 @@ export default function DashboardPage() {
                     <div key="sec-sales-other" className="col-span-full">
                       {/* xl: header mirrors the 4-col cards grid so labels sit above their own columns */}
                       <div className="hidden xl:grid xl:grid-cols-4 xl:gap-5 items-center mb-3">
-                        <div className="xl:col-span-3 flex items-center">
-                          <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
+                        <div className="xl:col-span-3 flex items-center gap-2">
+                          <ShoppingBag className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={2} />
+                          <span className="text-[11px] font-black text-[var(--text-muted)] tracking-wide">المبيعات</span>
                         </div>
-                        <div className="relative ltr:pl-5 rtl:pr-5 flex items-center">
-                          <div className="absolute ltr:left-0 rtl:right-0 inset-y-0 w-px bg-zinc-300" />
-                          <span className="text-[11px] font-black text-zinc-500 tracking-wide">أخرى</span>
+                        <div className="relative ltr:pl-5 rtl:pr-5 flex items-center gap-2">
+                          <div className="absolute ltr:left-0 rtl:right-0 inset-y-0 w-px bg-[var(--border-accent)]" />
+                          <Package className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={2} />
+                          <span className="text-[11px] font-black text-[var(--text-muted)] tracking-wide">أخرى</span>
                         </div>
                       </div>
                       {/* <xl: simple header */}
-                      <div className="xl:hidden flex items-center mb-3">
-                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المبيعات</span>
+                      <div className="xl:hidden flex items-center gap-2 mb-3">
+                        <ShoppingBag className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={2} />
+                        <span className="text-[11px] font-black text-[var(--text-muted)] tracking-wide">المبيعات</span>
                       </div>
-                      <div className="h-px w-full bg-zinc-200/70" />
+                      <div className="h-px w-full bg-[var(--border-subtle)]" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
                         {salesItems.map(item => (
                           <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
                         ))}
                         <div className="relative ltr:pl-5 rtl:pr-5">
-                          <div className="hidden xl:block absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-px bg-zinc-200/70" />
+                          <div className="hidden xl:block absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-px bg-[var(--border-subtle)]" />
                           {otherItems.map(item => (
                             <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
                           ))}
@@ -974,10 +1117,11 @@ export default function DashboardPage() {
                       </div>
                     </div>,
                     <div key="sec-purchases" className="col-span-full pt-10">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[11px] font-black text-zinc-500 tracking-wide">المشتريات</span>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Upload className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={2} />
+                        <span className="text-[11px] font-black text-[var(--text-muted)] tracking-wide">المشتريات</span>
                       </div>
-                      <div className="h-px w-full bg-zinc-200/70" />
+                      <div className="h-px w-full bg-[var(--border-subtle)]" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
                         {purchasesItems.map(item => (
                           <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
@@ -989,10 +1133,11 @@ export default function DashboardPage() {
 
                 return Object.entries(groups).flatMap(([family, items]) => [
                   <div key={`hdr-${family}`} className="col-span-full pt-5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-[11px] font-black text-zinc-500 tracking-wide">{family === "purchases" ? "المشتريات" : family}</span>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-1 h-3.5 rounded-full bg-[var(--primary)]" />
+                      <span className="text-[11px] font-black text-[var(--text-muted)] tracking-wide">{family === "purchases" ? "المشتريات" : family}</span>
                     </div>
-                    <div className="h-px w-full bg-zinc-200/70" />
+                    <div className="h-px w-full bg-[var(--border-subtle)]" />
                   </div>,
                   ...items.map(item => (
                     <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />

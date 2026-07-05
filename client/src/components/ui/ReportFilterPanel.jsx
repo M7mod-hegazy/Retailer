@@ -100,7 +100,7 @@ export function ReportFilterPanel({
       border: '1px solid var(--border-subtle)',
       borderRadius: '12px',
       marginBottom: '16px',
-      overflow: 'hidden',
+      overflow: open ? 'visible' : 'hidden',
     }}>
       {/* Header toggle */}
       <button
@@ -138,7 +138,7 @@ export function ReportFilterPanel({
       <div style={{
         maxHeight: open ? '600px' : '0px',
         opacity: open ? 1 : 0,
-        overflow: 'hidden',
+        overflow: open ? 'visible' : 'hidden',
         transition: 'max-height 300ms ease, opacity 250ms ease',
       }}>
         <div style={{ padding: '0 16px 16px' }}>

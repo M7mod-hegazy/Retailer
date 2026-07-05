@@ -10,7 +10,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useSound } from "../../hooks/useSound";
 import { usePerformanceStore } from "../../stores/performanceStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { useIsNarrowViewport } from "../../hooks/useIsNarrowViewport";
 import toast from "react-hot-toast";
@@ -22,6 +22,9 @@ import ShortcutKbd from "../../shortcuts/ShortcutKbd";
 import POSListView from "./POSListView";
 import POSDetailedView from "./POSDetailedView";
 import PosCashCheckoutModal from "../../components/pos/PosCashCheckoutModal";
+import VariantPickerModal from "../../components/pos/VariantPickerModal";
+import QuickItemModal from "../../components/pos/QuickItemModal";
+import LineConfigModal from "../../components/pos/LineConfigModal";
 import { generateInstallments } from "../../components/pos/InstallmentPlanner";
 import {
   resolveImageUrl,
@@ -31,6 +34,7 @@ import {
 } from "./posPageUtils";
 import { todayCairo } from "../../utils/dateHelpers";
 import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from "../../utils/bodyFlags";
+import { printContent } from "../../services/printService";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
@@ -82,6 +86,9 @@ export default function POSPage() {
   const { playBeep } = useSound(posVoiceEnabled);
   const goldEnabled = useFeatureEnabled("feature_gold");
   const multiUnitEnabled = useFeatureEnabled("feature_multi_unit");
+  const variantsEnabled = useFeatureEnabled("feature_variants");
+  const scaleEnabled = useFeatureEnabled("feature_scale_barcodes");
+  const restaurantEnabled = useFeatureEnabled("feature_restaurant");
 
   // POS store
   const lines             = usePosStore((s) => s.lines);
@@ -114,6 +121,10 @@ export default function POSPage() {
   const setTaxEnabled   = usePosStore((s) => s.setTaxEnabled);
   const setTaxRate      = usePosStore((s) => s.setTaxRate);
   const canEditTaxRate  = usePermission("pos", "edit_tax_rate");
+  const diningTableId   = usePosStore((s) => s.diningTableId);
+  const orderType       = usePosStore((s) => s.orderType);
+  const setDiningTable  = usePosStore((s) => s.setDiningTable);
+  const setOrderType    = usePosStore((s) => s.setOrderType);
 
   // Hold / تعليق
   const [heldDropdownOpen, setHeldDropdownOpen] = useState(false);
@@ -127,7 +138,7 @@ export default function POSPage() {
   }, []);
   const handleHold = () => {
     if (!lines.length) return;
-    const fallback = customer?.name || new Intl.DateTimeFormat("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }).format(new Date());
+    const fallback = customer?.name || new Intl.DateTimeFormat("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date());
     const label = window.prompt("اسم الفاتورة المعلقة", fallback);
     holdCurrentInvoice(label || fallback);
     toast.success("تم تعليق الفاتورة");
@@ -181,6 +192,15 @@ export default function POSPage() {
   const [allItemsMode, setAllItemsMode] = useState(false);
   const [allItemsTargetCategory, setAllItemsTargetCategory] = useState(null);
   const ITEM_PAGE = 20;
+
+  // Variant picker
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
+
+  // Scale barcode PLU not found — quick item creation
+  const [pluNotFoundData, setPluNotFoundData] = useState(null);
+
+  // Gold pricing cache for manually-selected gold items
+  const goldPricingRef = useRef(null);
 
   // List-view category filter (separate from detailed-view category)
   const [listCategoryFilter, setListCategoryFilter] = useState(null); // { id, name } | null
@@ -315,7 +335,7 @@ export default function POSPage() {
   const [invoiceIncreaseMode, setInvoiceIncreaseMode] = useState("flat");
   const [lastSalePrice, setLastSalePrice] = useState(null);
   const [priceType, setPriceType] = useState("retail");
-  const setConfigLine = useCallback(() => {}, []);
+  const [configLine, setConfigLine] = useState(null);
   const [discountModes, setDiscountModes] = useState({});
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
@@ -444,6 +464,16 @@ export default function POSPage() {
     return () => window.clearInterval(t);
   }, []);
 
+  // Restaurant: read ?table and ?order from URL (navigated from TableMapPage)
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const tableParam = searchParams.get("table");
+    if (restaurantEnabled && tableParam) {
+      setDiningTable(Number(tableParam));
+      setOrderType("dine_in");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, restaurantEnabled]);
 
   useEffect(() => { setCustomerQuery(customer?.name || ""); }, [customer]);
 
@@ -685,7 +715,15 @@ export default function POSPage() {
       if (item.is_gold_item && goldEnabled) {
         try {
           const gRes = await api.get(`/api/gold/price?item_id=${item.id}&quantity=1`);
-          item = { ...item, sale_price: gRes.data.data.unit_price, _gold_priced: true };
+          const gd = gRes.data.data;
+          item = {
+            ...item,
+            sale_price: gd.unit_price,
+            gold_rate_per_gram: gd.rate_per_gram,
+            gold_weight_grams: gd.weight_grams,
+            gold_making_charge: gd.making_charge,
+            _gold_priced: true,
+          };
         } catch {}
       }
       handleSelectItem(item);
@@ -694,6 +732,55 @@ export default function POSPage() {
     return () => window.removeEventListener("pos-barcode-scanned", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goldEnabled]);
+
+  // Pre-fetch gold pricing for manually-selected gold items
+  useEffect(() => {
+    if (!selectedItem?.is_gold_item || !goldEnabled) {
+      goldPricingRef.current = null;
+      return;
+    }
+    if (selectedItem._gold_priced) {
+      goldPricingRef.current = {
+        rate_per_gram: selectedItem.gold_rate_per_gram,
+        weight_grams: selectedItem.gold_weight_grams,
+        making_charge: selectedItem.gold_making_charge,
+        unit_price: selectedItem.sale_price,
+      };
+      return;
+    }
+    goldPricingRef.current = null;
+    let cancelled = false;
+    api.get(`/api/gold/price?item_id=${selectedItem.id}&quantity=1`)
+      .then((gRes) => {
+        if (cancelled) return;
+        const gd = gRes.data.data;
+        goldPricingRef.current = gd;
+        setSelectedItem((prev) => {
+          if (prev?.id !== selectedItem.id) return prev;
+          return {
+            ...prev,
+            sale_price: gd.unit_price,
+            gold_rate_per_gram: gd.rate_per_gram,
+            gold_weight_grams: gd.weight_grams,
+            gold_making_charge: gd.making_charge,
+            _gold_priced: true,
+          };
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItem?.id, goldEnabled]);
+
+  // Listen for scale PLU not found → show quick-create modal
+  useEffect(() => {
+    if (!scaleEnabled) return;
+    const handler = (e) => {
+      if (e.detail) setPluNotFoundData(e.detail);
+    };
+    window.addEventListener("pos-plu-not-found", handler);
+    return () => window.removeEventListener("pos-plu-not-found", handler);
+  }, [scaleEnabled]);
 
 
   useShortcut("pos.focusItem", () => { codeInputRef.current?.focus(); codeInputRef.current?.select(); });
@@ -903,7 +990,7 @@ export default function POSPage() {
     const controller = new AbortController();
     const capturedQ = q;
     const t = setTimeout(() => {
-      const searchParams = { search: q, limit: ITEM_PAGE, offset: 0, in_stock_only: 1 };
+      const searchParams = { search: q, limit: ITEM_PAGE, offset: 0, in_stock_only: 1, exclude_parents: 1 };
       if (listCategoryFilter?.id) searchParams.category_id = listCategoryFilter.id;
       api.get("/api/items", { params: searchParams, signal: controller.signal })
         .then(r => {
@@ -942,7 +1029,7 @@ export default function POSPage() {
     if (!q) return;
     const controller = new AbortController();
     const t = setTimeout(() => {
-      api.get("/api/items", { params: { search: q, limit: 120, offset: 0 }, signal: controller.signal })
+      api.get("/api/items", { params: { search: q, limit: 120, offset: 0, exclude_parents: 1 }, signal: controller.signal })
         .then((r) => {
           const rows = r.data?.data || [];
           setItems(rows);
@@ -962,7 +1049,7 @@ export default function POSPage() {
     if (!category?.id) return;
     const controller = new AbortController();
     api.get("/api/items", {
-      params: { category_id: category.id, limit: 120, offset: 0 },
+      params: { category_id: category.id, limit: 120, offset: 0, exclude_parents: 1 },
       signal: controller.signal,
     })
       .then((r) => {
@@ -982,7 +1069,7 @@ export default function POSPage() {
     if (!q && !allItemsMode) return;
     setIsLoadingMoreItems(true);
     const limit = allItemsMode ? SHOW_ALL_LIMIT : ITEM_PAGE;
-    const params = { limit, offset: searchedItemOffset, in_stock_only: 1 };
+    const params = { limit, offset: searchedItemOffset, in_stock_only: 1, exclude_parents: 1 };
     if (!allItemsMode && q) params.search = q;
     if (listCategoryFilter?.id) params.category_id = listCategoryFilter.id;
     api.get("/api/items", { params })
@@ -1022,7 +1109,7 @@ export default function POSPage() {
     // categoryIdOverride bypasses stale closure when called right after setListCategoryFilter
     const activeCategoryId = categoryIdOverride ?? listCategoryFilter?.id ?? null;
     if (activeCategoryId) {
-      api.get("/api/items", { params: { category_id: activeCategoryId, limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } })
+      api.get("/api/items", { params: { category_id: activeCategoryId, limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1, exclude_parents: 1 } })
         .then(r => {
           const rows = (r.data.data || []).map(fmt);
           setSearchedItemResults(rows);
@@ -1037,9 +1124,9 @@ export default function POSPage() {
     setAllItemsTargetCategory(selectedItem?.category_name ?? null);
 
     const catId = selectedItem?.category_id ?? null;
-    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1 } });
+    const allCall = api.get("/api/items", { params: { limit: SHOW_ALL_LIMIT, offset: 0, in_stock_only: 1, exclude_parents: 1 } });
     const catCall = catId
-      ? api.get("/api/items", { params: { category_id: catId, limit: 200, in_stock_only: 1 } })
+      ? api.get("/api/items", { params: { category_id: catId, limit: 200, in_stock_only: 1, exclude_parents: 1 } })
       : Promise.resolve({ data: { data: [] } });
 
     Promise.all([catCall, allCall])
@@ -1172,7 +1259,17 @@ export default function POSPage() {
     setWaLeadName("");
   }
 
+  function handleVariantPick(child) {
+    setVariantPickerItem(null);
+    handleSelectItem(child);
+  }
+
   function handleSelectItem(item) {
+    // Variant parent — show picker instead of selecting
+    if (variantsEnabled && item?.is_variant_parent) {
+      setVariantPickerItem(item);
+      return;
+    }
     activateInvoice();
     setSelectedItem(item);
     if (item?.id && item.id !== -1) {
@@ -1318,12 +1415,21 @@ export default function POSPage() {
       ? Number(selectedItem.wholesale_price)
       : Number(selectedItem.sale_price || selectedItem.price || 0);
 
+    const goldPricing = goldPricingRef.current;
+    const goldAvailable = goldEnabled && selectedItem.is_gold_item && (goldPricing || selectedItem._gold_priced);
+    const goldLineFields = goldAvailable ? {
+      is_gold_item: 1,
+      gold_weight_grams: goldPricing?.weight_grams ?? selectedItem.gold_weight_grams,
+      gold_rate_per_gram: goldPricing?.rate_per_gram ?? selectedItem.gold_rate_per_gram,
+      gold_making_charge: goldPricing?.making_charge ?? selectedItem.gold_making_charge,
+    } : {};
+
     addLine({
       id: selectedItem.id,
       name: selectedItem.name,
       code: selectedItem.code || selectedItem.item_code || "",
       barcode: selectedItem.barcode || "",
-      sale_price: unitPrice,
+      sale_price: goldPricing?.unit_price ?? unitPrice,
       master_sale_price: expectedMaster,
       price_type: priceType,
       category_name: selectedItem.category_name || "غير مصنف",
@@ -1335,6 +1441,8 @@ export default function POSPage() {
       primary_image_url: getItemImage(selectedItem) || null,
       quantity,
       line_discount: lineDiscount,
+      ...goldLineFields,
+      ...(restaurantEnabled && selectedItem.is_menu_item ? { is_menu_item: 1 } : {}),
     });
     playBeep();
     resetStaging();
@@ -1414,7 +1522,11 @@ export default function POSPage() {
             unit_id:       l.sold_unit_id,
             sold_unit_qty: Number(l.quantity || 0),
           } : {}),
+          // Modifier selections (feature_restaurant)
+          ...(restaurantEnabled && l.modifiers?.length ? { modifiers: l.modifiers } : {}),
         })),
+        ...(restaurantEnabled && diningTableId ? { dining_table_id: diningTableId } : {}),
+        ...(restaurantEnabled && orderType ? { order_type: orderType } : {}),
         discount,
         promotion_discount: promotionDiscount,
         payment_type: paymentType,
@@ -1563,6 +1675,42 @@ export default function POSPage() {
         toast.success(`تم تأكيد البيع وتحويل ${convertedQuotationNo} إلى فاتورة ${savedInvoiceNo}`, { duration: 5000 });
       }
       if (printAfter) setPrintPreview(true);
+
+      // Kitchen ticket: print menu items for restaurant orders
+      if (restaurantEnabled && printAfter) {
+        const kitchenLines = lines.filter((l) => l.is_menu_item || l.modifiers?.length > 0);
+        if (kitchenLines.length > 0) {
+          const orderTypeLabel = { dine_in: "طاولة", takeaway: "طلب خارجي", delivery: "توصيل" }[orderType] || "طاولة";
+          const ticketHtml = `
+            <div dir="rtl" style="font-family: 'Courier New', monospace; padding: 8px; direction: rtl; text-align: right; font-size: 14px;">
+              <div style="text-align: center; margin-bottom: 12px;">
+                <div style="font-size: 20px; font-weight: 900;">🍳 أمر مطبخ</div>
+                <div style="font-size: 12px; color: #555;">فاتورة #${savedInvoiceNo}</div>
+              </div>
+              <div style="border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 8px 0; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                <span>${orderTypeLabel}${diningTableId ? ' — رقم ' + diningTableId : ''}</span>
+                <span>${new Date().toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+              ${kitchenLines.map((l) => `
+                <div style="margin-bottom: 10px; border-bottom: 1px dotted #ddd; padding-bottom: 6px;">
+                  <div style="font-size: 15px; font-weight: 900;">x${l.quantity} ${l.item_name}</div>
+                  ${(l.modifiers || []).map((m) => `
+                    <div style="font-size: 12px; color: #666; margin-right: 16px;">• ${m.name}</div>
+                  `).join("")}
+                </div>
+              `).join("")}
+              <div style="margin-top: 16px; text-align: center; font-size: 11px; color: #999;">— ${storeSettings.company_name || ""} —</div>
+            </div>
+          `;
+          printContent({
+            contentHtml: ticketHtml,
+            pageSizeStr: "80mm",
+            docType: "kitchen_ticket",
+            docLabel: `مطبخ #${savedInvoiceNo}`,
+            title: `أمر مطبخ #${savedInvoiceNo}`,
+          }).catch(() => {});
+        }
+      }
     } catch (error) {
       if (error.response?.status === 403 && error.response?.data?.code === "DISCOUNT_LIMIT_EXCEEDED") {
         setPendingSave({ printAfter, opts }); setSupervisorOverrideOpen(true);
@@ -1595,6 +1743,10 @@ export default function POSPage() {
   // Invoice void and search are handled by POSTodayModal component
 
   function handleGridItemClick(item) {
+    if (variantsEnabled && item?.is_variant_parent) {
+      setVariantPickerItem(item);
+      return;
+    }
     const warehouse = warehouses.find((w) => (stockLevels[item.id]?.[w.id] || 0) > 0) || (warehouses.length ? warehouses[0] : { id: "default", name: "المخزن الرئيسي" });
     const stockValue = Number(stockLevels[item.id]?.[warehouse.id] ?? item.stock_quantity ?? item.stock ?? 0);
     const salePrice = Number(item.sale_price || item.price || 0);
@@ -1786,7 +1938,7 @@ export default function POSPage() {
     detailedItemResults, detailedCategories,
     getItemImage, handleGridItemClick,
     multiTotal, paymentMethods,
-    multiUnitEnabled, setConfigLine,
+    multiUnitEnabled, restaurantEnabled, setConfigLine,
     onDetailedResizeStart, toggleDetailedSort,
   };
 
@@ -1799,6 +1951,31 @@ export default function POSPage() {
         onConfirm={handleCashCheckoutConfirm}
         onClose={() => setCashCheckoutOpen(false)}
       />
+      <VariantPickerModal
+        open={Boolean(variantPickerItem)}
+        item={variantPickerItem}
+        onPick={handleVariantPick}
+        onClose={() => setVariantPickerItem(null)}
+      />
+      <LineConfigModal
+        line={configLine}
+        item={configLine ? items.find((i) => i.id === configLine.item_id) : null}
+        onClose={() => setConfigLine(null)}
+        onApply={(patch) => {
+          if (configLine) {
+            const key = configLine.line_key || cartLineKey(configLine);
+            updateLine(key, patch);
+          }
+          setConfigLine(null);
+        }}
+      />
+      {scaleEnabled && (
+        <QuickItemModal
+          pluData={pluNotFoundData}
+          onClose={() => setPluNotFoundData(null)}
+          onCreated={() => setPluNotFoundData(null)}
+        />
+      )}
     </>
   );
 }

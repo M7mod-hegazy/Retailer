@@ -101,6 +101,37 @@ router.post("/modifier-groups", requirePagePermission("settings", "add"), (req, 
   res.status(201).json({ success: true, data: { id } });
 });
 
+router.put("/modifier-groups/:id", requirePagePermission("settings", "edit"), (req, res) => {
+  const db = getDb();
+  const b = req.body || {};
+  const id = Number(req.params.id);
+  db.prepare("UPDATE modifier_groups SET name=?, selection_type=?, required=?, sort_order=? WHERE id=?").run(
+    b.name, b.selection_type || "single", b.required ? 1 : 0, Number(b.sort_order || 0), id,
+  );
+  // Re-sync modifier_group_items
+  db.prepare("DELETE FROM modifier_group_items WHERE group_id = ?").run(id);
+  if (Array.isArray(b.modifier_ids)) {
+    b.modifier_ids.forEach((mid, i) => {
+      db.prepare("INSERT OR IGNORE INTO modifier_group_items (group_id, modifier_id, sort_order) VALUES (?,?,?)").run(id, mid, i);
+    });
+  }
+  res.json({ success: true });
+});
+
+router.delete("/modifier-groups/:id", requirePagePermission("settings", "edit"), (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  db.prepare("DELETE FROM modifier_group_items WHERE group_id = ?").run(id);
+  db.prepare("DELETE FROM item_modifier_groups WHERE group_id = ?").run(id);
+  db.prepare("DELETE FROM modifier_groups WHERE id = ?").run(id);
+  res.json({ success: true });
+});
+
+router.delete("/modifier-groups/:groupId/modifiers/:modifierId", requirePagePermission("settings", "edit"), (req, res) => {
+  getDb().prepare("DELETE FROM modifier_group_items WHERE group_id = ? AND modifier_id = ?").run(Number(req.params.groupId), Number(req.params.modifierId));
+  res.json({ success: true });
+});
+
 // ─── Item Recipes ─────────────────────────────────────────────────────────────
 
 router.get("/recipes/:itemId", requirePagePermission("items", "view"), (req, res) => {
@@ -133,6 +164,40 @@ router.delete("/recipes/:itemId/:ingredientId", requirePagePermission("items", "
   // Clear has_recipe flag if no more ingredients
   const count = db.prepare("SELECT COUNT(*) as cnt FROM item_recipes WHERE menu_item_id = ?").get(Number(req.params.itemId)).cnt;
   if (count === 0) db.prepare("UPDATE items SET has_recipe = 0 WHERE id = ?").run(Number(req.params.itemId));
+  res.json({ success: true });
+});
+
+// ─── Item ↔ Modifier Group mappings ───────────────────────────────────────────
+
+router.get("/items/:itemId/modifier-groups", requirePagePermission("items", "view"), (req, res) => {
+  const db = getDb();
+  const groups = db.prepare(`
+    SELECT mg.* FROM modifier_groups mg
+    JOIN item_modifier_groups img ON img.group_id = mg.id
+    WHERE img.item_id = ?
+    ORDER BY mg.sort_order, mg.id
+  `).all(Number(req.params.itemId));
+  groups.forEach(g => {
+    g.modifiers = db.prepare(`
+      SELECT m.* FROM modifiers m
+      JOIN modifier_group_items mgi ON mgi.modifier_id = m.id
+      WHERE mgi.group_id = ? AND m.is_active = 1
+      ORDER BY mgi.sort_order
+    `).all(g.id);
+  });
+  res.json({ success: true, data: groups });
+});
+
+router.post("/items/:itemId/modifier-groups", requirePagePermission("items", "edit"), (req, res) => {
+  const db = getDb();
+  const { group_id } = req.body || {};
+  if (!group_id) return res.status(400).json({ success: false, message: "group_id required" });
+  db.prepare("INSERT OR IGNORE INTO item_modifier_groups (item_id, group_id) VALUES (?,?)").run(Number(req.params.itemId), Number(group_id));
+  res.status(201).json({ success: true });
+});
+
+router.delete("/items/:itemId/modifier-groups/:groupId", requirePagePermission("items", "edit"), (req, res) => {
+  getDb().prepare("DELETE FROM item_modifier_groups WHERE item_id = ? AND group_id = ?").run(Number(req.params.itemId), Number(req.params.groupId));
   res.json({ success: true });
 });
 

@@ -15,7 +15,7 @@ function toDateInput(d = new Date()) {
 function fmtDateTime(d) {
   return new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
     year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: true,
   }).format(new Date(d));
 }
 function fmtQty(v) {

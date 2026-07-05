@@ -326,8 +326,9 @@ router.put("/:id/permissions", (req, res, next) => {
       return res.status(403).json({ error: "admin_only" });
     }
 
-    const target = getDb()
-      .prepare("SELECT id, role FROM users WHERE id = ?")
+    const db = getDb();
+    const target = db
+      .prepare("SELECT id, role, page_permissions FROM users WHERE id = ?")
       .get(req.params.id);
 
     if (!target) {
@@ -345,16 +346,33 @@ router.put("/:id/permissions", (req, res, next) => {
       throw err;
     }
 
+    // Snapshot before-state for the audit diff
+    const before = target.page_permissions ? JSON.parse(target.page_permissions) : {};
+
     const permissionsJson = JSON.stringify(permissions);
-    getDb()
-      .prepare("UPDATE users SET page_permissions = ? WHERE id = ?")
+    db.prepare("UPDATE users SET page_permissions = ? WHERE id = ?")
       .run(permissionsJson, req.params.id);
 
-    req.audit("edit_permissions", "user", { target_user_id: Number(req.params.id) }, `👤 تم تعديل صلاحيات المستخدم #${req.params.id}`);
+    // Compute page-level diff: only pages whose action lists actually changed
+    const allKeys = new Set([...Object.keys(before), ...Object.keys(permissions)]);
+    const diff = {};
+    for (const k of allKeys) {
+      const b = (before[k] || []).slice().sort().join(",");
+      const a = (permissions[k] || []).slice().sort().join(",");
+      if (b !== a) diff[k] = { before: before[k] || [], after: permissions[k] || [] };
+    }
+    const changedCount = Object.keys(diff).length;
+
+    req.audit(
+      "edit_permissions", "user",
+      { target_user_id: Number(req.params.id), changed_pages: changedCount, diff },
+      `👤 تم تعديل صلاحيات المستخدم #${req.params.id} (${changedCount} صفحة متأثرة)`
+    );
     res.json({ success: true, data: permissions });
   } catch (error) {
     next(error);
   }
 });
+
 
 module.exports = router;

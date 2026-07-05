@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, CalendarDays, Search, X, Package, User, List, LayoutList, BarChart3, Filter } from "lucide-react";
-import { PREVIEW_COLUMNS, GHOST_ROWS, CAT_PREVIEW_COLUMNS, CAT_GHOST_ROWS, COL_TYPE_STYLE, FILTER_DIMENSIONS } from "./reportsCenterConfig";
+import { PREVIEW_COLUMNS, GHOST_ROWS, CAT_PREVIEW_COLUMNS, CAT_GHOST_ROWS, COL_TYPE_STYLE, FILTER_DIMENSIONS, formatReportCellValue } from "./reportsCenterConfig";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import SearchInput from "../../components/ui/SearchInput";
 import Highlight from "../../components/ui/Highlight";
@@ -19,7 +19,7 @@ const AR_LABELS = {
   admin: "مدير", cashier: "كاشير", manager: "مشرف",
   payment_type: "طريقة الدفع", status: "الحالة",
 };
-function arLabel(key) { return AR_LABELS[key] || key; }
+function arLabel(key) { return formatReportCellValue(null, key) || AR_LABELS[key] || key; }
 
 // ─── Normalize column from either config format or server format ─────
 function normalizeCol(c) {
@@ -37,34 +37,34 @@ function normalizeCol(c) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface p-4 text-center text-2sm font-bold text-text-muted shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[9999] rounded-[12px] border border-zinc-200 bg-white p-4 text-center text-2sm font-bold text-zinc-500 shadow-2xl">
         {emptyLabel}
       </div>
     );
   }
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
-      <div className="max-h-[280px] overflow-y-auto rounded-[12px] p-1 scrollbar-thin scrollbar-thumb-border-strong">
+    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[9999] rounded-[12px] border border-zinc-200 bg-white shadow-2xl">
+      <div className="max-h-[280px] overflow-y-auto rounded-[12px] p-1 scrollbar-thin scrollbar-thumb-zinc-300">
         {items.map((item, i) => (
           <button
             key={item.id}
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-primary-DEFAULT/10" : "hover:bg-bg-overlay"}`}
+            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-emerald-500/10 text-emerald-600" : "hover:bg-zinc-50 text-zinc-800"}`}
           >
             <div className="flex items-center gap-2">
               {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-border-normal" />
+                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-zinc-200" />
               ) : (
-                <div className="w-8 h-8 rounded-md bg-bg-overlay flex items-center justify-center border border-border-normal">
-                  {item.code ? <Package className="w-4 h-4 text-text-muted"/> : <User className="w-4 h-4 text-text-muted"/>}
+                <div className="w-8 h-8 rounded-md bg-zinc-100 flex items-center justify-center border border-zinc-200">
+                  {item.code ? <Package className="w-4 h-4 text-zinc-400"/> : <User className="w-4 h-4 text-zinc-400"/>}
                 </div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-sm font-black ${activeIndex === i ? "text-primary-DEFAULT" : "text-text-primary"}`}><Highlight text={item.name} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-emerald-600" : "text-zinc-900"}`}><Highlight text={item.name} query={query} /></span>
                 {(item.item_code || item.code || item.barcode || item.phone) && (
-                  <span className="font-mono text-[11px] text-text-muted font-bold"><Highlight text={item.item_code || item.code || item.barcode || item.phone || `#${item.id}`} query={query} /></span>
+                  <span className="font-mono text-[11px] text-zinc-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || item.phone || `#${item.id}`} query={query} /></span>
                 )}
               </div>
             </div>
@@ -86,7 +86,7 @@ export function RSelect({ value, onChange, options, placeholder = "اختر..." 
   }, []);
   const selected = options.find((o) => o.value === value);
   return (
-    <div className="relative w-full" ref={ref}>
+    <div className={`relative w-full ${open ? "z-40" : ""}`} ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -102,7 +102,7 @@ export function RSelect({ value, onChange, options, placeholder = "اختر..." 
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.13 }}
-            className="absolute left-0 right-0 z-50 rounded-[8px] border border-border-subtle bg-bg-surface p-1 shadow-[0_8px_32px_rgba(0,0,0,0.1)]"
+            className="absolute left-0 right-0 z-[9999] rounded-[8px] border border-zinc-200 bg-white p-1 shadow-2xl"
           >
             <div className="max-h-44 overflow-y-auto scrollbar-hide">
               {options.map((opt) => (
@@ -521,7 +521,7 @@ export function LookupEntityFilter({ entity, value, onChange, placeholder }) {
   const picked = value ? items.find((i) => String(i.id) === String(value)) : null;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className={`relative ${open ? "z-40" : ""}`} ref={ref}>
       {picked ? (
         <div className="flex items-center justify-between rounded-[8px] border border-emerald-200/50 bg-emerald-500/10 px-2.5 py-1.5">
           <span className="text-2sm font-bold text-emerald-700">{picked.name}</span>
@@ -571,7 +571,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
   }, []);
   const selected = classifications.find((c) => c.id === value);
   return (
-    <div className="relative w-full" ref={ref}>
+    <div className={`relative w-full ${open ? "z-40" : ""}`} ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -587,7 +587,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.13 }}
-            className="absolute left-0 right-0 z-50 rounded-[12px] border border-zinc-200 bg-white p-1 shadow-xl"
+            className="absolute left-0 right-0 z-[9999] rounded-[12px] border border-zinc-200 bg-white p-1 shadow-2xl"
           >
             <div className="max-h-56 overflow-y-auto scrollbar-hide">
               {classifications.map((cls) => (
@@ -651,7 +651,7 @@ export function MultiSelectCheckboxes({ options, value = [], onChange, label, fo
   }, []);
   const selectedCount = value.length;
   return (
-    <div className="relative w-full" ref={ref}>
+    <div className={`relative w-full ${open ? "z-40" : ""}`} ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -668,7 +668,7 @@ export function MultiSelectCheckboxes({ options, value = [], onChange, label, fo
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 4 }}
             exit={{ opacity: 0, y: -4 }}
-            className="absolute left-0 right-0 z-50 rounded-[12px] border border-zinc-200 bg-white p-2 shadow-xl"
+            className="absolute left-0 right-0 z-[9999] rounded-[12px] border border-zinc-200 bg-white p-2 shadow-2xl"
           >
             <div className="max-h-48 overflow-y-auto space-y-0.5">
               {options.map((opt) => {
@@ -787,7 +787,7 @@ export function DimensionFilter({ dimension, value, onChange, formatLabel }) {
           className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium">
           <option value="">الكل</option>
           {opts.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label || arLabel(opt.label_key) || fmt(opt.label_key)}</option>
+            <option key={opt.value} value={opt.value}>{formatReportCellValue(dimension.key, opt.label || opt.label_key || opt.value)}</option>
           ))}
         </select>
       </div>
@@ -948,7 +948,7 @@ export function FilterPanelTop({
                           >
                             <option value="">الكل</option>
                             {opts.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label || arLabel(opt.label_key) || opt.label_key}</option>
+                              <option key={opt.value} value={opt.value}>{formatReportCellValue(dim.key, opt.label || opt.label_key || opt.value)}</option>
                             ))}
                           </select>
                         </div>

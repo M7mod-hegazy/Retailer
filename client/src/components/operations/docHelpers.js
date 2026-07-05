@@ -66,6 +66,7 @@ export function dateTime(value) {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     }).format(new Date(value));
   } catch {
     return String(value).slice(0, 16);

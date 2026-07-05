@@ -44,6 +44,9 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import DocumentPreviewModal from "../../components/operations/DocumentPreviewModal";
+import PriceTimelineChart from "../../components/operations/PriceTimelineChart";
+import ItemSmartInsights from "../../components/operations/ItemSmartInsights";
+import { formatHHMM } from "../../utils/dateHelpers";
 
 const TYPE_OPTIONS = [
   { key: "sales", label: "مبيعات", tone: "emerald", border: "border-emerald-200 hover:border-emerald-400 bg-emerald-50/10", text: "text-emerald-700 bg-emerald-50 border-emerald-100", dot: "bg-emerald-500", glow: "shadow-[0_0_15px_var(--primary-glow)]" },
@@ -69,9 +72,8 @@ function formatItemDate(dateStr) {
   if (isNaN(d.getTime())) return "";
   const day = d.getDate();
   const months = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${day} ${months[d.getMonth()]} · ${h}:${m}`;
+  const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${day} ${months[d.getMonth()]} · ${formatHHMM(hhmm)}`;
 }
 
 function sourceRoute(row) {
@@ -174,6 +176,8 @@ export default function ItemOperationsPage() {
   const [sortDir, setSortDir] = useState("desc");
   const [previewTarget, setPreviewTarget] = useState(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [period, setPeriod] = useState("30d");
+  const [customRange, setCustomRange] = useState({ start: "", end: "" });
 
   useEffect(() => {
     setSelectedId(itemId ? Number(itemId) : null);
@@ -463,176 +467,119 @@ export default function ItemOperationsPage() {
         <main className="flex-1 overflow-auto bg-transparent relative scrollbar-thin">
           <div className="p-6 max-w-6xl mx-auto space-y-6">
             
-            {/* Bento Header Grid */}
+            {/* Layer 1: Price Timeline Chart */}
+            {selectedItem && (
+              <PriceTimelineChart
+                itemId={selectedId}
+                currentPrices={{
+                  sale_price: selectedItem.sale_price,
+                  purchase_price: selectedItem.purchase_price,
+                  wholesale_price: selectedItem.wholesale_price,
+                }}
+              />
+            )}
+
+            {/* Layer 2: Smart Insights */}
+            {selectedItem && (
+              <ItemSmartInsights
+                itemId={selectedId}
+                period={period}
+                customRange={customRange}
+                selectedItem={selectedItem}
+              />
+            )}
+
+            {/* Layer 3: Compact Stats Row */}
             <AnimatePresence mode="wait">
               {selectedItem ? (
                 <motion.div
-                  data-help="item-summary"
                   key={selectedId}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                  exit={{ opacity: 0, y: -16 }}
                   className="grid grid-cols-1 md:grid-cols-3 gap-4"
                 >
-                  {/* Bento Cell 1: Essential Item Profile */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between md:col-span-2 min-h-[190px]">
-                    <div className="absolute top-0 left-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-3xl -translate-x-10 -translate-y-10 pointer-events-none" />
-                    
-                    <div className="flex flex-col gap-3 relative z-10">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-[11px] font-black text-indigo-600 uppercase tracking-wider">
-                          <Sparkles size={11} className="animate-pulse" /> بطاقة صنف
-                        </span>
-                        <span className="inline-flex rounded-full bg-slate-100 border border-slate-200/70 px-2.5 py-0.5 text-[11px] font-bold text-slate-500">
-                          {selectedItem.category_name || "بدون قسم"}
-                        </span>
-                      </div>
-                      
-                      <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-snug">
-                        {selectedItem.name}
-                      </h2>
+                  {/* Card 1: Item Profile */}
+                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+                    <div className="absolute top-0 left-0 w-28 h-28 bg-indigo-500/5 rounded-full blur-3xl -translate-x-8 -translate-y-8 pointer-events-none" />
+                    <div className="flex items-center gap-2 mb-2 relative z-10">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[9px] font-black text-indigo-600">
+                        <Sparkles size={9} /> بطاقة صنف
+                      </span>
+                      <span className="inline-flex rounded-full bg-slate-100 border border-slate-200/70 px-2 py-0.5 text-[9px] font-bold text-slate-500">
+                        {selectedItem.category_name || "بدون قسم"}
+                      </span>
                     </div>
-
-                    <div className="flex flex-wrap items-end justify-between gap-4 mt-6 border-t border-slate-100 pt-4 relative z-10">
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-                          <span className="text-[9px] text-slate-400 font-bold block mb-0.5">سعر البيع</span>
-                          <span className="number-fmt-primary text-slate-800 text-sm" dir="ltr">
-                            {money(selectedItem.sale_price)} <span className="text-[11px] font-sans font-bold text-slate-400">ج.م</span>
-                          </span>
-                        </div>
-                        {selectedItem.code && (
-                          <div className="flex flex-col border border-dashed border-slate-200 rounded-xl px-3 py-1.5">
-                            <span className="text-[9px] text-slate-400 font-bold block mb-0.5">كود الباركود</span>
-                            <span className="font-mono text-indigo-600 text-xs font-black" dir="ltr">
-                              {selectedItem.code}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Barcode visual decoration */}
-                      <div className="flex flex-col items-center opacity-65 hover:opacity-100 transition-opacity">
-                        <div className="h-6 flex items-end gap-[1.5px] px-2 overflow-hidden border-b border-slate-300">
-                          {[2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 1, 3, 1].map((w, idx) => (
-                            <span key={idx} className="bg-slate-800 rounded-t-sm" style={{ width: `${w}px`, height: `${12 + (idx % 3) * 4}px` }} />
-                          ))}
-                        </div>
-                        <span className="text-[8px] font-mono font-bold text-slate-400 mt-1 uppercase tracking-widest">{selectedItem.code || "EL-HEGAZI-POS"}</span>
-                      </div>
+                    <h2 className="text-lg font-black text-slate-800 tracking-tight leading-snug relative z-10">
+                      {selectedItem.name}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-2 relative z-10">
+                      {selectedItem.code && (
+                        <span className="font-mono text-indigo-600 text-[11px] font-black" dir="ltr">
+                          {selectedItem.code}
+                        </span>
+                      )}
+                      <span className="text-[9px] font-bold text-slate-400">
+                        بيع: {money(selectedItem.sale_price)}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bento Cell 2: Live Stock Circle */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col items-center justify-center text-center">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl translate-x-8 -translate-y-8 pointer-events-none" />
-                    
-                    <span className="text-[11px] font-black text-slate-400 block mb-3 uppercase tracking-wider">سلامة المخزون المتوفر</span>
-                    
-                    <div className="relative flex items-center justify-center my-1">
-                      <svg className="w-24 h-24 transform -rotate-90">
-                        <circle cx="48" cy="48" r="38" className="text-slate-100" strokeWidth="6" stroke="currentColor" fill="transparent" />
-                        <motion.circle 
-                          cx="48" 
-                          cy="48" 
-                          r="38" 
-                          className={stockGaugeDetails.color} 
-                          strokeWidth="6" 
-                          strokeDasharray={2 * Math.PI * 38} 
-                          initial={{ strokeDashoffset: 2 * Math.PI * 38 }}
-                          animate={{ strokeDashoffset: (2 * Math.PI * 38) - (stockGaugeDetails.percent / 100) * (2 * Math.PI * 38) }}
+                  {/* Card 2: Stock Gauge */}
+                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex items-center justify-center gap-4 min-h-[120px]">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none" />
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <svg className="w-20 h-20 transform -rotate-90">
+                        <circle cx="40" cy="40" r="32" className="text-slate-100" strokeWidth="5" stroke="currentColor" fill="transparent" />
+                        <motion.circle
+                          cx="40" cy="40" r="32"
+                          className={stockGaugeDetails.color}
+                          strokeWidth="5"
+                          strokeDasharray={2 * Math.PI * 32}
+                          initial={{ strokeDashoffset: 2 * Math.PI * 32 }}
+                          animate={{ strokeDashoffset: (2 * Math.PI * 32) - (stockGaugeDetails.percent / 100) * (2 * Math.PI * 32) }}
                           transition={{ duration: 1, ease: "easeOut" }}
-                          strokeLinecap="round" 
-                          stroke="currentColor" 
-                          fill="transparent" 
+                          strokeLinecap="round" stroke="currentColor" fill="transparent"
                         />
                       </svg>
-                      <div className="absolute flex flex-col items-center justify-center font-mono">
-                        <span className="text-lg font-black text-slate-800">{money(selectedItem.current_stock)}</span>
-                        <span className="text-[8px] font-sans font-bold text-slate-400">وحدة</span>
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-base font-black text-slate-800">{money(selectedItem.current_stock)}</span>
+                        <span className="text-[7px] font-bold text-slate-400">وحدة</span>
                       </div>
                     </div>
-
-                    <div className={`mt-3 px-3 py-1 rounded-xl border text-[11px] font-black ${stockGaugeDetails.bg} ${stockGaugeDetails.color} flex items-center gap-1.5 ${stockGaugeDetails.glow}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${stockGaugeDetails.color.replace("text-", "bg-")} animate-ping`} />
-                      {stockGaugeDetails.label}
-                    </div>
-                  </div>
-
-                  {/* Bento Cell 3: Stock Valuation */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
-                    <div className="absolute bottom-0 right-0 w-28 h-28 bg-emerald-500/5 rounded-full blur-2xl translate-x-8 translate-y-8 pointer-events-none" />
-                    <div>
-                      <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
-                        <DollarSign size={13} className="text-emerald-500" />
-                        <span className="text-[11px] font-black uppercase tracking-wider">القيمة الإجمالية للمخزون</span>
-                      </div>
-                      <span className="text-[8px] font-bold text-slate-400 block mb-1">محسوبة بسعر البيع الجاري</span>
-                    </div>
-
-                    <div className="flex items-baseline gap-1 mt-4">
-                      <span className="number-fmt-primary text-2xl text-slate-800 tracking-tight" dir="ltr">
-                        {money(stockValuation)}
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${stockGaugeDetails.bg} ${stockGaugeDetails.color} ${stockGaugeDetails.glow}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${stockGaugeDetails.color.replace("text-", "bg-")} mr-1`} />
+                        {stockGaugeDetails.label}
                       </span>
-                      <span className="text-xs font-bold text-slate-500">ج.م</span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        تقييم: {money(stockValuation)} ج.م
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bento Cell 4: Extended Statistics Sparkline */}
-                  {stockPoints.length >= 2 && (
-                    <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] md:col-span-2 flex flex-col justify-between overflow-hidden relative min-h-[140px]">
-                      <div className="absolute top-0 left-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-3xl -translate-x-12 -translate-y-12 pointer-events-none" />
-                      
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-1.5">
-                          <TrendingUp size={14} className="text-indigo-600 animate-bounce" />
-                          <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider">مخطط حركة المخزون</span>
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/50">تمثيل بياني تفاعلي</span>
+                  {/* Card 3: Price Summary */}
+                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -translate-x-6 translate-y-6 pointer-events-none" />
+                    <div className="flex items-center gap-1.5 text-slate-400 mb-1 relative z-10">
+                      <DollarSign size={13} className="text-emerald-500" />
+                      <span className="text-[10px] font-black">ملخص الأسعار</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 relative z-10">
+                      <div className="flex flex-col bg-indigo-50/60 border border-indigo-100 rounded-xl px-2.5 py-2">
+                        <span className="text-[8px] font-bold text-indigo-500 mb-0.5">بيع</span>
+                        <span className="number-fmt text-sm font-black text-indigo-700" dir="ltr">{money(selectedItem.sale_price)}</span>
                       </div>
-
-                      <div className="h-16 relative flex items-end justify-center my-1.5">
-                        <svg width="100%" height="65" viewBox="0 0 350 65" className="overflow-visible">
-                          <defs>
-                            <linearGradient id="sparklineMesh" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.18" />
-                              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
-                            </linearGradient>
-                          </defs>
-                          <motion.path
-                            d={svgWavePaths.area}
-                            fill="url(#sparklineMesh)"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.8 }}
-                          />
-                          <motion.path
-                            d={svgWavePaths.line}
-                            fill="none"
-                            stroke="#4f46e5"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.9, ease: "easeOut" }}
-                          />
-                        </svg>
+                      <div className="flex flex-col bg-emerald-50/60 border border-emerald-100 rounded-xl px-2.5 py-2">
+                        <span className="text-[8px] font-bold text-emerald-500 mb-0.5">شراء</span>
+                        <span className="number-fmt text-sm font-black text-emerald-700" dir="ltr">{money(selectedItem.purchase_price)}</span>
                       </div>
-
-                      <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 border-t border-slate-105 pt-2 font-mono">
-                        <span className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          <span>أدنى رصيد: <strong className="text-slate-700">{money(stockStats.low)}</strong></span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          <span>أعلى رصيد: <strong className="text-slate-700">{money(stockStats.peak)}</strong></span>
-                        </span>
+                      <div className="flex flex-col bg-amber-50/60 border border-amber-100 rounded-xl px-2.5 py-2">
+                        <span className="text-[8px] font-bold text-amber-500 mb-0.5">جملة</span>
+                        <span className="number-fmt text-sm font-black text-amber-700" dir="ltr">{money(selectedItem.wholesale_price || 0)}</span>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -809,9 +756,8 @@ export default function ItemOperationsPage() {
                           const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
                           const monthName = months[d.getMonth()];
                           const yyyy = d.getFullYear();
-                          const hh = String(d.getHours()).padStart(2, "0");
-                          const mi = String(d.getMinutes()).padStart(2, "0");
-                          return { day: dd, month: monthName, year: yyyy, time: `${hh}:${mi}` };
+                          const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                          return { day: dd, month: monthName, year: yyyy, time: formatHHMM(hhmm) };
                         })();
                         const beforeStock = row.context_before != null ? Number(row.context_before) : null;
                         const afterStock = row.context_after != null ? Number(row.context_after) : null;
@@ -872,7 +818,7 @@ export default function ItemOperationsPage() {
                                           </span>
                                         )}
                                         <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
-                                          {String(row.date || "").slice(11, 16)} • {String(row.date || "").slice(0, 10)}
+                                          {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
                                       <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
@@ -961,7 +907,7 @@ export default function ItemOperationsPage() {
                                           إمداد المخزن
                                         </span>
                                         <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
-                                          {String(row.date || "").slice(11, 16)} • {String(row.date || "").slice(0, 10)}
+                                          {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
                                       <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
@@ -1034,7 +980,7 @@ export default function ItemOperationsPage() {
                                           تسوية استرداد قيمة
                                         </span>
                                         <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
-                                          {String(row.date || "").slice(11, 16)} • {String(row.date || "").slice(0, 10)}
+                                          {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
                                       <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
@@ -1107,7 +1053,7 @@ export default function ItemOperationsPage() {
                                           مرتجع توريد بضاعة
                                         </span>
                                         <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
-                                          {String(row.date || "").slice(11, 16)} • {String(row.date || "").slice(0, 10)}
+                                          {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
                                       <h3 className="text-base font-black text-slate-805 tracking-tight flex items-center gap-1.5">
@@ -1178,7 +1124,7 @@ export default function ItemOperationsPage() {
                                         إمداد فروع داخلي
                                       </span>
                                       <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
-                                        {String(row.date || "").slice(11, 16)} • {String(row.date || "").slice(0, 10)}
+                                        {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                       </span>
                                     </div>
                                   </div>
@@ -1252,7 +1198,7 @@ export default function ItemOperationsPage() {
                                       </div>
                                     </div>
                                     <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
-                                      {String(row.date || "").slice(0, 10)} {String(row.date || "").slice(11, 16)}
+                                      {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
 
@@ -1339,7 +1285,7 @@ export default function ItemOperationsPage() {
                                       </div>
                                     </div>
                                     <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
-                                      {String(row.date || "").slice(0, 10)} {String(row.date || "").slice(11, 16)}
+                                      {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
 
@@ -1458,7 +1404,7 @@ export default function ItemOperationsPage() {
                                       <Database size={11} /> دفتر التكلفة
                                     </span>
                                     <span className="font-mono text-[11px] text-slate-400" dir="ltr">
-                                      {String(row.date || "").slice(0, 10)} {String(row.date || "").slice(11, 16)}
+                                      {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
                                 </SpotlightCard>

@@ -276,7 +276,7 @@ export default function InvoiceDetailPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">الوقت</span>
               <span className="text-sm font-black text-slate-800 font-mono">
-                {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-1">

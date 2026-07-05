@@ -72,8 +72,8 @@ export default function CustomerProfilePage() {
     <div className="flex flex-col h-full" dir="rtl" data-help-root="customer_profile" style={{ backgroundColor: "var(--bg-base)" }}>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 px-4 sm:px-6 py-3 text-2sm font-bold shrink-0" data-help="breadcrumb" style={{ backgroundColor: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
-        <Link to="/definitions/customers" className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
-          <ChevronLeft className="h-3.5 w-3.5" /> العملاء
+        <Link to="/accounts/customers" className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors">
+          <ChevronLeft className="h-3.5 w-3.5" /> حسابات العملاء
         </Link>
         <span>/</span>
         <span style={{ color: "var(--text-primary)" }}>{customer.name}</span>

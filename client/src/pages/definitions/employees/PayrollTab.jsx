@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, CheckCircle, X, Calculator, DollarSign } from "lucide-react";
+import { Wallet, CheckCircle, X, Calculator, DollarSign, Tag } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../../services/api";
 import PermissionGate from "../../../components/ui/PermissionGate";
@@ -23,6 +23,8 @@ export default function PayrollTab({ employee }) {
   const [settleForm, setSettleForm] = useState(null);
   const [activeAdvances, setActiveAdvances] = useState([]);
   const [advancePayMap, setAdvancePayMap] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState("");
 
   useEffect(() => {
     if (employee) loadSettlements();
@@ -56,10 +58,11 @@ export default function PayrollTab({ employee }) {
   async function handleCalculate() {
     setCalculating(true);
     try {
-      const [bonusesRes, deductionsRes, advancesRes] = await Promise.all([
+      const [bonusesRes, deductionsRes, advancesRes, categoriesRes] = await Promise.all([
         api.get(`/api/employees/${employee.id}/bonuses`),
         api.get(`/api/employees/${employee.id}/deductions`),
         api.get(`/api/employees/${employee.id}/advances`),
+        api.get("/api/expenses/categories"),
       ]);
 
       const activeBonuses = (bonusesRes.data?.data || []).filter(b => b.status === 'active');
@@ -78,6 +81,8 @@ export default function PayrollTab({ employee }) {
       const payMap = {};
       advances.forEach(a => { payMap[a.id] = ""; });
 
+      setCategories(categoriesRes.data?.data || []);
+      setExpenseCategoryId("");
       setActiveAdvances(advances);
       setAdvancePayMap(payMap);
       setSettleForm({
@@ -122,6 +127,7 @@ export default function PayrollTab({ employee }) {
         advance_deductions: advanceTotal,
         net_salary: netSalary,
         advance_payments,
+        category_id: expenseCategoryId || null,
       });
       if (res.data?.success) {
         toast.success("تم صرف الراتب بنجاح");
@@ -320,6 +326,22 @@ export default function PayrollTab({ employee }) {
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* تصنيف المصروف */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف</label>
+                <div className="relative">
+                  <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={expenseCategoryId}
+                    onChange={e => setExpenseCategoryId(e.target.value)}
+                    className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-indigo-400 transition-all appearance-none"
+                  >
+                    <option value="">اختيار التصنيف (اختياري)...</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
               </div>
 
               {/* الوصف */}

@@ -1,9 +1,11 @@
 const express = require("express");
 const { getDb } = require("../config/database");
-const { adjustStock } = require("../services/stockService");
+const { adjustStock, deductBatches, createTransferBatch } = require("../services/stockService");
+const { isFeatureEnabled } = require("../utils/features");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
+const { assertNotVariantParent } = require("./variants.routes");
 const { captureBranchTransferLineOverrides } = require("../services/overrideTrackingService");
 const { applyLinePriceUpdates, revertLinePriceUpdates } = require("../services/priceLockService");
 const { recomputeWACCForItem } = require("../services/waccService");
@@ -247,6 +249,7 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
 
       for (const item of items) {
         const itemId = Number(item.item_id);
+        assertNotVariantParent(db, itemId);
         const qty = Number(item.quantity);
         const lineWhId = Number(item.warehouse_id) || headerWhId;
         const unitCost = Math.max(0, Number(item.unit_cost) || 0);
@@ -281,6 +284,17 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
           reference_id: transferId,
           notes: notes || null,
         });
+
+        // FEFO batch tracking (feature_expiry)
+        if (isFeatureEnabled(db, "feature_expiry")) {
+          if (type === "send") {
+            deductBatches(db, itemId, lineWhId, qty);
+          } else {
+            // For receive, try to carry batch info from source; source_wh is unknown,
+            // so pass null — createTransferBatch gracefully falls back to item defaults
+            createTransferBatch(db, itemId, lineWhId, qty, null);
+          }
+        }
 
         const tlr = insertLine.run(
           transferId, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
@@ -376,6 +390,7 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
       }
 
       // Reverse original stock movements
+      const expiryEnabled = isFeatureEnabled(db, "feature_expiry");
       for (const line of existingLines) {
         if (existing.type === "receive") {
           recordBranchReceiveCost(db, id, line, { reversal: true, movement_type: "branch_receive_reversal" });
@@ -389,6 +404,16 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
           reference_id: id,
           notes: "تعديل مستند",
         });
+        // FEFO batch reversal for existing lines
+        if (expiryEnabled) {
+          if (existing.type === "send") {
+            // Restore source batches (add back)
+            createTransferBatch(db, line.item_id, line.warehouse_id, line.quantity, null);
+          } else {
+            // Deduct from destination batches (remove received batch)
+            deductBatches(db, line.item_id, line.warehouse_id, line.quantity);
+          }
+        }
       }
 
       // Delete old lines
@@ -415,6 +440,7 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
 
       for (const item of items) {
         const itemId = Number(item.item_id);
+        assertNotVariantParent(db, itemId);
         const qty = Number(item.quantity);
         const lineWhId = Number(item.warehouse_id) || existing.warehouse_id;
         const unitCost = Math.max(0, Number(item.unit_cost) || 0);
@@ -430,7 +456,6 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
           const stock = db.prepare(
             "SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?"
           ).get(itemId, lineWhId);
-
           if (!stock || stock.quantity < qty) {
             const itemRow = db.prepare("SELECT name FROM items WHERE id = ?").get(itemId);
             throw Object.assign(
@@ -449,6 +474,15 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
           reference_id: id,
           notes: notes || null,
         });
+
+        // FEFO batch tracking (feature_expiry) — new lines on edit
+        if (expiryEnabled) {
+          if (existing.type === "send") {
+            deductBatches(db, itemId, lineWhId, qty);
+          } else {
+            createTransferBatch(db, itemId, lineWhId, qty, null);
+          }
+        }
 
         const tlr = insertLine.run(id, itemId, qty, lineWhId, unitCost, sellingPrice, wholesalePrice,
           lockBuy, lockSell, lockWhole, unitId);
@@ -531,6 +565,7 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
         });
       }
 
+      const expiryEnabled = isFeatureEnabled(db, "feature_expiry");
       for (const line of lines) {
         if (transfer.type === "receive") {
           recordBranchReceiveCost(db, id, line, { reversal: true, movement_type: "branch_receive_cancel" });
@@ -544,6 +579,14 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
           reference_id: id,
           notes: `إلغاء: ${reason || transfer.reference_no}`,
         });
+        // FEFO batch reversal on cancel
+        if (expiryEnabled) {
+          if (transfer.type === "send") {
+            createTransferBatch(db, line.item_id, line.warehouse_id, line.quantity, null);
+          } else {
+            deductBatches(db, line.item_id, line.warehouse_id, line.quantity);
+          }
+        }
       }
 
       // Recompute WACC after price revert + stock reversal

@@ -104,6 +104,12 @@ export const PAGE_PERMISSIONS = {
   backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore', 'export', 'empty'] },
   updates: { label: 'التحديثات', actions: ['view'] },
   history: { label: 'سجل النشاط', actions: ['view'] },
+  whatsapp_crm: { label: 'واتساب للأعمال', actions: ['view', 'add', 'edit', 'delete'] },
+  restaurant_tables: { label: 'طاولات المطعم', actions: ['view', 'add', 'edit', 'delete'] },
+  restaurant_modifiers: { label: 'إضافات المطعم (موديفير)', actions: ['view', 'add', 'edit', 'delete'] },
+  gold_pricing: { label: 'تسعير الذهب', actions: ['view', 'add', 'edit', 'delete'] },
+  repair_orders: { label: 'أوامر الصيانة', actions: ['view', 'add', 'edit', 'delete', 'print'] },
+  serial_search: { label: 'بحث سيريال / IMEI', actions: ['view'] },
 };
 
 // Default permissions for new user role (POS only)

@@ -792,8 +792,8 @@ export default function UpdatesPage() {
                   </p>
                   <p className="text-sm font-bold text-zinc-300 font-mono">
                     {lastCheckedAt
-                      ? new Intl.DateTimeFormat("en-US", {
-                          hour12: false,
+                      ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
+                          hour12: true,
                           hour: "2-digit",
                           minute: "2-digit",
                           second: "2-digit",

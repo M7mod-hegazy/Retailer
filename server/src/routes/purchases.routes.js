@@ -12,6 +12,8 @@ const { recordBankMovement } = require("../services/bankService");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { isFeatureEnabled } = require("../utils/features");
+const { receiveSerialsOnPurchase } = require("../utils/serialValidation");
+const { assertNotVariantParent } = require("./variants.routes");
 const NotificationModel = require("../models/notification.model");
 const { nowSql, toSql, today } = require("../utils/datetime");
 
@@ -137,6 +139,103 @@ function recordPurchaseLineCost(db, purchaseId, line, options = {}) {
 // only `type` silently treats it as cash — the root cause of multi/credit bugs.
 function isCreditMethod(pm) {
   return !!pm && (pm.type === "credit" || pm.category === "credit");
+}
+
+// ── Purchase Return multi-payment helpers ─────────────────────────────────────────
+
+function processPurchaseReturnPayments(db, payments, total, supplierId, userId, docNo, returnId) {
+  if (!payments || !Array.isArray(payments)) return { cashAmount: 0, creditAmount: 0, paymentsJson: '[]' };
+  const paySum = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  if (Math.abs(paySum - Number(total || 0)) > 0.01) {
+    const e = new Error(`المبلغ الموزع (${paySum}) لا يساوي إجمالي المرتجع (${total})`);
+    e.status = 400;
+    throw e;
+  }
+  let cashAmount = 0, creditAmount = 0;
+  const defaultTid = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+  for (const pmt of payments) {
+    const amount = Number(pmt.amount || 0);
+    if (amount <= 0) continue;
+    if (pmt.method === 'credit' || isCreditMethod(pmt)) {
+      creditAmount += amount;
+      continue;
+    }
+    let pm;
+    if (pmt.method_id) {
+      pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(pmt.method_id));
+    }
+    if (!pm && pmt.method === 'cash') {
+      pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+    }
+    if (!pm) {
+      pm = { type: 'cash', category: 'cash', target_id: defaultTid };
+    }
+    if (pm.type === 'cash' && pm.target_id) {
+      db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amount, pm.target_id);
+      cashAmount += amount;
+    } else if (pm.type === 'bank' && pm.target_id) {
+      recordBankMovement(db, {
+        bankId: pm.target_id,
+        type: "deposit",
+        amount,
+        reference: docNo || `مرتجع #${returnId}`,
+        notes: `مرتجع مشتريات ${docNo || `#${returnId}`}`,
+        userId: userId || 1,
+        source: "purchase_return",
+        refType: "purchase_return",
+        refId: returnId,
+      });
+      cashAmount += amount;
+    } else {
+      cashAmount += amount;
+    }
+  }
+  const paymentsJson = JSON.stringify(payments.map(p => ({
+    method: p.method_name || p.method,
+    method_id: p.method_id || null,
+    amount: Number(p.amount || 0),
+  })));
+  return { cashAmount, creditAmount, paymentsJson };
+}
+
+function reversePurchaseReturnPayments(db, returnRecord) {
+  const defaultTid = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+  let payments;
+  try { payments = JSON.parse(returnRecord.payments || '[]'); } catch (_) { payments = []; }
+  if (!payments.length) {
+    payments = [];
+    if (Number(returnRecord.cash_amount || 0) > 0) payments.push({ method: 'cash', amount: Number(returnRecord.cash_amount) });
+    if (Number(returnRecord.credit_amount || 0) > 0) payments.push({ method: 'credit', amount: Number(returnRecord.credit_amount) });
+  }
+  for (const p of payments) {
+    const amount = Number(p.amount || 0);
+    if (amount <= 0) continue;
+    if (p.method === 'credit' || p.method_type === 'credit') continue;
+    let pm;
+    if (p.method_id) {
+      pm = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(Number(p.method_id));
+    }
+    if (!pm && p.method === 'cash') pm = { type: 'cash', target_id: defaultTid };
+    if (!pm) pm = { type: 'cash', target_id: defaultTid };
+    if (pm.type === 'cash' && pm.target_id) {
+      db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(amount, pm.target_id);
+    } else if (pm.type === 'bank' && pm.target_id) {
+      recordBankMovement(db, {
+        bankId: pm.target_id,
+        type: "withdrawal",
+        amount,
+        reference: returnRecord.doc_no || `مرتجع #${returnRecord.id}`,
+        notes: `إلغاء مرتجع مشتريات ${returnRecord.doc_no || `#${returnRecord.id}`}`,
+        userId: 1,
+        source: "cancel_purchase_return",
+        refType: "purchase_return",
+        refId: returnRecord.id,
+      });
+    }
+  }
+  if (Number(returnRecord.credit_amount || 0) > 0 && returnRecord.supplier_id) {
+    db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(Number(returnRecord.credit_amount), returnRecord.supplier_id);
+  }
 }
 
 // ── Shared purchase financial effects (used by create-equivalent re-apply on edit) ──
@@ -532,14 +631,29 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
       const purchaseId = result.lastInsertRowid;
 
       const newPurchaseLines = [];
+      const multiUnitEnabled = isFeatureEnabled(db, "feature_multi_unit");
       for (const line of payload.lines || []) {
-        const qty         = Number(line.quantity);
-        const cost        = Number(line.unit_cost);
+        assertNotVariantParent(db, line.item_id);
+        let qty         = Number(line.quantity);
+        let cost        = Number(line.unit_cost);
         const warehouseId = pickValidWarehouse(db, line.warehouse_id, payload.warehouse_id);
         const itemRow     = db.prepare("SELECT name, name_en, barcode FROM items WHERE id = ?").get(line.item_id);
         const lockBuy     = line.update_master_purchase_price  !== false ? 1 : 0;
         const lockSell    = line.update_master_sale_price       !== false ? 1 : 0;
         const lockWhole   = line.update_master_wholesale_price  !== false ? 1 : 0;
+
+        // Multi-unit: if a purchase unit is specified, convert qty to base units
+        let purchaseUnitName = null;
+        let purchaseUnitFactor = 1;
+        if (multiUnitEnabled && line.purchase_unit_id) {
+          const pu = db.prepare("SELECT unit_name, factor FROM item_units WHERE id = ? AND item_id = ?").get(line.purchase_unit_id, line.item_id);
+          if (pu) {
+            purchaseUnitName = pu.unit_name;
+            purchaseUnitFactor = Number(pu.factor);
+            qty = qty * purchaseUnitFactor;
+            cost = cost / purchaseUnitFactor;
+          }
+        }
 
         const sellPrice  = Number(line.selling_price || line.unit_price || 0);
         const wholePrice = Number(line.wholesale_price || 0);
@@ -598,6 +712,14 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
             ).run(line.item_id, warehouseId, line.batch_no || null, line.expiry_date, qty, cost);
           }
         }
+
+        // Serial registration on purchase receive (feature_serials)
+        receiveSerialsOnPurchase(db, {
+          item_id: line.item_id,
+          quantity: qty,
+          serials: line.serials,
+          warehouse_id: warehouseId,
+        }, purchaseId, lineResult.lastInsertRowid);
       }
 
       // ── Linked Purchase Order: advance received quantities + status ───────────
@@ -747,7 +869,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       const payload = req.body || {};
       const createdDate = normalizeDate(payload.created_at);
       assertCanWriteForDate(db, createdDate);
-      const settlementType = ["cash", "account", "split"].includes(payload.settlement_type) ? payload.settlement_type : "account";
+      const settlementType = ["cash", "account", "split", "multi"].includes(payload.settlement_type) ? payload.settlement_type : "account";
       let total = 0;
       const preparedLines = [];
 
@@ -802,21 +924,31 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
 
       const returnDocNo = generateDocNumber("purchase_return");
       const { discount, increase, total: adjTotal } = applyReturnAdjustment(total, payload);
-      const prCashAmt = settlementType === "cash" ? adjTotal
-        : settlementType === "split" ? Math.max(0, Number(payload.cash_amount || 0))
-        : 0;
-      const prCreditAmt = settlementType === "account" ? adjTotal
-        : settlementType === "split" ? Math.max(0, adjTotal - prCashAmt)
-        : 0;
-      const treasuryId = (settlementType === "cash" || settlementType === "split")
-        ? payload.treasury_id ||
-          db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id ||
-          1
-        : null;
+      let prCashAmt = 0, prCreditAmt = 0, prPaymentsJson = '[]';
+      let treasuryId = null;
+
+      if (settlementType === 'multi') {
+        const prResult = processPurchaseReturnPayments(db, payload.payments, adjTotal, purchase.supplier_id, req.user?.id, returnDocNo, null);
+        prCashAmt = prResult.cashAmount;
+        prCreditAmt = prResult.creditAmount;
+        prPaymentsJson = prResult.paymentsJson;
+      } else {
+        prCashAmt = settlementType === "cash" ? adjTotal
+          : settlementType === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+          : 0;
+        prCreditAmt = settlementType === "account" ? adjTotal
+          : settlementType === "split" ? Math.max(0, adjTotal - prCashAmt)
+          : 0;
+        treasuryId = (settlementType === "cash" || settlementType === "split")
+          ? payload.treasury_id ||
+            db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id ||
+            1
+          : null;
+      }
 
       const purchaseReturnResult = db
-        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, cash_amount, credit_amount, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
-        .run(returnDocNo, purchase.id, purchase.supplier_id || null, adjTotal, discount, increase, settlementType, prCashAmt, prCreditAmt, treasuryId,
+        .prepare("INSERT INTO purchase_returns (doc_no, purchase_id, supplier_id, total, discount, increase, settlement_type, cash_amount, credit_amount, payments, treasury_id, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)")
+        .run(returnDocNo, purchase.id, purchase.supplier_id || null, adjTotal, discount, increase, settlementType, prCashAmt, prCreditAmt, prPaymentsJson, treasuryId,
              payload.user_id || req.user?.id || null, `${createdDate} ${toSql(new Date()).slice(11)}`);
 
       const prId = purchaseReturnResult.lastInsertRowid;
@@ -846,11 +978,13 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
       // Capture master_price_at_time for override tracking
       capturePurchaseReturnLineOverrides(returnSavedLines, db);
 
-      if (prCashAmt > 0 && treasuryId) {
-        db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(prCashAmt, treasuryId);
-      }
-      if (prCreditAmt > 0 && purchase.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
+      if (settlementType !== 'multi') {
+        if (prCashAmt > 0 && treasuryId) {
+          db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(prCashAmt, treasuryId);
+        }
+        if (prCreditAmt > 0 && purchase.supplier_id) {
+          db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(prCreditAmt, purchase.supplier_id);
+        }
       }
 
       // Recompute WACC after return reduces stock
@@ -883,7 +1017,13 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       const payload = req.body || {};
       const oldPaymentMethod = purchase.payment_method || "cash";
       const newPaymentMethod = payload.payment_method || oldPaymentMethod;
-      const newSupplierId = payload.supplier_id || purchase.supplier_id || null;
+      // Honor an explicitly-sent supplier_id (including null → detach). Only fall
+      // back to the original when the key is absent (partial update). Using `||`
+      // here silently reverted a removed supplier back to the original, so the
+      // purchase stayed linked and could never be turned into a true cash invoice.
+      const newSupplierId = ("supplier_id" in payload)
+        ? (payload.supplier_id || null)
+        : (purchase.supplier_id || null);
 
       if ((newPaymentMethod === "credit" || newPaymentMethod === "future_due") && !newSupplierId) {
         const e = new Error("طريقة الدفع الآجلة تتطلب تحديد المورد"); e.status = 400; throw e;
@@ -920,6 +1060,7 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       const editIncrease = Math.max(0, Number(payload.increase ?? purchase.increase ?? 0));
       const editInsertedLines = [];
       for (const line of newLines) {
+        assertNotVariantParent(db, line.item_id);
         const qty       = Number(line.quantity);
         const cost      = Number(line.unit_cost);
         const lineTotal = qty * cost;
@@ -1157,6 +1298,7 @@ router.put("/:id/amend", requirePagePermission("purchases", "edit"), (req, res, 
 
       const amendInsertedLines = [];
       for (const line of newLines) {
+        assertNotVariantParent(db, line.item_id);
         const qty         = Number(line.quantity);
         const cost        = Number(line.unit_cost);
         const warehouseId = pickValidWarehouse(db, line.warehouse_id, payload.warehouse_id, original.warehouse_id);
@@ -1362,16 +1504,8 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
         });
       }
 
-      // Reverse financials
-      const cancelPrCashAmt = Number(pr.cash_amount || 0);
-      const cancelPrCreditAmt = Number(pr.credit_amount || 0);
-      if (cancelPrCashAmt > 0) {
-        const tId = pr.treasury_id || db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-        if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(cancelPrCashAmt, tId);
-      }
-      if (cancelPrCreditAmt > 0 && pr.supplier_id) {
-        db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(cancelPrCreditAmt, pr.supplier_id);
-      }
+      // Reverse financials — handles multi-payment via payments JSON
+      reversePurchaseReturnPayments(db, pr);
 
       const now = nowSql();
       db.prepare("UPDATE purchase_returns SET status = 'cancelled', cancelled_at = ?, cancelled_by = ?, cancel_reason = ? WHERE id = ?")
@@ -1404,17 +1538,8 @@ function editPurchaseReturn(db, returnId, payload) {
       adjustStock({ item_id: line.item_id, warehouse_id: line.warehouse_id || 1, quantityDelta: line.quantity, movement_type: "purchase", reference_type: "purchase_return", reference_id: returnId });
     }
 
-    // 2. Reverse old financials
-    const editPrDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
-    const oldPrCashAmt = Number(pr.cash_amount || 0);
-    const oldPrCreditAmt = Number(pr.credit_amount || 0);
-    if (oldPrCashAmt > 0) {
-      const tId = pr.treasury_id || editPrDefaultTId;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance - ? WHERE id = ?").run(oldPrCashAmt, tId);
-    }
-    if (oldPrCreditAmt > 0 && pr.supplier_id) {
-      db.prepare("UPDATE suppliers SET opening_balance = opening_balance + ? WHERE id = ?").run(oldPrCreditAmt, pr.supplier_id);
-    }
+    // 2. Reverse old financials — handles multi-payment via payments JSON
+    reversePurchaseReturnPayments(db, pr);
 
     // 3. Build new lines
     const newLines = payload.lines || [];
@@ -1451,27 +1576,37 @@ function editPurchaseReturn(db, returnId, payload) {
     }
 
     // 5. Apply new financials
-    const newSettlement = ["cash", "account", "split"].includes(payload.settlement_type) ? payload.settlement_type : (pr.settlement_type || "account");
+    const editPrDefaultTId = db.prepare("SELECT default_treasury_id FROM settings WHERE id = 1").get()?.default_treasury_id;
+    const newSettlement = ["cash", "account", "split", "multi"].includes(payload.settlement_type) ? payload.settlement_type : (pr.settlement_type || "account");
     const newTreasuryId = payload.treasury_id || pr.treasury_id;
     const newSupplierId = payload.supplier_id || pr.supplier_id;
-    const newPrCashAmt = newSettlement === "cash" ? newTotal
-      : newSettlement === "split" ? Math.max(0, Number(payload.cash_amount || 0))
-      : 0;
-    const newPrCreditAmt = newSettlement === "account" ? newTotal
-      : newSettlement === "split" ? Math.max(0, newTotal - newPrCashAmt)
-      : 0;
-    if (newPrCashAmt > 0) {
-      const tId = newTreasuryId || editPrDefaultTId;
-      if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(newPrCashAmt, tId);
-    }
-    if (newPrCreditAmt > 0 && newSupplierId) {
-      db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(newPrCreditAmt, newSupplierId);
+    let newPrCashAmt = 0, newPrCreditAmt = 0, newPrPaymentsJson = '[]';
+
+    if (newSettlement === 'multi') {
+      const edPrResult = processPurchaseReturnPayments(db, payload.payments, newTotal, newSupplierId, 1, pr.doc_no, returnId);
+      newPrCashAmt = edPrResult.cashAmount;
+      newPrCreditAmt = edPrResult.creditAmount;
+      newPrPaymentsJson = edPrResult.paymentsJson;
+    } else {
+      newPrCashAmt = newSettlement === "cash" ? newTotal
+        : newSettlement === "split" ? Math.max(0, Number(payload.cash_amount || 0))
+        : 0;
+      newPrCreditAmt = newSettlement === "account" ? newTotal
+        : newSettlement === "split" ? Math.max(0, newTotal - newPrCashAmt)
+        : 0;
+      if (newPrCashAmt > 0) {
+        const tId = newTreasuryId || editPrDefaultTId;
+        if (tId) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(newPrCashAmt, tId);
+      }
+      if (newPrCreditAmt > 0 && newSupplierId) {
+        db.prepare("UPDATE suppliers SET opening_balance = opening_balance - ? WHERE id = ?").run(newPrCreditAmt, newSupplierId);
+      }
     }
 
     // 6. Update header — preserve doc_no and created_at
     db.prepare(
-      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = ? WHERE id = ?"
-    ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, nowSql(), returnId);
+      "UPDATE purchase_returns SET total = ?, settlement_type = ?, cash_amount = ?, credit_amount = ?, payments = ?, treasury_id = ?, supplier_id = ?, warehouse_id = ?, notes = ?, updated_at = ? WHERE id = ?"
+    ).run(newTotal, newSettlement, newPrCashAmt, newPrCreditAmt, newPrPaymentsJson, newTreasuryId || null, newSupplierId || pr.supplier_id, payload.warehouse_id || pr.warehouse_id, payload.notes || pr.notes, nowSql(), returnId);
 
     return db.prepare("SELECT * FROM purchase_returns WHERE id = ?").get(returnId);
   })();

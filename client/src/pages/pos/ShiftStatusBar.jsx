@@ -11,7 +11,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
   const [payType, setPayType] = useState(null);
 
   const formatTime = (isoString) => {
-    return new Date(isoString).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    return new Date(isoString).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
   return (

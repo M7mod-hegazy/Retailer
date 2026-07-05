@@ -10,7 +10,7 @@ const { captureLeadFromSale } = require("./leadCapture");
 const { assertNotVariantParent } = require("../routes/variants.routes");
 const { validateAndSellSerials } = require("../utils/serialValidation");
 const { isFeatureEnabled } = require("../utils/features");
-const { nowSql, toSql } = require("../utils/datetime");
+const { nowSql, toSql, today } = require("../utils/datetime");
 const { recordBankMovement } = require("./bankService");
 
 function generateInvoiceNumber(db) {
@@ -150,7 +150,7 @@ function createInvoice(payload) {
       const lineDiscount = Number(line.discount || 0);
       const itemId = Number(line.item_id || 0);
       const warehouseId = Number(line.warehouse_id || payload.warehouse_id || 1);
-      const item = db.prepare("SELECT id, name, name_en, barcode, purchase_price FROM items WHERE id = ?").get(itemId);
+      const item = db.prepare("SELECT id, name, name_en, barcode, purchase_price, is_gold_item, gold_karat, gold_weight_grams, gold_making_charge FROM items WHERE id = ?").get(itemId);
 
       // Multi-unit: when unit_id is present and feature is on, resolve base quantity and snapshot
       let soldUnitName = null, soldUnitFactor = null, soldUnitQty = null;
@@ -202,6 +202,11 @@ function createInvoice(payload) {
       const rowSubtotal = Math.round((quantity * unitPrice + Number.EPSILON) * 100) / 100;
       subtotal += rowSubtotal;
 
+      // Gold snapshot from client payload (may be absent for non-gold items)
+      const goldWeight = line.gold_weight_grams ? Number(line.gold_weight_grams) : null;
+      const goldRate = line.gold_rate_per_gram ? Number(line.gold_rate_per_gram) : null;
+      const goldMaking = line.gold_making_charge ? Number(line.gold_making_charge) : null;
+
       return {
         item_id: itemId,
         warehouse_id: warehouseId,
@@ -220,6 +225,13 @@ function createInvoice(payload) {
         sold_unit_name:     soldUnitName,
         sold_unit_factor:   soldUnitFactor,
         sold_unit_qty:      soldUnitQty,
+        is_gold_item:       item?.is_gold_item ? 1 : 0,
+        gold_karat:         item?.gold_karat || null,
+        gold_weight_grams:  goldWeight || (item?.is_gold_item ? (item?.gold_weight_grams || null) : null),
+        gold_rate_per_gram: goldRate,
+        gold_making_charge: goldMaking || (item?.is_gold_item ? (item?.gold_making_charge || null) : null),
+        serials:            line.serials,
+        modifiers:          line.modifiers,
       };
     });
 
@@ -281,7 +293,7 @@ function createInvoice(payload) {
 
     const inv = db
       .prepare(
-        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO invoices (invoice_no, customer_id, subtotal, discount, increase, total, payment_type, status, seller_id, user_id, amount_received, notes, tax_enabled, tax_rate, tax_amount, tax_type, created_at, dining_table_id, order_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         invoiceNo,
@@ -301,6 +313,8 @@ function createInvoice(payload) {
         taxResult.tax_amount,
         taxResult.tax_type,
         nowSql(),
+        payload.dining_table_id ? Number(payload.dining_table_id) : null,
+        payload.order_type || 'dine_in',
       );
 
     db.prepare("UPDATE invoices SET created_at = ? WHERE id = ?")
@@ -308,12 +322,33 @@ function createInvoice(payload) {
 
     const createdInvoiceLines = [];
     for (const line of normalizedLines) {
+      const goldEnabled = isFeatureEnabled(db, "feature_gold");
+
+      // Auto-compute gold pricing for gold items missing rate_per_gram
+      let goldWeight = goldEnabled && line.gold_weight_grams ? Number(line.gold_weight_grams) : null;
+      let goldRate = goldEnabled && line.gold_rate_per_gram ? Number(line.gold_rate_per_gram) : null;
+      let goldMaking = goldEnabled && line.gold_making_charge ? Number(line.gold_making_charge) : null;
+      if (goldEnabled && line.is_gold_item && !goldRate) {
+        const karat = line.gold_karat || 21;
+        const rateRow = db.prepare(
+          "SELECT price_per_gram FROM gold_rates WHERE karat = ? AND rate_date <= ? ORDER BY rate_date DESC LIMIT 1"
+        ).get(karat, today());
+        if (rateRow) {
+          goldRate = Number(rateRow.price_per_gram);
+          if (!goldWeight) goldWeight = line.gold_weight_grams ? Number(line.gold_weight_grams) : null;
+          if (!goldMaking) goldMaking = line.gold_making_charge ? Number(line.gold_making_charge) : null;
+        }
+      }
+
+      const modifiersJson = Array.isArray(line.modifiers) && line.modifiers.length ? JSON.stringify(line.modifiers) : null;
       const lr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
            item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo,
-           sold_unit_name, sold_unit_factor, sold_unit_qty)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           sold_unit_name, sold_unit_factor, sold_unit_qty,
+           gold_weight_grams, gold_rate_per_gram, gold_making_charge,
+           modifiers_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         inv.lastInsertRowid,
         line.item_id,
@@ -332,8 +367,24 @@ function createInvoice(payload) {
         line.sold_unit_name || null,
         line.sold_unit_factor || null,
         line.sold_unit_qty || null,
+        goldWeight,
+        goldRate,
+        goldMaking,
+        modifiersJson,
       );
       createdInvoiceLines.push({ id: lr.lastInsertRowid });
+
+      // Record modifier selections to invoice_line_modifiers (feature_restaurant)
+      if (modifiersJson) {
+        try {
+          const parsed = JSON.parse(modifiersJson);
+          for (const mod of parsed) {
+            db.prepare("INSERT INTO invoice_line_modifiers (invoice_line_id, modifier_id, modifier_name, price_adjustment) VALUES (?,?,?,?)").run(
+              lr.lastInsertRowid, mod.id || null, mod.name || "", Number(mod.price_adjustment || 0),
+            );
+          }
+        } catch {}
+      }
 
       adjustStock({
         item_id: line.item_id,
@@ -661,6 +712,25 @@ function voidInvoice(invoiceId, reason, userId) {
           reference_type: "invoice",
           reference_id: invoiceId,
         });
+
+        // Restore recipe ingredient stock (feature_restaurant)
+        const recipeVoid = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+        if (recipeVoid?.has_recipe) {
+          const feVoid = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+          if (feVoid?.feature_restaurant) {
+            const ingsVoid = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+            for (const ing of ingsVoid) {
+              adjustStock({
+                item_id: ing.ingredient_item_id,
+                warehouse_id: line.warehouse_id || 1,
+                quantityDelta: ing.quantity * qtyToRestore,
+                movement_type: "void_recipe",
+                reference_type: "invoice",
+                reference_id: invoiceId,
+              });
+            }
+          }
+        }
       }
     }
 
@@ -762,6 +832,25 @@ function cancelInvoice(invoiceId, reason, userId) {
           reference_type: "invoice",
           reference_id: invoiceId,
         });
+
+        // Restore recipe ingredient stock (feature_restaurant)
+        const recipeCanc = db.prepare("SELECT has_recipe FROM items WHERE id = ?").get(line.item_id);
+        if (recipeCanc?.has_recipe) {
+          const feCanc = db.prepare("SELECT feature_restaurant FROM settings WHERE id = 1").get();
+          if (feCanc?.feature_restaurant) {
+            const ingsCanc = db.prepare("SELECT * FROM item_recipes WHERE menu_item_id = ?").all(line.item_id);
+            for (const ing of ingsCanc) {
+              adjustStock({
+                item_id: ing.ingredient_item_id,
+                warehouse_id: line.warehouse_id || 1,
+                quantityDelta: ing.quantity * qtyToRestore,
+                movement_type: "cancel_recipe",
+                reference_type: "invoice",
+                reference_id: invoiceId,
+              });
+            }
+          }
+        }
       }
     }
 
@@ -883,11 +972,13 @@ function editInvoice(invoiceId, payload, userId) {
       const elr = db.prepare(
         `INSERT INTO invoice_lines
           (invoice_id, item_id, warehouse_id, quantity, unit_price, discount, line_total,
-           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           item_name_ar, item_name_en, barcode, cost_wacc, cost_last_purchase, cost_fifo, cost_lifo,
+           gold_weight_grams, gold_rate_per_gram, gold_making_charge)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(invoiceId, line.item_id, warehouseId, line.quantity, line.unit_price, lineDiscount, lineTotal,
             itemRow?.name || null, itemRow?.name_en || null, itemRow?.barcode || null,
-            snap.cost_wacc, snap.cost_last_purchase, snap.cost_fifo, snap.cost_lifo);
+            snap.cost_wacc, snap.cost_last_purchase, snap.cost_fifo, snap.cost_lifo,
+            line.gold_weight_grams || null, line.gold_rate_per_gram || null, line.gold_making_charge || null);
       editInvoiceLines.push({ id: elr.lastInsertRowid });
       adjustStock({ item_id: line.item_id, warehouse_id: warehouseId, quantityDelta: -Number(line.quantity), movement_type: "sale", reference_type: "invoice", reference_id: invoiceId });
     }
@@ -913,7 +1004,21 @@ function editInvoice(invoiceId, payload, userId) {
     });
     const newTotal = taxResult.total;
     const newPaymentType = payload.payment_type || oldPaymentType;
-    const newCustomerId = payload.customer_id ?? oldCustomerId;
+    // Honor an explicitly-sent customer_id (including null → detach). Only fall
+    // back to the original when the key is absent (partial update). `?? oldCustomerId`
+    // silently reverted a removed customer, so the invoice stayed linked and could
+    // never become a true walk-in/cash invoice.
+    const newCustomerId = ("customer_id" in payload)
+      ? (payload.customer_id || null)
+      : oldCustomerId;
+    // Credit / installments require a party to carry the debt — mirror createInvoice's
+    // guard (line ~276) and the purchase-edit route. Without this, clearing the
+    // customer on a credit invoice leaves a credit invoice with no debt row.
+    if ((newPaymentType === "credit" || newPaymentType === "installments") && !newCustomerId) {
+      const e = new Error("طريقة الدفع الآجلة / الأقساط تتطلب تحديد العميل");
+      e.status = 400;
+      throw e;
+    }
     const amountPaid = Number(payload.amount_paid ?? invoice.amount_received ?? newTotal);
     let amountReceived = Number.isFinite(amountPaid) ? amountPaid : newTotal;
     let remainingAmount = Math.max(0, newTotal - amountReceived);
@@ -998,10 +1103,13 @@ function editInvoice(invoiceId, payload, userId) {
 
     // ── 4. Update invoice header ─────────────────────────────────────────
     const newStatus = remainingAmount > 0 ? (amountReceived > 0 ? 'partial' : 'unpaid') : 'paid';
+    const newDiningTableId = "dining_table_id" in payload ? (payload.dining_table_id || null) : invoice.dining_table_id;
+    const newOrderType = "order_type" in payload ? (payload.order_type || 'dine_in') : (invoice.order_type || 'dine_in');
     db.prepare(`
       UPDATE invoices SET customer_id = ?, subtotal = ?, discount = ?, increase = ?, total = ?,
         payment_type = ?, amount_received = ?, status = ?, seller_id = ?, updated_at = ?,
-        updated_by = ?, notes = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?
+        updated_by = ?, notes = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?,
+        dining_table_id = ?, order_type = ?
       WHERE id = ?
     `).run(
       newCustomerId, subtotal, discount, increase, newTotal,
@@ -1014,6 +1122,8 @@ function editInvoice(invoiceId, payload, userId) {
       taxResult.tax_rate,
       taxResult.tax_amount,
       taxResult.tax_type,
+      newDiningTableId,
+      newOrderType,
       invoiceId,
     );
 

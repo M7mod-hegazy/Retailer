@@ -45,6 +45,7 @@ function RefundBadge({ label, amount, variant }) {
 export function ReturnSaveSuccess({
   docNo, total, discount = 0, increase = 0,
   refundMethod, cashAmount, creditAmount,
+  payments = [],
   entityName, entityNewBalance,
   type = 'sales_return',
   onDismiss,
@@ -75,6 +76,16 @@ export function ReturnSaveSuccess({
     } else {
       refundBadges.push({ label: 'حساب المورد', amount: creditAmount, variant: 'account' });
     }
+  } else if (refundMethod === 'multi') {
+    payments.forEach(p => {
+      if (p.method === 'cash') {
+        refundBadges.push({ label: 'نقداً', amount: p.amount, variant: 'cash' });
+      } else if (p.method === 'credit') {
+        refundBadges.push({ label: isSales ? 'رصيد حساب' : 'حساب المورد', amount: p.amount, variant: isSales ? 'credit' : 'account' });
+      } else {
+        refundBadges.push({ label: p.method_name || p.method || 'أخرى', amount: p.amount, variant: 'bank' });
+      }
+    });
   }
 
   return (

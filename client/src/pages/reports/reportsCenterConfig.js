@@ -761,3 +761,101 @@ export function getReportDescription(sourceKey, classificationId) {
   if (!classificationId) return "تقرير تحليلي يستعرض بيانات ومؤشرات العمليات التشغيلية والمالية في النظام.";
   return REPORT_DESCRIPTIONS[classificationId] || REPORT_DESCRIPTIONS[`cls_${classificationId}`] || "تقرير تحليلي تفصيلي لمتابعة وتقييم مؤشرات أداء النشاط التجاري.";
 }
+
+export const VALUE_TRANSLATIONS = {
+  // Statuses
+  paid: "مدفوع",
+  unpaid: "غير مدفوع",
+  partially_paid: "مدفوع جزئياً",
+  cancelled: "ملغي",
+  active: "نشط",
+  completed: "مطبق",
+  pending: "قيد السداد",
+  cleared: "محصّل",
+  bounced: "مرتجع",
+  replaced: "مستبدل",
+  draft: "مسودة",
+  in_stock: "متاح",
+  low_stock: "منخفض",
+  out_of_stock: "نفذ",
+  expired: "منتهي",
+  near_expiry: "ينتهي قريباً",
+  valid: "ساري",
+  normal: "عادي",
+  overdue: "متأخر",
+
+  // Payment methods
+  cash: "نقداً",
+  credit: "آجل",
+  card: "بطاقة",
+  bank_transfer: "تحويل بنكي",
+  wallet: "محفظة",
+  multi: "متعدد",
+  cheque: "شيك",
+  visa: "فيزا",
+  mastercard: "ماستركارد",
+
+  // Directions & Movement types
+  in: "وارد",
+  out: "صادر",
+  transfer: "تحويل",
+  branch_receive: "استلام فرع",
+  branch_send: "إرسال فرع",
+  adjustment: "تسوية",
+  opening_balance: "رصيد افتتاحي",
+
+  // Doc types & Transaction types
+  invoice: "فاتورة",
+  pos_invoice: "فاتورة بيع",
+  payment: "دفع",
+  payment_allocation: "تسوية فاتورة",
+  customer_payment: "تحصيل عميل",
+  supplier_payment: "سداد مورد",
+  ajal_payment: "حركة آجل",
+  expense: "مصروف",
+  revenue: "إيراد",
+  purchase: "مشتريات",
+  purchase_payment: "دفعة مشتريات",
+  sales_return: "مرتجع مبيعات",
+  purchase_return: "مرتجع مشتريات",
+  withdrawal: "مسحوبات",
+  deduction: "خصم",
+  bonus: "مكافأة",
+  advance: "سلفة",
+  advance_payment: "دفعة سلفة",
+  settlement: "صرف راتب",
+  item: "صنف",
+
+  // Parties & Roles
+  customer: "عميل",
+  supplier: "مورد",
+  employee: "موظف",
+  general: "عام",
+  admin: "مدير النظام",
+  manager: "مدير",
+  cashier: "كاشير",
+  accountant: "محاسب",
+
+  // Deduction / Bonus types
+  absence: "غياب",
+  fine: "غرامة",
+  insurance: "تأمين",
+  performance: "أداء",
+  holiday: "إجازة",
+  overtime: "إضافي",
+  transportation: "مواصلات",
+  other: "أخرى",
+
+  // Tax types
+  exclusive: "خارج السعر",
+  inclusive: "داخل السعر",
+};
+
+export function formatReportCellValue(key, rawValue) {
+  if (rawValue == null || rawValue === "") return "—";
+  const str = String(rawValue).trim();
+  if (VALUE_TRANSLATIONS[str]) return VALUE_TRANSLATIONS[str];
+  if (VALUE_TRANSLATIONS[str.toLowerCase()]) return VALUE_TRANSLATIONS[str.toLowerCase()];
+  return rawValue;
+}
+

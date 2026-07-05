@@ -156,3 +156,29 @@ elhegazi/
 | — | Backup | ✅ PASS | `fs.copyFileSync` → `year/month/day/elhegazi_<timestamp>.db` |
 
 **Final Gate: ALL PASS**
+
+---
+
+## Post-Review Fixes (2026-07-04)
+
+After V1 completion, a full codebase review of FeaturesTab, POS restaurant integration, and posStore/printService was conducted. The following fixes were applied:
+
+### FeaturesTab Redesign
+- **Rewrote `FeaturesTab.jsx`** — Individual feature cards in 2-column grid with icon, name, description, recommended shop types, expandable affected pages, enable button (or "مُفعّل" badge), confirmation modal with irreversible warning
+- **Removed**: store-type grouping, pricing/subscription, payment dialogs, activation code flow, `feature_promotions` from standalone list
+- **Added page permissions**: `restaurant_tables`, `restaurant_modifiers`, `gold_pricing`, `repair_orders`, `serial_search` to client and server `pagePermissions.js`
+
+### Bug Fixes
+| # | Bug | Severity | Fix |
+|---|-----|----------|-----|
+| 1 | Modifier price not added to invoice total | MEDIUM | `handleModifierApply` now computes `adjustedPrice = masterPrice + modifierPriceDelta` and passes `unit_price` in onApply patch |
+| 2 | Kitchen ticket filter excludes items without modifiers | MEDIUM | Changed filter from `l.modifiers?.length > 0` to `l.is_menu_item || l.modifiers?.length > 0`; added `is_menu_item: 1` to cart line payload |
+| 3 | `useSearchParams` stale closure | LOW | Added `searchParams` and `restaurantEnabled` to effect deps; removed dead empty block |
+| 4 | Negative modifier price display | LOW | LineConfigModal shows negative adjustments in red with proper sign |
+| 5 | RecipeSection hidden for new menu items | MEDIUM | After POST, captures new item ID and transitions modal to edit mode inline (no save-close-reopen) |
+| 6 | Field navigation `prevRef` skips gold fields | LOW | `prepTimeRef` prevRef now dynamically points to `goldMakingRef` or `warrantyMonthsRef` or `descriptionRef` |
+| 7 | Silent error swallowing in RecipeSection | LOW | Added `toast.error` on fetch failure |
+| 8 | Stale modifiers not cleared when groups deleted | LOW | useEffect filters `selectedModifiers` against valid IDs from fetched groups |
+| 9 | `printContent` unhandled promise rejection | INFO | Added `.catch(() => {})` after kitchen ticket print call |
+| 10 | Config button label with multi-unit + restaurant | INFO | Shows "unit + إضافات" when both features enabled |
+| 11 | Server-side modifier price in `invoiceService.js` | NONE | **Verified correct** — client sends `unit_price` with modifier delta baked in; server uses it as-is for `rowSubtotal` and `line_total`. No fix needed. |

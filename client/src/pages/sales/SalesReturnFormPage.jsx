@@ -692,7 +692,7 @@ export default function SalesReturnFormPage() {
     const skuPrefix = cat?.sku_prefix ?? item?.sku_prefix ?? null;
     setListCategoryFilter(cat ? { id: cat.id, name: cat.name, sku_prefix: skuPrefix } : null);
     setListCategoryQuery("");
-    setTimeout(() => stagingWHRef.current?.focus(), 30);
+    setTimeout(() => { stagingQtyRef.current?.focus(); stagingQtyRef.current?.select?.(); }, 30);
   }
 
   function addStagingToCart() {
@@ -1307,11 +1307,17 @@ export default function SalesReturnFormPage() {
                 ].map(opt => {
                   const disabled = isLocked || (opt.requiresCustomer && !customer);
                   const active = refundMethod === opt.value;
+                  const noCustomerBlocked = opt.requiresCustomer && !customer;
                   return (
                     <button key={opt.value} onClick={() => !disabled && setRefundMethod(opt.value)} disabled={disabled}
-                      className={`flex-1 rounded-lg py-2 px-1 text-center transition-all disabled:cursor-not-allowed ${active ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
+                      title={noCustomerBlocked ? "يجب اختيار عميل أولاً لاستخدام هذه الطريقة" : ""}
+                      className={`flex-1 rounded-lg py-2 px-1 text-center transition-all disabled:cursor-not-allowed ${active ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200/50" : noCustomerBlocked ? "bg-red-50 text-red-500 border border-dashed border-red-200" : "text-slate-500 hover:text-slate-700 disabled:opacity-40"}`}>
                       <div className="text-2sm font-bold">{opt.label}</div>
-                      <div className="text-[9px] font-medium opacity-70 leading-tight mt-0.5 hidden sm:block">{opt.desc}</div>
+                      <div className="text-[9px] font-medium leading-tight mt-0.5 hidden sm:block">
+                        {noCustomerBlocked ? (
+                          <span className="flex items-center justify-center gap-1 text-red-400"><AlertCircle className="h-2.5 w-2.5" />اختر عميلاً أولاً</span>
+                        ) : opt.desc}
+                      </div>
                     </button>
                   );
                 })}
@@ -1535,7 +1541,7 @@ export default function SalesReturnFormPage() {
                           const u = units.find(u => String(u.id) === String(stagingUnitId));
                           setStagingQty(u?.allow_decimal === 0 ? String(Math.max(1, Math.round(Number(e.target.value) || 1))) : e.target.value);
                         }}
-                        onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingPriceRef, stagingWHRef)}
+                        onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingPriceRef, itemInputRef)}
                         className="entry-control text-center" />
                     </div>
 

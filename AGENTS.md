@@ -116,6 +116,31 @@ Fix: run `npm run kill:retailer-processes` then restart the dev server.
 - **Audit logging:** Mutating routes should call the audit middleware to log user actions.
 - **Client API calls:** Use the centralized Axios instance in `client/src/services/api.js`, not bare `fetch`.
 
+## Theme System (CSS Variables)
+
+The app uses a CSS variable-based theming system — **never hardcode Tailwind color tokens** (`emerald`, `slate`, `amber`, `rose`, `indigo`, `blue`, `white` with opacity, etc.). Always use semantic theme variable classes.
+
+### Available Theme Classes
+
+**Backgrounds:** `bg-bg-surface`, `bg-bg-base`, `bg-bg-overlay`, `bg-bg-input`, `bg-bg-page`
+**Text:** `text-text-primary`, `text-text-secondary`, `text-text-muted`, `text-text-link`
+**Borders:** `border-border-normal`, `border-border-subtle`, `border-border-strong`
+**Primary brand:** `bg-primary`, `bg-primary-50`, `bg-primary-200`, `bg-primary-600`, `text-primary`, `border-primary`
+**Semantic colors:** each has `-bg`, `-text`, `-border` variants:
+  - `success` (green), `danger` (red), `warning` (amber/yellow), `info` (blue)
+  - E.g., `bg-success-bg text-success-text border-success-border`
+**Shadows:** `shadow-card`, `shadow-elevated`, `shadow-modal`
+**Interaction:** `hover:bg-bg-overlay`, `hover:bg-bg-base`, `hover:border-primary`
+**White text on brand bg:** `text-white` is acceptable only when on `bg-primary` or another colored brand/semantic background
+
+### Rules
+- NO hardcoded Tailwind color names in new code
+- NO `bg-white/XX` or `text-white/XX` (use `bg-bg-surface/XX` or `text-text-secondary` instead)
+- NO inline `background: white` or `background: #fff` — use CSS variables
+- For `html2canvas` invoice captures, `backgroundColor: "#ffffff"` is acceptable as it needs a clean white canvas for image export
+- Theme variables are defined in `client/src/index.css :root` and mapped to Tailwind in `client/tailwind.config.js`
+- An override layer `client/src/utils/colorThemeOverrides.css` remaps hardcoded colors at runtime for non-default themes
+
 ## SQLite Migration Rules
 
 - Migrations live in `electron/migrations/` and are discovered by `electron/dbManager.js` via `readdirSync` sorted by filename. Name new migrations `NNN_description.js` (zero-padded 3-digit number) and export `up(db)`.

@@ -14,15 +14,14 @@ router.use(auditMutation);
 // Get today's rates (or latest available)
 router.get("/rates/today", requirePagePermission("pos", "view"), (req, res) => {
   const db = getDb();
-  const today = today();
-  const rows = db.prepare("SELECT * FROM gold_rates WHERE rate_date = ? ORDER BY karat").all(today);
-  if (rows.length > 0) return res.json({ success: true, data: rows, date: today });
-
+  const todayStr = today();
+  const rows = db.prepare("SELECT * FROM gold_rates WHERE rate_date = ? ORDER BY karat").all(todayStr);
+  if (rows.length > 0) return res.json({ success: true, data: rows, date: todayStr });
   // Fall back to most recent date
   const lastDate = db.prepare("SELECT MAX(rate_date) as d FROM gold_rates").get()?.d;
-  if (!lastDate) return res.json({ success: true, data: [], date: today, note: "no_rates_yet" });
+  if (!lastDate) return res.json({ success: true, data: [], date: todayStr, note: "no_rates_yet" });
   const latestRows = db.prepare("SELECT * FROM gold_rates WHERE rate_date = ? ORDER BY karat").all(lastDate);
-  res.json({ success: true, data: latestRows, date: lastDate, stale: lastDate !== today });
+  res.json({ success: true, data: latestRows, date: lastDate, stale: lastDate !== todayStr });
 });
 
 // Get rate history

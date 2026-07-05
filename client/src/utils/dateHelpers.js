@@ -102,3 +102,17 @@ export function formatTime(value, opts = {}) {
     ...opts,
   }).format(d);
 }
+
+// Convert an "HH:MM" string (from raw ISO extraction) to 12-hour Arabic display.
+// Graceful fallback: returns the raw string unchanged if parsing fails.
+export function formatHHMM(value) {
+  if (!value) return "";
+  const m = String(value).match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return String(value);
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const ampm = h >= 12 ? "م" : "ص";
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return `${String(h).padStart(2, "0")}:${min} ${ampm}`;
+}
