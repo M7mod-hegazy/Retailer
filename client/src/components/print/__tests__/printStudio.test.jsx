@@ -78,15 +78,15 @@ describe("PrintStudio", () => {
     expect(screen.getByText("الورق والخط")).toBeTruthy();
   });
 
-  it("page blocks can toggle free positioning (abs) from the inspector", async () => {
+  it("page blocks can be pinned absolutely from the inspector", async () => {
     render(<PrintStudio open onClose={() => {}} />);
     await waitFor(() => expect(screen.getAllByText("جدول الأصناف").length).toBeGreaterThan(0));
     // default scope is _global at A4 (page family) — select the company name
     fireEvent.click(screen.getAllByText("اسم الشركة")[0]);
-    await waitFor(() => expect(screen.getByText(/وضع حر/)).toBeTruthy());
-    const toggle = screen.getByText(/وضع حر/).closest("label").querySelector("button[role='switch']");
+    await waitFor(() => expect(screen.getByText(/تثبيت مطلق/)).toBeTruthy());
+    const toggle = screen.getByText(/تثبيت مطلق/).closest("label").querySelector("button[role='switch']");
     fireEvent.click(toggle);
-    // abs inputs appear (jsdom rects are 0 → fallback capture still writes abs)
+    // abs mm inputs appear (jsdom rects are 0 → fallback capture still writes abs)
     await waitFor(() => expect(screen.getAllByText(/\(مم\)/).length).toBeGreaterThan(0));
     // and the draft is dirty → save enabled
     expect(screen.getByText("حفظ").closest("button").disabled).toBe(false);

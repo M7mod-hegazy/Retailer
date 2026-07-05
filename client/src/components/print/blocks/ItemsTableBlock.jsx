@@ -163,32 +163,30 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   };
 
   // Thermal printers are 1-bit: light-gray hairlines dither to nothing on
-  // paper. Roll tables rule with pure black — but border MODE, thickness,
-  // row density, name-column width and header size are all user-controlled.
+  // paper. Roll tables rule with pure black — border MODE, thickness, density,
+  // name-width and header size are all user-controlled. Uniform per-cell
+  // borders (with border-collapse) are what make EVERY divider line up: a
+  // shared edge between two cells is one merged line, never a gap.
   const rb = `${lw}px solid #000`;
-  const rollOuter = border === "grid" ? { border: rb } : {};
-  const rollV = (ci) => (border === "grid" && ci > 0 ? rb : "none");   // vertical rules
-  const rollH = border === "none" ? "none" : rb;                        // row separators
-  const rollNameW = `${nameWidth != null ? nameWidth : 60}%`;
   const rollPadY = rowPad != null ? rowPad : 2;
   const rollHeadFs = headerFontSize != null ? headerFontSize : 10;
   const rollDark = headerVariant !== "light";
+  // per-cell border by mode: grid = full box, lines = bottom only, none = bare
+  const bodyBorder = border === "grid" ? { border: rb } : border === "lines" ? { borderBottom: rb } : {};
+  const headBorder = border === "grid" ? { border: rb, borderBottom: "2px solid #000" } : { borderBottom: "2px solid #000" };
   const headCell = {
-    padding: "0 4px 3px", fontWeight: 900, textAlign: "center",
-    fontSize: `${rollHeadFs}px`, color: rollDark ? "#fff" : "#000",
+    ...headBorder, padding: "1px 4px 3px", fontWeight: 900, textAlign: "center",
+    fontSize: `${rollHeadFs}px`, color: rollDark ? "#fff" : "#000", wordBreak: "break-word",
   };
   const rollHeadRow = rollDark ? { background: "#000" } : {};
-  const cell = { padding: `${rollPadY}px 4px`, fontWeight: 700 };
+  const cell = { ...bodyBorder, padding: `${rollPadY}px 4px`, fontWeight: 700, wordBreak: "break-word" };
 
-  // Fixed table layout makes header dividers line up exactly with the body
-  // cells (auto layout drifted when content widths varied) AND lets narrow
-  // 58mm columns wrap instead of overflowing the band. A <colgroup> pins the
-  // name column; the value columns split the rest evenly.
+  // Fixed layout + <colgroup> pin column widths so header dividers sit exactly
+  // above body dividers and 58mm columns wrap instead of overflowing the band.
   const paperMm = rollPaperWidthMm(s);
   const rollMax = maxThermalColumns(paperMm); // 58mm → 3, 80mm → 4 (incl. name)
   const nameW = nameWidth != null ? nameWidth : 60;
-  const rollColGroup = (valueCount) => {
-    const others = valueCount; // non-name columns
+  const rollColGroup = (others) => {
     const each = others > 0 ? (100 - nameW) / others : 0;
     return (
       <colgroup>
@@ -197,6 +195,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
       </colgroup>
     );
   };
+  const rollTable = { width: "100%", fontSize, borderCollapse: "collapse", tableLayout: "fixed", marginTop: "2px" };
 
   if (cols) {
     // Enforce the paper's column ceiling so 58mm never overflows: keep the name
@@ -208,25 +207,18 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
       const rest = displayCols.filter(c => c.key !== "name")
         .sort((a, b) => (PRIORITY[b.key] || 0) - (PRIORITY[a.key] || 0))
         .slice(0, Math.max(1, rollMax - name.length));
-      // keep original left-to-right order
       const keep = new Set([...name, ...rest].map(c => c.key));
       displayCols = displayCols.filter(c => keep.has(c.key));
     }
     const valueCount = displayCols.filter(c => c.key !== "name").length;
     return (
-      <table style={{ width: "100%", fontSize, borderCollapse: "collapse", tableLayout: "fixed", marginTop: "2px", ...rollOuter }}>
+      <table style={rollTable}>
         {rollColGroup(valueCount)}
         {headerVariant !== "none" && (
         <thead>
           <tr style={rollHeadRow}>
-            {displayCols.map((c, ci) => (
-              <th key={c.key} style={{
-                ...headCell,
-                textAlign: c.align || (c.key === "name" ? "right" : "center"),
-                borderBottom: "2px solid #000",
-                borderLeft: rollV(ci),
-                wordBreak: "break-word",
-              }}>
+            {displayCols.map((c) => (
+              <th key={c.key} style={{ ...headCell, textAlign: c.align || (c.key === "name" ? "right" : "center") }}>
                 {c.key === "name" ? "الصنف" : (c.label || HEADER[c.key])}
               </th>
             ))}
@@ -236,14 +228,8 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         <tbody>
           {lines.map((line, i) => (
             <tr key={i}>
-              {displayCols.map((c, ci) => (
-                <td key={c.key} style={{
-                  ...cell,
-                  textAlign: c.align || (c.key === "qty" ? "center" : c.key === "total" ? "left" : "right"),
-                  wordBreak: "break-word",
-                  borderBottom: rollH,
-                  borderLeft: rollV(ci),
-                }}>
+              {displayCols.map((c) => (
+                <td key={c.key} style={{ ...cell, textAlign: c.align || (c.key === "qty" ? "center" : c.key === "total" ? "left" : "right") }}>
                   {c.key === "name" ? mergedItemName(line) : VALUE[c.key](line, s)}
                 </td>
               ))}
@@ -255,25 +241,25 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   }
 
   return (
-    <table style={{ width: "100%", fontSize, borderCollapse: "collapse", tableLayout: "fixed", marginTop: "2px", ...rollOuter }}>
+    <table style={rollTable}>
       {rollColGroup(showPrice ? 3 : 2)}
       {headerVariant !== "none" && (
       <thead>
         <tr style={rollHeadRow}>
-          <th style={{ ...headCell, textAlign: "right", borderBottom: "2px solid #000", borderLeft: rollV(1), wordBreak: "break-word" }}>الصنف</th>
-          <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rollV(1) }}>كمية</th>
-          {showPrice && <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rollV(1) }}>سعر</th>}
-          <th style={{ ...headCell, borderBottom: "2px solid #000", borderLeft: rollV(1) }}>إجمالي</th>
+          <th style={{ ...headCell, textAlign: "right" }}>الصنف</th>
+          <th style={headCell}>كمية</th>
+          {showPrice && <th style={headCell}>سعر</th>}
+          <th style={headCell}>إجمالي</th>
         </tr>
       </thead>
       )}
       <tbody>
         {lines.map((line, i) => (
           <tr key={i}>
-            <td style={{ ...cell, textAlign: "right", wordBreak: "break-word", borderBottom: rollH, borderLeft: rollV(1) }}>{mergedItemName(line)}</td>
-            <td style={{ ...cell, textAlign: "center", wordBreak: "break-word", borderBottom: rollH, borderLeft: rollV(1) }}>{formatPrintDigits(s, String(line.quantity))}</td>
-            {showPrice && <td style={{ ...cell, textAlign: "center", wordBreak: "break-word", borderBottom: rollH, borderLeft: rollV(1) }}>{smartFormat(priceOf(line), s)}</td>}
-            <td style={{ ...cell, textAlign: "center", wordBreak: "break-word", borderBottom: rollH, borderLeft: rollV(1) }}>{smartFormat(lineTotalOf(line), s)}</td>
+            <td style={{ ...cell, textAlign: "right" }}>{mergedItemName(line)}</td>
+            <td style={{ ...cell, textAlign: "center" }}>{formatPrintDigits(s, String(line.quantity))}</td>
+            {showPrice && <td style={{ ...cell, textAlign: "center" }}>{smartFormat(priceOf(line), s)}</td>}
+            <td style={{ ...cell, textAlign: "center" }}>{smartFormat(lineTotalOf(line), s)}</td>
           </tr>
         ))}
       </tbody>

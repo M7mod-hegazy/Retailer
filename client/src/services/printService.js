@@ -187,6 +187,12 @@ export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, aft
  * entry point for receipt/invoice/report printing.
  */
 export async function printContent({ contentHtml, pageSizeStr, deviceName = "", copies = 1, afterPrint, title, docType = "", docLabel = "", docId = "", printFont = "" } = {}) {
+  // Advance the daily counter once per real print when the document actually
+  // uses a daily number — the printed HTML captured peek(), which equals the
+  // value next() now commits, so numbers stay in lockstep and reset each day.
+  if (typeof contentHtml === "string" && contentHtml.includes("data-daily-no")) {
+    try { const { nextDailySeq } = await import("../components/print/blocks/dailySequence"); nextDailySeq(); } catch { /* non-fatal */ }
+  }
   const fullHtml = buildDoc(contentHtml, pageSizeStr, title, { printFont });
   return printFullHtml(fullHtml, { deviceName, copies, afterPrint, pageSizeStr, docType, docLabel, docId });
 }

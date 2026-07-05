@@ -680,7 +680,13 @@ export default function StudioInspector({ st }) {
 
           {selected === "order_number" && (
             <Section title="رقم الطلب">
-              <label className="block space-y-1">
+              <Row label="المصدر">
+                <select value={st.ov("order_number").source || "doc"} onChange={(e) => st.setOverride("order_number", { source: e.target.value })} className={`${inputCls} w-36`}>
+                  <option value="doc">رقم المستند الكامل</option>
+                  <option value="daily">رقم يومي (يبدأ من ١ ويتصفّر يومياً)</option>
+                </select>
+              </Row>
+              <label className="mt-1 block space-y-1">
                 <span className="text-[10px] font-bold text-[var(--text-muted)]">التسمية فوق الرقم (اتركها فارغة لإخفائها)</span>
                 <input value={st.ov("order_number").label ?? "رقم الطلب"}
                   onChange={(e) => st.setOverride("order_number", { label: e.target.value })} className={`${inputCls} w-full`} />

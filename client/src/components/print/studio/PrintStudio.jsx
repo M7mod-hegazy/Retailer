@@ -360,9 +360,18 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const curOv = (famBase.perBlock || {})[key] || {};
     const pinned = curOv.abs && curOv.abs.xMm != null;
     let moved = false;
+    // Coalesce writes to one per animation frame — writing state on every
+    // pointermove reconciles the whole canvas each event and stutters. rAF
+    // keeps it buttery: many events → at most one render per frame.
+    let raf = null, latest = null, snap = false;
+    const flush = () => {
+      raf = null;
+      if (latest) { writeOv(base, famBase, key, latest); latest = null; }
+      setDragSnap(snap ? { centerX: true } : null);
+    };
+    const schedule = (patch, isSnap) => { latest = patch; snap = isSnap; if (raf == null) raf = requestAnimationFrame(flush); };
 
     if (pinned) {
-      // absolute-pin mode: update fixed mm coordinates
       const startAbs = { ...curOv.abs };
       const move = (ev) => {
         if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
@@ -373,10 +382,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
         let x = clamp(startAbs.xMm + dx, 0, geom.sheetWmm - Math.min(w, geom.sheetWmm));
         const centered = Math.abs((x + Math.min(w, geom.sheetWmm) / 2) - geom.sheetWmm / 2) < 1.5;
         if (centered) x = geom.sheetWmm / 2 - Math.min(w, geom.sheetWmm) / 2;
-        setDragSnap({ centerX: centered });
-        writeOv(base, famBase, key, { abs: { ...startAbs, xMm: half(x), yMm: half(Math.max(0, startAbs.yMm + dy)) } });
+        schedule({ abs: { ...startAbs, xMm: half(x), yMm: half(Math.max(0, startAbs.yMm + dy)) } }, centered);
       };
-      const up = () => { setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+      const up = () => { if (raf != null) { cancelAnimationFrame(raf); flush(); } setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
       window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
       return;
     }
@@ -389,13 +397,11 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       const dx = (ev.clientX - startX) * geom.mmPerPx;
       const dy = (ev.clientY - startY) * geom.mmPerPx;
       let nx = (startRel.dxMm || 0) + dx;
-      // snap the horizontal nudge back to zero (its natural x) within ±1.5mm
-      const snapZero = Math.abs(nx) < 1.5;
+      const snapZero = Math.abs(nx) < 1.5; // snap horizontal back to natural x
       if (snapZero) nx = 0;
-      setDragSnap({ centerX: snapZero });
-      writeOv(base, famBase, key, { rel: { dxMm: half(nx), dyMm: half((startRel.dyMm || 0) + dy) } });
+      schedule({ rel: { dxMm: half(nx), dyMm: half((startRel.dyMm || 0) + dy) } }, snapZero);
     };
-    const up = () => { setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    const up = () => { if (raf != null) { cancelAnimationFrame(raf); flush(); } setDragSnap(null); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
@@ -485,28 +491,30 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const baseAbsW = isAbs ? (Number(curOv.abs.widthMm) || 40) : 0;
     const baseFont = Number(curOv.fontSize) || Number(merged.item_font_size) || 11;
     const baseDim = Number(merged[dimKey]) || (key === "logo" ? 48 : 44);
-    const setOvLive = (patch) => writeOv(base, famBase, key, patch);
-    const setTopLive = (k, v) => setDrafts((d) => ({ ...d, [scope]: { ...base, [k]: v } }));
     setPast((p) => [...p, { scope, draft: cur }]); setFuture([]); setResizing(true);
+    // rAF-coalesced writes (see startFreeMove) keep resizing smooth.
+    let raf = null, run = null;
+    const flush = () => { raf = null; if (run) { run(); run = null; } };
+    const schedule = (fn) => { run = fn; if (raf == null) raf = requestAnimationFrame(flush); };
     const move = (ev) => {
       const dx = (ev.clientX - startX) / z, dy = (ev.clientY - startY) / z;
       if (isDim) {
         const d = dir.s ? dir.s * dy : dir.w * dx;
-        setTopLive(dimKey, clamp(Math.round(baseDim + d), 16, 500));
+        const v = clamp(Math.round(baseDim + d), 16, 500);
+        schedule(() => setDrafts((dd) => ({ ...dd, [scope]: { ...base, [dimKey]: v } })));
       } else if (isAbs && dir.w) {
-        // free-positioned block: horizontal handles resize the mm width
         const dMm = (ev.clientX - startX) * (geom ? geom.mmPerPx : 0.26);
         const patch = { abs: { ...curOv.abs, widthMm: half(clamp(baseAbsW + dir.w * dMm, 5, geom ? geom.sheetWmm : 210)) } };
         if (dir.s) patch.fontSize = clamp(Math.round(baseFont + dir.s * dy * 0.3), 6, 80);
-        setOvLive(patch);
+        schedule(() => writeOv(base, famBase, key, patch));
       } else {
         const patch = {};
         if (dir.w) patch.width = clamp(Math.round(baseWidth + dir.w * dx * 0.3), 10, 100);
         if (dir.s) patch.fontSize = clamp(Math.round(baseFont + dir.s * dy * 0.3), 6, 80);
-        if (Object.keys(patch).length) setOvLive(patch);
+        if (Object.keys(patch).length) schedule(() => writeOv(base, famBase, key, patch));
       }
     };
-    const up = () => { setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    const up = () => { if (raf != null) { cancelAnimationFrame(raf); flush(); } setResizing(false); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
 
