@@ -28,8 +28,7 @@ const REPORT_REGISTRY = {
     { id: "treasury", label_key: "category_treasury" },
     { id: "tax", label_key: "category_tax" },
     { id: "profitability", label_key: "category_profitability" },
-    { id: "audit", label_key: "category_audit" },
-    { id: "users", label_key: "category_users" },
+    { id: "individuals", label_key: "category_individuals" },
   ],
 
   sources: [
@@ -39,7 +38,7 @@ const REPORT_REGISTRY = {
     { id: "sales-returns", label_key: "source_sales_returns", cat: "sales", icon: "RotateCcw" },
     { id: "suppliers", label_key: "source_suppliers", cat: "accounts", icon: "Truck" },
     { id: "customers", label_key: "source_customers", cat: "accounts", icon: "Users" },
-    { id: "employees", label_key: "source_employees", cat: "audit", icon: "UserCheck" },
+    { id: "employees", label_key: "source_employees", cat: "individuals", icon: "UserCheck" },
     { id: "installments", label_key: "source_installments", cat: "accounts", icon: "CalendarCheck" },
     { id: "items", label_key: "source_items", cat: "inventory", icon: "Package" },
     { id: "warehouses", label_key: "source_warehouses", cat: "inventory", icon: "Layers" },
@@ -52,7 +51,7 @@ const REPORT_REGISTRY = {
     { id: "expiry", label_key: "source_expiry", cat: "inventory", icon: "Clock" },
     { id: "owner-statement", label_key: "source_owner_statement", cat: "accounts", icon: "ClipboardCheck" },
     { id: "tax", label_key: "source_tax", cat: "tax", icon: "FileText" },
-    { id: "users", label_key: "source_users", cat: "users", icon: "Users" },
+    { id: "users", label_key: "source_users", cat: "individuals", icon: "Users" },
   ],
 
   // ── Filter Dimensions Pool (shared per source) ────────────────
@@ -64,6 +63,7 @@ const REPORT_REGISTRY = {
       { key: "cashier_id", type: "lookup", entity: "user", label_key: "cashier" },
       { key: "status", type: "select", label_key: "status", options: [{ value: "paid", label_key: "paid" }, { value: "unpaid", label_key: "unpaid" }, { value: "cancelled", label_key: "cancelled" }] },
       { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
+      { key: "tax_type", type: "select", label_key: "tax_type", options: [{ value: "exclusive", label_key: "exclusive" }, { value: "inclusive", label_key: "inclusive" }] },
     ],
     purchases: [
       { key: "supplier_id", type: "lookup", entity: "supplier", label_key: "supplier" },
@@ -80,6 +80,10 @@ const REPORT_REGISTRY = {
     ],
     suppliers: [
       { key: "supplier_id", type: "lookup", entity: "supplier", label_key: "supplier" },
+      { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
+      { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
+      { key: "status", type: "select", label_key: "status", options: [{ value: "paid", label_key: "paid" }, { value: "unpaid", label_key: "unpaid" }, { value: "cancelled", label_key: "cancelled" }] },
+      { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [] },
     ],
     customers: [
       { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
@@ -109,26 +113,38 @@ const REPORT_REGISTRY = {
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
       { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
       { key: "warehouse_id", type: "lookup", entity: "warehouse", label_key: "warehouse" },
+      { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "purchase", label: "purchase" }, { value: "branch_receive", label: "branch_receive" }, { value: "opening_balance", label: "opening_balance" }] },
     ],
     warehouses: [
       { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "in", label_key: "in" }, { value: "out", label_key: "out" }, { value: "transfer", label_key: "transfer" }] },
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
       { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
       { key: "warehouse_id", type: "lookup", entity: "warehouse", label_key: "warehouse" },
+      { key: "user_id", type: "lookup", entity: "user", label_key: "user" },
     ],
     expenses: [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
+      { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [] },
     ],
     revenues: [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
+      { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [] },
     ],
     "profit-loader": [
       { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
       { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
     ],
-    "net-profit": [],
+    "net-profit": [
+      { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
+      { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
+    ],
     treasury: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max],
     "payment-flow": [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.partyType, PAYMENT_FLOW_FILTERS.min, PAYMENT_FLOW_FILTERS.max],
+    expiry: [
+      { key: "item_id", type: "lookup", entity: "product", label_key: "product" },
+      { key: "warehouse_id", type: "lookup", entity: "warehouse", label_key: "warehouse" },
+      { key: "category_id", type: "lookup", entity: "category", label_key: "category" },
+    ],
     tax: [
       { key: "customer_id", type: "lookup", entity: "customer", label_key: "customer" },
       { key: "supplier_id", type: "lookup", entity: "supplier", label_key: "supplier" },
@@ -149,103 +165,53 @@ const REPORT_REGISTRY = {
   classifications: {
     // ── المستخدمون (Users) ──
     users: [
-      { id: "user-list", label_key: "cls_users_list", detailedQuery: "user-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["role"], filters: [
-        { key: "role", type: "select", label_key: "role", options: [{ value: "admin", label_key: "admin" }, { value: "cashier", label_key: "cashier" }, { value: "manager", label_key: "manager" }] },
-      ], multiSelectFilters: [] },
-      { id: "performance", label_key: "cls_users_performance", detailedQuery: "user-performance", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id"], filters: [
-        { key: "user_id", type: "lookup", label_key: "user", entity: "user" },
-      ], multiSelectFilters: [] },
-      { id: "login-history", label_key: "cls_users_login_history", detailedQuery: "login-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id"], filters: [
-        { key: "user_id", type: "lookup", label_key: "user", entity: "user" },
-      ], multiSelectFilters: [] },
+      { id: "user-list", label_key: "cls_users_list", detailedQuery: "user-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["role"], filters: [], multiSelectFilters: [] },
+      { id: "performance", label_key: "cls_users_performance", detailedQuery: "user-performance", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id"], filters: [], multiSelectFilters: [] },
+      { id: "login-history", label_key: "cls_users_login_history", detailedQuery: "login-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["user_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── مبيعات (Sales) ──
     sales: [
-      { id: "daily-summary", label_key: "cls_sales_daily", detailedQuery: null, summaryQuery: "daily-sales", availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["payment_type", "cashier_id"], filters: [], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_sales_detailed", detailedQuery: "detailed-sales", summaryQuery: "daily-sales", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [
-        { key: "status", type: "select", label_key: "status", options: [{ value: "paid", label_key: "paid" }, { value: "unpaid", label_key: "unpaid" }, { value: "cancelled", label_key: "cancelled" }] },
-        { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
-      ], multiSelectFilters: [] },
-      { id: "by-item", label_key: "cls_sales_by_item", detailedQuery: "sales-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
-      { id: "by-category", label_key: "cls_sales_by_category", detailedQuery: "sales-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "by-cashier", label_key: "cls_sales_by_cashier", detailedQuery: "sales-by-cashier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["cashier_id", "customer_id", "payment_type", "status"], filters: [
-        { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
-      ], multiSelectFilters: [] },
-      { id: "by-payment", label_key: "cls_sales_by_payment", detailedQuery: "sales-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["payment_type", "customer_id", "cashier_id", "status"], filters: [
-        { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
-      ], multiSelectFilters: [] },
-      { id: "heatmap", label_key: "cls_sales_heatmap", detailedQuery: null, summaryQuery: "sales-heatmap", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "customer_id", "payment_type"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "period-compare", label_key: "cls_sales_period_compare", detailedQuery: "period-comparison", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
-      { id: "discounts", label_key: "cls_sales_discounts", detailedQuery: "discount-analysis", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "payment_type", "status"], filters: [
-        { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
-      ], multiSelectFilters: [] },
-      { id: "cashier-override-impact", label_key: "cls_sales_cashier_override_impact", detailedQuery: "cashier-override-impact", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["cashier_id"], filters: [
-        { key: "cashier_id", type: "lookup", label_key: "cashier", entity: "user" },
-      ], multiSelectFilters: [] },
-      { id: "margin", label_key: "cls_sales_margin", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
-      { id: "tax", label_key: "cls_sales_tax", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "daily-summary", label_key: "cls_sales_daily", detailedQuery: null, summaryQuery: "daily-sales", availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_sales_detailed", detailedQuery: "detailed-sales", summaryQuery: "daily-sales", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-item", label_key: "cls_sales_by_item", detailedQuery: "sales-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-category", label_key: "cls_sales_by_category", detailedQuery: "sales-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-cashier", label_key: "cls_sales_by_cashier", detailedQuery: "sales-by-cashier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["cashier_id", "customer_id", "category_id", "item_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-payment", label_key: "cls_sales_by_payment", detailedQuery: "sales-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["payment_type", "customer_id", "cashier_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "heatmap", label_key: "cls_sales_heatmap", detailedQuery: null, summaryQuery: "sales-heatmap", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "category_id"], filters: [], multiSelectFilters: [] },
+      { id: "period-compare", label_key: "cls_sales_period_compare", detailedQuery: "period-comparison", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "discounts", label_key: "cls_sales_discounts", detailedQuery: "discount-analysis", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "payment_type", "status"], filters: [], multiSelectFilters: [] },
+      { id: "cashier-override-impact", label_key: "cls_sales_cashier_override_impact", detailedQuery: "cashier-override-impact", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["cashier_id"], filters: [], multiSelectFilters: [] },
+      { id: "margin", label_key: "cls_sales_margin", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "tax", label_key: "cls_sales_tax", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
     ],
     // ── مشتريات (Purchases) ──
     purchases: [
-      { id: "summary", label_key: "cls_purchases_summary", detailedQuery: null, summaryQuery: "purchase-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "payment_type", "status"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_purchases_detailed", detailedQuery: "detailed-purchases", summaryQuery: "purchase-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "category_id", "item_id", "status", "payment_type"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-        { key: "status", type: "select", label_key: "status", options: [{ value: "paid", label_key: "paid" }, { value: "unpaid", label_key: "unpaid" }, { value: "cancelled", label_key: "cancelled" }] },
-        { key: "payment_type", type: "select", label_key: "payment_type", dynamic: true, options: [{ value: "cash", label: "نقداً" }, { value: "credit", label: "آجل" }, { value: "card", label: "بطاقة" }, { value: "bank_transfer", label: "تحويل بنكي" }, { value: "multi", label: "متعدد" }] },
-      ], multiSelectFilters: [] },
-      { id: "by-supplier", label_key: "cls_purchases_by_supplier", detailedQuery: "purchases-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "category_id", "item_id", "status", "payment_type"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
-      { id: "by-item", label_key: "cls_purchases_by_item", detailedQuery: "purchases-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "category_id", "item_id", "status", "payment_type"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
-      { id: "supplier-pricing", label_key: "cls_purchases_supplier_pricing", detailedQuery: "supplier-pricing", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "category_id", "item_id"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
+      { id: "summary", label_key: "cls_purchases_summary", detailedQuery: null, summaryQuery: "purchase-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id", "category_id", "item_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_purchases_detailed", detailedQuery: "detailed-purchases", summaryQuery: "purchase-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id", "category_id", "item_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-supplier", label_key: "cls_purchases_by_supplier", detailedQuery: "purchases-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-item", label_key: "cls_purchases_by_item", detailedQuery: "purchases-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "item_id", "supplier_id", "status", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "supplier-pricing", label_key: "cls_purchases_supplier_pricing", detailedQuery: "supplier-pricing", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id","category_id","item_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── مرتجعات المشتريات (Purchase Returns) ──
     "purchase-returns": [
       { id: "summary", label_key: "cls_preturn_summary", detailedQuery: null, summaryQuery: "purchase-returns-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_preturn_detailed", detailedQuery: "purchase-returns", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_preturn_detailed", detailedQuery: "purchase-returns", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
       { id: "by-supplier", label_key: "cls_preturn_by_supplier", detailedQuery: "purchase-returns-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── مرتجعات المبيعات (Sales Returns) ──
     "sales-returns": [
       { id: "summary", label_key: "cls_sreturn_summary", detailedQuery: null, summaryQuery: "sales-returns-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_sreturn_detailed", detailedQuery: "sales-returns", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"], filters: [
-        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-      ], multiSelectFilters: [] },
-      { id: "by-customer", label_key: "cls_sreturn_by_customer", detailedQuery: "sales-returns-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_sreturn_detailed", detailedQuery: "sales-returns", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-customer", label_key: "cls_sreturn_by_customer", detailedQuery: "sales-returns-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── الموردين (Suppliers) ──
     suppliers: [
-      { id: "balance-list", label_key: "cls_supplier_balance_list", detailedQuery: "supplier-balance-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
+      { id: "balance-list", label_key: "cls_supplier_balance_list", detailedQuery: "supplier-balance-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
       { id: "statement", label_key: "cls_supplier_statement", detailedQuery: "supplier-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier", required: true },
       ], multiSelectFilters: [] },
-      { id: "aging", label_key: "cls_supplier_aging", detailedQuery: "ap-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [
-        { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
-      ], multiSelectFilters: [] },
-      { id: "purchases", label_key: "cls_supplier_purchases", detailedQuery: "purchases-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"], filters: [
+      { id: "aging", label_key: "cls_supplier_aging", detailedQuery: "ap-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
+      { id: "purchases", label_key: "cls_supplier_purchases", detailedQuery: "purchases-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id","category_id","item_id","status","payment_type"], filters: [
         { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
       ], multiSelectFilters: [] },
       { id: "returns", label_key: "cls_supplier_returns", detailedQuery: "purchase-returns-by-supplier", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"], filters: [], multiSelectFilters: [] },
@@ -261,144 +227,67 @@ const REPORT_REGISTRY = {
       { id: "statement", label_key: "cls_customer_statement", detailedQuery: "customer-statement", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
         { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer", required: true },
       ], multiSelectFilters: [] },
-      { id: "aging", label_key: "cls_customer_aging", detailedQuery: "ar-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
-        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-      ], multiSelectFilters: [] },
-      { id: "top-customers", label_key: "cls_top_customers", detailedQuery: "top-customers", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [
-        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-      ], multiSelectFilters: [] },
-      { id: "collection-efficiency", label_key: "cls_collection_efficiency", detailedQuery: "collection-efficiency", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
-        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-      ], multiSelectFilters: [] },
-      { id: "loyalty", label_key: "cls_customer_loyalty", detailedQuery: "customer-loyalty", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [
-        { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
-      ], multiSelectFilters: [] },
+      { id: "aging", label_key: "cls_customer_aging", detailedQuery: "ar-aging", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "top-customers", label_key: "cls_top_customers", detailedQuery: "top-customers", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "collection-efficiency", label_key: "cls_collection_efficiency", detailedQuery: "collection-efficiency", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
+      { id: "loyalty", label_key: "cls_customer_loyalty", detailedQuery: "customer-loyalty", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── الموظفين (Employees) ──
     employees: [
-      { id: "employee-list", label_key: "cls_emp_list", detailedQuery: "employee-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-      ], multiSelectFilters: [] },
-      { id: "employee-deductions", label_key: "cls_emp_deductions", detailedQuery: "employee-deductions", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "deduction_type", "status"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-        { key: "deduction_type", type: "select", label_key: "deduction_type", options: [{ value: "absence", label: "غياب" }, { value: "fine", label: "غرامة" }, { value: "insurance", label: "تأمين" }, { value: "other", label: "أخرى" }] },
-        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
-      ], multiSelectFilters: [] },
-      { id: "employee-bonuses", label_key: "cls_emp_bonuses", detailedQuery: "employee-bonuses", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "bonus_type", "status"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-        { key: "bonus_type", type: "select", label_key: "bonus_type", options: [{ value: "performance", label: "أداء" }, { value: "holiday", label: "إجازة" }, { value: "overtime", label: "إضافي" }, { value: "transportation", label: "مواصلات" }, { value: "other", label: "أخرى" }] },
-        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
-      ], multiSelectFilters: [] },
-      { id: "employee-advances", label_key: "cls_emp_advances", detailedQuery: "employee-advances", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-        { key: "status", type: "select", label_key: "status", options: [{ value: "active", label: "نشط" }, { value: "completed", label: "مطبق" }, { value: "cancelled", label: "ملغي" }] },
-      ], multiSelectFilters: [] },
-      { id: "employee-payroll", label_key: "cls_emp_payroll", detailedQuery: "employee-payroll", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-      ], multiSelectFilters: [] },
-      { id: "employee-full-history", label_key: "cls_emp_full_history", detailedQuery: "employee-full-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"], filters: [
-        { key: "employee_id", type: "lookup", label_key: "employee", entity: "employee" },
-        { key: "tx_type", type: "select", label_key: "tx_type", options: [{ value: "deduction", label: "خصم" }, { value: "bonus", label: "مكافأة" }, { value: "advance", label: "سلفة" }, { value: "advance_payment", label: "دفعة سلفة" }, { value: "settlement", label: "صرف راتب" }] },
-      ], multiSelectFilters: [] },
+      { id: "employee-list", label_key: "cls_emp_list", detailedQuery: "employee-list", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [], multiSelectFilters: [] },
+      { id: "employee-deductions", label_key: "cls_emp_deductions", detailedQuery: "employee-deductions", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "deduction_type", "status"], filters: [], multiSelectFilters: [] },
+      { id: "employee-bonuses", label_key: "cls_emp_bonuses", detailedQuery: "employee-bonuses", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "bonus_type", "status"], filters: [], multiSelectFilters: [] },
+      { id: "employee-advances", label_key: "cls_emp_advances", detailedQuery: "employee-advances", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "employee-payroll", label_key: "cls_emp_payroll", detailedQuery: "employee-payroll", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [], multiSelectFilters: [] },
+      { id: "employee-full-history", label_key: "cls_emp_full_history", detailedQuery: "employee-full-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"], filters: [], multiSelectFilters: [] },
+      { id: "shifts", label_key: "cls_emp_shifts", detailedQuery: "shift-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [], multiSelectFilters: [] },
+      { id: "user-activity", label_key: "cls_emp_user_activity", detailedQuery: "user-activity", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [], multiSelectFilters: [] },
+      { id: "employee-adjustments", label_key: "cls_emp_adjustments", detailedQuery: "employee-adjustments", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── أنظمة التقسيط (Installments) ──
     installments: [
-      { id: "plans", label_key: "cls_inst_plans", detailedQuery: "installment-plans", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }, { key: "status", type: "select", label_key: "status", options: [{ value: "pending", label: "قيد السداد" }, { value: "paid", label: "مدفوع" }, { value: "cancelled", label: "ملغي" }] }], multiSelectFilters: [] },
-      { id: "collections", label_key: "cls_inst_collections", detailedQuery: "installment-collections", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
-      { id: "by-customer", label_key: "cls_inst_by_customer", detailedQuery: "installments-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
-      { id: "delinquent", label_key: "cls_inst_delinquent", detailedQuery: null, summaryQuery: "installment-delinquent", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [{ key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" }], multiSelectFilters: [] },
+      { id: "plans", label_key: "cls_inst_plans", detailedQuery: "installment-plans", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "collections", label_key: "cls_inst_collections", detailedQuery: "installment-collections", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "by-customer", label_key: "cls_inst_by_customer", detailedQuery: "installments-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"], filters: [], multiSelectFilters: [] },
+      { id: "delinquent", label_key: "cls_inst_delinquent", detailedQuery: null, summaryQuery: "installment-delinquent", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── الأصناف (Items / Inventory) ──
     items: [
-      { id: "stock-levels", label_key: "cls_item_stock_levels", detailedQuery: "stock-levels", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "valuation", label_key: "cls_item_valuation", detailedQuery: "stock-valuation", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "count-sheet", label_key: "cls_item_count_sheet", detailedQuery: "count-sheet", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "reorder", label_key: "cls_item_reorder", detailedQuery: "reorder", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["category_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "expiry", label_key: "cls_item_expiry", detailedQuery: "expiry", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["item_id", "warehouse_id", "category_id"], filters: [
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "slow-moving", label_key: "cls_item_slow_moving", detailedQuery: "slow-moving", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "aging", label_key: "cls_item_aging", detailedQuery: "inventory-aging", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "dead-stock", label_key: "cls_item_dead_stock", detailedQuery: "dead-stock", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "cost-movements", label_key: "cls_item_cost_movements", detailedQuery: "cost-movements", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["item_id", "warehouse_id"], filters: [
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
+      { id: "stock-levels", label_key: "cls_item_stock_levels", detailedQuery: "stock-levels", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "valuation", label_key: "cls_item_valuation", detailedQuery: "stock-valuation", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "count-sheet", label_key: "cls_item_count_sheet", detailedQuery: "count-sheet", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "reorder", label_key: "cls_item_reorder", detailedQuery: "reorder", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["category_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "expiry", label_key: "cls_item_expiry", detailedQuery: "expiry", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["item_id", "warehouse_id", "category_id"], filters: [], multiSelectFilters: [] },
+      { id: "slow-moving", label_key: "cls_item_slow_moving", detailedQuery: "slow-moving", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "aging", label_key: "cls_item_aging", detailedQuery: "inventory-aging", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "dead-stock", label_key: "cls_item_dead_stock", detailedQuery: "dead-stock", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "cost-movements", label_key: "cls_item_cost_movements", detailedQuery: "cost-movements", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["item_id","warehouse_id","movement_type"], filters: [
         { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "purchase", label: "purchase" }, { value: "branch_receive", label: "branch_receive" }, { value: "opening_balance", label: "opening_balance" }] },
       ], multiSelectFilters: [] },
-      { id: "cost-method-comparison", label_key: "cls_item_cost_method_comparison", detailedQuery: "cost-method-comparison", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
-      { id: "item-lifecycle", label_key: "cls_item_lifecycle", detailedQuery: "item-lifecycle", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
-      { id: "inventory-turnover", label_key: "cls_item_inventory_turnover", detailedQuery: "inventory-turnover", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
+      { id: "cost-method-comparison", label_key: "cls_item_cost_method_comparison", detailedQuery: "cost-method-comparison", summaryQuery: null, availableModes: ["detailed"], supportsDates: false, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
+      { id: "item-lifecycle", label_key: "cls_item_lifecycle", detailedQuery: "item-lifecycle", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id","item_id"], filters: [], multiSelectFilters: [] },
+      { id: "inventory-turnover", label_key: "cls_item_inventory_turnover", detailedQuery: "inventory-turnover", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id","item_id","warehouse_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── مخازن (Warehouses) ──
     warehouses: [
-      { id: "movements", label_key: "cls_wh_movements", detailedQuery: "stock-movements", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["movement_type", "category_id", "item_id", "warehouse_id"], filters: [
-        { key: "movement_type", type: "select", label_key: "movement_type", options: [{ value: "in", label_key: "in" }, { value: "out", label_key: "out" }, { value: "transfer", label_key: "transfer" }] },
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-      ], multiSelectFilters: [] },
+      { id: "movements", label_key: "cls_wh_movements", detailedQuery: "stock-movements", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["movement_type", "category_id", "item_id", "warehouse_id"], filters: [], multiSelectFilters: [] },
       { id: "transfers", label_key: "cls_wh_transfers", detailedQuery: "branch-transfers", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id"], filters: [], multiSelectFilters: [] },
       { id: "per-warehouse", label_key: "cls_wh_per_warehouse", detailedQuery: "warehouse-levels", summaryQuery: "warehouse-levels-summary", availableModes: ["detailed", "summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id", "category_id"], filters: [], multiSelectFilters: [] },
-      { id: "stock-adjustment-audit", label_key: "cls_wh_stock_adjustment_audit", detailedQuery: "stock-adjustment-audit", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["warehouse_id", "category_id", "item_id"], filters: [
-        { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
+      { id: "stock-adjustment-audit", label_key: "cls_wh_stock_adjustment_audit", detailedQuery: "stock-adjustment-audit", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id","category_id","item_id","user_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── مصروفات (Expenses) ──
     expenses: [
-      { id: "summary", label_key: "cls_exp_summary", detailedQuery: null, summaryQuery: "expense-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_exp_detailed", detailedQuery: "detailed-expenses", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "by-category", label_key: "cls_exp_by_category", detailedQuery: "expenses-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
-      { id: "by-payment", label_key: "cls_exp_by_payment", detailedQuery: "expenses-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "summary", label_key: "cls_exp_summary", detailedQuery: null, summaryQuery: "expense-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_exp_detailed", detailedQuery: "detailed-expenses", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-category", label_key: "cls_exp_by_category", detailedQuery: "expenses-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-payment", label_key: "cls_exp_by_payment", detailedQuery: "expenses-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["payment_type"], filters: [], multiSelectFilters: [] },
     ],
     // ── إيرادات أخرى (Other Revenues) ──
     revenues: [
-      { id: "summary", label_key: "cls_rev_summary", detailedQuery: null, summaryQuery: "revenue-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
-      { id: "detailed", label_key: "cls_rev_detailed", detailedQuery: "detailed-revenues", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "by-category", label_key: "cls_rev_by_category", detailedQuery: "revenues-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
-      { id: "by-payment", label_key: "cls_rev_by_payment", detailedQuery: "revenues-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "summary", label_key: "cls_rev_summary", detailedQuery: null, summaryQuery: "revenue-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "detailed", label_key: "cls_rev_detailed", detailedQuery: "detailed-revenues", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-category", label_key: "cls_rev_by_category", detailedQuery: "revenues-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["category_id", "payment_type"], filters: [], multiSelectFilters: [] },
+      { id: "by-payment", label_key: "cls_rev_by_payment", detailedQuery: "revenues-by-payment", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["payment_type"], filters: [], multiSelectFilters: [] },
     ],
     // ── الخزينة (Treasury) ──
     treasury: [
@@ -407,6 +296,8 @@ const REPORT_REGISTRY = {
       { id: "reconciliation", label_key: "cls_trs_reconciliation", detailedQuery: "cash-consistency", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
       { id: "daily-sessions", label_key: "cls_trs_daily_sessions", detailedQuery: "daily-sessions", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
       { id: "withdrawals", label_key: "cls_trs_withdrawals", detailedQuery: "withdrawals-report", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "payment-method-flow", label_key: "r45_title", detailedQuery: "payment-method-flow", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "reconciliation-exceptions", label_key: "r47_title", detailedQuery: "reconciliation-exceptions", summaryQuery: null, availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
     ],
     "payment-flow": [
       { id: "payment-flow-summary", label_key: "cls_trs_payment_flow_summary", detailedQuery: null, summaryQuery: "payment-flow-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["method_id"], filters: [PAYMENT_FLOW_FILTERS.method], multiSelectFilters: [] },
@@ -417,36 +308,26 @@ const REPORT_REGISTRY = {
     ],
     // ── مجمل ربح المبيعات (Sales Profit Loader) ──
     "profit-loader": [
-      { id: "by-item", label_key: "cls_profit_by_item", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
-      { id: "by-category", label_key: "cls_profit_by_category", detailedQuery: "margin-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "customer_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "health", label_key: "cls_profit_health", detailedQuery: "margin-health", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: true, supportsScope: false, dimensions: ["category_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-      ], multiSelectFilters: [] },
-      { id: "margin-drift", label_key: "cls_profit_margin_drift", detailedQuery: "margin-drift", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id"], filters: [
-        { key: "category_id", type: "lookup", label_key: "category", entity: "category" },
-        { key: "item_id", type: "lookup", label_key: "product", entity: "product" },
-      ], multiSelectFilters: [] },
+      { id: "by-item", label_key: "cls_profit_by_item", detailedQuery: "margin-by-item", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-category", label_key: "cls_profit_by_category", detailedQuery: "margin-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
+      { id: "health", label_key: "cls_profit_health", detailedQuery: "margin-health", summaryQuery: null, availableModes: ["summary"], supportsDates: false, hasProfit: true, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
+      { id: "margin-drift", label_key: "cls_profit_margin_drift", detailedQuery: "margin-drift", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id"], filters: [], multiSelectFilters: [] },
     ],
     // ── صافي الربح (Net Profit) ──
     "net-profit": [
       { id: "income-statement", label_key: "cls_net_income", detailedQuery: "profit-loss", summaryQuery: null, availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
-      { id: "by-category", label_key: "cls_net_by_category", detailedQuery: "profit-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
-      { id: "by-customer", label_key: "cls_net_by_customer", detailedQuery: "profit-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "by-category", label_key: "cls_net_by_category", detailedQuery: "profit-by-category", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id"], filters: [], multiSelectFilters: [] },
+      { id: "by-customer", label_key: "cls_net_by_customer", detailedQuery: "profit-by-customer", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
       { id: "by-period", label_key: "cls_net_by_period", detailedQuery: "profit-by-period", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
       { id: "daily-owner-snapshot", label_key: "cls_net_daily_owner_snapshot", detailedQuery: "daily-owner-snapshot", summaryQuery: null, availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
     ],
     // ── الضرائب (Tax) ──
     tax: [
-      { id: "vat", label_key: "r23_title", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
-      { id: "output-vat", label_key: "r48_title", detailedQuery: "output-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
-      { id: "input-vat", label_key: "r49_title", detailedQuery: "input-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
-      { id: "vat-filing-summary", label_key: "r50_title", detailedQuery: null, summaryQuery: "vat-filing-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
-      { id: "returns-tax-effect", label_key: "r51_title", detailedQuery: "returns-tax-effect", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [], filters: [], multiSelectFilters: [] },
+      { id: "vat", label_key: "cls_tax_vat", detailedQuery: "vat", summaryQuery: "vat-filing-summary", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "output-vat", label_key: "cls_tax_output_vat", detailedQuery: "output-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "input-vat", label_key: "cls_tax_input_vat", detailedQuery: "input-vat", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "vat-filing-summary", label_key: "cls_tax_vat_filing", detailedQuery: null, summaryQuery: "vat-filing-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
+      { id: "returns-tax-effect", label_key: "cls_tax_returns_effect", detailedQuery: "returns-tax-effect", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
     ],
   },
 
@@ -518,7 +399,6 @@ const slugSourceMap = {
   "payment-flow-by-doc-type": "payment-flow",
   "payment-flow-by-direction": "payment-flow",
   "payment-flow-running": "payment-flow",
-  "bank-cash-split": "cheques",
   "reconciliation-exceptions": "treasury",
   // Tax
   "vat": "tax",
@@ -586,14 +466,13 @@ const clsMap = {
   "cash-flow": { classification: "cash-flow", dataMode: "detailed" },
   "treasury": { classification: "balances", dataMode: "summary" },
   "cash-consistency": { classification: "reconciliation", dataMode: "detailed" },
-  "payment-method-flow": { classification: "cash-flow", dataMode: "detailed" },
+  "payment-method-flow": { classification: "payment-method-flow", dataMode: "detailed" },
   "payment-flow-summary": { classification: "payment-flow-summary", dataMode: "summary" },
   "payment-flow-ledger": { classification: "payment-flow-ledger", dataMode: "detailed" },
   "payment-flow-by-doc-type": { classification: "payment-flow-by-doc-type", dataMode: "detailed" },
   "payment-flow-by-direction": { classification: "payment-flow-by-direction", dataMode: "detailed" },
   "payment-flow-running": { classification: "payment-flow-running", dataMode: "detailed" },
-  "bank-cash-split": { classification: "bank-summary", dataMode: "summary" },
-  "reconciliation-exceptions": { classification: "reconciliation", dataMode: "detailed" },
+  "reconciliation-exceptions": { classification: "reconciliation-exceptions", dataMode: "detailed" },
   "vat": { classification: "vat", dataMode: "detailed" },
   "output-vat": { classification: "output-vat", dataMode: "detailed" },
   "input-vat": { classification: "input-vat", dataMode: "detailed" },
@@ -742,7 +621,6 @@ REPORT_REGISTRY.reports = [
   { id: "R68", cat: "treasury", slug: "payment-flow-by-doc-type", title_key: "r68_title", desc_key: "r68_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.docType, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction] },
   { id: "R69", cat: "treasury", slug: "payment-flow-by-direction", title_key: "r69_title", desc_key: "r69_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.docType] },
   { id: "R70", cat: "treasury", slug: "payment-flow-running", title_key: "r70_title", desc_key: "r70_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [PAYMENT_FLOW_FILTERS.method, PAYMENT_FLOW_FILTERS.direction, PAYMENT_FLOW_FILTERS.docType] },
-  { id: "R46", cat: "treasury", slug: "bank-cash-split", title_key: "r46_title", desc_key: "r46_desc", supportsDates: false, exportFormats: ["pdf", "excel", "print"] },
   { id: "R47", cat: "treasury", slug: "reconciliation-exceptions", title_key: "r47_title", desc_key: "r47_desc", supportsDates: true, exportFormats: ["pdf", "excel", "print"] },
   // Tax
   { id: "R23", cat: "tax", slug: "vat", title_key: "r23_title", desc_key: "r23_desc", supportsDates: true, exportFormats: ["pdf", "excel", "word", "print"] },
@@ -805,20 +683,20 @@ REPORT_REGISTRY.reports = [
   ]},
   { id: "R65", cat: "accounts", slug: "daily-owner-snapshot", title_key: "r65_title", desc_key: "r65_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"] },
   // ── Customer Reports ──
-  { id: "R66", cat: "accounts", slug: "ar-aging", title_key: "r66_title", desc_key: "r66_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+  { id: "R72", cat: "accounts", slug: "ar-aging", title_key: "r66_title", desc_key: "r66_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
   ]},
-  { id: "R67", cat: "accounts", slug: "top-customers", title_key: "r67_title", desc_key: "r67_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+  { id: "R73", cat: "accounts", slug: "top-customers", title_key: "r67_title", desc_key: "r67_desc", supportsDates: true, hasProfit: true, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
   ]},
-  { id: "R68", cat: "accounts", slug: "collection-efficiency", title_key: "r68_title", desc_key: "r68_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+  { id: "R74", cat: "accounts", slug: "collection-efficiency", title_key: "r68_title", desc_key: "r68_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
   ]},
-  { id: "R69", cat: "accounts", slug: "customer-loyalty", title_key: "r69_title", desc_key: "r69_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+  { id: "R75", cat: "accounts", slug: "customer-loyalty", title_key: "r69_title", desc_key: "r69_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "customer_id", type: "lookup", label_key: "customer", entity: "customer" },
   ]},
   // ── Supplier Reports ──
-  { id: "R70", cat: "accounts", slug: "ap-aging", title_key: "r70_title", desc_key: "r70_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+  { id: "R76", cat: "accounts", slug: "ap-aging", title_key: "r70_title", desc_key: "r70_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
   ]},
   { id: "R71", cat: "accounts", slug: "supplier-reliability", title_key: "r71_title", desc_key: "r71_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [

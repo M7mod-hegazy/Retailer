@@ -110,13 +110,77 @@ export function overrideCss(o = {}, selector) {
   return `${selector},${selector} *{${d.join(";")}}`;
 }
 
-export function seedFamilyLayout(family) {
+export function defaultReportColumns(scope) {
+  switch (scope) {
+    case "bank_statement":
+      return [
+        { key: "created_at", label: "التاريخ", visible: true, align: "right" },
+        { key: "type", label: "النوع", visible: true, align: "center" },
+        { key: "reference", label: "المرجع", visible: true, align: "center" },
+        { key: "notes", label: "ملاحظات", visible: true, align: "right" },
+        { key: "amount", label: "المبلغ", visible: true, align: "left" },
+      ];
+    case "ajal_statement":
+      return [
+        { key: "payment_date", label: "التاريخ", visible: true, align: "right" },
+        { key: "method_name", label: "وسيلة الدفع", visible: true, align: "center" },
+        { key: "amount", label: "المبلغ المدفوع", visible: true, align: "left" },
+      ];
+    case "ajal_schedule":
+      return [
+        { key: "installment_no", label: "رقم القسط", visible: true, align: "center" },
+        { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "right" },
+        { key: "amount", label: "المبلغ", visible: true, align: "right" },
+        { key: "status", label: "الحالة", visible: true, align: "center" },
+        { key: "signature", label: "توقيع الاستلام", visible: true, align: "center" },
+      ];
+    case "daily_treasury":
+      return [
+        { key: "description", label: "البيان / الحركة", visible: true, align: "right" },
+        { key: "amount", label: "المبلغ", visible: true, align: "right" },
+        { key: "type", label: "النوع", visible: true, align: "center" },
+        { key: "method", label: "وسيلة الدفع", visible: true, align: "center" },
+      ];
+    case "ajal_full_statement":
+      return [
+        { key: "customer_name", label: "العميل", visible: true, align: "right" },
+        { key: "original_amount", label: "الدين الإجمالي", visible: true, align: "right" },
+        { key: "paid", label: "المدفوع الكلي", visible: true, align: "right" },
+        { key: "remaining", label: "المتبقي الكلي", visible: true, align: "left" },
+      ];
+    case "cheque_register":
+      return [
+        { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+        { key: "bank_name", label: "البنك", visible: true, align: "center" },
+        { key: "drawer_name", label: "الساحب / العميل", visible: true, align: "right" },
+        { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "center" },
+        { key: "amount", label: "المبلغ", visible: true, align: "left" },
+        { key: "status", label: "الحالة", visible: true, align: "center" },
+      ];
+    case "payment_methods_report":
+      return [
+        { key: "doc_no", label: "الكود", visible: true, align: "center" },
+        { key: "doc_type_label", label: "النوع", visible: true, align: "center" },
+        { key: "amount", label: "المبلغ", visible: true, align: "right" },
+        { key: "direction", label: "الاتجاه", visible: true, align: "center" },
+        { key: "party", label: "الطرف / المستلم", visible: true, align: "right" },
+        { key: "method_name", label: "الوسيلة", visible: true, align: "center" },
+      ];
+    default:
+      return [];
+  }
+}
+
+export function seedFamilyLayout(family, scope = "_global") {
+  const orderKey = DEFAULT_ORDER[scope] ? scope : family;
   return {
-    order: [...DEFAULT_ORDER[family]],
+    order: [...DEFAULT_ORDER[orderKey]],
     inserted: [],
-    // Columns live in perBlock.items_table.columns — the location the print
-    // renderer reads. (The old top-level `columns` bag never reached paper.)
-    perBlock: { items_table: { columns: defaultColumns(family) } },
+    // Columns live in perBlock.items_table.columns or perBlock.report_table.columns
+    perBlock: {
+      items_table: { columns: defaultColumns(family) },
+      report_table: { columns: defaultReportColumns(scope) },
+    },
     margins: {},
   };
 }
@@ -130,7 +194,12 @@ export { normalizeLayout, mergeFamilyLayouts };
  * layout (per-doc wins), both normalized first. Either argument may be a full
  * settings object ({ layout: {...} }) or null.
  */
-export function resolveEffectiveLayout(globalScopeSettings, docSettings, family) {
+export function resolveEffectiveLayout(globalScopeSettings, docSettings, family, scope = "_global") {
+  const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+  if (isReport) {
+    const dl = normalizeLayout(docSettings || {}).settings.layout || {};
+    return dl[family] || seedFamilyLayout(family, scope);
+  }
   const gl = normalizeLayout(globalScopeSettings || {}).settings.layout || {};
   const dl = normalizeLayout(docSettings || {}).settings.layout || {};
   return mergeFamilyLayouts(gl[family], dl[family]);
@@ -138,10 +207,10 @@ export function resolveEffectiveLayout(globalScopeSettings, docSettings, family)
 
 // Returns a NEW settings object with layout.roll / layout.page seeded if absent.
 // Existing layout entries are preserved untouched. Non-mutating.
-export function ensureLayout(settings = {}) {
+export function ensureLayout(settings = {}, scope = "_global") {
   const layout = { ...(settings.layout || {}) };
   FAMILIES.forEach((fam) => {
-    if (!layout[fam]) layout[fam] = seedFamilyLayout(fam);
+    if (!layout[fam]) layout[fam] = seedFamilyLayout(fam, scope);
   });
   return { ...settings, layout };
 }

@@ -21,7 +21,7 @@ import ReportPrintTemplate from "./templates/ReportPrintTemplate";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
 import { LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
-import { SCOPE_OPTIONS, formatReportCellValue } from "./reportsCenterConfig";
+import { useReportsConfig, formatReportCellValue } from "../../hooks/useReportsConfig";
 import { formatNumber } from "../../utils/currency";
 
 function formatDate(date) {
@@ -221,13 +221,13 @@ function TableSkeleton({ colCount = 6 }) {
     <div className="space-y-3 p-4">
       <div className="flex gap-3">
         {Array.from({ length: colCount }).map((_, i) => (
-          <div key={i} className="h-8 flex-1 rounded-lg bg-zinc-100 animate-pulse" style={{ animationDelay: `${i * 50}ms` }} />
+          <div key={i} className="h-8 flex-1 rounded-lg bg-bg-overlay animate-pulse" style={{ animationDelay: `${i * 50}ms` }} />
         ))}
       </div>
       {Array.from({ length: 8 }).map((_, rowIdx) => (
         <div key={rowIdx} className="flex gap-3">
           {Array.from({ length: colCount }).map((_, i) => (
-            <div key={i} className="h-10 flex-1 rounded-lg bg-zinc-50 animate-pulse" style={{ animationDelay: `${(rowIdx + i) * 30}ms` }} />
+            <div key={i} className="h-10 flex-1 rounded-lg bg-bg-base animate-pulse" style={{ animationDelay: `${(rowIdx + i) * 30}ms` }} />
           ))}
         </div>
       ))}
@@ -262,7 +262,7 @@ function ExportPill({ format, onExport }) {
     <button
       onClick={handleClick}
       disabled={isLoading}
-      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold transition-all duration-200 border bg-white shadow-sm hover:shadow-md active:scale-95"
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold transition-all duration-200 border bg-bg-surface shadow-sm hover:shadow-md active:scale-95"
       style={{
         color: isReady ? "#047857" : isError ? "#b91c1c" : cfg.color,
         borderColor: isReady ? "#6ee7b7" : isError ? "#fca5a5" : "#e4e4e7",
@@ -280,7 +280,7 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
     const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن", payment_method: "وسيلة دفع" }[filter.entity] || filter.entity;
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{t(filter.label_key) || entityLabel}</label>
+        <label className="text-[11px] font-bold text-text-secondary">{t(filter.label_key) || entityLabel}</label>
         <LookupEntityFilter
           entity={filter.entity}
           value={value || ""}
@@ -293,11 +293,11 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
   if (filter.type === "select") {
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{t(filter.label_key)}</label>
+        <label className="text-[11px] font-bold text-text-secondary">{t(filter.label_key)}</label>
         <select
           value={value || ""}
           onChange={(e) => onChange(filter.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+          className="w-full h-10 px-3 rounded-xl border border-border bg-bg-base text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium"
         >
           <option value="">الكل</option>
           {opts.map((opt) => (
@@ -310,13 +310,13 @@ function FilterInput({ filter, t, value, onChange, dynamicOptions }) {
   if (filter.type === "text") {
     return (
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-zinc-500">{t(filter.label_key)}</label>
+        <label className="text-[11px] font-bold text-text-secondary">{t(filter.label_key)}</label>
         <input
           type="text"
           value={value || ""}
           onChange={(e) => onChange(filter.key, e.target.value)}
           placeholder={t(filter.label_key)}
-          className="w-full h-10 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-medium"
+          className="w-full h-10 px-3 rounded-xl border border-border bg-bg-base text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium"
         />
       </div>
     );
@@ -333,6 +333,7 @@ export default function ReportWorkspacePage() {
   const getStorePreference = useReportsStore((s) => s.getPreference);
   const setCostMethodAction = useReportsStore((s) => s.setCostMethod);
 
+  const { data: config } = useReportsConfig();
   const { data: registry } = useQuery({
     queryKey: ["report-registry"],
     queryFn: () => reportsApi.fetchRegistry(),
@@ -578,7 +579,7 @@ export default function ReportWorkspacePage() {
   }, [smartColumns, showAllColumns]);
 
   const PRIORITY_LABELS = { essential: "أساسي", useful: "مهم", optional: "اختياري" };
-  const PRIORITY_COLORS = { essential: "text-emerald-600 bg-emerald-50 border-emerald-200", useful: "text-blue-600 bg-blue-50 border-blue-200", optional: "text-zinc-400 bg-zinc-50 border-zinc-200" };
+  const PRIORITY_COLORS = { essential: "text-primary bg-primary-50 border-primary", useful: "text-info-text bg-info-bg border-info-border", optional: "text-text-muted bg-bg-overlay border-border" };
 
   const printReadiness = useMemo(() => {
     const score = visibleColumns.reduce((sum, col) => {
@@ -703,7 +704,7 @@ export default function ReportWorkspacePage() {
 
   const categoryMeta = definition ? CATEGORY_META[definition.cat] : null;
   const CategoryIcon = categoryMeta?.icon || BarChart3;
-  const exportFormats = definition?.exportFormats || ["pdf", "excel", "print"];
+  const exportFormats = definition?.exportFormats || ["pdf", "excel", "csv", "print"];
   const invalidRange = definition?.supportsDates && filters.from > filters.to;
   const hasCostMethodSelector = supportsCostMethod(definition);
 
@@ -840,12 +841,12 @@ export default function ReportWorkspacePage() {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-base)]">
         <div className="flex flex-col items-center justify-center text-center space-y-6">
-          <div className="h-20 w-20 rounded-3xl bg-zinc-100 flex items-center justify-center text-zinc-400 shadow-inner">
+          <div className="h-20 w-20 rounded-3xl bg-bg-overlay flex items-center justify-center text-text-muted shadow-inner">
             <LayoutList size={36} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-zinc-900 mb-2">التقرير غير متاح</h1>
-            <p className="text-sm text-zinc-500 max-w-sm">هذا التقرير غير معروف في النظام الحالي.</p>
+            <h1 className="text-2xl font-black text-text-primary mb-2">التقرير غير متاح</h1>
+            <p className="text-sm text-text-secondary max-w-sm">هذا التقرير غير معروف في النظام الحالي.</p>
           </div>
           <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-primary-600 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
@@ -856,41 +857,41 @@ export default function ReportWorkspacePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 bg-[var(--bg-base)] min-h-screen text-zinc-900 font-satoshi" dir="rtl">
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-8 bg-[var(--bg-base)] min-h-screen text-text-primary font-satoshi" dir="rtl">
       
       {/* 1. LIGHT MODE BENTO HERO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
         
         {/* Main Title Card */}
-        <div className="col-span-1 lg:col-span-2 bg-white rounded-[24px] border border-zinc-200 p-8 shadow-sm relative overflow-hidden flex flex-col justify-between group">
+        <div className="col-span-1 lg:col-span-2 bg-bg-surface rounded-[24px] border border-border p-8 shadow-sm relative overflow-hidden flex flex-col justify-between group">
           {/* Subtle Ambient Glow */}
           <div className="absolute -left-32 -top-32 w-96 h-96 rounded-full blur-[80px] opacity-10 pointer-events-none transition-opacity group-hover:opacity-20" style={{ backgroundColor: categoryMeta?.color || "#10b981" }} />
           
           <div>
             <div className="flex items-start gap-4 mb-5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-zinc-50 border border-zinc-100" style={{ color: categoryMeta?.color }}>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-bg-base border border-border" style={{ color: categoryMeta?.color }}>
                 <CategoryIcon size={26} strokeWidth={2} />
               </div>
               <div className="pt-1">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">{definition.id}</span>
-                  <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                  <span className="text-[11px] font-bold text-zinc-500">{categoryMeta?.label}</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">{definition.id}</span>
+                  <span className="w-1 h-1 rounded-full bg-border" />
+                  <span className="text-[11px] font-bold text-text-secondary">{categoryMeta?.label}</span>
                 </div>
-                <h1 className="text-3xl font-black tracking-tight text-zinc-900 mb-1">{definition.title}</h1>
-                <p className="text-sm font-medium text-zinc-500 max-w-xl leading-relaxed">{definition.desc}</p>
+                <h1 className="text-3xl font-black tracking-tight text-text-primary mb-1">{definition.title}</h1>
+                <p className="text-sm font-medium text-text-secondary max-w-xl leading-relaxed">{definition.desc}</p>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center justify-between mt-6 pt-6 border-t border-zinc-100/80">
-            <Link to="/reports/center" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-zinc-600 text-2sm font-bold transition-all hover:scale-[1.02] active:scale-95">
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-border/80">
+            <Link to="/reports/center" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-bg-base hover:bg-bg-base text-text-secondary text-2sm font-bold transition-all hover:scale-[1.02] active:scale-95">
               <LayoutTemplate size={16} /> الرجوع للمركز
             </Link>
             {definition.supportsDates && (
-              <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500 bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-100">
-                <CalendarDays size={14} className="text-zinc-400" />
-                <span>الفترة: <span className="text-zinc-900 tabular-nums">{appliedParams.start_date || "—"}</span> إلی <span className="text-zinc-900 tabular-nums">{appliedParams.end_date || "—"}</span></span>
+              <div className="flex items-center gap-2 text-2sm font-bold text-text-secondary bg-bg-base px-4 py-2 rounded-xl border border-border">
+                <CalendarDays size={14} className="text-text-muted" />
+                <span>الفترة: <span className="text-text-primary tabular-nums">{appliedParams.start_date || "—"}</span> إلی <span className="text-text-primary tabular-nums">{appliedParams.end_date || "—"}</span></span>
               </div>
             )}
           </div>
@@ -904,14 +905,14 @@ export default function ReportWorkspacePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 key={s.label} 
-                className="flex-1 bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm flex flex-col justify-center relative overflow-hidden group min-h-[100px]"
+                className="flex-1 bg-bg-surface rounded-[24px] border border-border p-6 shadow-sm flex flex-col justify-center relative overflow-hidden group min-h-[100px]"
              >
-               <div className="absolute right-0 top-0 bottom-0 w-1 bg-zinc-100 group-hover:bg-emerald-400 transition-colors duration-300" />
-               <div className="text-[11px] font-black text-zinc-400 mb-1.5 uppercase tracking-widest truncate">{s.label}</div>
-               <div className="text-3xl font-black text-zinc-900 tabular-nums tracking-tight truncate">{s.value}</div>
+               <div className="absolute right-0 top-0 bottom-0 w-1 bg-bg-overlay group-hover:bg-primary transition-colors duration-300" />
+               <div className="text-[11px] font-black text-text-muted mb-1.5 uppercase tracking-widest truncate">{s.label}</div>
+               <div className="text-3xl font-black text-text-primary tabular-nums tracking-tight truncate">{s.value}</div>
              </motion.div>
           )) : (
-             <div className="flex-1 bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm flex items-center justify-center text-zinc-300">
+             <div className="flex-1 bg-bg-surface rounded-[24px] border border-border p-6 shadow-sm flex items-center justify-center text-text-muted">
                <Loader2 size={24} className="animate-spin" />
              </div>
           )}
@@ -919,28 +920,28 @@ export default function ReportWorkspacePage() {
       </div>
 
       {/* 2. STICKY COMMAND BAR */}
-      <div className="sticky top-4 z-40 bg-white/80 backdrop-blur-xl border border-zinc-200 rounded-[20px] p-2.5 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-3 transition-all">
+      <div className="sticky top-4 z-40 bg-bg-surface/80 backdrop-blur-xl border border-border rounded-[20px] p-2.5 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-3 transition-all">
          <div className="flex items-center gap-2">
-           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-primary text-white shadow-md" : "bg-white text-zinc-600 hover:bg-zinc-50 border border-zinc-200"}`}>
+           <button onClick={() => setFiltersOpen(!filtersOpen)} className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${filtersOpen ? "bg-primary text-white shadow-md" : "bg-bg-surface text-text-secondary hover:bg-bg-overlay border border-border"}`}>
              <SlidersHorizontal size={16} /> 
              <span>الفلاتر المتقدمة</span>
-             <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180 text-zinc-400" : ""}`} />
+             <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180 text-text-muted" : ""}`} />
            </button>
-           <div className="w-px h-6 bg-zinc-200 mx-1" />
-           <button onClick={() => refetch()} className="px-4 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 text-sm font-bold flex items-center gap-2 transition-all hover:shadow-sm active:scale-95">
-             <RefreshCw size={14} className={isFetching ? "animate-spin text-emerald-500" : ""} /> تحديث البيانات
+           <div className="w-px h-6 bg-border mx-1" />
+           <button onClick={() => refetch()} className="px-4 py-2.5 rounded-xl bg-bg-surface border border-border text-text-secondary hover:bg-bg-overlay hover:text-text-primary text-sm font-bold flex items-center gap-2 transition-all hover:shadow-sm active:scale-95">
+             <RefreshCw size={14} className={isFetching ? "animate-spin text-primary" : ""} /> تحديث البيانات
            </button>
          </div>
 
          <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-black ${
-              printReadiness.tone === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
-              printReadiness.tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-700" :
-              "border-red-200 bg-red-50 text-red-700"
+              printReadiness.tone === "emerald" ? "border-primary bg-primary-50 text-primary-700" :
+              printReadiness.tone === "amber" ? "border-warning-border bg-warning-bg text-warning-text" :
+              "border-danger-border bg-danger-bg text-danger-text"
             }`}>
               <Printer size={12} /> {printReadiness.label}
             </span>
-            <span className="text-[11px] font-bold text-zinc-400 ml-2 uppercase tracking-widest">تصدير</span>
+            <span className="text-[11px] font-bold text-text-muted ml-2 uppercase tracking-widest">تصدير</span>
             {exportFormats.map(fmt => <ExportPill key={fmt} format={fmt} onExport={handleExport} />)}
          </div>
       </div>
@@ -955,14 +956,14 @@ export default function ReportWorkspacePage() {
             transition={{ duration: 0.2 }}
             className={`mb-6 ${filtersOpen ? "overflow-visible" : "overflow-hidden"}`}
           >
-            <div className="bg-white rounded-[24px] border border-zinc-200 p-6 shadow-sm relative z-20">
+            <div className="bg-bg-surface rounded-[24px] border border-border p-6 shadow-sm relative z-20">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Search */}
                 <div className="space-y-2 lg:col-span-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">بحث عام</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">بحث عام</label>
                   <div className="relative group">
-                    <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
+                    <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
                     <input 
                       ref={searchRef}
                       type="text" 
@@ -970,7 +971,7 @@ export default function ReportWorkspacePage() {
                       onChange={(e) => setFilters(c => ({ ...c, q: e.target.value }))} 
                       onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })}
                       placeholder="ابحث بالاسم، الكود، الوصف..." 
-                      className="w-full h-11 pr-11 pl-4 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 font-bold placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" 
+                      className="w-full h-11 pr-11 pl-4 rounded-xl border border-border bg-bg-base text-sm text-text-primary font-bold placeholder:text-text-muted placeholder:font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" 
                     />
                   </div>
                 </div>
@@ -978,18 +979,18 @@ export default function ReportWorkspacePage() {
                 {/* Dates */}
                 {definition.supportsDates && (
                   <div className="space-y-2 lg:col-span-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 flex justify-between items-center">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary flex justify-between items-center">
                       الفترة الزمنية
                       <div className="flex gap-1">
                         {DATE_PRESETS.map(p => (
-                          <button key={p.label} onClick={() => applyDatePreset(p.days)} className="text-[11px] text-zinc-400 hover:text-zinc-900 transition-colors bg-zinc-100 hover:bg-zinc-200 px-2 py-0.5 rounded-md">{p.label}</button>
+                          <button key={p.label} onClick={() => applyDatePreset(p.days)} className="text-[11px] text-text-muted hover:text-text-primary transition-colors bg-bg-overlay hover:bg-bg-base px-2 py-0.5 rounded-md">{p.label}</button>
                         ))}
                       </div>
                     </label>
                     <div className="flex items-center gap-2">
-                      <input ref={dateFromRef} type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
-                      <span className="text-zinc-400">-</span>
-                      <input ref={dateToRef} type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: dateFromRef })} className="flex-1 h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900" />
+                      <input ref={dateFromRef} type="date" value={filters.from} onChange={(e) => setFilters(c => ({ ...c, from: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })} className="flex-1 h-11 px-3 rounded-xl border border-border bg-bg-base text-sm font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-text-primary" />
+                      <span className="text-text-muted">-</span>
+                      <input ref={dateToRef} type="date" value={filters.to} onChange={(e) => setFilters(c => ({ ...c, to: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: dateFromRef })} className="flex-1 h-11 px-3 rounded-xl border border-border bg-bg-base text-sm font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-text-primary" />
                     </div>
                   </div>
                 )}
@@ -1004,9 +1005,9 @@ export default function ReportWorkspacePage() {
 
                 {/* Analytical Scope (النطاق التحليلي) */}
                 <div className="space-y-2 lg:col-span-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">النطاق التحليلي</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">النطاق التحليلي</label>
                   <ScopeSelector
-                    scopeOptions={SCOPE_OPTIONS[definition.cat] || SCOPE_OPTIONS.sales}
+                    scopeOptions={config?.scopeOptions?.[definition.cat] || config?.scopeOptions?.sales || []}
                     scope={scope}
                     onScopeChange={setScope}
                   />
@@ -1015,24 +1016,24 @@ export default function ReportWorkspacePage() {
                 {/* Cost Method */}
                 {hasCostMethodSelector && (
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500">طريقة حساب التكلفة</label>
-                    <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: closeFilterRef, prevRef: dateToRef })} className="w-full h-11 px-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-zinc-900">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">طريقة حساب التكلفة</label>
+                    <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: closeFilterRef, prevRef: dateToRef })} className="w-full h-11 px-3 rounded-xl border border-border bg-bg-base text-sm font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-text-primary">
                       {COST_METHODS.map(m => (<option key={m.value} value={m.value}>{m.label}</option>))}
                     </select>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-3 mt-6 pt-6 border-t border-zinc-100">
+              <div className="flex items-center justify-between gap-3 mt-6 pt-6 border-t border-border">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1 }} transition={{ duration: 0.4, repeat: isFetching ? Infinity : 0 }} className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary-50 px-2.5 py-1 text-[11px] font-bold text-primary-700">
+                    <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1 }} transition={{ duration: 0.4, repeat: isFetching ? Infinity : 0 }} className="w-1.5 h-1.5 rounded-full bg-primary" />
                     {isFetching ? "تحديث..." : "تلقائي"}
                   </span>
-                  {invalidRange && <span className="text-[11px] font-bold text-red-600">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
+                  {invalidRange && <span className="text-[11px] font-bold text-danger-text">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-2sm font-bold text-zinc-500 hover:bg-zinc-100 transition-colors">إعادة تعيين</button>
+                  <button onClick={handleResetFilters} className="px-4 py-2 rounded-xl text-2sm font-bold text-text-secondary hover:bg-bg-base transition-colors">إعادة تعيين</button>
                   <button ref={closeFilterRef} onClick={() => setFiltersOpen(false)} onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => closeFilterRef.current?.click() })} className="px-4 py-2 rounded-xl text-2sm font-bold bg-primary text-white hover:bg-primary-600 transition-colors">إغلاق</button>
                 </div>
               </div>
@@ -1042,8 +1043,8 @@ export default function ReportWorkspacePage() {
       </AnimatePresence>
 
       {exportProgress && (
-        <div className="mb-6 rounded-[20px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <div className="flex items-center justify-between text-2sm font-bold text-emerald-800 mb-2">
+        <div className="mb-6 rounded-[20px] border border-primary bg-primary-50 p-4 shadow-sm">
+          <div className="flex items-center justify-between text-2sm font-bold text-primary-800 mb-2">
             <span>جاري تجهيز وتصدير ملف {exportProgress.format.toUpperCase()}...</span>
             <span>{exportProgress.percent}%</span>
           </div>
@@ -1053,45 +1054,45 @@ export default function ReportWorkspacePage() {
 
       {/* 3. WORKSPACE TABS */}
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("table")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "table" ? "bg-primary text-white shadow-md" : "bg-transparent text-text-secondary hover:bg-bg-base/50 hover:text-text-primary"}`}>
           <LayoutList size={16} /> جدول البيانات
         </button>
-        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-primary text-white shadow-md" : "bg-transparent text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"}`}>
+        <button onClick={() => setActiveTab("chart")} className={`px-5 py-2.5 text-sm font-black transition-all rounded-[14px] flex items-center gap-2 ${activeTab === "chart" ? "bg-primary text-white shadow-md" : "bg-transparent text-text-secondary hover:bg-bg-base/50 hover:text-text-primary"}`}>
           <BarChart3 size={16} /> تحليل بياني
         </button>
       </div>
 
       {/* 4. MAIN DATA GRID */}
-      <div className="bg-white rounded-[24px] border border-zinc-200 shadow-sm flex flex-col relative">
+      <div className="bg-bg-surface rounded-[24px] border border-border shadow-sm flex flex-col relative">
         
         {activeTab === "table" ? (
           <>
             {/* Grid Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-zinc-50/50 z-10 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-base/50 z-10 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200 shadow-sm text-zinc-500"><LayoutList size={12} /></span>
-                <span className="text-sm font-black text-zinc-900">سجلات التقرير التفصيلية</span>
-                {!isLoading && <span className="text-[11px] font-bold text-zinc-500 bg-white border border-zinc-200 rounded-full px-2.5 py-0.5 shadow-sm">{formatNumber(totalRows, { decimals: 0 })} صف</span>}
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-surface border border-border shadow-sm text-text-secondary"><LayoutList size={12} /></span>
+                <span className="text-sm font-black text-text-primary">سجلات التقرير التفصيلية</span>
+                {!isLoading && <span className="text-[11px] font-bold text-text-secondary bg-bg-surface border border-border rounded-full px-2.5 py-0.5 shadow-sm">{formatNumber(totalRows, { decimals: 0 })} صف</span>}
               </div>
               <div className="flex items-center gap-3">
                 {/* Column settings */}
                 <div className="relative" ref={columnDropdownRef}>
-                  <button onClick={() => setColumnVisibilityOpen(!columnVisibilityOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 transition-all shadow-sm">
+                  <button onClick={() => setColumnVisibilityOpen(!columnVisibilityOpen)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold text-text-secondary bg-bg-surface border border-border hover:bg-bg-overlay transition-all shadow-sm">
                     <Settings2 size={14} /> تخصيص الأعمدة
                   </button>
                   <AnimatePresence>
                     {columnVisibilityOpen && (
-                      <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute left-0 top-full mt-2 z-50 w-72 rounded-2xl border border-zinc-200 bg-white shadow-xl p-3 flex flex-col gap-1" style={{ maxHeight: "400px", overflow: "auto" }}>
-                        <div className="text-[11px] font-black text-zinc-400 px-2 py-1 uppercase tracking-widest mb-2 border-b border-zinc-100 pb-2">الأعمدة الظاهرة وترتيبها</div>
+                      <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute left-0 top-full mt-2 z-50 w-72 rounded-2xl border border-border bg-bg-surface shadow-xl p-3 flex flex-col gap-1" style={{ maxHeight: "400px", overflow: "auto" }}>
+                        <div className="text-[11px] font-black text-text-muted px-2 py-1 uppercase tracking-widest mb-2 border-b border-border pb-2">الأعمدة الظاهرة وترتيبها</div>
                         {allColumns.map((col, idx) => (
-                          <div key={col.id} className="flex items-center justify-between group px-2 py-1.5 rounded-xl hover:bg-zinc-50 transition-colors">
+                          <div key={col.id} className="flex items-center justify-between group px-2 py-1.5 rounded-xl hover:bg-bg-overlay transition-colors">
                             <button onClick={() => toggleColumnVisibility(col.id)} className="flex items-center gap-2.5 flex-1 text-right">
-                              {columnVisibility[col.id] !== false ? <Eye size={14} className="text-emerald-500" /> : <EyeOff size={14} className="text-zinc-300" />}
-                              <span className={`text-2sm font-bold ${columnVisibility[col.id] !== false ? "text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}>{col.header}</span>
+                              {columnVisibility[col.id] !== false ? <Eye size={14} className="text-primary" /> : <EyeOff size={14} className="text-text-muted" />}
+                              <span className={`text-2sm font-bold ${columnVisibility[col.id] !== false ? "text-text-primary" : "text-text-muted line-through decoration-zinc-300"}`}>{col.header}</span>
                             </button>
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => moveColumn(col.id, -1)} disabled={idx === 0} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-transparent"><ArrowUp size={12} /></button>
-                              <button onClick={() => moveColumn(col.id, 1)} disabled={idx === allColumns.length - 1} className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 disabled:opacity-30 disabled:hover:bg-transparent"><ArrowDown size={12} /></button>
+                              <button onClick={() => moveColumn(col.id, -1)} disabled={idx === 0} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-base disabled:opacity-30 disabled:hover:bg-transparent"><ArrowUp size={12} /></button>
+                              <button onClick={() => moveColumn(col.id, 1)} disabled={idx === allColumns.length - 1} className="p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-base disabled:opacity-30 disabled:hover:bg-transparent"><ArrowDown size={12} /></button>
                             </div>
                           </div>
                         ))}
@@ -1106,10 +1107,10 @@ export default function ReportWorkspacePage() {
             {isLoading ? (
               <div className="p-6"><TableSkeleton colCount={Math.min(visibleColumns.length || 6, 8)} /></div>
             ) : visibleColumns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-zinc-50/50">
-                <div className="h-16 w-16 rounded-3xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-300 mb-4 shadow-sm"><Search size={28} /></div>
-                <h3 className="text-[16px] font-black text-zinc-800 mb-1">لا توجد بيانات للعرض</h3>
-                <p className="text-sm font-medium text-zinc-500 max-w-xs">يرجى تغيير فلاتر البحث أو تحديد أعمدة لعرضها.</p>
+              <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-bg-base/50">
+                <div className="h-16 w-16 rounded-3xl bg-bg-surface border border-border flex items-center justify-center text-text-muted mb-4 shadow-sm"><Search size={28} /></div>
+                <h3 className="text-[16px] font-black text-text-primary mb-1">لا توجد بيانات للعرض</h3>
+                <p className="text-sm font-medium text-text-secondary max-w-xs">يرجى تغيير فلاتر البحث أو تحديد أعمدة لعرضها.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1120,24 +1121,24 @@ export default function ReportWorkspacePage() {
                     header: c.header,
                     width: SKU_COLUMN_KEYS.has(c.id) ? 140 : Math.max(120, Math.min(200, 80 + c.header.length * 8)),
                     sortable: true,
-                    headerClass: "text-right font-black text-[11px] text-zinc-500 uppercase tracking-wide bg-zinc-50/80 border-b border-zinc-200",
-                    cellClass: "text-right border-b border-zinc-100 py-3",
+                    headerClass: "text-right font-black text-[11px] text-text-secondary uppercase tracking-wide bg-bg-base/80 border-b border-border",
+                    cellClass: "text-right border-b border-border py-3",
                     render: SKU_COLUMN_KEYS.has(c.id)
-                      ? (row) => (<span className="font-mono text-sm font-bold tabular-nums px-2 py-0.5 rounded-md text-zinc-700 bg-zinc-100/50 border border-zinc-200/50" dir="ltr">{row[c.id] != null && row[c.id] !== "" ? String(row[c.id]) : "—"}</span>)
+                      ? (row) => (<span className="font-mono text-sm font-bold tabular-nums px-2 py-0.5 rounded-md text-text-secondary bg-bg-overlay/50 border border-border/50" dir="ltr">{row[c.id] != null && row[c.id] !== "" ? String(row[c.id]) : "—"}</span>)
                       : c.id === "warehouse_id" || c.id === "supplier_id" || c.id === "customer_id" || c.id === "cashier_id" || c.id === "user_id" || c.id === "category_id"
                         ? (row) => {
                             const nameKey = c.id.replace("_id", "_name");
                             const displayName = row[nameKey] || row[c.id];
-                            if (displayName == null || displayName === "") return <span className="text-zinc-300">—</span>;
-                            return <span className="text-sm font-medium text-zinc-700">{String(displayName)}</span>;
+                            if (displayName == null || displayName === "") return <span className="text-text-muted">—</span>;
+                            return <span className="text-sm font-medium text-text-secondary">{String(displayName)}</span>;
                           }
                         : (row) => {
                           const val = row[c.id];
-                          if (val == null || val === "") return <span className="text-zinc-300">—</span>;
+                          if (val == null || val === "") return <span className="text-text-muted">—</span>;
                           const num = Number(val);
                           const isNum = !isNaN(num) && String(val).trim() !== "" && c.type !== "code" && c.type !== "text" && !c.id.includes("date") && !c.id.includes("status") && !c.id.includes("type") && !c.id.includes("method");
-                          if (isNum) return (<span className="tabular-nums text-sm font-bold text-zinc-900" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{formatNumber(num)}</span>);
-                          return <span className="text-sm font-medium text-zinc-700">{String(formatReportCellValue(c.id, val))}</span>;
+                          if (isNum) return (<span className="tabular-nums text-sm font-bold text-text-primary" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{formatNumber(num)}</span>);
+                          return <span className="text-sm font-medium text-text-secondary">{String(formatReportCellValue(c.id, val))}</span>;
                         },
                   }))}
                   rowKey={(row) => row.id || JSON.stringify(row)}
@@ -1148,22 +1149,22 @@ export default function ReportWorkspacePage() {
 
             {/* Pagination */}
             {!isLoading && totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 bg-zinc-50 shrink-0">
-                <div className="flex items-center gap-2 text-2sm font-bold text-zinc-500">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-bg-base shrink-0">
+                <div className="flex items-center gap-2 text-2sm font-bold text-text-secondary">
                   <span>إجمالي الصفحات: {formatNumber(totalPages, { decimals: 0 })}</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl p-1 shadow-sm">
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronRight size={16} /></button>
+                <div className="flex items-center gap-1.5 bg-bg-surface border border-border rounded-xl p-1 shadow-sm">
+                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted disabled:opacity-30 hover:bg-bg-base hover:text-text-primary transition-all"><ChevronRight size={16} /></button>
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
                     const page = start + i;
                     if (page > totalPages) return null;
                     const isActive = page === currentPage;
-                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-sm font-black transition-all ${isActive ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100"}`}>{page}</button>);
+                    return (<button key={page} onClick={() => handlePageChange(page)} className={`h-8 min-w-[32px] px-2 flex items-center justify-center rounded-lg text-sm font-black transition-all ${isActive ? "bg-primary text-white" : "text-text-secondary hover:bg-bg-base"}`}>{page}</button>);
                   })}
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 hover:text-zinc-900 transition-all"><ChevronLeft size={16} /></button>
+                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted disabled:opacity-30 hover:bg-bg-base hover:text-text-primary transition-all"><ChevronLeft size={16} /></button>
                 </div>
-                <div className="text-2sm font-bold text-zinc-400">صفحة {currentPage} من {totalPages}</div>
+                <div className="text-2sm font-bold text-text-muted">صفحة {currentPage} من {totalPages}</div>
               </div>
             )}
           </>

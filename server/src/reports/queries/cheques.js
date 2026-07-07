@@ -1,11 +1,12 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function chequeListing(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { status } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT c.id, c.cheque_no, c.bank_name, c.amount, c.due_date, c.status, c.type,
       c.drawer_name, c.notes,
       COALESCE(p.party_type, '') AS party_type,
@@ -16,13 +17,20 @@ function chequeListing(startDate, endDate, opts = {}) {
     WHERE 1=1 ${addDateFilter("COALESCE(p.created_at, c.due_date)", startDate, endDate, params)}
       ${status ? " AND c.status = ?" : ""}
     ORDER BY COALESCE(p.created_at, c.due_date) DESC
-  `).all(...params, ...(status ? [status] : []));
+  `;
+  const allParams = [...params, ...(status ? [status] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function bankTransactions(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  return db.prepare(`
+  let sql = `
     SELECT bt.id, b.name AS bank_name,
       bt.type, bt.amount, bt.reference, bt.notes,
       DATE(bt.created_at) AS date
@@ -30,7 +38,14 @@ function bankTransactions(startDate, endDate, opts = {}) {
     JOIN banks b ON b.id = bt.bank_id
     WHERE 1=1 ${addDateFilter("bt.created_at", startDate, endDate, params)}
     ORDER BY bt.created_at DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function bankSummary(startDate, endDate, opts = {}) {

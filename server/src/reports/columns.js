@@ -4,18 +4,139 @@ const REPORT_DESCRIPTIONS = {
   "top-customers": "يكشف عن أهم العملاء من حيث إجمالي المبيعات وصافيها مع هامش الربح ومتوسط الفاتورة، لتمكين استراتيجيات البيع والولاء للعملاء الأكثر ربحية.",
   "collection-efficiency": "يحلل كفاءة تحصيل المستحقات لكل عميل من خلال إجمالي الفواتير والمحصل والمستحق ونسبة التحصيل، لقياس أداء إدارة الائتمان والتنبؤ بالتدفق النقدي.",
   "customer-loyalty": "يقيس ولاء العملاء من خلال تواتر الشراء الشهري ومتوسط قيمة الفاتورة ونسبة الخصم والمرتجعات، لتحديد العملاء المخلصين ومنحهم أولوية في العروض والحوافز.",
+  "customer-balance-list": "يعرض جميع العملاء مع أرصدتهم الحالية (مديون أو دائن) مرتبة تنازلياً حسب قيمة الرصيد. يتم إخفاء العملاء ذوي الرصيد الصفري.",
+  "customer-statement": "يعرض كشف حساب مفصل لعميل معين يشمل جميع الفواتير والمدفوعات والمرتجعات والأرصدة خلال فترة زمنية محددة، لمتابعة حركة الحساب بدقة.",
 
   // ── تقارير الموردين ──
   "ap-aging": "يعرض توزيع الذمم الدائنة على الموردين حسب فترات التقادم (0-30، 31-60، 61-90، +90 يوماً) مع إجمالي المستحق، لإدارة السيولة النقدية وتحديد أولويات السداد.",
   "supplier-reliability": "يقيم موثوقية الموردين بناءً على نسبة المرتجعات ومتوسط أيام السداد وتشتت الأسعار وتكرار الطلبات، لاختيار الموردين الأفضل أداءً والأكثر استقراراً في التسعير.",
-  "customer-balance-list": "يعرض جميع العملاء مع أرصدتهم الحالية (مديون أو دائن) مرتبة تنازلياً حسب قيمة الرصيد. يتم إخفاء العملاء ذوي الرصيد الصفري.",
   "supplier-balance-list": "يعرض جميع الموردين مع أرصدتهم الحالية (دائن أو مديون) مرتبة تنازلياً حسب قيمة الرصيد. يتم إخفاء الموردين ذوي الرصيد الصفري.",
+  "supplier-statement": "يعرض كشف حساب مفصل لمورد معين يشمل جميع المشتريات والمدفوعات والمرتجعات والأرصدة خلال فترة زمنية محددة، لمتابعة الذمم الدائنة.",
+
+  // ── تقارير المبيعات ──
+  "daily-sales": "يعرض ملخصاً يومياً للمبيعات يشمل إجمالي الفواتير والكميات المباعة ومتوسط الفاتورة والإرجاعات، مع إمكانية المقارنة بالفترة السابقة وتحديد الاتجاهات اليومية.",
+  "detailed-sales": "يعرض جميع فواتير البيع بالتفصيل مع تاريخ الفاتورة والعميل والكاشير وإجمالي المبلغ والخصم وطريقة الدفع، لفحص المعاملات الفردية.",
+  "sales-by-item": "يحلل المبيعات حسب كل صنف مع إجمالي الكمية المباعة والإيرادات والتكلفة وهامش الربح، لتحديد الأصناف الأكثر مبيعاً والأعلى ربحية.",
+  "sales-by-category": "يجمع المبيعات حسب فئات الأصناف مع إجمالي المبيعات والتكلفة والربح لكل فئة، لمقارنة أداء الفئات المختلفة.",
+  "sales-by-cashier": "يعرض أداء المبيعات لكل كاشير من حيث إجمالي الفواتير والكمية ومتوسط الفاتورة، لتقييم أداء الموظفين ومكافأة الأفضل.",
+  "sales-by-payment": "يوزع المبيعات حسب طرق الدفع (نقداً، آجل، بطاقة، تحويل) مع إجمالي المبيعات لكل طريقة، لتحليل تفضيلات الدفع لدى العملاء.",
+  "sales-heatmap": "يعرض خريطة كثافة المبيعات على شكل مصفوفة أيام × ساعات توضح أوقات الذروة وفترات الركود، لتحسين جداول العمل والعروض الترويجية.",
+  "period-comparison": "يقارن أداء المبيعات بين فترتين زمنيتين مختلفتين مع نسبة التغير في الإيرادات والكمية والربح، لقياس أثر القرارات التجارية.",
+  "shift-history": "يعرض سجل ورديات الكاشير مع تفاصيل الفتح والإغلاق والفرق النقدي والمبيعات خلال كل وردية، لمتابعة أداء الكاشيرز.",
+  "gross-net-sales": "يقارن إجمالي المبيعات قبل الخصم وبعده مع صافي المبيعات وإجمالي الخصومات والمرتجعات، لحساب صافي الإيرادات بدقة.",
+  "sales-returns": "يعرض جميع مرتجعات المبيعات مع تفاصيل العميل والصنف والكمية والسبب، لتحليل أسباب الإرجاع وتقليل نسبته.",
+  "sales-returns-summary": "ملخص إجمالي مرتجعات المبيعات خلال الفترة مع إجمالي قيمة المرتجع والكمية وعدد المعاملات، لمتابعة اتجاهات الإرجاع.",
+  "sales-returns-by-customer": "يحلل مرتجعات المبيعات حسب كل عميل مع إجمالي قيمة وعدد المرتجعات، لتحديد العملاء الأكثر إرجاعاً واتخاذ الإجراءات المناسبة.",
+  "discount-analysis": "يحلل الخصومات الممنوحة في المبيعات حسب نوع الخصم وطريقة الدفع والكاشير، مع إجمالي الخصم ونسبة من المبيعات.",
+  "margin-by-item": "يعرض هامش الربح لكل صنف مع سعر البيع والتكلفة وهامش الربح المطلق والنسبي، لتسعير الأصناف بدقة.",
+  "margin-by-category": "يجمع هوامش الربح حسب فئات الأصناف مع متوسط هامش الربح لكل فئة، لمقارنة ربحية الفئات.",
+  "margin-health": "يقيم صحة هوامش الربح من خلال عرض الأصناف التي يقل هامش ربحها عن الحد الأدنى المحدد، للتنبيه بتسعير غير مناسب.",
+  "cashier-override-impact": "يقيس الأثر المالي لتجاوزات الكاشير على الأسعار (تخفيض أو رفع) مع إجمالي أثر التجاوز على الإيرادات ومقارنة متوسط الخصم، لمراقبة صلاحيات الكاشير.",
+  "margin-drift": "يرصد تغير هامش الربح وتكلفة الأصناف عبر الفترات مع مقارنة هامش الربح السابق مقابل الحالي ونسبة الانخفاض، للكشف عن تآكل الهوامش.",
+
+  // ── تقارير المشتريات ──
+  "purchase-summary": "يعرض ملخصاً للمشتريات خلال الفترة مع إجمالي الفواتير والكمية المشتراة وإجمالي التكلفة، لمتابعة نشاط الشراء.",
+  "detailed-purchases": "يعرض جميع فواتير المشتريات بالتفصيل مع المورد والتاريخ والإجمالي والحالة وطريقة الدفع، لفحص المعاملات الفردية.",
+  "purchases-by-supplier": "يجمع المشتريات حسب كل مورد مع إجمالي الكمية والتكلفة وعدد الفواتير، لتقييم حجم التعامل مع كل مورد.",
+  "purchases-by-item": "يحلل المشتريات حسب الصنف مع إجمالي الكمية المشتراة والتكلفة لكل صنف، لمتابعة مخزون المشتريات.",
+  "purchase-returns": "يعرض مرتجعات المشتريات مع تفاصيل المورد والصنف والكمية والسبب، لمتابعة الموردين غير الملتزمين.",
+  "purchase-returns-summary": "ملخص إجمالي مرتجعات المشتريات مع إجمالي القيمة والكمية خلال الفترة، لمتابعة اتجاهات الإرجاع مع الموردين.",
+  "purchase-returns-by-supplier": "يحلل مرتجعات المشتريات حسب كل مورد لتحديد الموردين ذوي المرتجعات العالية، لتحسين اختيار الموردين.",
+  "supplier-pricing": "يقارن أسعار الموردين لنفس الأصناف مع آخر سعر شراء وتاريخه، لاختيار أفضل سعر وجودة.",
+
+  // ── تقارير المخزون ──
+  "slow-moving": "يكشف الأصناف بطيئة الحركة بناءً على مبيعات الأشهر الثلاثة الأخيرة مع الكمية المتاحة وتكلفتها، للتخلص من المخزون الراكد.",
+  "stock-levels": "يعرض أرصدة المخزون الحالية لكل صنف مع الكمية وتكلفة الوحدة وإجمالي القيمة بطرق التكلفة المختلفة، لجرد المخزون.",
+  "stock-movements": "يعرض حركات المخزون من إدخال وإخراج وتحويل مع تاريخ الحركة ونوعها والكمية والمرجع، لتدقيق المخزون.",
+  "stock-valuation": "يقيم المخزون بقيمته وفقاً لطرق التكلفة (متوسط التكلفة، آخر شراء) مع إجمالي قيمة المخزون، لإعداد القوائم المالية.",
+  "count-sheet": "كشف جرد فارغ للأصناف في المخازن يمكن طباعته للتعبئة اليدوية أثناء عملية الجرد الفعلي.",
+  "reorder": "يعرض الأصناف التي وصلت إلى حد إعادة الطلب أو أقل مع المورد الموصى به وآخر سعر شراء، لتنبيه المشتريات.",
+  "expiry": "يكشف الأصناف التي تقترب من تاريخ انتهاء الصلاحية أو انتهت صلاحيتها مع الكمية المتبقية وتاريخ الصلاحية، لتجنب التلف.",
+  "inventory-aging": "يحلل أعمار المخزون حسب فترات التخزين مع الكمية والقيمة لكل فترة، لتحديد المخزون القديم.",
+  "dead-stock": "يعرض الأصناف التي لم يحدث لها أي حركة بيع خلال فترة محددة مع الكمية المتاحة وتكلفتها، لاتخاذ قرار التصفية.",
+  "cost-movements": "يعرض حركات التكلفة للأصناف مع تفاصيل الحركة ونوعها والكمية والتكلفة قبل وبعد الحركة، لتدقيق التكاليف.",
+  "cost-method-comparison": "يقارن تقييم المخزون بطرق التكلفة المختلفة (متوسط التكلفة، آخر شراء) مع الفروق لكل صنف، لاختيار طريقة التكلفة.",
+  "item-lifecycle": "يعرض دورة حياة الصنف الكاملة من أول شراء إلى آخر بيع مع التغير في السعر والتكلفة والهامش، لتحليل أداء الصنف.",
+  "inventory-turnover": "يحسب معدل دوران المخزون وأيام التغطية لكل صنف بناءً على تكلفة البيع ومتوسط المخزون، لقياس كفاءة المخزون.",
+  "stock-adjustment-audit": "يعرض جميع تسويات المخزون مع تفاصيل الصنف والكمية قبل وبعد التسوية والفرق والسبب والمستخدم، لتدقيق التعديلات.",
+
+  // ── تقارير الحسابات ──
+  "profit-loss": "يعرض قائمة الأرباح والخسائر شاملاً إجمالي المبيعات وتكلفة البيع وإجمالي الربح والمصروفات والإيرادات الأخرى وصافي الربح.",
+  "daily-owner-snapshot": "لقطة سريعة لأداء المحل اليومي تشمل إجمالي المبيعات والمشتريات والمصروفات والإيرادات والأرصدة النقدية والأرباح المقدرة.",
+
+  // ── تقارير الخزينة ──
+  "cash-flow": "يعرض التدفق النقدي التفصيلي لجميع حركات الخزينة مع الإيرادات والمصروفات والرصيد التراكمي، لمتابعة السيولة النقدية.",
+  "treasury": "يعرض أرصدة الخزائن والبنوك الحالية لكل حساب مع آخر حركة، للحصول على لمحة سريعة عن الوضع النقدي.",
+  "cash-consistency": "يقارن بين النقدية الفعلية المتوقعة من المبيعات والنقدية المسجلة في النظام لاكتشاف الفروقات في الخزينة.",
+  "payment-method-flow": "يعرض تدفق حركات الدفع لكل وسيلة دفع مع إجمالي الداخل والخارج والرصيد التراكمي، لمتابعة حركة وسائل الدفع.",
+  "payment-flow-summary": "ملخص تدفقات وسائل الدفع مع إجمالي الداخل والخارج وصافي الحركة لكل وسيلة دفع، لمتابعة التوزيع النقدي.",
+  "payment-flow-ledger": "سجل تفصيلي لجميع حركات الدفع مع تاريخ الحركة ونوع المستند والطرف والوسيلة والمبلغ، لتدقيق المدفوعات.",
+  "payment-flow-by-doc-type": "يحلل تدفقات الدفع حسب نوع المستند (فاتورة بيع، تسوية، تحصيل، سداد) مع إجمالي المبالغ لكل نوع.",
+  "payment-flow-by-direction": "يعرض تدفقات الدفع حسب الاتجاه (داخل/خارج) مع تفصيل وسيلة الدفع ونوع المستند، لتحليل التدفقات النقدية الداخلة والخارجة.",
+  "payment-flow-running": "يعرض الرصيد التراكمي لوسائل الدفع مع تفاصيل الحركة والمبلغ والرصيد بعد كل حركة، لتتبع الأرصدة لحظة بلحظة.",
+  "bank-cash-split": "يعرض توزيع الأرصدة النقدية بين الخزينة والبنوك مع إجمالي النقدية المتاحة، لمعرفة تركيز السيولة.",
+  "reconciliation-exceptions": "يكشف حالات عدم التطابق بين الأرصدة المتوقعة والفعلية في الخزينة مع تفاصيل الفروقات والوردية والكاشير.",
+  "daily-sessions": "يعرض جلسات الخزينة اليومية مع إجمالي المبيعات النقدية والمصروفات والإيرادات وصافي الجلسة لكل خزينة.",
+  "withdrawals-report": "يعرض جميع حركات السحوبات من الخزينة مع تفاصيل المستفيد والمبلغ والغرض والتاريخ، لمتابعة المسحوبات النقدية.",
+
+  // ── تقارير الضرائب ──
+  "vat": "يعرض تفاصيل ضريبة القيمة المضافة على المبيعات مع مبلغ الضريبة وصافي الفاتورة بعد الضريبة، لحساب الالتزام الضريبي.",
+  "output-vat": "يعرض ضريبة المخرجات (الضريبة على المبيعات) مع تفاصيل الفواتير والضريبة المحصلة، لإعداد إقرار ضريبة المخرجات.",
+  "input-vat": "يعرض ضريبة المدخلات (الضريبة على المشتريات) مع تفاصيل فواتير الشراء والضريبة المسددة، لخصم ضريبة المدخلات.",
+  "vat-filing-summary": "ملخص الإقرار الضريبي يشمل إجمالي ضريبة المخرجات وضريبة المدخلات وصافي الضريبة المستحقة للحكومة.",
+  "returns-tax-effect": "يحسب الأثر الضريبي للمرتجعات (مبيعات ومشتريات) مع ضريبة المرتجعات المستردة وتأثيرها على صافي الالتزام الضريبي.",
+
+  // ── تقارير التدقيق ──
+  "exceptions": "يعرض استثناءات المبيعات (فواتير ملغاة، خصومات استثنائية، تجاوزات أسعار) مع تفاصيل المخالفة والكاشير، لتدقيق الحالات غير الطبيعية.",
+  "audit-log": "سجل التدقيق الكامل لجميع الإجراءات في النظام مع المستخدم والإجراء والموارد والتاريخ، لتتبع التغييرات للأغراض الرقابية.",
+  "user-activity": "يعرض نشاط المستخدمين في النظام مع تفاصيل الإجراءات المتخذة والموارد التي تم الوصول إليها، لمراقبة أداء المستخدمين.",
+
+  // ── تقارير المستخدمين ──
+  "user-list": "يعرض قائمة المستخدمين المسجلين في النظام مع أدوارهم وصلاحياتهم وحالتهم، لإدارة حسابات المستخدمين.",
+  "user-performance": "يقيم أداء المستخدمين من خلال عدد الفواتير وإجمالي المبيعات ومتوسط الفاتورة والأخطاء المسجلة، لتقييم الإنتاجية.",
+  "login-history": "يعرض سجل تسجيل دخول المستخدمين مع تاريخ ووقت الدخول والخروج وعنوان IP، للأغراض الأمنية والرقابية.",
+
+  // ── تقارير المصروفات ──
+  "expense-summary": "ملخص المصروفات خلال الفترة مع إجمالي المصروفات حسب الفئة، لمتابعة بنود الإنفاق.",
+  "detailed-expenses": "يعرض جميع المصروفات بالتفصيل مع تاريخ الصرف والفئة والمبلغ وطريقة الدفع والبيان، لفحص كل مصروف.",
+  "expenses-by-category": "يجمع المصروفات حسب فئاتها مع إجمالي كل فئة ونسبتها من الإجمالي، لتحليل توزيع الإنفاق.",
+  "expenses-by-payment": "يوزع المصروفات حسب طرق الدفع (نقداً، بطاقة، تحويل) مع إجمالي المصروفات لكل طريقة.",
+
+  // ── تقارير الإيرادات ──
+  "revenue-summary": "ملخص الإيرادات الأخرى خلال الفترة مع إجمالي الإيرادات حسب الفئة، لمتابعة الإيرادات غير البيعية.",
+  "detailed-revenues": "يعرض جميع الإيرادات الأخرى بالتفصيل مع تاريخ الإيراد والفئة والمبلغ وطريقة الدفع والبيان.",
+  "revenues-by-category": "يجمع الإيرادات حسب فئاتها مع إجمالي كل فئة ونسبتها من الإجمالي، لتحليل مصادر الإيرادات.",
+  "revenues-by-payment": "يوزع الإيرادات حسب طرق الدفع مع إجمالي الإيرادات لكل طريقة دفع.",
+
+  // ── تقارير الشيكات والبنوك ──
+  "cheque-listing": "يعرض كشف بجميع الشيكات المسجلة في النظام مع حالة كل شيك وتاريخه وقيمته والبنك والطرف، لمتابعة الشيكات.",
+  "bank-transactions": "يعرض جميع حركات البنوك مع تفاصيل الإيداع والسحب والتاريخ والمرجع والرصيد، لكشوف الحساب البنكية.",
+  "bank-summary": "ملخص أرصدة البنوك مع إجمالي الإيداعات والسحوبات والصافي لكل حساب بنكي.",
+
+  // ── تقارير التقسيط ──
+  "installment-plans": "يعرض خطط التقسيط النشطة مع تفاصيل المبلغ الإجمالي والمقدم وعدد الأقساط وقيمة القسط والرصيد المتبقي.",
+  "installment-collections": "يعرض تحصيلات التقسيط مع تفاصيل القسط المستلم والتاريخ والعميل ورقم خطة التقسيط، لمتابعة الدفعات.",
+  "installments-by-customer": "يعرض خطط التقسيط حسب العميل مع تفاصيل الأقساط المسددة والمستحقة والمتأخرة لكل خطة.",
+  "installment-delinquent": "يكشف خطط التقسيط المتعثرة التي تجاوزت موعد استحقاق أقساطها مع إجمالي المتأخرات والأقساط المتأخرة.",
+
+  // ── تقارير المخازن ──
+  "branch-transfers": "يعرض حركات التحويل بين المخازن مع تاريخ التحويل والصنف والكمية والمخازن المرسلة والمستقبلة.",
+  "warehouse-levels": "يعرض أرصدة المخازن التفصيلية لكل صنف في كل مخزن مع الكمية وتكلفة الوحدة.",
+  "warehouse-levels-summary": "ملخص أرصدة المخازن مع إجمالي الأصناف والكميات والقيم لكل مخزن.",
+
+  // ── تقارير الموظفين ──
   "employee-list": "يعرض جميع الموظفين المسجلين في النظام مع بياناتهم الأساسية (المسمى الوظيفي، الراتب، دورة الراتب) وإجمالي الخصومات والمكافآت والسلف النشطة، مع حالة كل موظف.",
   "employee-deductions": "يعرض جميع خصومات الموظفين مع تفاصيل النوع والمبلغ والحالة والتسلسل الزمني. يمكن التصفية حسب الموظف ونوع الخصم والحالة.",
   "employee-bonuses": "يعرض جميع مكافآت الموظفين مع تفاصيل النوع والمبلغ والحالة والتسلسل الزمني. يمكن التصفية حسب الموظف ونوع المكافأة والحالة.",
   "employee-advances": "يعرض جميع سلف الموظفين مع تفاصيل المبلغ والرصيد المتبقي والمبلغ المسدد وعدد الأقساط. يمكن التصفية حسب الموظف والحالة.",
   "employee-payroll": "يعرض كشوف رواتب الموظفين المسددة مع تفاصيل الراتب الأساسي وإجمالي الخصومات والمكافآت وصافي الراتب وطريقة الدفع.",
   "employee-full-history": "يعرض السجل المالي الكامل لكل موظف موحداً من جميع المصادر (الخصومات، المكافآت، السلف، دفعات السلف، صرف الرواتب) في جدول زمني واحد.",
+  "employee-adjustments": "يعرض تسويات الموظفين (التعديلات اليدوية على الخصومات والمكافآت) مع تفاصيل النوع والمبلغ والتاريخ والمستخدم، لضبط حسابات الموظفين.",
+
+  // ── تقارير الأرباح ──
+  "profit-by-category": "يحلل الأرباح حسب فئات الأصناف مع إجمالي المبيعات والتكلفة والربح وهامش الربح لكل فئة.",
+  "profit-by-customer": "يحلل الأرباح حسب العملاء مع إجمالي المشتريات والتكلفة والربح والنسبة لكل عميل، لتحديد العملاء الأكثر ربحية.",
+  "profit-by-period": "يقارن الأرباح عبر فترات زمنية متتالية مع إجمالي المبيعات والتكلفة والربح الشهري أو الأسبوعي.",
 };
 
 const REPORT_TITLES = {
@@ -95,7 +216,7 @@ const REPORT_TITLES = {
   "branch-transfers": "التحويلات بين الفروع",
   "warehouse-levels": "أرصدة المخازن",
   "warehouse-levels-summary": "ملخص أرصدة المخازن",
-  "employee-adjustments": "حوافز الموظفين",
+  "employee-adjustments": "تسويات الموظفين",
   "user-list": "قائمة المستخدمين",
   "user-performance": "أداء المستخدمين",
   "login-history": "سجل تسجيل الدخول",
@@ -743,7 +864,7 @@ const REPORT_COLUMN_KEYS = {
   "stock-movements": ["item_code", "item_name", "warehouse_name", "movement_type", "reference_type", "reference_id", "before_qty", "after_qty", "quantity", "created_by", "date", "warehouse_id"],
   "stock-valuation": ["item_code", "name", "category_name", "warehouse_name", "total_quantity", "wacc", "last_purchase_cost", "purchase_price", "total_value", "sale_price", "potential_revenue", "item_id", "warehouse_id"],
   "count-sheet": ["item_code", "item_name", "barcode", "category_name", "warehouse_name", "system_quantity", "unit_name", "warehouse_id"],
-  "reorder": ["item_code", "name", "quantity", "min_stock", "unit_name", "id"],
+  "reorder": ["item_code", "name", "quantity", "min_stock_qty", "unit_name", "id"],
   "expiry": ["batch_no", "item_code", "item_name", "quantity", "expiry_date", "cost_price", "days_until_expiry", "expiry_status"],
   "inventory-aging": ["item_code", "item_name", "quantity", "wacc", "total_value", "last_movement_date", "days_since_last_movement", "aging_bucket"],
   "dead-stock": ["item_code", "item_name", "category_name", "quantity", "wacc", "total_value", "last_sale_date", "days_since_last_sale", "aging_bucket"],
@@ -820,7 +941,6 @@ const REPORT_COLUMN_KEYS = {
   "branch-transfers": ["reference_no", "date", "type", "warehouse_name", "item_count", "notes", "created_by", "id"],
   "warehouse-levels": ["warehouse_name", "item_count", "total_quantity", "total_value", "low_stock_items", "value_share_pct"],
   "warehouse-levels-summary": ["warehouse_name", "item_count", "total_quantity", "total_value", "low_stock_items", "value_share_pct"],
-  "employee-adjustments": ["date", "employee_name", "adjustment_type", "amount", "reason", "created_by", "id"],
 
   // ── Profit ──
   "profit-by-category": ["category_name", "quantity_sold", "selling_total", "revenue", "cost", "returns_amount", "gross_profit", "margin_percent", "avg_unit_price", "avg_unit_cost"],
@@ -843,12 +963,13 @@ const REPORT_COLUMN_KEYS = {
   "supplier-balance-list": ["supplier_name", "phone", "balance", "balance_label"],
 
   // ── Employee Reports ──
-  "employee-list": ["employee_name", "job_title", "salary", "salary_period", "working_days_per_month", "daily_salary", "active_deductions_total", "active_bonuses_total", "active_advances_balance", "total_paid", "created_at", "status"],
-  "employee-deductions": ["date", "employee_name", "deduction_type_label", "amount", "status", "recurring_label", "notes", "completed_at", "cancelled_at", "created_by", "id", "created_at", "deduction_type", "is_recurring"],
-  "employee-bonuses": ["date", "employee_name", "bonus_type_label", "amount", "status", "recurring_label", "notes", "completed_at", "cancelled_at", "created_by", "id", "created_at", "bonus_type", "is_recurring"],
+  "employee-list": ["employee_name", "job_title", "salary", "salary_period", "working_days_per_month", "daily_salary", "active_deductions_total", "active_bonuses_total", "active_advances_balance", "total_paid", "status", "created_at"],
+  "employee-deductions": ["date", "employee_name", "deduction_type_label", "amount", "status", "recurring_label", "completed_at", "cancelled_at", "notes", "created_by", "id", "created_at", "deduction_type", "is_recurring"],
+  "employee-bonuses": ["date", "employee_name", "bonus_type_label", "amount", "status", "recurring_label", "completed_at", "cancelled_at", "notes", "created_by", "id", "created_at", "bonus_type", "is_recurring"],
   "employee-advances": ["date", "employee_name", "amount", "remaining_balance", "repaid_amount", "installment_count", "installment_amount", "status", "notes", "created_by", "id", "created_at"],
-  "employee-payroll": ["date", "employee_name", "base_salary", "total_bonuses", "total_deductions", "advance_deductions", "net_salary", "period_start", "period_end", "payment_method", "description", "settled_by", "id", "settled_at"],
-  "employee-full-history": ["date", "employee_name", "tx_type_label", "amount", "status", "description", "sub_type", "ref_id", "employee_id"],
+  "employee-payroll": ["date", "employee_name", "base_salary", "total_bonuses", "total_deductions", "advance_deductions", "net_salary", "period_start", "period_end", "payment_method", "settled_by", "description", "id", "settled_at"],
+  "employee-full-history": ["date", "employee_name", "tx_type_label", "amount", "status", "description", "ref_id", "sub_type", "employee_id"],
+  "employee-adjustments": ["date", "employee_name", "adjustment_type", "amount", "reason", "created_by", "id"],
 };
 
 // Extra analytics columns per report: shipped with the data and toggleable from the
@@ -871,7 +992,7 @@ const REPORT_EXTRA_KEYS = {
   "slow-moving": new Set(["potential_profit"]),
   "warehouse-levels": new Set(["value_share_pct"]),
   "warehouse-levels-summary": new Set(["value_share_pct"]),
-  "vat-filing-summary": new Set(["net_vat"]),
+  "vat-filing-summary": new Set([]),
   "expenses-by-category": new Set(["pct_of_total"]),
   "revenues-by-category": new Set(["pct_of_total"]),
   "bank-summary": new Set(["net_flow"]),
@@ -895,12 +1016,15 @@ const REPORT_EXTRA_KEYS = {
   "supplier-balance-list": new Set([]),
 
   // ── Employee Reports ──
-  "employee-list": new Set([]),
-  "employee-deductions": new Set(["notes", "created_by", "deduction_type", "is_recurring"]),
-  "employee-bonuses": new Set(["notes", "created_by", "bonus_type", "is_recurring"]),
-  "employee-advances": new Set(["notes", "created_by"]),
-  "employee-payroll": new Set(["description"]),
-  "employee-full-history": new Set(["employee_id", "sub_type"]),
+  "employee-list": new Set(["working_days_per_month", "daily_salary", "active_deductions_total", "active_bonuses_total", "active_advances_balance", "total_paid", "created_at"]),
+  "employee-deductions": new Set(["recurring_label", "completed_at", "cancelled_at", "notes", "created_by", "id", "created_at", "deduction_type", "is_recurring"]),
+  "employee-bonuses": new Set(["recurring_label", "completed_at", "cancelled_at", "notes", "created_by", "id", "created_at", "bonus_type", "is_recurring"]),
+  "employee-advances": new Set(["repaid_amount", "installment_count", "installment_amount", "notes", "created_by", "id", "created_at"]),
+  "employee-payroll": new Set(["payment_method", "settled_by", "description", "id", "settled_at"]),
+  "employee-full-history": new Set(["description", "ref_id", "sub_type", "employee_id"]),
+  "employee-adjustments": new Set(["reason", "created_by", "id"]),
+  "shift-history": new Set(["id"]),
+  "user-activity": new Set(["user_id"]),
 };
 
 const CODE_KEYS = new Set(["id", "item_code", "code", "sku", "barcode", "invoice_no", "purchase_no", "ref_no", "return_ref", "reference_id", "shift_id", "user_id", "warehouse_id", "batch_no", "section"]);

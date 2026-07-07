@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
@@ -12,6 +12,8 @@ import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintStudio from "./studio/PrintStudio";
 import { resolveEffectiveLayout } from "./layout/layoutModel";
+import { SCOPE_PRESETS } from "./studio/studioData";
+import { applyPreset } from "./presets/presetEngine";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
 
@@ -101,7 +103,12 @@ export default function PrintPreviewModal({
     api.get(`/api/print-settings-per-doc/${docType}`)
       .then((r) => {
         if (!cancelled) {
-          const saved = r.data.data || {};
+          let saved = r.data.data || {};
+          const BLOCK_DOC_TYPES = new Set(["pos_receipt", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
+          const isReport = docType !== "_global" && !BLOCK_DOC_TYPES.has(docType);
+          if (isReport && (!saved || !saved.layout) && SCOPE_PRESETS[docType] && SCOPE_PRESETS[docType].length) {
+            saved = applyPreset(saved, SCOPE_PRESETS[docType][0], docType);
+          }
           setDocSettings(saved);
           const resolved = resolveDocPaperSize(docType, saved);
           setTemplate(resolved);
@@ -132,7 +139,15 @@ export default function PrintPreviewModal({
     setStudioOpen(false);
     if (!docType) return;
     api.get(`/api/print-settings-per-doc/${docType}`)
-      .then((r) => setDocSettings(r.data.data || {})).catch(() => {});
+      .then((r) => {
+        let saved = r.data.data || {};
+        const BLOCK_DOC_TYPES = new Set(["pos_receipt", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
+        const isReport = docType !== "_global" && !BLOCK_DOC_TYPES.has(docType);
+        if (isReport && (!saved || !saved.layout) && SCOPE_PRESETS[docType] && SCOPE_PRESETS[docType].length) {
+          saved = applyPreset(saved, SCOPE_PRESETS[docType][0], docType);
+        }
+        setDocSettings(saved);
+      }).catch(() => {});
     api.get("/api/print-settings-per-doc/_global")
       .then((r) => { if (r.data?.data) setGlobalScopeSettings(r.data.data); }).catch(() => {});
   };
@@ -199,8 +214,8 @@ export default function PrintPreviewModal({
   // fields → per-doc flat fields; layout is merged structurally per family so
   // a doc inherits the _global design until it overrides specific pieces.
   const effectiveLayout = {
-    roll: resolveEffectiveLayout(globalScopeSettings, docSettings, "roll"),
-    page: resolveEffectiveLayout(globalScopeSettings, docSettings, "page"),
+    roll: resolveEffectiveLayout(globalScopeSettings, docSettings, "roll", docType),
+    page: resolveEffectiveLayout(globalScopeSettings, docSettings, "page", docType),
   };
   const { layout: _gsLayout, ...globalScopeFlat } = globalScopeSettings || {};
   const combinedSettingsBase = {
@@ -287,10 +302,10 @@ export default function PrintPreviewModal({
     if (renderContent) {
       return renderContent({ ...combinedSettings, currentPage: printPage, onPageCount: handlePageCount });
     }
-    if (activeTemplate === "58mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "58mm" }} />;
-    if (activeTemplate === "80mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "80mm" }} />;
-    if (activeTemplate === "A5")   return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A5" />;
-    return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A4" />;
+    if (activeTemplate === "58mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "58mm" }} scope={docType} />;
+    if (activeTemplate === "80mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "80mm" }} scope={docType} />;
+    if (activeTemplate === "A5")   return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A5" scope={docType} />;
+    return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A4" scope={docType} />;
   };
 
   const handlePrint = () => {

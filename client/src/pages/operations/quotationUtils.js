@@ -113,6 +113,9 @@ export function buildQuotationPrintDoc({ quotation, cart, customer, totals, expi
     notes: quotation?.notes || notes || "",
     payment_type: quotation?.payment_type || paymentType || "cash",
     total: quotation?.total ?? totals?.total ?? 0,
+    subtotal: quotation?.subtotal ?? totals?.subtotal ?? 0,
+    discount: quotation?.decrease ?? (totals ? (Number(totals.discount || 0) + Number(totals.decrease || 0)) : 0),
+    increase: quotation?.increase ?? totals?.increase ?? 0,
     tax_amount: quotation?.tax_amount ?? totals?.taxAmount ?? 0,
     tax_rate: quotation?.tax_rate ?? totals?.taxRate ?? 0,
     lines: lines.map((l) => ({

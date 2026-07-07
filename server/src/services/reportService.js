@@ -7,11 +7,12 @@ const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsC
 //    (raw `created_at <= '2026-06-21'` silently dropped that whole day).
 //  - Returns cost-of-goods, gross_profit and margin_percent per day so the chart's
 //    margin / profit lines plot real numbers instead of a flat zero.
-function getSalesSummary(startDate, endDate) {
+function getSalesSummary(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  const costCol = getCostColumn("wacc");
-  const returnCostCol = getReturnCostColumn("wacc");
+  const costMethod = opts.cost_method || "wacc";
+  const costCol = getCostColumn(costMethod);
+  const returnCostCol = getReturnCostColumn(costMethod);
   const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
 
   return db.prepare(`
@@ -60,14 +61,16 @@ function getSalesSummary(startDate, endDate) {
 function getInventoryValuation() {
   const db = getDb();
   // Use WACC as cost basis — consistent with stockValuation report
+  // Aggregate multi-warehouse wacc/last_purchase_cost via MAX to avoid
+  // non-aggregated column errors from GROUP BY i.id
   return db.prepare(`
     SELECT
       COALESCE(i.code, 'ITEM-' || i.id) AS item_code,
       i.name,
       c.name AS category_name,
       COALESCE(SUM(sl.quantity), 0) AS total_quantity,
-      COALESCE(sl.wacc, sl.last_purchase_cost, i.purchase_price, 0) AS cost_price,
-      COALESCE(SUM(sl.quantity), 0) * COALESCE(sl.wacc, sl.last_purchase_cost, i.purchase_price, 0) AS total_value
+      COALESCE(MAX(sl.wacc), MAX(sl.last_purchase_cost), i.purchase_price, 0) AS cost_price,
+      COALESCE(SUM(sl.quantity), 0) * COALESCE(MAX(sl.wacc), MAX(sl.last_purchase_cost), i.purchase_price, 0) AS total_value
     FROM items i
     LEFT JOIN stock_levels sl ON i.id = sl.item_id
     LEFT JOIN item_categories c ON c.id = i.category_id
@@ -102,7 +105,7 @@ function getCashierPerformance(startDate, endDate) {
     params.push(endDate);
   }
 
-  query += " GROUP BY u.id, u.name ORDER BY total_sales DESC";
+  query += " GROUP BY u.id, u.full_name ORDER BY total_sales DESC";
 
   return db.prepare(query).all(...params);
 }
@@ -155,10 +158,15 @@ const COST_METHOD_LABELS = {
 function getProfitLoss(startDate, endDate, opts = {}) {
   const db = getDb();
   const costMethod = opts.cost_method || "wacc";
-  // cost column from invoice_lines snapshot; fallback to items.purchase_price if needed
+  // Fully-prefixed cost fallback chain matching getCostColumn from helpers.js.
+  // Uses it.purchase_price as ultimate fallback (items is always joined).
   const costCol = costMethod === "last_purchase"
-    ? "COALESCE(il.cost_last_purchase, it.purchase_price, 0)"
-    : "COALESCE(il.cost_wacc, it.purchase_price, 0)";
+    ? "COALESCE(NULLIF(il.cost_last_purchase, 0), NULLIF(il.cost_wacc, 0), NULLIF(it.purchase_price, 0), 0)"
+    : costMethod === "fifo"
+      ? "COALESCE(NULLIF(il.cost_fifo, 0), NULLIF(il.cost_wacc, 0), NULLIF(il.cost_last_purchase, 0), NULLIF(it.purchase_price, 0), 0)"
+      : costMethod === "lifo"
+        ? "COALESCE(NULLIF(il.cost_lifo, 0), NULLIF(il.cost_wacc, 0), NULLIF(il.cost_last_purchase, 0), NULLIF(it.purchase_price, 0), 0)"
+        : "COALESCE(NULLIF(il.cost_wacc, 0), NULLIF(il.cost_last_purchase, 0), NULLIF(it.purchase_price, 0), 0)";
 
   const dateParams = [];
   let dateWhere = "";

@@ -14,6 +14,20 @@ router.use(authRequired);
 const canView = requirePagePermission("whatsapp_crm", "view");
 const canEdit = requirePagePermission("whatsapp_crm", "edit");
 
+// ─── Messaging config (page branding + channel availability) ───────────────
+// Lightweight so CRM users don't need settings:view.
+router.get("/config", canView, (_req, res) => {
+  try {
+    const db = getDb();
+    let smsEnabled = false;
+    try {
+      const s = db.prepare("SELECT sms_enabled, sms_api_url FROM settings WHERE id=1").get();
+      smsEnabled = Boolean(s?.sms_enabled && s?.sms_api_url);
+    } catch (_) {} // columns missing → migration 170 not applied yet
+    res.json({ success: true, data: { sms_enabled: smsEnabled } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ─── Stats / Dashboard ────────────────────────────────────────────────────
 router.get("/stats", canView, (_req, res) => {
   try {
@@ -223,6 +237,15 @@ router.post("/campaigns", canEdit, (req, res) => {
     const db = getDb();
     const { name, body, channel = "whatsapp", scheduled_at, filters = {} } = req.body;
     if (!body || !body.trim()) return res.status(400).json({ success: false, message: "body required" });
+    if (!["whatsapp", "sms"].includes(channel)) return res.status(400).json({ success: false, message: "invalid channel" });
+    if (channel === "sms") {
+      let smsReady = false;
+      try {
+        const s = db.prepare("SELECT sms_enabled, sms_api_url FROM settings WHERE id=1").get();
+        smsReady = Boolean(s?.sms_enabled && s?.sms_api_url);
+      } catch (_) {}
+      if (!smsReady) return res.status(400).json({ success: false, message: "خدمة SMS غير مفعّلة — فعّلها من الإعدادات أولاً" });
+    }
 
     // Build audience
     const { tag, source, include = "both" } = filters;
@@ -232,6 +255,17 @@ router.post("/campaigns", canEdit, (req, res) => {
     if (source) { leadWhere.push("source = ?"); leadParams.push(source); }
 
     let audience = [];
+    if (include === "custom") {
+      // Explicit recipients hand-picked in the UI (e.g. selected contact rows).
+      const list = Array.isArray(req.body.recipients) ? req.body.recipients : [];
+      audience = list.map(r => ({
+        lead_id: r.lead_id || null,
+        customer_id: r.customer_id || null,
+        name: r.name || null,
+        phone: r.phone,
+      }));
+      if (!audience.length) return res.status(400).json({ success: false, message: "لا يوجد مستلمون محددون" });
+    }
     if (include === "both" || include === "leads") {
       const leads = db.prepare(`SELECT id AS lead_id, NULL AS customer_id, name, phone_normalized AS phone FROM leads WHERE ${leadWhere.join(" AND ")}`).all(...leadParams);
       audience.push(...leads);
@@ -261,24 +295,36 @@ router.post("/campaigns", canEdit, (req, res) => {
     `).run(name?.trim() || null, body.trim(), channel, audienceJson, deduped.length);
     const campaignId = result.lastInsertRowid;
 
-    // Insert recipients
+    // Insert recipients + enqueue in wa_outbox, linked back so the drainers can
+    // report progress (previously nothing updated campaign_recipients → 0% forever).
+    const outboxCols = db.prepare("PRAGMA table_info(wa_outbox)").all().map(c => c.name);
+    const hasChannel = outboxCols.includes("channel");
+    const hasLink = outboxCols.includes("campaign_recipient_id");
+
     const ins = db.prepare(`
       INSERT INTO campaign_recipients (campaign_id, lead_id, customer_id, phone_normalized, name, resolved_body, ord)
       VALUES (?,?,?,?,?,?,?)
     `);
-    deduped.forEach((a, i) => {
-      const resolved = body.replace(/\{name\}/g, a.name || "").replace(/\{phone\}/g, a.phone || "");
-      ins.run(campaignId, a.lead_id || null, a.customer_id || null, normalizeDigits(a.phone), a.name || null, resolved, i);
-    });
+    const outboxIns = hasChannel && hasLink
+      ? db.prepare("INSERT INTO wa_outbox (recipient_phone, customer_id, lead_id, kind, payload, scheduled_at, channel, campaign_recipient_id) VALUES (?,?,?,?,?,?,?,?)")
+      : db.prepare("INSERT INTO wa_outbox (recipient_phone, customer_id, kind, payload, scheduled_at) VALUES (?,?,?,?,?)");
 
-    // Enqueue messages in wa_outbox
-    if (channel === "whatsapp") {
-      const outboxIns = db.prepare("INSERT INTO wa_outbox (recipient_phone, customer_id, kind, payload, scheduled_at) VALUES (?,?,?,?,?)");
-      for (const a of deduped) {
-        const resolved = body.replace(/\{name\}/g, a.name || "");
-        outboxIns.run(normalizeDigits(a.phone), a.customer_id || null, "broadcast", JSON.stringify({ text: resolved }), scheduled_at || null);
+    let shopName = "";
+    try { shopName = db.prepare("SELECT company_name FROM settings WHERE id=1").get()?.company_name || ""; } catch (_) {}
+
+    deduped.forEach((a, i) => {
+      const norm = normalizeDigits(a.phone);
+      const resolved = body
+        .replace(/\{name\}/g, a.name || "")
+        .replace(/\{phone\}/g, a.phone || "")
+        .replace(/\{shop\}/g, shopName);
+      const recipientId = ins.run(campaignId, a.lead_id || null, a.customer_id || null, norm, a.name || null, resolved, i).lastInsertRowid;
+      if (hasChannel && hasLink) {
+        outboxIns.run(norm, a.customer_id || null, a.lead_id || null, "broadcast", JSON.stringify({ text: resolved }), scheduled_at || null, channel, recipientId);
+      } else if (channel === "whatsapp") {
+        outboxIns.run(norm, a.customer_id || null, "broadcast", JSON.stringify({ text: resolved }), scheduled_at || null);
       }
-    }
+    });
 
     const campaign = db.prepare("SELECT * FROM campaigns WHERE id=?").get(campaignId);
     res.status(201).json({ success: true, data: campaign });
@@ -297,18 +343,51 @@ router.put("/campaigns/:id", canEdit, (req, res) => {
 router.delete("/campaigns/:id", canEdit, (req, res) => {
   try {
     const db = getDb();
+    // Cancel queued messages first — deleting a campaign must stop its sends.
+    try {
+      db.prepare(`
+        UPDATE wa_outbox SET status='failed', error='campaign deleted'
+        WHERE status='pending' AND campaign_recipient_id IN (SELECT id FROM campaign_recipients WHERE campaign_id=?)
+      `).run(req.params.id);
+    } catch (_) {} // campaign_recipient_id column missing → nothing to cancel
     db.prepare("DELETE FROM campaign_recipients WHERE campaign_id=?").run(req.params.id);
     db.prepare("DELETE FROM campaigns WHERE id=?").run(req.params.id);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// ─── Templates (re-expose for CRM) ─────────────────────────────────────────
+// ─── Templates ──────────────────────────────────────────────────────────────
+// System kinds (receipt/birthday/debt) are auto-send triggers: body-editable,
+// never deletable. Custom templates (kind = custom_*) are fully user-managed
+// and selectable when composing a campaign.
+const SYSTEM_TEMPLATE_KINDS = new Set(["receipt", "birthday", "debt"]);
+
+function templatesHaveLabel(db) {
+  try { return db.prepare("PRAGMA table_info(message_templates)").all().some(c => c.name === "label"); }
+  catch (_) { return false; }
+}
+
 router.get("/templates", canView, (_req, res) => {
   try {
     const db = getDb();
-    const rows = db.prepare("SELECT * FROM message_templates ORDER BY kind").all();
+    const rows = db.prepare("SELECT * FROM message_templates ORDER BY id").all();
+    rows.forEach(r => { r.is_system = SYSTEM_TEMPLATE_KINDS.has(r.kind) ? 1 : 0; });
     res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Create a custom template
+router.post("/templates", canEdit, (req, res) => {
+  try {
+    const db = getDb();
+    const { label, body } = req.body;
+    if (!label || !label.trim()) return res.status(400).json({ success: false, message: "اسم القالب مطلوب" });
+    if (!body || !body.trim()) return res.status(400).json({ success: false, message: "نص القالب مطلوب" });
+    if (!templatesHaveLabel(db)) return res.status(400).json({ success: false, message: "قاعدة البيانات تحتاج تحديثاً (migration 170)" });
+    const kind = `custom_${Date.now()}`;
+    db.prepare("INSERT INTO message_templates (kind, label, body) VALUES (?,?,?)").run(kind, label.trim(), body.trim());
+    const row = db.prepare("SELECT * FROM message_templates WHERE kind=?").get(kind);
+    res.status(201).json({ success: true, data: row });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -316,8 +395,23 @@ router.put("/templates/:kind", canEdit, (req, res) => {
   try {
     const db = getDb();
     const { kind } = req.params;
-    const { body } = req.body;
+    const { body, label } = req.body;
     db.prepare("INSERT INTO message_templates (kind, body) VALUES (?,?) ON CONFLICT(kind) DO UPDATE SET body=excluded.body, updated_at=?").run(kind, body || "", nowSql());
+    if (label && !SYSTEM_TEMPLATE_KINDS.has(kind) && templatesHaveLabel(db)) {
+      db.prepare("UPDATE message_templates SET label=? WHERE kind=?").run(String(label).trim(), kind);
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Delete a custom template (system kinds are protected)
+router.delete("/templates/:kind", canEdit, (req, res) => {
+  try {
+    const { kind } = req.params;
+    if (SYSTEM_TEMPLATE_KINDS.has(kind)) {
+      return res.status(400).json({ success: false, message: "لا يمكن حذف القوالب التلقائية" });
+    }
+    getDb().prepare("DELETE FROM message_templates WHERE kind=?").run(kind);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

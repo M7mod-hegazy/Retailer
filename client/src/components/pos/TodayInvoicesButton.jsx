@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
 import { todayCairo } from "../../utils/dateHelpers";
+import { invoiceCustomerText } from "./WalkInCustomer";
 
 const PAYMENT_LABELS = {
   cash: "نقدي", bank_transfer: "بنك/فيزا", credit: "آجل",
@@ -192,7 +193,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                       >
                         <td className="px-4 py-3 font-mono text-2sm font-black text-slate-700">{inv.invoice_no}</td>
                         <td className="px-4 py-3 text-2sm font-bold text-slate-800 max-w-[140px] truncate">
-                          {inv.customer_name || "عميل نقدي"}
+                          {invoiceCustomerText(inv)}
                         </td>
                         <td className="px-4 py-3 text-center text-2sm font-bold text-slate-600">
                           {inv.items_count || "—"}

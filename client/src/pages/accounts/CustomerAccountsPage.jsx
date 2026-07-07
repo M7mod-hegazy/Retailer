@@ -3,11 +3,12 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Search, Plus, X, Phone, AlertTriangle, SlidersHorizontal,
-  MessageSquare, Eye, ExternalLink, RefreshCw, FileText,
+  MessageSquare, Eye, ExternalLink, RefreshCw, FileText, FileSpreadsheet, Printer,
   ShoppingBag, CreditCard, RotateCcw, Scale, ChevronDown, ChevronUp, Calendar,
   Copy, Check, TrendingUp, TrendingDown, Info, AlertCircle, Upload, Download, Trash2
 } from "lucide-react";
 import api from "../../services/api";
+import { reportsApi } from "../../services/reports";
 import toast from "react-hot-toast";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -1020,6 +1021,8 @@ export default function CustomerAccountsPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
+  const [reportExporting, setReportExporting] = useState(null);
 
   // Forms
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "", schedule_id: "" });
@@ -1121,6 +1124,37 @@ export default function CustomerAccountsPage() {
   }, [selected]);
 
   const navigate = useNavigate();
+
+  const handleStatementExport = useCallback(async (format) => {
+    if (!selected?.id) return;
+    setReportMenuOpen(false);
+    if (format === "print") {
+      const query = new URLSearchParams({ customer_id: String(selected.id) });
+      window.open(`/reports/source/customers/statement/detailed?${query.toString()}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setReportExporting(format);
+    try {
+      const blob = await reportsApi.exportReport("customer-statement", format, { customer_id: selected.id });
+      const extMap = { pdf: "pdf", excel: "xlsx", word: "docx" };
+      const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const safeName = String(selected.name || selected.id).replace(/[\\/:*?"<>|]+/g, "-").trim() || selected.id;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `customer-statement-${safeName}-${stamp}.${extMap[format] || format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("تم تحميل كشف الحساب");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || "فشل تصدير كشف الحساب");
+    } finally {
+      setReportExporting(null);
+    }
+  }, [selected]);
 
   useEffect(() => { loadCustomers(); }, [loadCustomers]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
@@ -1644,6 +1678,50 @@ export default function CustomerAccountsPage() {
                       <span>تسوية رصيد</span>
                     </motion.button>
                   </PermissionGate>
+                  <div className="relative flex-1 lg:flex-none">
+                    <button
+                      type="button"
+                      onClick={() => setReportMenuOpen((v) => !v)}
+                      disabled={!!reportExporting}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold disabled:opacity-60"
+                    >
+                      <Download className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
+                      <span>{reportExporting ? "جاري التصدير..." : "طباعة / تصدير"}</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${reportMenuOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    <AnimatePresence>
+                      {reportMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.14 }}
+                          className="absolute left-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                        >
+                          {[
+                            { format: "print", label: "طباعة", icon: Printer },
+                            { format: "pdf", label: "PDF", icon: FileText },
+                            { format: "excel", label: "Excel", icon: FileSpreadsheet },
+                            { format: "word", label: "Word", icon: FileText },
+                          ].map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.format}
+                                type="button"
+                                onClick={() => handleStatementExport(item.format)}
+                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
+                              >
+                                <span>{item.label}</span>
+                                <Icon className="h-4 w-4 text-slate-450" />
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                 </div>
               </div>
             </div>

@@ -21,9 +21,15 @@ const VALUE = {
   name: (line) => nameOf(line),
   unit: (line) => unitOf(line),
   qty: (line, s) => formatPrintDigits(s, String(line.quantity)),
-  price: (line, s) => smartFormat(priceOf(line), s),
+  price: (line, s, props) => {
+    if (props?.hideZeroPrice && priceOf(line) === 0) return "";
+    return smartFormat(priceOf(line), s);
+  },
   discount: (line, s) => discountOf(line, s),
-  total: (line, s) => smartFormat(lineTotalOf(line), s),
+  total: (line, s, props) => {
+    if (props?.hideZeroPrice && lineTotalOf(line) === 0) return "";
+    return smartFormat(lineTotalOf(line), s);
+  },
 };
 const HEADER = { code: "كود", name: "المنتج", unit: "الوحدة", qty: "كمية", price: "سعر", discount: "الخصم", total: "إجمالي" };
 
@@ -39,8 +45,17 @@ function useInvoiceKeys(s) {
 // Roll honors legacy thermal columns; page reproduces the PrintA4Doc table.
 // When `props.columns` is supplied (by the Designer), the table is driven by it
 // (visibility, order, alignment, labels). Without it, output is unchanged.
-export default function ItemsTableBlock({ invoice = {}, settings: s, props = {}, family }) {
-  const lines = invoice.lines || [];
+// Realistic mock product lines for editing preview — covers all column types:
+// code, name, unit, qty, price, discount, total
+const MOCK_LINES = [
+  { product_name: "قميص قطني أبيض", quantity: 2, unit_price: 85, unit_name: "قطعة", sku: "SH-001", discount_amount: 0 },
+  { product_name: "بنطلون جينز أزرق", quantity: 1, unit_price: 230, unit_name: "قطعة", sku: "PA-042", discount_amount: 20 },
+  { product_name: "حزام جلد بني", quantity: 1, unit_price: 75, unit_name: "قطعة", sku: "BL-018", discount_amount: 0 },
+];
+
+export default function ItemsTableBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
+  const realLines = invoice.lines || [];
+  const lines = realLines.length > 0 ? realLines : (editing ? MOCK_LINES : []);
   const accent = g(s, "accent_color");
   const fontSize = `${g(s, "item_font_size")}px`;
   const designerCols = Array.isArray(props.columns) && props.columns.length
@@ -87,8 +102,118 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
     : { background: props.headerBg || accent, color: props.headerColor || "#fff", fontWeight: 700 };
   const pagePadY = rowPad != null ? rowPad : 3;
   const pageHeadFs = headerFontSize != null ? { fontSize: `${headerFontSize}px` } : {};
+  
+  const cellValign = props.cellValign || "middle";
+  const zebraBg = props.zebraBgColor || "#f8fafc";
+  const textColor = props.textColor || "#000";
 
   if (family === "page") {
+    // ── Variant: Cards (Boutique layout cards deck) ──
+    if (props.variant === "cards") {
+      const currencySymbol = g(s, "currency_symbol");
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px", fontSize }}>
+          {lines.map((line, i) => (
+            <div 
+              key={i} 
+              style={{
+                border: `1px solid ${lineColor}`,
+                borderRadius: "8px",
+                padding: "8px 12px",
+                background: zebra && i % 2 === 0 ? zebraBg : "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                color: textColor,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <span style={{ fontWeight: 800, fontSize: "1.05em", color: textColor }}>{nameOf(line)}</span>
+                {codeOf(line) && <span style={{ fontSize: "0.85em", color: "#64748b", fontFamily: "monospace" }}>SKU: {codeOf(line)}</span>}
+                <span style={{ fontSize: "0.9em", color: "#475569" }}>
+                  {formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)} {currencySymbol}
+                  {Number(line.discount_amount) > 0 && <span style={{ color: "#dc2626", marginRight: "6px" }}> (خصم -{smartFormat(Number(line.discount_amount), s)})</span>}
+                </span>
+              </div>
+              <div style={{ textAlign: "left", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                <span style={{ fontSize: "0.8em", color: "#64748b" }}>الإجمالي</span>
+                <span style={{ fontWeight: 900, fontSize: "1.15em", color: accent }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Minimalist List (Cafe/Studio clean list) ──
+    if (props.variant === "minimalist-list") {
+      const currencySymbol = g(s, "currency_symbol");
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "8px", fontSize, borderBottom: `1px solid ${lineColor}`, paddingBottom: "6px", color: textColor }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: textColor }}>
+              <span style={{ fontWeight: 700 }}>
+                {nameOf(line)}
+                <span style={{ color: "#64748b", fontSize: "0.9em", marginRight: "8px" }}>
+                  ({formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)})
+                </span>
+              </span>
+              <span style={{ fontWeight: 800, color: textColor }}>
+                {smartFormat(lineTotalOf(line), s)} {currencySymbol}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Ledger (old-school alternating gray, monospace amounts) ──
+    if (props.variant === "ledger") {
+      const currencySymbol = g(s, "currency_symbol");
+      return (
+        <div style={{ marginBottom: "8px", fontSize, fontFamily: "monospace", color: textColor }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto auto auto",
+            gap: "0",
+            borderBottom: "2px solid #1e293b",
+            paddingBottom: "3px",
+            marginBottom: "2px",
+            fontSize: "9px",
+            fontWeight: 900,
+            color: "#1e293b",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}>
+            <span>الصنف</span>
+            <span style={{ textAlign: "center", minWidth: "36px" }}>كمية</span>
+            <span style={{ textAlign: "center", minWidth: "52px" }}>سعر</span>
+            <span style={{ textAlign: "left", minWidth: "60px" }}>إجمالي</span>
+          </div>
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto auto auto",
+                gap: "0",
+                padding: "3px 0",
+                background: i % 2 === 0 ? zebraBg : "transparent",
+                borderBottom: "1px solid #cbd5e1",
+              }}
+            >
+              <span style={{ fontWeight: 700, color: textColor, paddingRight: "4px" }}>{nameOf(line)}</span>
+              <span style={{ textAlign: "center", minWidth: "36px", color: "#475569" }}>{formatPrintDigits(s, String(line.quantity))}</span>
+              <span style={{ textAlign: "center", minWidth: "52px", color: "#475569" }}>{smartFormat(priceOf(line), s)}</span>
+              <span style={{ textAlign: "left", minWidth: "60px", fontWeight: 800, color: textColor }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+
     const pageInvoiceKeys = !designerCols ? useInvoiceKeys(s) : null;
     const showCode = designerCols ? designerCols.some((c) => c.key === "code") : (pageInvoiceKeys ? pageInvoiceKeys.includes("code") : g(s, "show_item_code") !== false);
     if (cols) {
@@ -107,16 +232,18 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
           )}
           <tbody>
             {lines.map((line, i) => (
-              <tr key={i} style={{ background: zebra && i % 2 === 0 ? "#f8fafc" : "#fff" }}>
-                {showRowNum && <td style={{ padding: `${pagePadY}px 6px`, color: "#475569", fontWeight: 700, ...cellBorder }}>{i + 1}</td>}
+              <tr key={i} style={{ background: zebra && i % 2 === 0 ? zebraBg : "#fff" }}>
+                {showRowNum && <td style={{ padding: `${pagePadY}px 6px`, color: "#475569", fontWeight: 700, ...cellBorder, verticalAlign: cellValign }}>{i + 1}</td>}
                 {cols.map((c) => (
                   <td key={c.key} style={{
                     textAlign: c.align || (c.key === "name" ? "right" : c.key === "total" ? "left" : "center"),
                     padding: `${pagePadY}px 6px`, fontWeight: 700, ...cellBorder,
+                    verticalAlign: cellValign,
+                    color: textColor,
                     ...(c.key === "code" ? { fontSize: "10px", color: "#334155", fontFamily: "monospace" } : {}),
                     ...(c.key === "name" && nameWidth ? { width: `${nameWidth}%` } : {}),
                     ...(c.key === "total" ? { fontWeight: 800 } : {}),
-                  }}>{VALUE[c.key](line, s)}</td>
+                  }}>{VALUE[c.key](line, s, props)}</td>
                 ))}
               </tr>
             ))}
@@ -138,13 +265,13 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
         </thead>
         <tbody>
           {lines.map((line, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? "#f8fafc" : "#fff" }}>
-              <td style={{ padding: "3px 6px", color: "#475569", fontWeight: 700 }}>{i + 1}</td>
-              {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "10px", color: "#334155", fontFamily: "monospace", fontWeight: 700 }}>{codeOf(line)}</td>}
-              <td style={{ padding: "3px 6px", fontWeight: 700 }}>{nameOf(line)}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{formatPrintDigits(s, String(line.quantity))}</td>
-              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700 }}>{smartFormat(priceOf(line), s)}</td>
-              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 800 }}>{smartFormat(lineTotalOf(line), s)}</td>
+            <tr key={i} style={{ background: i % 2 === 0 ? zebraBg : "#fff" }}>
+              <td style={{ padding: "3px 6px", color: "#475569", fontWeight: 700, verticalAlign: cellValign }}>{i + 1}</td>
+              {showCode && <td style={{ textAlign: "center", padding: "3px 6px", fontSize: "10px", color: "#334155", fontFamily: "monospace", fontWeight: 700, verticalAlign: cellValign }}>{codeOf(line)}</td>}
+              <td style={{ padding: "3px 6px", fontWeight: 700, verticalAlign: cellValign, color: textColor }}>{nameOf(line)}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700, verticalAlign: cellValign, color: textColor }}>{formatPrintDigits(s, String(line.quantity))}</td>
+              <td style={{ textAlign: "center", padding: "3px 6px", fontWeight: 700, verticalAlign: cellValign, color: textColor }}>{VALUE.price(line, s, props)}</td>
+              <td style={{ textAlign: "left", padding: "3px 6px", fontWeight: 800, verticalAlign: cellValign, color: textColor }}>{VALUE.total(line, s, props)}</td>
             </tr>
           ))}
         </tbody>

@@ -246,6 +246,26 @@ function addPaymentTypeFilter(paymentType, tableAlias, params) {
   return ` AND (${tableAlias}.payment_type = ? OR (${tableAlias}.payment_type = 'multi' AND EXISTS (SELECT 1 FROM payments WHERE invoice_id = ${tableAlias}.id AND method = ?)))`;
 }
 
+function getCurrencyConfig() {
+  try {
+    const row = getDb().prepare("SELECT currency_code, currency_symbol, decimal_places FROM settings WHERE id = 1").get();
+    return {
+      symbol: row?.currency_symbol || "ج.م",
+      code: row?.currency_code || "EGP",
+      decimals: row?.decimal_places != null ? row.decimal_places : 2,
+    };
+  } catch {
+    return { symbol: "ج.م", code: "EGP", decimals: 2 };
+  }
+}
+
+function formatCurrency(amount) {
+  const cfg = getCurrencyConfig();
+  const val = Number(amount || 0);
+  const formatted = val.toLocaleString("en-US", { minimumFractionDigits: cfg.decimals, maximumFractionDigits: cfg.decimals });
+  return `${formatted} ${cfg.symbol}`;
+}
+
 module.exports = {
   addDateFilter,
   labelForKey,
@@ -256,4 +276,6 @@ module.exports = {
   stockCostJoin,
   itemsCostJoin,
   addPaymentTypeFilter,
+  getCurrencyConfig,
+  formatCurrency,
 };

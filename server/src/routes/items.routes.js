@@ -799,6 +799,16 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
     storeItemImages(id, normalizeImageUrls(payload));
   }
 
+  // Queue a POS→store pending push for store-linked items when synced fields change.
+  try {
+    const { recordItemFieldChanges } = require("../services/syncChangeService");
+    recordItemFieldChanges(db, existing, {
+      name: { old: existing.name, next: payload.name ?? existing.name },
+      price: { old: existing.sale_price, next: Number(payload.sale_price ?? existing.sale_price ?? 0) },
+      description: { old: existing.description, next: payload.description ?? existing.description },
+    });
+  } catch { /* sync bookkeeping must never break item edit */ }
+
   // Log direct price changes from the items edit page as manual_correction
   if (priceChanges.length) {
     const insertHist = db.prepare(

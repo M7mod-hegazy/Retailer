@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, Printer, RotateCcw,
   User, Calendar, X, Package,
@@ -318,10 +318,17 @@ export default function SalesReturnDetailPage() {
         onClose={() => setPrintOpen(false)}
         docType="sales_return"
         invoice={{
+          ...doc,
           invoice_no: doc.doc_no,
-          created_at: doc.created_at,
           customer_name: doc.customer_name,
+          cashier_name: doc.created_by_username || doc.cashier_name || "",
+          subtotal: doc.subtotal || (doc.lines || []).reduce((a, l) => a + Number(l.line_total || 0), 0),
+          total: doc.total || 0,
+          discount: doc.discount || 0,
+          increase: doc.increase || 0,
+          notes: doc.notes || "",
           lines: (doc.lines || []).map(l => ({
+            ...l,
             item_name: l.item_name_ar || l.item_name,
             quantity: l.quantity,
             unit_price: l.unit_price,

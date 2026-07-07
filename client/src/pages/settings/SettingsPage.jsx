@@ -16,7 +16,6 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import AppearancePanel from "./AppearancePanel";
 import { applyFontSettings } from "../../utils/fontSettings";
 import { applyColorTheme } from "../../utils/applyColorTheme";
-import WhatsAppSettingsTab from "./WhatsAppSettingsTab";
 import PerformanceSettings from "../../components/ui/PerformanceSettings";
 import { useUiStore } from "../../stores/uiStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
@@ -35,7 +34,6 @@ const tabs = [
   { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
   { id: "features", label: "الميزات", hint: "تفعيل أو تعطيل وحدات متخصصة حسب نوع متجرك" },
   { id: "shortcuts", label: "اختصارات لوحة المفاتيح", hint: "تخصيص اختصارات لوحة المفاتيح لكل شاشة" },
-  { id: "whatsapp", label: "واتساب", hint: "ربط حساب واتساب وإرسال الرسائل للعملاء" },
   { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
   { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
 ];
@@ -982,10 +980,6 @@ export default function SettingsPage() {
               <ShortcutsTab />
             )}
 
-            {activeTab === "whatsapp" && (
-              <WhatsAppSettingsTab />
-            )}
-
             {activeTab === "maintenance" && (
               <MaintenanceTab settings={settings} onChange={handleChange} />
             )}
@@ -1001,6 +995,7 @@ export default function SettingsPage() {
       <PrintPreviewModal
         open={printPreview}
         onClose={() => setPrintPreview(false)}
+        docType="pos_receipt"
         invoice={{ invoice_no: "PREVIEW-001", created_at: new Date().toISOString(), lines: [] }}
         settings={settings}
         operationLabel="معاينة إعدادات الطباعة"

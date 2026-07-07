@@ -1,5 +1,6 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter, getCostColumn, getReturnCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
+const { paginateSql } = require("../pagination");
 const { getProfitLoss } = require("../../services/reportService");
 
 function flattenItemsIntoRows(rows) {
@@ -81,7 +82,8 @@ function statementDescription(txn) {
     case "purchase": return `فاتورة شراء${ref}`;
     case "sales_return": return `مرتجع مبيعات${ref}${orig}`;
     case "purchase_return": return `مرتجع مشتريات${ref}${orig}`;
-    case "payment": {
+    case "payment":
+    case "ajal_payment": {
       const base = txn._party === "supplier" ? "دفعة إلى مورد" : "دفعة محصلة";
       return txn.ref_no ? `${base}${ref}` : base;
     }
@@ -105,9 +107,9 @@ function statementDescription(txn) {
  * each shaped { ref_id, ref_no, datetime, date, type, amount, status, note?, orig_ref? }.
  * Rows are enriched with their `_items` from `itemsByKey` (keyed by `type:ref_id`).
  */
-function assembleStatement({ name, code, liveBalance, txns, itemsByKey, startDate, endDate, partyType }) {
+function assembleStatement({ name, code, liveBalance, baseOpening, txns, itemsByKey, startDate, endDate, partyType }) {
   const totalAll = txns.reduce((acc, t) => acc + Number(t.amount || 0), 0);
-  const trueOpening = Number(liveBalance || 0) - totalAll;
+  const trueOpening = baseOpening !== undefined && baseOpening !== null ? Number(baseOpening || 0) : Number(liveBalance || 0) - totalAll;
   const periodOpening = trueOpening + txns.reduce((acc, t) => {
     if (startDate && t.date < startDate) return acc + Number(t.amount || 0);
     return acc;
@@ -164,7 +166,7 @@ function customerStatementV2(startDate, endDate, opts = {}) {
   const db = getDb();
   const customerId = opts.customer_id;
   if (!customerId) return [];
-  const customer = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance FROM customers WHERE id = ?").get(customerId);
+  const customer = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance, base_opening_balance FROM customers WHERE id = ?").get(customerId);
   if (!customer) return [];
 
   // All account transactions ever (no date filter) — back-computation needs the
@@ -173,16 +175,17 @@ function customerStatementV2(startDate, endDate, opts = {}) {
   // this set's running sum reconciles to the live `opening_balance`.
   const txns = db.prepare(`
     SELECT i.id AS ref_id, i.invoice_no AS ref_no, i.created_at AS datetime, DATE(i.created_at) AS date,
-      'invoice' AS type, SUM(ad.original_amount) AS amount, i.status, NULL AS note, NULL AS orig_ref,
+      'invoice' AS type, MAX(0, COALESCE(i.total, 0) - COALESCE(i.amount_received, 0)) AS amount, i.status, NULL AS note, NULL AS orig_ref,
       i.discount AS doc_discount, i.increase AS doc_increase, i.total AS doc_total
-    FROM ajal_debts ad
-    JOIN invoices i ON i.id = ad.invoice_id AND i.status != 'cancelled'
-    WHERE ad.party_type = 'customer' AND ad.customer_id = ?
-      AND ad.source_type = 'invoice' AND ad.status != 'voided'
-    GROUP BY i.id
+    FROM invoices i
+    WHERE i.customer_id = ? AND i.status != 'cancelled'
     UNION ALL
     SELECT sr.id, sr.doc_no, sr.created_at, DATE(sr.created_at),
-      'sales_return', -COALESCE(sr.credit_amount, 0), sr.status, NULL, inv.invoice_no,
+      'sales_return', -CASE
+        WHEN sr.refund_method = 'split' THEN COALESCE(sr.credit_amount, 0)
+        WHEN sr.refund_method = 'cash_back' THEN 0
+        ELSE COALESCE(sr.total, 0)
+      END, sr.status, NULL, inv.invoice_no,
       sr.discount, sr.increase, sr.total
     FROM sales_returns sr
     LEFT JOIN invoices inv ON inv.id = sr.invoice_id
@@ -192,7 +195,16 @@ function customerStatementV2(startDate, endDate, opts = {}) {
       'payment', -p.amount, 'paid', p.notes, NULL,
       NULL, NULL, NULL
     FROM payments p
-    WHERE p.party_type = 'customer' AND p.party_id = ?
+    WHERE p.party_type = 'customer' AND p.party_id = ? AND p.invoice_id IS NULL
+    UNION ALL
+    SELECT ap.id, COALESCE(inv.invoice_no, 'AJAL-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
+      'ajal_payment', -ap.amount, 'paid', ap.notes, inv.invoice_no,
+      NULL, NULL, NULL
+    FROM ajal_payments ap
+    JOIN ajal_debts ad ON ad.id = ap.debt_id
+    LEFT JOIN invoices inv ON inv.id = ad.invoice_id
+    WHERE COALESCE(ad.party_type, 'customer') = 'customer'
+      AND ad.customer_id = ?
     UNION ALL
     SELECT n.id, NULL, n.created_at, DATE(n.created_at),
       'adjustment', COALESCE(n.amount, 0), 'adjustment', n.note, NULL,
@@ -200,7 +212,7 @@ function customerStatementV2(startDate, endDate, opts = {}) {
     FROM customer_notes n
     WHERE n.customer_id = ? AND n.type = 'adjustment'
     ORDER BY datetime ASC
-  `).all(customerId, customerId, customerId, customerId);
+  `).all(customerId, customerId, customerId, customerId, customerId);
 
   const itemsByKey = {};
   const invoiceIds = txns.filter(t => t.type === 'invoice').map(t => t.ref_id);
@@ -231,7 +243,7 @@ function customerStatementV2(startDate, endDate, opts = {}) {
   }
 
   const result = assembleStatement({
-    name: customer.name, code: customer.code, liveBalance: customer.opening_balance,
+    name: customer.name, code: customer.code, liveBalance: customer.opening_balance, baseOpening: customer.base_opening_balance,
     txns, itemsByKey, startDate, endDate, partyType: 'customer',
   });
   // Backward-compatible alias kept alongside the generic party_name.
@@ -242,7 +254,7 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
   const db = getDb();
   const supplierId = opts.supplier_id;
   if (!supplierId) return [];
-  const supplier = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance FROM suppliers WHERE id = ?").get(supplierId);
+  const supplier = db.prepare("SELECT name, code, COALESCE(opening_balance, 0) AS opening_balance, base_opening_balance FROM suppliers WHERE id = ?").get(supplierId);
   if (!supplier) return [];
 
   // DEBIT side = on-account (آجل) portion from ajal_debts.original_amount; cash
@@ -250,16 +262,32 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
   // `opening_balance` (verified against base_opening_balance).
   const txns = db.prepare(`
     SELECT pur.id AS ref_id, pur.doc_no AS ref_no, pur.created_at AS datetime, DATE(pur.created_at) AS date,
-      'purchase' AS type, SUM(ad.original_amount) AS amount, pur.status, NULL AS note, NULL AS orig_ref,
+      'purchase' AS type, MAX(0, COALESCE(pur.total, 0) - CASE
+        WHEN pur.payment_method IN ('cash', 'bank_transfer') THEN COALESCE(pur.total, 0)
+        WHEN pur.payment_method = 'multi' THEN COALESCE((
+          SELECT SUM(pp.amount) FROM purchase_payments pp
+          LEFT JOIN payment_methods pm ON pm.id = pp.method_id
+          WHERE pp.purchase_id = pur.id
+            AND pm.type IS NOT NULL AND pm.type != 'credit'
+            AND COALESCE(pm.category, '') != 'credit'
+        ), 0)
+        WHEN pur.payment_method IN ('credit', 'future_due') THEN COALESCE((
+          SELECT paid_amount FROM ajal_debts
+          WHERE invoice_id = pur.id AND source_type = 'purchase' AND status != 'voided'
+          ORDER BY id DESC LIMIT 1
+        ), 0)
+        ELSE 0
+      END) AS amount, pur.status, NULL AS note, NULL AS orig_ref,
       pur.discount AS doc_discount, pur.increase AS doc_increase, pur.total AS doc_total
-    FROM ajal_debts ad
-    JOIN purchases pur ON pur.id = ad.invoice_id AND pur.status != 'cancelled'
-    WHERE ad.party_type = 'supplier' AND ad.supplier_id = ?
-      AND ad.source_type = 'purchase' AND ad.status != 'voided'
-    GROUP BY pur.id
+    FROM purchases pur
+    WHERE pur.supplier_id = ? AND pur.status != 'cancelled'
     UNION ALL
     SELECT pr.id, pr.doc_no, pr.created_at, DATE(pr.created_at),
-      'purchase_return', -COALESCE(pr.credit_amount, 0), pr.status, NULL, pur.doc_no,
+      'purchase_return', -CASE
+        WHEN pr.settlement_type = 'split' THEN COALESCE(pr.credit_amount, 0)
+        WHEN pr.settlement_type = 'cash' THEN 0
+        ELSE COALESCE(pr.total, 0)
+      END, pr.status, NULL, pur.doc_no,
       pr.discount, pr.increase, pr.total
     FROM purchase_returns pr
     LEFT JOIN purchases pur ON pur.id = pr.purchase_id
@@ -269,7 +297,16 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
       'payment', -p.amount, 'paid', p.notes, NULL,
       NULL, NULL, NULL
     FROM payments p
-    WHERE p.party_type = 'supplier' AND p.party_id = ?
+    WHERE p.party_type = 'supplier' AND p.party_id = ? AND p.invoice_id IS NULL
+    UNION ALL
+    SELECT ap.id, COALESCE(pur.doc_no, 'AJAL-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
+      'ajal_payment', -ap.amount, 'paid', ap.notes, pur.doc_no,
+      NULL, NULL, NULL
+    FROM ajal_payments ap
+    JOIN ajal_debts ad ON ad.id = ap.debt_id
+    LEFT JOIN purchases pur ON pur.id = ad.invoice_id
+    WHERE COALESCE(ad.party_type, 'customer') = 'supplier'
+      AND ad.supplier_id = ?
     UNION ALL
     SELECT n.id, NULL, n.created_at, DATE(n.created_at),
       'adjustment', COALESCE(n.amount, 0), 'adjustment', n.note, NULL,
@@ -277,7 +314,7 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
     FROM supplier_notes n
     WHERE n.supplier_id = ? AND n.type = 'adjustment'
     ORDER BY datetime ASC
-  `).all(supplierId, supplierId, supplierId, supplierId);
+  `).all(supplierId, supplierId, supplierId, supplierId, supplierId);
 
   const itemsByKey = {};
   const purchaseIds = txns.filter(t => t.type === 'purchase').map(t => t.ref_id);
@@ -308,7 +345,7 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
   }
 
   const result = assembleStatement({
-    name: supplier.name, code: supplier.code, liveBalance: supplier.opening_balance,
+    name: supplier.name, code: supplier.code, liveBalance: supplier.opening_balance, baseOpening: supplier.base_opening_balance,
     txns, itemsByKey, startDate, endDate, partyType: 'supplier',
   });
   return { ...result, supplier_name: supplier.name };
@@ -505,27 +542,41 @@ function apAging(startDate, endDate, opts = {}) {
 function customerBalanceList(startDate, endDate, opts = {}) {
   const db = getDb();
   const { customer_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT id, name AS customer_name, phone, opening_balance AS balance,
       CASE WHEN COALESCE(opening_balance, 0) > 0 THEN 'مديون' ELSE 'دائن' END AS balance_label
     FROM customers
     WHERE COALESCE(opening_balance, 0) != 0
     ${customer_id ? " AND id = ?" : ""}
     ORDER BY ABS(opening_balance) DESC
-  `).all(...(customer_id ? [customer_id] : []));
+  `;
+  const allParams = [...(customer_id ? [customer_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function supplierBalanceList(startDate, endDate, opts = {}) {
   const db = getDb();
   const { supplier_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT id, name AS supplier_name, phone, opening_balance AS balance,
       CASE WHEN COALESCE(opening_balance, 0) > 0 THEN 'دائن' ELSE 'مديون' END AS balance_label
     FROM suppliers
     WHERE COALESCE(opening_balance, 0) != 0
     ${supplier_id ? " AND id = ?" : ""}
     ORDER BY ABS(opening_balance) DESC
-  `).all(...(supplier_id ? [supplier_id] : []));
+  `;
+  const allParams = [...(supplier_id ? [supplier_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function arTotalBalance(startDate, endDate, opts = {}) {

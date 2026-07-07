@@ -667,6 +667,14 @@ function createInvoice(payload) {
     // Capture an anonymous walk-in WhatsApp number as a lead (best-effort, never blocks the sale).
     captureLeadFromSale(db, payload, normalizedLines);
 
+    // Stamp the walk-in contact on the invoice so details/amend can show it.
+    if (!payload.customer_id && payload.lead_capture?.phone) {
+      try {
+        db.prepare("UPDATE invoices SET walk_in_phone = ?, walk_in_name = ? WHERE id = ?")
+          .run(String(payload.lead_capture.phone), payload.lead_capture.name || null, inv.lastInsertRowid);
+      } catch (_) { /* column missing until migration 170 — never block the sale */ }
+    }
+
     if (payload.quotation_id) {
       const qid = Number(payload.quotation_id);
       const q = db.prepare("SELECT id, status FROM quotations WHERE id = ?").get(qid);
@@ -1260,6 +1268,11 @@ function amendInvoice(invoiceId, payload, userId) {
   if (newPayload.tax_rate == null) delete newPayload.tax_rate;
   // carry forward notes from original unless client sets them
   if (newPayload.notes == null) newPayload.notes = original.notes;
+  // carry forward the walk-in contact unless the amendment picked a real
+  // customer or sent a fresh capture — keeps anonymous invoices identifiable
+  if (!newPayload.customer_id && !newPayload.lead_capture?.phone && original.walk_in_phone) {
+    newPayload.lead_capture = { phone: original.walk_in_phone, name: original.walk_in_name || null };
+  }
   // pass user through for permission checks
   newPayload._user = payload._user;
 

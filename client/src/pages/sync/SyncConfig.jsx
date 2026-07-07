@@ -27,16 +27,38 @@ const TEST_CHECKS = [
   { key: "data", icon: Database },
 ];
 
+// Reseller-configurable support link; the support button is hidden when unset.
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || "";
+
+// Store IDs come in several shapes depending on the store platform:
+//  - Mongo ObjectId (24 hex chars) — the current e-commerce site
+//  - legacy "store_xxxx" prefix
+//  - other opaque tokens
 function validateStoreId(val) {
   if (!val) return "idle";
-  if (val.startsWith("store_") && val.length >= 8) return "valid";
+  const v = val.trim();
+  if (/^[a-f0-9]{24}$/i.test(v)) return "valid";        // Mongo ObjectId
+  if (v.startsWith("store_") && v.length >= 8) return "valid"; // legacy prefix
+  if (v.length >= 8 && !/\s/.test(v)) return "valid";   // other opaque ids
   return "invalid";
 }
 
+// API keys may be a 64-char hex secret (current site) or an "sk_live_..." token.
 function validateApiKey(val) {
   if (!val) return "idle";
-  if (val.length >= 16) return "valid";
+  const v = val.trim();
+  if (v.length >= 16 && !/\s/.test(v)) return "valid";
   return "invalid";
+}
+
+function validateUrl(val) {
+  if (!val) return "idle";
+  try {
+    const u = new URL(val.trim());
+    return (u.protocol === "http:" || u.protocol === "https:") ? "valid" : "invalid";
+  } catch {
+    return "invalid";
+  }
 }
 
 function ConfigSkeleton() {
@@ -161,7 +183,7 @@ function BrowserMockup({ children, labelTop }) {
                 <span className="w-2.5 h-2.5 rounded-full bg-success-border" />
                 <div className="flex-1 mx-3">
                   <div className="bg-gray-50 rounded-md px-2 py-1 text-[10px] text-text-muted font-mono text-center truncate max-w-full" dir="ltr">
-                    admin.mystore.com/settings/sync
+                    your-store.com/admin/sync/stores
                   </div>
                 </div>
               </div>
@@ -208,8 +230,8 @@ function StoreIdMockup() {
             </div>
             <div className="grid grid-cols-3 gap-0 text-[11px] text-text-primary font-mono">
               <div className="px-2.5 py-2">{t("sync.config.wizard.requirements.storeName")}</div>
-              <div className="px-2.5 py-2 border-x border-gray-200 bg-warning-bg/40 text-warning-text font-bold relative">
-              store_abc12345
+              <div className="px-2.5 py-2 border-x border-gray-200 bg-warning-bg/40 text-warning-text font-bold relative text-[9px]">
+              65a3f0c2e1b4d7f890a12345
               <div className="absolute -top-1 -left-1 rtl:left-auto rtl:-right-1">
                 <div className="relative">
                   <InlineSvgArrow className="h-4 w-6 text-danger-text rtl:rotate-180" />
@@ -245,7 +267,7 @@ function ApiKeyMockup() {
               <div>
                 <div className="text-[10px] text-text-muted">{t("sync.config.wizard.requirements.apiKey.label")}</div>
                 <div className="text-[13px] font-mono text-text-primary tracking-widest font-bold" dir="ltr">
-                  sk_live_••••••••••••••••
+                  7f3a9c2e••••••••••••••••
                 </div>
               </div>
             </div>
@@ -433,6 +455,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
     });
   }, [setConfig, propStore]);
 
+  const urlVal = validateUrl(form.ecom_url);
   const storeIdVal = validateStoreId(form.store_id);
   const apiKeyVal = validateApiKey(form.api_key);
 
@@ -469,7 +492,11 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
     setTestSteps(TEST_CHECKS.map((c) => ({ ...c, status: "loading" })));
 
     try {
-      const res = await verifySyncConnection();
+      const res = await verifySyncConnection({
+        ecom_url: form.ecom_url,
+        store_id: form.store_id,
+        api_key: form.api_key,
+      });
       if (res?.steps) {
         setTestSteps(TEST_CHECKS.map((c) => {
           const step = res.steps.find(s => s.key === c.key);
@@ -492,7 +519,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
     } finally {
       setTesting(false);
     }
-  }, [t]);
+  }, [t, form.ecom_url, form.store_id, form.api_key]);
 
   const nextStep = useCallback(() => {
     if (step === 2) {
@@ -505,11 +532,13 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
   }, [step, form, t]);
 
   const handleVerify = (key) => {
-    setVerifying((v) => ({ ...v, [key]: true }));
-    setTimeout(() => {
-      setChecks((c) => ({ ...c, [key]: true }));
-      setVerifying((v) => ({ ...v, [key]: false }));
-    }, 800);
+    // The internet prerequisite can be checked for real; store id / api key are
+    // acknowledgements the user confirms before entering them on the next step.
+    if (key === "internet" && typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.error(t("sync.config.wizard.requirements.internet.offline"));
+      return;
+    }
+    setChecks((c) => ({ ...c, [key]: true }));
   };
 
   if (!loaded) return <ConfigSkeleton />;
@@ -730,7 +759,79 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                 </div>
               </div>
 
+              {/* ── "Where do I find this?" numbered guide ── */}
+              <div className="mb-5 rounded-2xl border border-info-border/40 bg-info-bg/10 overflow-hidden">
+                <div className="flex items-center gap-2.5 px-4 py-3 bg-info-bg/25 border-b border-info-border/30">
+                  <div className="w-8 h-8 rounded-lg bg-info-bg/60 flex items-center justify-center shrink-0">
+                    <HelpCircle className="h-4 w-4 text-info-text" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-text-primary">{t("sync.config.wizard.connect.guide.title")}</h3>
+                    <p className="text-[11px] text-text-muted">{t("sync.config.wizard.connect.guide.subtitle")}</p>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3, 4].map((n) => (
+                    <div key={n} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center shrink-0">{n}</div>
+                      <p className="text-xs text-text-secondary leading-relaxed pt-0.5">{t(`sync.config.wizard.connect.guide.step${n}`)}</p>
+                    </div>
+                  ))}
+                  <div className="flex items-start gap-2.5 mt-1 p-2.5 rounded-xl bg-warning-bg/25 border border-warning-border/40">
+                    <AlertTriangle className="h-4 w-4 text-warning-text shrink-0 mt-0.5" />
+                    <p className="text-[11px] font-bold text-warning-text leading-relaxed">{t("sync.config.wizard.connect.guide.warn")}</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
+                {/* Store URL */}
+                <div className={`bg-white rounded-xl p-4 border transition-all duration-200 ${
+                  urlVal === "valid" ? "border-success-border" :
+                  urlVal === "invalid" ? "border-danger-border" :
+                  "border-gray-200 hover:border-primary/30 hover:shadow-sm"
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      urlVal === "valid" ? "bg-success-bg" :
+                      urlVal === "invalid" ? "bg-danger-bg" :
+                      "bg-primary-50"
+                    }`}>
+                      <Globe className={`h-4 w-4 ${
+                        urlVal === "valid" ? "text-success-text" :
+                        urlVal === "invalid" ? "text-danger-text" :
+                        "text-primary"
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="text-xs font-black text-text-primary mb-1.5 block">
+                        {t("sync.config.wizard.connect.ecomUrl.label")}
+                      </label>
+                      <input
+                        type="url"
+                        dir="ltr"
+                        className={`w-full px-4 py-2.5 bg-gray-100 border rounded-xl text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                          urlVal === "valid" ? "border-success-border" :
+                          urlVal === "invalid" ? "border-danger-border" :
+                          "border-gray-300"
+                        }`}
+                        placeholder={t("sync.config.wizard.connect.ecomUrl.placeholder")}
+                        value={form.ecom_url}
+                        onChange={(e) => updateField("ecom_url")(e.target.value)}
+                      />
+                      <ValidationBadge
+                        status={urlVal}
+                        validMsg={t("sync.config.wizard.connect.ecomUrl.validFormat")}
+                        invalidMsg={t("sync.config.wizard.connect.ecomUrl.invalidFormat")}
+                      />
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-text-muted">
+                        <Lightbulb className="h-3 w-3" />
+                        <span>{t("sync.config.wizard.connect.ecomUrl.hint")}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Store ID */}
                 <div className={`bg-white rounded-xl p-4 border transition-all duration-200 ${
                   storeIdVal === "valid" ? "border-success-border" :
@@ -870,7 +971,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
               <div className="mt-6">
                 <button
                   onClick={runTestSequence}
-                  disabled={testing || !canFinish || storeIdVal !== "valid" || apiKeyVal !== "valid"}
+                  disabled={testing || !canFinish || urlVal !== "valid" || storeIdVal !== "valid" || apiKeyVal !== "valid"}
                   className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl text-sm font-black hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
                 >
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
@@ -914,13 +1015,15 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                       <RefreshCw className="h-3.5 w-3.5" />
                       {t("sync.config.wizard.test.failure.retry")}
                     </button>
-                    <button
-                      onClick={() => window.open("https://support.example.com", "_blank")}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 border border-danger-border rounded-xl text-xs font-bold text-danger-text hover:bg-danger-bg transition"
-                    >
-                      <Headphones className="h-3.5 w-3.5" />
-                      {t("sync.config.wizard.test.failure.support")}
-                    </button>
+                    {SUPPORT_URL && (
+                      <button
+                        onClick={() => window.open(SUPPORT_URL, "_blank")}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 border border-danger-border rounded-xl text-xs font-bold text-danger-text hover:bg-danger-bg transition"
+                      >
+                        <Headphones className="h-3.5 w-3.5" />
+                        {t("sync.config.wizard.test.failure.support")}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1094,13 +1197,15 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                       <RefreshCw className="h-4 w-4" />
                       {t("sync.config.wizard.test.failure.retry")}
                     </button>
-                    <button
-                      onClick={() => window.open("https://support.example.com", "_blank")}
-                      className="inline-flex items-center gap-2 px-6 py-3 border-2 border-danger-border text-danger-text rounded-2xl text-sm font-bold hover:bg-danger-bg transition active:scale-95"
-                    >
-                      <Headphones className="h-4 w-4" />
-                      {t("sync.config.wizard.test.failure.support")}
-                    </button>
+                    {SUPPORT_URL && (
+                      <button
+                        onClick={() => window.open(SUPPORT_URL, "_blank")}
+                        className="inline-flex items-center gap-2 px-6 py-3 border-2 border-danger-border text-danger-text rounded-2xl text-sm font-bold hover:bg-danger-bg transition active:scale-95"
+                      >
+                        <Headphones className="h-4 w-4" />
+                        {t("sync.config.wizard.test.failure.support")}
+                      </button>
+                    )}
                   </div>
                 </>
               )}

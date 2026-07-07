@@ -64,7 +64,13 @@ router.put("/:docType", requirePagePermission("settings", "edit"), (req, res) =>
     }
     const db = getDb();
     ensureTable(db);
-    const settings = JSON.stringify(normalizeLayout(req.body || {}).settings);
+    // Merge incoming with existing so partial patches (e.g. paper_size
+    // from the settings panel) never nuke full saves (layout, show_*
+    // flags, presets) written by the Print Studio.
+    const existing = db.prepare("SELECT settings FROM print_settings_per_doc WHERE doc_type = ?").get(docType);
+    const existingSettings = existing ? safeParseSettings(existing.settings) : {};
+    const merged = { ...existingSettings, ...(req.body || {}) };
+    const settings = JSON.stringify(normalizeLayout(merged).settings);
     db.prepare(`
       INSERT INTO print_settings_per_doc (doc_type, settings) VALUES (?, ?)
       ON CONFLICT(doc_type) DO UPDATE SET settings = excluded.settings

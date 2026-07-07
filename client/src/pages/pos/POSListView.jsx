@@ -21,6 +21,7 @@ import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useAuthStore } from "../../stores/authStore";
 import DataGrid from "../../components/ui/DataGrid";
 import PanelEdgeRail from "./parts/PanelEdgeRail";
 import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
@@ -491,13 +492,19 @@ export default function POSListView({ vm }) {
           {/* Customer Card */}
           <div className="shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</h3>
+                {!customer?.id && (
+                  vm.walkInSet && vm.waLeadPhone ? (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black">🚶 عميل نقدي</span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-black">بيع نقدي</span>
+                  )
+                )}
+              </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setQuickAddOpen(true)} title="إضافة رقم واتساب سريع" className="flex h-6 items-center gap-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors px-2 text-[10px] font-black">
-                  <span>📱</span> رقم سريع
-                </button>
-                <button onClick={() => setCustomerCreateOpen(true)} title="إنشاء عميل جديد" className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
+                <button onClick={() => setCustomerCreateOpen(true)} title="إنشاء حساب عميل جديد (برصيد وسجل مشتريات)" className="flex h-6 items-center gap-1 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors px-2 text-[10px] font-black">
+                  <Plus className="h-3.5 w-3.5" /> عميل جديد
                 </button>
                 {customer && customer.id && (
                   <button onClick={() => { setCustomer(null); setCustomerQuery(""); setPaymentType("cash"); }}
@@ -507,6 +514,7 @@ export default function POSListView({ vm }) {
                 )}
               </div>
             </div>
+            {!(vm.walkInSet && vm.waLeadPhone) && (
             <div className="relative z-[70]">
               <input ref={customerInputRef} type="text" value={customerQuery}
                 placeholder={customer?.id ? customer.name : `ابحث عن عميل... ${shortcutLabel("pos.focusCustomer")}`}
@@ -525,6 +533,7 @@ export default function POSListView({ vm }) {
                 </div>
               )}
             </div>
+            )}
             {customer?.id && (
               <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
@@ -535,7 +544,7 @@ export default function POSListView({ vm }) {
                 </button>
               </div>
             )}
-            {!customer?.id && customers.length > 0 && (
+            {!customer?.id && !(vm.walkInSet && vm.waLeadPhone) && customers.length > 0 && (
               <div className="mt-2.5">
                 <div className="text-[11px] font-bold text-slate-400 mb-1.5">اختيار سريع:</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -548,14 +557,59 @@ export default function POSListView({ vm }) {
               </div>
             )}
             {!customer?.id && (
-              <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-green-100 bg-green-50/50 px-2.5 py-1.5">
-                <span className="text-sm shrink-0">📱</span>
-                <input type="tel" dir="ltr" value={vm.waLeadPhone}
-                  onChange={(e) => vm.setWaLeadPhone(e.target.value)}
-                  placeholder="واتساب (اختياري) — يُحفظ مع البيع"
-                  className="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-slate-700 outline-none placeholder:text-green-600/60 placeholder:font-normal text-right"
-                />
-              </div>
+              vm.walkInSet && vm.waLeadPhone ? (
+                /* Committed walk-in customer — replaces the customer search until removed */
+                <div className="mt-2.5 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-base">🚶</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-emerald-800 truncate">{vm.waLeadName || "عميل نقدي"}</p>
+                      <p className="text-[11px] font-bold text-emerald-600 font-mono" dir="ltr">{vm.waLeadPhone}</p>
+                    </div>
+                    <button onClick={() => vm.setWalkInSet(false)} title="تعديل البيانات"
+                      className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
+                      تعديل
+                    </button>
+                    <button onClick={() => { vm.setWaLeadPhone(""); vm.setWaLeadName(""); vm.setWalkInSet(false); }}
+                      title="إزالة العميل النقدي والعودة لاختيار عميل"
+                      className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] font-black text-emerald-600">
+                    ✓ سيُحفظ الرقم كجهة تسويق عند حفظ الفاتورة — لا يُنشئ حساب عميل
+                  </p>
+                </div>
+              ) : (
+                /* Optional walk-in capture — confirm to lock it in */
+                <div className="mt-2.5 rounded-xl border border-emerald-200/70 bg-gradient-to-l from-emerald-50/70 to-green-50/30 overflow-hidden">
+                  <div className="px-2.5 pt-2">
+                    <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-700">
+                      <span className="text-xs">📱</span> بيع لعميل بدون حساب؟ سجّل رقمه (اختياري)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2">
+                    <input type="tel" dir="ltr" value={vm.waLeadPhone}
+                      onChange={(e) => vm.setWaLeadPhone(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && vm.waLeadPhone.replace(/\D/g, "").length >= 10) vm.setWalkInSet(true); }}
+                      placeholder="01xxxxxxxxx"
+                      className="w-[38%] rounded-lg border border-emerald-200 bg-white/80 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-emerald-600/40"
+                    />
+                    <input type="text" value={vm.waLeadName}
+                      onChange={(e) => vm.setWaLeadName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && vm.waLeadPhone.replace(/\D/g, "").length >= 10) vm.setWalkInSet(true); }}
+                      placeholder="الاسم (اختياري)"
+                      className="flex-1 min-w-0 rounded-lg border border-emerald-100 bg-white/60 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-slate-400"
+                    />
+                    <button onClick={() => vm.setWalkInSet(true)}
+                      disabled={vm.waLeadPhone.replace(/\D/g, "").length < 10}
+                      title="اعتماد كعميل نقدي لهذه الفاتورة"
+                      className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-black text-white hover:bg-emerald-700 disabled:opacity-40 transition-all active:scale-95">
+                      تأكيد
+                    </button>
+                  </div>
+                </div>
+              )
             )}
           </div>
 
@@ -1466,7 +1520,10 @@ export default function POSListView({ vm }) {
         invoice={{
           invoice_no: docNo || invoiceNumber, created_at: new Date().toISOString(),
           customer_name: customer?.name,
-          lines: lines.map(l => ({ item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, discount_amount: l.line_discount || 0, unit_name: l.unit_name || "", code: l.code || "" })),
+          walk_in_phone: !customer?.id && vm.waLeadPhone.trim() ? vm.waLeadPhone.trim() : null,
+          walk_in_name: !customer?.id && vm.waLeadPhone.trim() ? (vm.waLeadName.trim() || null) : null,
+          cashier_name: user?.name || "",
+          lines: lines.map(l => ({ ...l, item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, discount_amount: l.line_discount || 0, unit_name: l.unit_name || "", code: l.code || "" })),
           payments: paymentType === "multi" ? [
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
             ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
@@ -1478,6 +1535,7 @@ export default function POSListView({ vm }) {
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
           increase: Number(increase || 0),
+          subtotal: totals.subtotal || totals.total || 0,
           total: totals.total,
           tax_enabled: taxCalc.taxAmount > 0 ? 1 : 0,
           tax_amount: taxCalc.taxAmount,

@@ -5,14 +5,18 @@ import { resolveDailyNo } from "./dailySequence";
 // Order-ticket style: a huge, unmissable number for kitchen/counter tickets.
 // props.source: "doc" (full document number, default) | "daily" (the daily
 // sequence that starts at 1 and resets each day — great for order tickets).
-export default function OrderNumberBlock({ invoice = {}, props = {}, family }) {
-  const number = (props.source === "daily") ? resolveDailyNo(invoice) : resolveDocNo(invoice);
-  if (number == null || number === "") return null;
+export default function OrderNumberBlock({ invoice = {}, props = {}, family, editing }) {
+  const isDailySource = props.source === "daily";
+  const rawNumber = isDailySource ? resolveDailyNo(invoice) : resolveDocNo(invoice);
+  // Realistic mock: daily order ticket number vs full document reference
+  const number = (rawNumber != null && rawNumber !== "") ? rawNumber
+    : (editing ? (isDailySource ? "42" : "INV-2025-00847") : "");
+  if (!number && number !== 0) return null;
 
   const fontSize = props.fontSize != null ? props.fontSize : 34;
-  const label = props.label !== undefined ? props.label : "رقم الطلب";
+  const label = props.label !== undefined ? props.label : (isDailySource ? "رقم الطلب" : "رقم المستند");
 
-  const daily = props.source === "daily" ? { "data-daily-no": "1" } : {};
+  const daily = isDailySource ? { "data-daily-no": "1" } : {};
   return (
     <div {...daily} style={{ textAlign: "center", margin: family === "page" ? "4mm 0" : "3mm 0" }}>
       {label ? (

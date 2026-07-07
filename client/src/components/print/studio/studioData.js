@@ -21,16 +21,17 @@ export function pageSizeStrFor(size) {
 // therefore fully designable. The rest print via dedicated template
 // components that only honor flat settings (fonts, header/footer, toggles).
 export const BLOCK_DOCS = new Set([
-  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
+  "pos_receipt", "purchase_order", "sales_return",
   "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+  "bank_statement", "ajal_statement", "ajal_schedule", "ajal_full_statement",
+  "cheque_register", "payment_methods_report", "daily_treasury", "reports_generic",
 ]);
 
 // Scope catalog shown in the Studio switcher. `_global` is the shared design
 // every doc type inherits unless it overrides a family layout.
 export const STUDIO_SCOPES = [
   { key: "_global",                label: "التصميم العام",         group: "عام" },
-  { key: "pos_receipt",            label: "إيصال نقطة البيع",      group: "مبيعات" },
-  { key: "sales_invoice",          label: "فاتورة مبيعات",         group: "مبيعات" },
+  { key: "pos_receipt",            label: "فاتورة / إيصال المبيعات", group: "مبيعات" },
   { key: "sales_return",           label: "مرتجع مبيعات",          group: "مبيعات" },
   { key: "quotation",              label: "عرض سعر",               group: "مبيعات" },
   { key: "payment_receipt",        label: "إيصال دفع",             group: "مبيعات" },
@@ -44,14 +45,1342 @@ export const STUDIO_SCOPES = [
   { key: "cheque_register",        label: "سجل شيكات",             group: "تقارير" },
   { key: "daily_treasury",         label: "تقرير الخزينة",         group: "تقارير" },
   { key: "payment_methods_report", label: "تقرير وسائل الدفع",     group: "تقارير" },
-  { key: "reports_generic",        label: "قوالب تقارير (عام)",    group: "تقارير" },
+  { key: "reports_generic",        label: "إعدادات طباعة التقارير", group: "تقارير" },
 ];
 
 export function scopeLabel(key) {
   return (STUDIO_SCOPES.find((s) => s.key === key) || {}).label || key;
 }
 
-// ── sample invoices for the canvas (block docs) ─────────────────────────────
+// ── Template-doc presets ────────────────────────────────────────────────────
+// Each preset is a complete flat-settings snapshot that transforms every
+// template component. Properties map 1-to-1 to the inspector controls.
+export const TEMPLATE_PRESETS = [
+  {
+    id: "professional_dark",
+    label: "احترافي داكن",
+    family: "page",
+    isTemplate: true,
+    tags: ["classic", "dark"],
+    flat: {
+      accent_color:        "#1e293b",
+      header_style:        "band",
+      print_font:          "Cairo",
+      item_font_size:      11,
+      page_padding:        16,
+      table_header_style:  "filled",
+      table_border:        "rows",
+      table_zebra:         true,
+      table_row_pad:       7,
+    },
+  },
+  {
+    id: "elegant_violet",
+    label: "أنيق بنفسجي",
+    family: "page",
+    isTemplate: true,
+    tags: ["elegant", "modern"],
+    flat: {
+      accent_color:        "#7c3aed",
+      header_style:        "strip",
+      print_font:          "Tajawal",
+      item_font_size:      11,
+      page_padding:        16,
+      table_header_style:  "filled",
+      table_border:        "rows",
+      table_zebra:         true,
+      table_row_pad:       7,
+    },
+  },
+  {
+    id: "corporate_navy",
+    label: "أعمال أزرق",
+    family: "page",
+    isTemplate: true,
+    tags: ["formal", "classic"],
+    flat: {
+      accent_color:        "#1e40af",
+      header_style:        "classic",
+      print_font:          "Cairo",
+      item_font_size:      11,
+      page_padding:        20,
+      table_header_style:  "light",
+      table_border:        "grid",
+      table_zebra:         false,
+      table_row_pad:       8,
+    },
+  },
+  {
+    id: "emerald_modern",
+    label: "زمردي عصري",
+    family: "page",
+    isTemplate: true,
+    tags: ["modern", "simple"],
+    flat: {
+      accent_color:        "#059669",
+      header_style:        "band",
+      print_font:          "Tajawal",
+      item_font_size:      11,
+      page_padding:        14,
+      table_header_style:  "filled",
+      table_border:        "rows",
+      table_zebra:         true,
+      table_row_pad:       6,
+    },
+  },
+  {
+    id: "warm_amber",
+    label: "برتقالي دافئ",
+    family: "page",
+    isTemplate: true,
+    tags: ["elegant", "warm"],
+    flat: {
+      accent_color:        "#b45309",
+      header_style:        "strip",
+      print_font:          "Cairo",
+      item_font_size:      11,
+      page_padding:        16,
+      table_header_style:  "light",
+      table_border:        "rows",
+      table_zebra:         true,
+      table_row_pad:       7,
+    },
+  },
+  {
+    id: "minimal_slate",
+    label: "مبسّط رمادي",
+    family: "page",
+    isTemplate: true,
+    tags: ["minimal", "simple"],
+    flat: {
+      accent_color:        "#475569",
+      header_style:        "minimal",
+      print_font:          "Cairo",
+      item_font_size:      10,
+      page_padding:        20,
+      table_header_style:  "line",
+      table_border:        "rows",
+      table_zebra:         false,
+      table_row_pad:       9,
+    },
+  },
+  {
+    id: "deep_crimson",
+    label: "قرمزي رسمي",
+    family: "page",
+    isTemplate: true,
+    tags: ["formal", "classic"],
+    flat: {
+      accent_color:        "#9f1239",
+      header_style:        "band",
+      print_font:          "Cairo",
+      item_font_size:      11,
+      page_padding:        16,
+      table_header_style:  "filled",
+      table_border:        "grid",
+      table_zebra:         false,
+      table_row_pad:       7,
+    },
+  },
+];
+
+// Report scope-specific custom presets with target block columns and ordering
+export const SCOPE_PRESETS = {
+  bank_statement: [
+    {
+      id: "bank_classic",
+      label: "كشف كلاسيكي رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#1e40af",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "created_at", label: "تاريخ الحركة", visible: true, align: "right" },
+              { key: "type", label: "نوع العملية", visible: true, align: "center" },
+              { key: "reference", label: "رقم المرجع", visible: true, align: "center" },
+              { key: "notes", label: "البيان / ملاحظات", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+              { key: "reconciled", label: "حالة التسوية", visible: true, align: "center" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "bank_modern",
+      label: "كشف حركات عصري (Zebra)",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#1e293b", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#0f172a",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "created_at", label: "التاريخ", visible: true, align: "right" },
+              { key: "type", label: "النوع", visible: true, align: "center" },
+              { key: "notes", label: "ملاحظات الحركة", visible: true, align: "right" },
+              { key: "amount", label: "القيمة المالية", visible: true, align: "left" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "bank_minimal",
+      label: "سجل مالي بسيط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "bank_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "created_at", label: "التاريخ", visible: true, align: "right" },
+              { key: "type", label: "النوع", visible: true, align: "center" },
+              { key: "notes", label: "ملاحظات", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "bank_centered",
+      label: "كشف حركات متمركز فخم",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#059669",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "created_at", label: "تاريخ الحركة", visible: true, align: "right" },
+              { key: "notes", label: "تفاصيل المعاملة البنكية", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المالي", visible: true, align: "left" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "bank_boxed",
+      label: "كشف حساب شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["bank_statement_metrics", "report_table", "footer_text"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#6d28d9",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "created_at", label: "التاريخ", visible: true, align: "right" },
+              { key: "type", label: "النوع", visible: true, align: "center" },
+              { key: "notes", label: "البيان والوصف", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ الإجمالي", visible: true, align: "left" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "bank_strip",
+      label: "سجل جانبي مقسم (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["bank_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "created_at", label: "التاريخ", visible: true, align: "right" },
+              { key: "notes", label: "البيان", visible: true, align: "right" },
+              { key: "amount", label: "القيمة ج.م", visible: true, align: "left" },
+            ]
+          }
+        }
+      }
+    }
+  ],
+  ajal_statement: [
+    {
+      id: "ajal_official",
+      label: "سند مطالبة مالي رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#7c3aed",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "payment_date", label: "تاريخ الدفعة", visible: true, align: "right" },
+              { key: "method_name", label: "طريقة السداد", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ المدفوع", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_minimal",
+      label: "إشعار مديونية بسيط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "simple"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "payment_date", label: "التاريخ", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ ج.م", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_modern",
+      label: "سجل سداد عصري",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#1d4ed8", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#1d4ed8",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "payment_date", label: "تاريخ السداد", visible: true, align: "right" },
+              { key: "method_name", label: "الوسيلة", visible: true, align: "center" },
+              { key: "amount", label: "القيمة المدفوعة", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_centered",
+      label: "كشف مطالبة متمركز أنيق",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#d97706", print_font: "Cairo", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#d97706",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "payment_date", label: "التاريخ", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المستلم", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_boxed",
+      label: "إشعار مطالبة شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#dc2626", print_font: "Tajawal", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#dc2626",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "payment_date", label: "تاريخ الحركة", visible: true, align: "right" },
+              { key: "method_name", label: "الوسيلة المستعملة", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ المدفوع", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_bilingual",
+      label: "كشف سداد جانبي (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#059669", print_font: "Cairo", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["ajal_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "payment_date", label: "التاريخ", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المقبوض ج.م", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  ajal_schedule: [
+    {
+      id: "schedule_classic",
+      label: "جدول أقساط رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#0284c7", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#0284c7",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "installment_no", label: "القسط #", visible: true, align: "center" },
+              { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "right" },
+              { key: "amount", label: "قيمة القسط", visible: true, align: "left" },
+              { key: "status", label: "حالة السداد", visible: true, align: "center" },
+              { key: "signature", label: "توقيع العميل المستلم", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "schedule_simple",
+      label: "مستند أقساط مبسط",
+      family: "page",
+      isTemplate: true,
+      tags: ["simple", "minimal"],
+      flat: { accent_color: "#1e293b", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "ajal_party", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "installment_no", label: "قسط #", visible: true, align: "center" },
+              { key: "due_date", label: "التاريخ", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+              { key: "status", label: "الحالة", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "schedule_warn",
+      label: "جدول استحقاق منذر",
+      family: "page",
+      isTemplate: true,
+      tags: ["formal", "classic"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#dc2626",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "installment_no", label: "رقم القسط", visible: true, align: "center" },
+              { key: "due_date", label: "تاريخ الاستحقاق النهائي", visible: true, align: "right" },
+              { key: "amount", label: "المستحق دفعه", visible: true, align: "left" },
+              { key: "status", label: "الحالة الحالية", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "schedule_centered",
+      label: "جدول أقساط متمركز عصري",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#059669",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "installment_no", label: "القسط", visible: true, align: "center" },
+              { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المطلوب", visible: true, align: "left" },
+              { key: "status", label: "حالة السداد", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "schedule_boxed",
+      label: "جدول التزامات شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["ajal_schedule_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#6d28d9",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "installment_no", label: "رقم القسط", visible: true, align: "center" },
+              { key: "due_date", label: "الاستحقاق", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+              { key: "status", label: "الحالة", visible: true, align: "center" },
+              { key: "signature", label: "التوقيع", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "schedule_elegant",
+      label: "بيان أقساط جانبي (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["ajal_schedule_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "installment_no", label: "القسط", visible: true, align: "center" },
+              { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "right" },
+              { key: "amount", label: "القيمة الكلية ج.م", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  daily_treasury: [
+    {
+      id: "treasury_closing",
+      label: "تقرير إغلاق الوردية المفصل",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#0f172a", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "customer", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#0f172a",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "description", label: "بيان الحركة", visible: true, align: "right" },
+              { key: "type", label: "الحالة", visible: true, align: "center" },
+              { key: "method", label: "الوسيلة", visible: true, align: "center" },
+              { key: "amount", label: "القيمة المالية", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "treasury_simple",
+      label: "كشف حركة الصندوق المبسط",
+      family: "page",
+      isTemplate: true,
+      tags: ["simple", "modern"],
+      flat: { accent_color: "#0891b2", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "daily_treasury_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "description", label: "تفاصيل العملية", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "treasury_audit",
+      label: "يومية مالي كلاسيكي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#800000", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#800000",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "description", label: "البيان", visible: true, align: "right" },
+              { key: "amount", label: "القيمة", visible: true, align: "left" },
+              { key: "type", label: "نوع المعاملة", visible: true, align: "center" },
+              { key: "method", label: "طريقة الدفع", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "treasury_centered",
+      label: "حركة الخزينة متمركزة أنيقة",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#059669",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "description", label: "تفاصيل المعاملة", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المالي", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "treasury_boxed",
+      label: "يومية خزينة شبكية (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#6d28d9",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "description", label: "بيان الحركة المالية", visible: true, align: "right" },
+              { key: "type", label: "نوعها", visible: true, align: "center" },
+              { key: "method", label: "طريقة السداد", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "treasury_kpi_only",
+      label: "يومية خزينة جانبية (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#047857", print_font: "Tajawal", item_font_size: 12, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            columns: [
+              { key: "description", label: "الحركة", visible: true, align: "right" },
+              { key: "amount", label: "القيمة", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  cheque_register: [
+    {
+      id: "cheques_classic",
+      label: "سجل شيكات تجاري رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e3a8a", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#1e3a8a",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "البنك المسحوب عليه", visible: true, align: "center" },
+              { key: "drawer_name", label: "الساحب / المستفيد", visible: true, align: "right" },
+              { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "center" },
+              { key: "amount", label: "القيمة", visible: true, align: "left" },
+              { key: "status", label: "حالة الشيك", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "cheques_simple",
+      label: "كشف استحقاق شيكات بسيط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "simple"],
+      flat: { accent_color: "#4f46e5", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "البنك", visible: true, align: "center" },
+              { key: "due_date", label: "الاستحقاق", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "cheques_audit",
+      label: "قائمة تدقيق الشيكات",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#374151", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#374151",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "البنك", visible: true, align: "center" },
+              { key: "due_date", label: "تاريخ الاستحقاق", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ ج.م", visible: true, align: "left" },
+              { key: "status", label: "الحالة", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "cheques_centered",
+      label: "سجل شيكات متمركز حديث",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#d97706",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "البنك", visible: true, align: "center" },
+              { key: "drawer_name", label: "الساحب / العميل", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "cheques_boxed",
+      label: "حافظة شيكات شبكية (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["cheque_register_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#dc2626",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "البنك", visible: true, align: "center" },
+              { key: "due_date", label: "الاستحقاق", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+              { key: "status", label: "الحالة", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "cheques_minimal",
+      label: "بيان شيكات جانبي (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "cheque_no", label: "رقم الشيك", visible: true, align: "right" },
+              { key: "bank_name", label: "اسم البنك", visible: true, align: "center" },
+              { key: "amount", label: "القيمة المالية الكلية", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  payment_methods_report: [
+    {
+      id: "pay_methods_classic",
+      label: "تقرير بوابات الدفع والمحافظ",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#6d28d9",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "doc_no", label: "رقم الحركة", visible: true, align: "center" },
+              { key: "doc_type_label", label: "نوع الحركة", visible: true, align: "center" },
+              { key: "direction", label: "الاتجاه", visible: true, align: "center" },
+              { key: "party", label: "الطرف الثاني", visible: true, align: "right" },
+              { key: "method_name", label: "الوسيلة", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" },
+              { key: "created_at", label: "التاريخ", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "pay_methods_modern",
+      label: "مخطط مقبوضات عصري",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#059669",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "doc_no", label: "كود المعاملة", visible: true, align: "center" },
+              { key: "doc_type_label", label: "نوع المستند", visible: true, align: "center" },
+              { key: "direction", label: "الاتجاه", visible: true, align: "center" },
+              { key: "method_name", label: "وسيلة السداد", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ ج.م", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "pay_methods_minimal",
+      label: "تقرير بوابات مبسط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "payment_methods_report_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "method_name", label: "البوابة / المحفظة", visible: true, align: "center" },
+              { key: "amount", label: "صافي الرصيد الحالي", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "pay_methods_centered",
+      label: "تقرير بوابات متمركز أنيق",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#1e3a8a", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#1e3a8a",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "doc_no", label: "رقم المعاملة", visible: true, align: "center" },
+              { key: "party", label: "المستلم / الطرف", visible: true, align: "right" },
+              { key: "amount", label: "المبلغ المالي", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "pay_methods_boxed",
+      label: "بيان بوابات شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#dc2626",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "doc_no", label: "رقم الحركة", visible: true, align: "center" },
+              { key: "doc_type_label", label: "نوع المستند", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ ج.م", visible: true, align: "left" },
+              { key: "method_name", label: "البوابة", visible: true, align: "center" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "pay_methods_journal",
+      label: "يومية محافظ جانبية (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#7c3aed", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["payment_methods_report_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#7c3aed",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "doc_no", label: "رقم الحركة", visible: true, align: "center" },
+              { key: "direction", label: "الحالة", visible: true, align: "center" },
+              { key: "method_name", label: "الوسيلة", visible: true, align: "center" },
+              { key: "amount", label: "المبلغ", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  ajal_full_statement: [
+    {
+      id: "ajal_full_classic",
+      label: "التقرير الشامل لأرصدة الديون",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#9f1239", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#9f1239",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "customer_name", label: "اسم العميل", visible: true, align: "right" },
+              { key: "original_amount", label: "إجمالي الدين", visible: true, align: "left" },
+              { key: "paid", label: "المسدد الكلي", visible: true, align: "left" },
+              { key: "remaining", label: "المتبقي المستحق", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_full_modern",
+      label: "سجل الديون الكلية مخطط",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#1e3a8a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#1e3a8a",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "customer_name", label: "العميل", visible: true, align: "right" },
+              { key: "original_amount", label: "الدين الإجمالي", visible: true, align: "left" },
+              { key: "remaining", label: "المتبقي المستحق للتحصيل", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_full_minimal",
+      label: "ملخص ديون مبسط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "ajal_full_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "customer_name", label: "الاسم", visible: true, align: "right" },
+              { key: "remaining", label: "المبلغ المتبقي المستحق", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_full_centered",
+      label: "تقرير ديون متمركز أنيق",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "grid",
+            headerBg: "#059669",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "customer_name", label: "اسم العميل الكلي", visible: true, align: "right" },
+              { key: "remaining", label: "الدين المتبقي المستحق للتحصيل", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_full_boxed",
+      label: "تقرير أرصدة شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["ajal_full_statement_metrics", "report_table", "signature_lines"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#6d28d9",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "customer_name", label: "العميل", visible: true, align: "right" },
+              { key: "original_amount", label: "إجمالي الدين", visible: true, align: "left" },
+              { key: "remaining", label: "المتبقي الكلي", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "ajal_full_collection",
+      label: "كشف تحصيل جانبي (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["ajal_full_statement_metrics", "report_table"],
+        perBlock: {
+          report_table: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#d97706",
+            headerColor: "#ffffff",
+            columns: [
+              { key: "customer_name", label: "العميل", visible: true, align: "right" },
+              { key: "remaining", label: "المتبقي المستحق", visible: true, align: "left" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  reports_generic: [
+    {
+      id: "generic_classic",
+      label: "تقرير كلاسيكي رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        perBlock: {
+          report_table: { tableBorder: "grid", headerBg: "#1e40af", headerColor: "#ffffff" }
+        }
+      }
+    },
+    {
+      id: "generic_centered",
+      label: "تقرير متمركز فاخر",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "centered" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        perBlock: {
+          report_table: { tableBorder: "grid", zebra: true, headerVariant: "light" }
+        }
+      }
+    },
+    {
+      id: "generic_boxed",
+      label: "تقرير مؤطر فخم",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "boxed" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          report_table: { tableBorder: "lines", zebra: true, headerBg: "#059669", headerColor: "#ffffff" }
+        }
+      }
+    },
+    {
+      id: "generic_band",
+      label: "تقرير ترويسة عريضة",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          report_table: { tableBorder: "grid", zebra: true, headerBg: "#dc2626", headerColor: "#ffffff" }
+        }
+      }
+    },
+    {
+      id: "generic_strip",
+      label: "تقرير بيان بسيط عريض",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal" },
+      layout: {
+        order: ["doc_title", "doc_date", "report_table"],
+        perBlock: {
+          report_table: { tableBorder: "none", zebra: false, headerVariant: "light" }
+        }
+      }
+    },
+    {
+      id: "generic_minimal",
+      label: "تقرير مبسّط حديث",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "modern"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
+      layout: {
+        order: ["doc_title", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          report_table: { tableBorder: "lines", zebra: true, headerVariant: "light" }
+        }
+      }
+    }
+  ]
+};
+
+const extraThemes = [
+  {
+    idSuffix: "executive_navy",
+    label: "الهيئة الإدارية - أزرق داكن (Executive)",
+    flat: { accent_color: "#1e3a8a", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+    table: { tableBorder: "grid", zebra: true }
+  },
+  {
+    idSuffix: "compact_crimson",
+    label: "سجل مالي متراص - قرمزي",
+    flat: { accent_color: "#dc2626", print_font: "Tajawal", item_font_size: 9, header_style: "minimal", page_layout_type: "standard" },
+    table: { tableBorder: "lines", zebra: false }
+  },
+  {
+    idSuffix: "split_teal",
+    label: "كشف الأجنحة الجانبي - تركواز (Sidebar)",
+    flat: { accent_color: "#0d9488", print_font: "Cairo", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+    table: { tableBorder: "none", zebra: true }
+  },
+  {
+    idSuffix: "imperial_gold",
+    label: "سند مالي إمبراطوري - ذهبي",
+    flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+    table: { tableBorder: "grid", zebra: false }
+  },
+  {
+    idSuffix: "brutalist_charcoal",
+    label: "التقرير الصناعي الحاد - فحم (Executive)",
+    flat: { accent_color: "#374151", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "executive" },
+    table: { tableBorder: "grid", zebra: true }
+  },
+  {
+    idSuffix: "exec_summary_emerald",
+    label: "ملخص تنفيذي موجز - زمردي",
+    flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "boxed", page_layout_type: "standard" },
+    table: { tableBorder: "none", zebra: true }
+  },
+  {
+    idSuffix: "duotone_purple",
+    label: "بيان مالي مزدوج - بنفسجي (Sidebar)",
+    flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "sidebar" },
+    table: { tableBorder: "lines", zebra: false }
+  },
+  {
+    idSuffix: "classic_maroon",
+    label: "سجل الأوراق الكلاسيكي - عناب",
+    flat: { accent_color: "#9f1239", print_font: "Tajawal", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+    table: { tableBorder: "grid", zebra: true }
+  },
+  {
+    idSuffix: "advanced_cyan",
+    label: "تقرير تحليلات متطور - سماوي (Executive)",
+    flat: { accent_color: "#0891b2", print_font: "Cairo", item_font_size: 11, header_style: "centered", page_layout_type: "executive" },
+    table: { tableBorder: "lines", zebra: true }
+  },
+  {
+    idSuffix: "ultramin_slate",
+    label: "تقرير الحد الأدنى العصري - رمادي (Sidebar)",
+    flat: { accent_color: "#475569", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "sidebar" },
+    table: { tableBorder: "none", zebra: false }
+  }
+];
+
+// Dynamically generate the remaining 10 presets for each report type in SCOPE_PRESETS
+Object.keys(SCOPE_PRESETS).forEach((scope) => {
+  const base = SCOPE_PRESETS[scope][0];
+  if (!base) return;
+
+  extraThemes.forEach((theme) => {
+    const clonedLayout = JSON.parse(JSON.stringify(base.layout));
+    
+    if (clonedLayout.perBlock && clonedLayout.perBlock.report_table) {
+      const tableConfig = clonedLayout.perBlock.report_table;
+      tableConfig.tableBorder = theme.table.tableBorder;
+      tableConfig.zebra = theme.table.zebra;
+      tableConfig.headerBg = theme.flat.accent_color;
+      tableConfig.headerColor = "#ffffff";
+    }
+
+    SCOPE_PRESETS[scope].push({
+      id: `${scope}_${theme.idSuffix}`,
+      label: theme.label,
+      family: "page",
+      isTemplate: true,
+      tags: ["dynamic", theme.idSuffix.split("_")[0]],
+      flat: theme.flat,
+      layout: clonedLayout
+    });
+  });
+});
+
 const now = () => new Date().toISOString();
 
 const NORMAL = {
@@ -146,7 +1475,218 @@ export const TEMPLATE_MOCK = {
     totalIn: 3500, totalOut: 500,
     filters: { from: "2026-06-01", to: "2026-06-30" },
   },
+  daily_treasury: {
+    date: "2026-07-05",
+    shift_label: "وردية الصباح",
+    treasuries: [
+      { name: "الصندوق الرئيسي", opening: 5000, total_in: 8500, total_out: 3200, closing: 10300 },
+      { name: "البنك الأهلي",    opening: 15000, total_in: 2000, total_out: 500,  closing: 16500 },
+    ],
+    grand_in: 10500, grand_out: 3700, grand_closing: 26800,
+    transactions: [
+      { description: "مبيعات نقطة البيع — وردية الصباح", amount: 7500, type: "in",  method: "نقدي" },
+      { description: "تحصيل دين آجل — محمد أحمد",        amount: 1000, type: "in",  method: "شبكة" },
+      { description: "مصروفات إيجار المحل",               amount: 2000, type: "out", method: "نقدي" },
+      { description: "مصروفات فاتورة كهرباء",             amount: 500,  type: "out", method: "نقدي" },
+      { description: "إيداع بنكي",                        amount: 700,  type: "out", method: "تحويل" },
+    ],
+  },
+  ajal_full_statement: {
+    debts: [
+      { customer_name: "محمد أحمد العلي",   original_amount: 5000,  remaining: 3000,  created_at: now(), due_date: new Date(Date.now() + 15 * 86400000).toISOString(), status: "active" },
+      { customer_name: "سالم محمد الشريف",  original_amount: 8000,  remaining: 8000,  created_at: now(), due_date: new Date(Date.now() + 5  * 86400000).toISOString(), status: "overdue" },
+      { customer_name: "أحمد حسن الزهراني", original_amount: 12000, remaining: 4500,  created_at: now(), due_date: new Date(Date.now() + 30 * 86400000).toISOString(), status: "active" },
+      { customer_name: "فاطمة علي الحربي",  original_amount: 3500,  remaining: 3500,  created_at: now(), due_date: new Date(Date.now() - 3  * 86400000).toISOString(), status: "overdue" },
+    ],
+    total_original: 28500, total_remaining: 19000,
+    filters: { from: "2026-06-01", to: "2026-07-05" },
+  },
+  reports_generic: {
+    title: "تقرير المخزون الحالي",
+    subtitle: "حالة المخزون حتى 2026/07/05",
+    columns: ["الكود", "اسم الصنف", "الوحدة", "الكمية", "سعر التكلفة", "الإجمالي"],
+    rows: [
+      ["K-001", "منتج تجريبي أول",         "قطعة", "15",  "45.00",  "675.00"],
+      ["K-002", "منتج تجريبي ثاني",         "كرتون", "8",  "120.00", "960.00"],
+      ["K-003", "منتج تجريبي ثالث",         "لتر",   "30", "15.50",  "465.00"],
+      ["K-004", "منتج اسمه أطول لاختبار العرض", "قطعة", "5", "230.00", "1,150.00"],
+    ],
+    totals: { label: "إجمالي قيمة المخزون", value: "3,250.00" },
+  },
 };
+
+// ── per-sample variants for report scopes ────────────────────────────────────
+// Returns mock data shaped for the given scope, varying by sampleId so the
+// Studio sample-switcher (بيانات عادية / ٣٠ صنفاً / أسماء طويلة) actually works.
+export function templateMockBySample(scope, sampleId = "normal") {
+  const base = TEMPLATE_MOCK[scope];
+  if (!base) return base;
+
+  if (sampleId === "normal") return base;
+
+  const longNames = {
+    bank_statement: {
+      ...base,
+      transactions: [
+        { id: 1, created_at: now(), type: "deposit",  amount: 5000,  note: "إيداع نقدي من تحصيل العملاء عبر الشبكة البنكية",        balance_after: 45500 },
+        { id: 2, created_at: now(), type: "withdraw", amount: 1500,  note: "سحب مصروفات إيجار المقر الرئيسي للشركة للربع الثالث",   balance_after: 40500 },
+        { id: 3, created_at: now(), type: "deposit",  amount: 12000, note: "تحصيل دفعة من عميل مشاريع الإنشاء والتشييد المتكاملة",   balance_after: 52500 },
+        { id: 4, created_at: now(), type: "withdraw", amount: 3200,  note: "مصروفات رواتب وأجور الموظفين للفترة من 1 إلى 15 يونيو",  balance_after: 49300 },
+        { id: 5, created_at: now(), type: "deposit",  amount: 8000,  note: "تحويل وارد من حساب الفرع الثاني بالمنطقة الشرقية",       balance_after: 57300 },
+      ],
+    },
+    ajal_statement: {
+      debt: {
+        customer_name: "محمد أحمد بن عبدالله السعيد",
+        original_amount: 5000, remaining: 3000, created_at: now(),
+        payments: [
+          { id: 1, payment_date: now(), method_name: "نقدي — الصندوق الرئيسي",     amount: 1000 },
+          { id: 2, payment_date: now(), method_name: "تحويل شبكة — البنك الأهلي", amount: 1000 },
+        ],
+      },
+    },
+    ajal_schedule: {
+      debt: {
+        customer_name: "محمد أحمد بن عبدالله السعيد",
+        original_amount: 5000, remaining: 3000,
+        schedule: [
+          { id: 1, installment_no: 1, due_date: now(), amount: 1000, status: "paid" },
+          { id: 2, installment_no: 2, due_date: new Date(Date.now() + 30 * 86400000).toISOString(), amount: 1000, status: "pending" },
+          { id: 3, installment_no: 3, due_date: new Date(Date.now() + 60 * 86400000).toISOString(), amount: 1000, status: "pending" },
+        ],
+      },
+    },
+    cheque_register: {
+      rows: [
+        { id: 1, cheque_no: "CHQ-001", bank_name: "البنك الأهلي السعودي",    drawer_name: "محمد سالم بن عبدالرحمن الغامدي", due_date: now(), amount: 5000, status: "pending" },
+        { id: 2, cheque_no: "CHQ-002", bank_name: "بنك الراجحي للتمويل",     drawer_name: "أحمد علي الزهراني والشركاء",       due_date: now(), amount: 3500, status: "cleared" },
+        { id: 3, cheque_no: "CHQ-003", bank_name: "البنك العربي الوطني",     drawer_name: "سارة حسن محمد التميمي للتجارة",    due_date: now(), amount: 2000, status: "bounced" },
+      ],
+    },
+    payment_methods_report: {
+      ...base,
+      rows: [
+        { id: 1, doc_no: "INV-001", doc_type: "فاتورة مبيعات",  amount: 1500, direction: "in",  party: "محمد أحمد العلي التاجر",      method_name: "نقدي",            created_at: now() },
+        { id: 2, doc_no: "INV-002", doc_type: "فاتورة مبيعات",  amount: 2000, direction: "in",  party: "شركة سالم للتوزيع والتجارة", method_name: "شبكة - بنك الراجحي", created_at: now() },
+        { id: 3, doc_no: "EXP-001", doc_type: "مصاريف تشغيل",   amount: 500,  direction: "out", party: "مورد مستلزمات المكاتب",        method_name: "نقدي",            created_at: now() },
+      ],
+    },
+    daily_treasury: base,
+    ajal_full_statement: {
+      debts: [
+        { customer_name: "محمد أحمد عبدالله العلي الحارثي",   original_amount: 5000,  remaining: 3000,  created_at: now(), due_date: new Date(Date.now() + 15 * 86400000).toISOString(), status: "active" },
+        { customer_name: "سالم محمد إبراهيم الشريف الغامدي",  original_amount: 8000,  remaining: 8000,  created_at: now(), due_date: new Date(Date.now() + 5  * 86400000).toISOString(), status: "overdue" },
+        { customer_name: "أحمد حسن علي الزهراني المدني",       original_amount: 12000, remaining: 4500,  created_at: now(), due_date: new Date(Date.now() + 30 * 86400000).toISOString(), status: "active" },
+        { customer_name: "فاطمة علي محمد الحربي الرشيدي",      original_amount: 3500,  remaining: 3500,  created_at: now(), due_date: new Date(Date.now() - 3  * 86400000).toISOString(), status: "overdue" },
+      ],
+      total_original: 28500, total_remaining: 19000,
+      filters: base.filters,
+    },
+    reports_generic: {
+      ...base,
+      rows: [
+        ["K-001", "منتج تجريبي أول ذو اسم مطول جداً للاختبار",     "قطعة", "15",  "45.00",  "675.00"],
+        ["K-002", "منتج تجريبي ثاني وصف تفصيلي وطويل جداً",         "كرتون", "8",  "120.00", "960.00"],
+        ["K-003", "منتج تجريبي ثالث واسمه اطول من اللازم اصلاً",    "لتر",   "30", "15.50",  "465.00"],
+        ["K-004", "اسم منتج تجريبي رابع طويل جداً ليختبر العرض هنا", "قطعة",  "5",  "230.00", "1,150.00"],
+      ],
+    },
+  };
+
+  const stress = {
+    bank_statement: {
+      ...base,
+      transactions: Array.from({ length: 20 }, (_, i) => ({
+        id: i + 1,
+        created_at: now(),
+        type: i % 3 === 0 ? "withdraw" : "deposit",
+        amount: (i + 1) * 500 + 200,
+        note: `معاملة بنكية ${i + 1}`,
+        balance_after: 45500 + i * 300,
+      })),
+    },
+    ajal_statement: {
+      debt: {
+        customer_name: "محمد أحمد",
+        original_amount: 50000, remaining: 35000, created_at: now(),
+        payments: Array.from({ length: 15 }, (_, i) => ({
+          id: i + 1, payment_date: now(),
+          method_name: i % 2 === 0 ? "نقدي" : "شبكة",
+          amount: 1000,
+        })),
+      },
+    },
+    ajal_schedule: {
+      debt: {
+        customer_name: "محمد أحمد",
+        original_amount: 30000, remaining: 25000,
+        schedule: Array.from({ length: 30 }, (_, i) => ({
+          id: i + 1, installment_no: i + 1,
+          due_date: new Date(Date.now() + i * 30 * 86400000).toISOString(),
+          amount: 1000,
+          status: i < 5 ? "paid" : "pending",
+        })),
+      },
+    },
+    cheque_register: {
+      rows: Array.from({ length: 20 }, (_, i) => ({
+        id: i + 1, cheque_no: `CHQ-${String(i + 1).padStart(3, "0")}`,
+        bank_name: ["البنك الأهلي", "بنك مصر", "البنك العربي", "بنك الراجحي"][i % 4],
+        drawer_name: `عميل ${i + 1}`,
+        due_date: now(), amount: (i + 1) * 500, status: ["pending", "cleared", "bounced"][i % 3],
+      })),
+    },
+    payment_methods_report: {
+      ...base,
+      rows: Array.from({ length: 25 }, (_, i) => ({
+        id: i + 1,
+        doc_no: `DOC-${String(i + 1).padStart(3, "0")}`,
+        doc_type: i % 2 === 0 ? "مبيعات" : "مصروفات",
+        amount: (i + 1) * 300 + 100,
+        direction: i % 3 === 0 ? "out" : "in",
+        party: `طرف ${i + 1}`,
+        method_name: ["نقدي", "شبكة", "تحويل", "شيك"][i % 4],
+        created_at: now(),
+      })),
+      totalIn: 18500, totalOut: 3700,
+    },
+    daily_treasury: {
+      ...base,
+      transactions: Array.from({ length: 20 }, (_, i) => ({
+        description: `حركة ${i + 1} — تفاصيل المعاملة`,
+        amount: (i + 1) * 200 + 100,
+        type: i % 3 === 0 ? "out" : "in",
+        method: ["نقدي", "شبكة", "تحويل"][i % 3],
+      })),
+    },
+    ajal_full_statement: {
+      debts: Array.from({ length: 30 }, (_, i) => ({
+        customer_name: `عميل ${i + 1}`,
+        original_amount: (i + 1) * 500 + 1000, remaining: (i + 1) * 200 + 500,
+        created_at: now(),
+        due_date: new Date(Date.now() + (i - 5) * 5 * 86400000).toISOString(),
+        status: i % 3 === 0 ? "overdue" : "active",
+      })),
+      total_original: 255000, total_remaining: 121500,
+      filters: base.filters,
+    },
+    reports_generic: {
+      ...base,
+      rows: Array.from({ length: 30 }, (_, i) => [
+        `K-${String(i + 1).padStart(3, "0")}`,
+        `منتج تجريبي ${i + 1}`,
+        ["قطعة", "كرتون", "لتر"][i % 3],
+        String(Math.floor(Math.random() * 50) + 1),
+        (10 + i * 5).toFixed(2),
+        ((10 + i * 5) * (Math.floor(Math.random() * 50) + 1)).toFixed(2),
+      ]),
+    },
+  };
+
+  if (sampleId === "stress") return stress[scope] || base;
+  if (sampleId === "long")   return longNames[scope] || base;
+  return base;
+}
 
 // Column catalog the items-table editor can add from. Keys must exist in
 // ItemsTableBlock's VALUE map — anything else would silently render nothing.

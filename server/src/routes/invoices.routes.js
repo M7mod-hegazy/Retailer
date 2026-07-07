@@ -33,8 +33,8 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
       params.push(day);
     }
     if (search) {
-      conditions.push("(c.name LIKE ? OR i.invoice_no LIKE ?)");
-      params.push(`%${search}%`, `%${search}%`);
+      conditions.push("(c.name LIKE ? OR i.invoice_no LIKE ? OR i.walk_in_phone LIKE ? OR i.walk_in_name LIKE ?)");
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (customer_id) { conditions.push("i.customer_id = ?"); params.push(customer_id); }
     if (user_id) { conditions.push("i.user_id = ?"); params.push(user_id); }
@@ -47,6 +47,7 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
              (SELECT invoice_no FROM invoices WHERE id = i.amendment_of) AS amendment_of_no,
              (SELECT invoice_no FROM invoices WHERE id = i.amended_by)   AS amended_by_no,
              c.name AS customer_name, c.phone AS customer_phone,
+             i.walk_in_phone, i.walk_in_name,
              e.name AS seller_name,
              COALESCE(NULLIF(u.full_name, ''), u.username) AS cancelled_by_name,
              COALESCE(NULLIF(u2.full_name, ''), u2.username) AS created_by_username,
@@ -396,6 +397,7 @@ router.get("/items-search", requirePagePermission("pos", "view"), (req, res, nex
     const rows = db.prepare(`
       SELECT il.id AS line_id, il.invoice_id, i.invoice_no, i.created_at, i.status,
              i.customer_id, c.name AS customer_name,
+             i.walk_in_phone, i.walk_in_name,
              i.payment_type AS payment_method, i.user_id,
              COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
              il.item_id, it.name AS item_name, it.code AS item_code, it.barcode, it.purchase_price,

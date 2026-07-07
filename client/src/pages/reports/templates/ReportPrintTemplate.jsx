@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import AccountStatementLedger from "./AccountStatementLedger";
 import { formatNumber } from "../../../utils/currency";
 import { resolveImageUrl } from "../../../utils/resolveImageUrl";
@@ -156,7 +156,7 @@ export default function ReportPrintTemplate({
 
   const pageSizeMM = getPageSizeMM(template);
   const pageWidthMM = pageSizeMM.width;
-  const marginMM = 2;
+  const marginMM = parseFontSize(settings.page_padding, 2);
   const marginTopMM = 2;
 
   const printFont = settings.print_font || "sans-serif";
@@ -174,6 +174,39 @@ export default function ReportPrintTemplate({
   const headerText = settings.receipt_header || "";
   const footerText = settings.receipt_footer || "";
   const customBlocks = settings.custom_text_blocks;
+
+  // ── Preset-driven table style knobs ──────────────────────────────────────────
+  // table_zebra: true → alternate row shading; false → plain white rows
+  const tableZebra = settings.table_zebra !== false;
+  // table_border: "grid" → full cell borders; "rows" → row-only; "none" → no borders
+  const tableBorder = settings.table_border || "rows";
+  // table_header_style: "filled" (accent bg + white text), "light" (tint), "line" (border only), "minimal" (bold text, no bg)
+  const tableHeaderStyle = settings.table_header_style || "filled";
+  // table_row_pad: per-cell padding in px
+  const tableRowPad = parseFontSize(settings.table_row_pad, 3);
+  // header_style for the report title block: "band" | "strip" | "classic" | "minimal"
+  const headerStyle = settings.header_style || "band";
+
+  // Derived styles from the knobs
+  const accentLight = accent + "18"; // ~10% opacity tint for light header style
+  const theadBg =
+    tableHeaderStyle === "filled"  ? accent
+    : tableHeaderStyle === "light" ? accentLight
+    : "transparent";
+  const theadColor =
+    tableHeaderStyle === "filled"  ? "#fff"
+    : tableHeaderStyle === "light" ? accent
+    : accent;
+  const theadBorderBottom =
+    tableHeaderStyle === "line" || tableHeaderStyle === "minimal"
+      ? `2px solid ${accent}`
+      : undefined;
+  const cellBorderRight =
+    tableBorder === "grid" ? `1px solid #e2e8f0` : undefined;
+  const rowBorderBottom =
+    tableBorder === "none" ? undefined : "1px solid #e2e8f0";
+  const rowBorderStyle =
+    tableBorder === "grid" || tableBorder === "rows" ? "solid" : "dashed";
 
   const customWeights = settings.columnWeights;
   const visibleColumns = useMemo(() => {
@@ -340,24 +373,47 @@ export default function ReportPrintTemplate({
       {/* Custom blocks: after_header */}
       {renderCustomBlocks(customBlocks, "after_header")}
 
-      {/* Report Title & Meta */}
+      {/* Report Title & Meta — style driven by headerStyle preset knob */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           gap: "8mm",
-          borderBottom: `2px solid ${accent}`,
-          paddingBottom: "4mm",
+          // "band": full accent band; "strip": bottom border only; "classic" / "minimal": plain
+          background:
+            headerStyle === "band" ? accent
+            : headerStyle === "strip" ? `linear-gradient(135deg, ${accent}10 0%, transparent 100%)`
+            : "transparent",
+          color: headerStyle === "band" ? "#fff" : "inherit",
+          borderBottom:
+            headerStyle === "band" ? `2px solid ${accent}`
+            : headerStyle === "strip" ? `3px solid ${accent}`
+            : `1px solid #e2e8f0`,
+          padding: headerStyle === "band" ? "4mm 4mm" : "0 0 4mm 0",
           marginBottom: "4mm",
+          borderRadius: headerStyle === "band" ? "3px" : undefined,
         }}
       >
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 900, fontSize: headerFontSize, color: accent }}>{safeText(title)}</div>
+          <div style={{
+            fontWeight: 900,
+            fontSize: headerFontSize,
+            color: headerStyle === "band" ? "#fff" : accent,
+          }}>{safeText(title)}</div>
           {subtitle ? (
-            <div style={{ marginTop: "3px", color: "#475569", fontSize: bodyFontSize }}>{safeText(subtitle)}</div>
+            <div style={{
+              marginTop: "3px",
+              color: headerStyle === "band" ? "rgba(255,255,255,0.8)" : "#475569",
+              fontSize: bodyFontSize,
+            }}>{safeText(subtitle)}</div>
           ) : null}
         </div>
-        <div style={{ textAlign: "left", color: "#64748b", fontSize: footerFontSize, minWidth: "160px" }}>
+        <div style={{
+          textAlign: "left",
+          color: headerStyle === "band" ? "rgba(255,255,255,0.85)" : "#64748b",
+          fontSize: footerFontSize,
+          minWidth: "160px",
+        }}>
           {filters?.from && filters?.to ? (
             <div style={{ marginTop: "2px" }}>
               الفترة: {safeText(filters.from)} إلى {safeText(filters.to)}
@@ -410,7 +466,7 @@ export default function ReportPrintTemplate({
           style={{
             flex: 1,
             minHeight: 0,
-            border: isThermal ? "none" : "1px solid #e2e8f0",
+            border: isThermal || tableBorder === "none" ? "none" : "1px solid #e2e8f0",
             borderRadius: isThermal ? "0" : "4px",
             overflow: "hidden",
             display: "flex",
@@ -420,7 +476,7 @@ export default function ReportPrintTemplate({
           <table
             style={{
               width: "100%",
-              borderCollapse: "collapse",
+              borderCollapse: tableBorder === "grid" ? "collapse" : "collapse",
               fontSize: tableFontSize,
               tableLayout: "fixed",
             }}
@@ -431,15 +487,20 @@ export default function ReportPrintTemplate({
               ))}
             </colgroup>
             <thead>
-              <tr style={{ background: accent, color: "#fff" }}>
+              <tr style={{
+                background: theadBg,
+                color: theadColor,
+                borderBottom: theadBorderBottom,
+              }}>
                 {visibleColumns.map((column) => (
                   <th
                     key={column.key || column.id}
                     style={{
-                      padding: isThermal ? "2px 4px" : "4px 6px",
+                      padding: isThermal ? "2px 4px" : `${tableRowPad}px 6px`,
                       textAlign: "center",
                       fontWeight: 900,
                       fontSize: tableFontSize,
+                      borderRight: cellBorderRight,
                     }}
                   >
                     {column.label || column.header}
@@ -449,12 +510,18 @@ export default function ReportPrintTemplate({
             </thead>
             <tbody ref={tbodyRef}>
               {pageRows.flatMap((row, idx) => {
+                const zebraEven = tableZebra ? "#f8fafc" : "#fff";
+                const zebraOdd = "#fff";
                 const mainRow = (
                   <tr
                     key={row?.id ?? idx}
                     style={{
-                      background: idx % 2 === 0 ? "#f8fafc" : "#fff",
-                      borderBottom: isThermal ? "1px dashed #e2e8f0" : "1px solid #e2e8f0",
+                      background: idx % 2 === 0 ? zebraEven : zebraOdd,
+                      borderBottom: isThermal
+                        ? "1px dashed #e2e8f0"
+                        : rowBorderBottom
+                          ? `1px ${rowBorderStyle} #e2e8f0`
+                          : undefined,
                     }}
                   >
                     {visibleColumns.map((column) => {
@@ -475,13 +542,11 @@ export default function ReportPrintTemplate({
                               ? `${column.type === "money" && currency ? `${currency} ` : ""}${formatNumber(value)}${column.type === "percent" ? "%" : ""}`
                               : safeText(value);
 
-                      const isTextWrap = column.type === "text" || column.type === "name" ||
-                        ["name","item_name","customer_name","supplier_name","description","label","category_name","warehouse_name","cashier","full_name"].includes(key);
                       return (
                         <td
                           key={key}
                           style={{
-                            padding: isThermal ? "2px 3px" : "3px 5px",
+                            padding: isThermal ? "2px 3px" : `${tableRowPad}px 5px`,
                             textAlign: "center",
                             color: "#0f172a",
                             fontFamily: isCode ? "monospace" : undefined,
@@ -490,6 +555,7 @@ export default function ReportPrintTemplate({
                             wordBreak: "break-word",
                             overflow: "hidden",
                             fontSize: tableFontSize,
+                            borderRight: cellBorderRight,
                           }}
                           title={String(value ?? "")}
                         >

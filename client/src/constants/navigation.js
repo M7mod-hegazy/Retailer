@@ -71,7 +71,7 @@ export const NAV_MODULES = [
     title: "إدارة النظام", id: "system", icon: ShieldCheck,
     items: [
       { path: "/reports/center", label: "مركز التقارير", icon: PieChart, pageKey: "reports" },
-      { path: "/whatsapp-crm", label: "واتساب للأعمال", icon: MessageSquare, pageKey: "whatsapp_crm" },
+      { path: "/whatsapp-crm", label: "مركز الرسائل والحملات", icon: MessageSquare, pageKey: "whatsapp_crm" },
       { path: "/definitions/users", label: "المستخدمين و الصلاحيات", icon: Fingerprint, pageKey: "users" },
       { path: "/definitions/employees", label: " الموظفين و المرتبات", icon: UsersRound, pageKey: "employees" },
       { path: "/settings", label: "الإعدادات العامة", icon: Settings, pageKey: "settings" },

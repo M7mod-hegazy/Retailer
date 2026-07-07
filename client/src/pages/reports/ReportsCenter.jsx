@@ -5,8 +5,8 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, LayoutTemplate, Percent } from "lucide-react";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
-import { CATEGORIES, SOURCES, SCOPE_OPTIONS, COST_METHODS, fmtDate, FORMAT_ICONS, FILTER_DIMENSIONS, CLASSIFICATIONS, getReportDescription } from "./reportsCenterConfig";
-import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, GhostPreviewRows, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
+import { useReportsConfig, fmtDate, getReportDescription } from "../../hooks/useReportsConfig";
+import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFeatureEnabled } from "../../hooks/useFeature";
@@ -19,7 +19,8 @@ const SOURCE_CAT_MAP = {
   "sales-returns": "sales",
   suppliers: "accounts",
   customers: "accounts",
-  employees: "audit",
+  employees: "individuals",
+  users: "individuals",
   installments: "accounts",
   items: "inventory",
   warehouses: "inventory",
@@ -28,7 +29,6 @@ const SOURCE_CAT_MAP = {
   treasury: "treasury",
   "payment-flow": "treasury",
   "owner-statement": "accounts",
-  cheques: "treasury",
   "profit-loader": "profitability",
   "net-profit": "profitability",
   expiry: "inventory",
@@ -76,6 +76,7 @@ const CLS_ARABIC = {
   "cls_emp_advances": "سلف الموظفين",
   "cls_emp_payroll": "كشوف الرواتب",
   "cls_emp_full_history": "السجل الكامل للموظف",
+  "cls_emp_adjustments": "تسويات الموظفين",
   "cls_inst_plans": "خطط التقسيط",
   "cls_inst_collections": "تحصيلات",
   "cls_inst_by_customer": "حسب العميل",
@@ -122,7 +123,6 @@ const CLS_ARABIC = {
   "cls_net_by_customer": "صافي الربح حسب العميل",
   "cls_net_by_period": "صافي الربح حسب الفترة",
   "cls_owner_statement": "لوحة صاحب المحل",
-  "cheques": "الشيكات",
   "bank-transactions": "الحركات البنكية",
   "bank-summary": "ملخص البنوك",
   "balance": "الرصيد",
@@ -134,6 +134,12 @@ const CLS_ARABIC = {
   "card": "بطاقة",
   "credit": "آجل",
   "wallet": "محفظة",
+  // Tax classification labels
+  "cls_tax_vat": "ضريبة القيمة المضافة",
+  "cls_tax_output_vat": "ضريبة المبيعات (خرج)",
+  "cls_tax_input_vat": "ضريبة المشتريات (دخل)",
+  "cls_tax_vat_filing": "ملخص إقرار الضريبة",
+  "cls_tax_returns_effect": "أثر المرتجعات على الضريبة",
 };
 
 function clsLabel(cls) {
@@ -151,15 +157,17 @@ function previewKeyForSource(sourceId) {
 export default function ReportsCenter() {
   usePageTour('reports');
   const expiryEnabled = useFeatureEnabled("feature_expiry");
+  const taxEnabled = useFeatureEnabled("feature_tax");
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { data: config } = useReportsConfig();
   const store = useReportsStore();
   const today = useMemo(() => new Date(), []);
 
   const defaultFrom = useMemo(() => fmtDate(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
   const defaultTo = useMemo(() => fmtDate(today), [today]);
 
-  const classificationsBySource = CLASSIFICATIONS;
+  const classificationsBySource = config?.classifications || {};
 
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = useAuthStore((s) => s.permissions);
@@ -193,15 +201,16 @@ export default function ReportsCenter() {
   }
 
   useEffect(() => {
-    if (SOURCES.length > 0 && !selectedId) setSelectedId(SOURCES[0].id);
-  }, [selectedId]);
+    if ((config?.sources || []).length > 0 && !selectedId) setSelectedId((config?.sources || [])[0].id);
+  }, [config, selectedId]);
 
-  const populatedCatIds = useMemo(() => new Set(SOURCES.map((s) => SOURCE_CAT_MAP[s.id]).filter(Boolean)), []);
+  const populatedCatIds = useMemo(() => new Set((config?.sources || []).map((s) => SOURCE_CAT_MAP[s.id]).filter(Boolean)), [config?.sources]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let rows = SOURCES;
+    let rows = config?.sources || [];
     if (!expiryEnabled) rows = rows.filter((s) => s.id !== "expiry");
+    if (!taxEnabled) rows = rows.filter((s) => s.id !== "tax");
     if (activeCat !== "all") rows = rows.filter((s) => SOURCE_CAT_MAP[s.id] === activeCat);
     if (onlyFavs) rows = rows.filter((s) => store.favorites.has(s.id));
     if (q) {
@@ -214,7 +223,7 @@ export default function ReportsCenter() {
       });
     }
     return rows;
-  }, [activeCat, store.favorites, onlyFavs, search, expiryEnabled, isAdmin, userPermissions]);
+  }, [config, activeCat, store.favorites, onlyFavs, search, expiryEnabled, isAdmin, userPermissions]);
 
   const selectedSource = useMemo(() => filtered.find((s) => s.id === selectedId) || null, [filtered, selectedId]);
 
@@ -230,39 +239,62 @@ export default function ReportsCenter() {
     if (!cls) return "detailed";
     return cls.availableModes.includes("detailed") ? "detailed" : cls.availableModes[0] || "detailed";
   }
+  function getClassificationColumns(sourceKey, classificationId, mode) {
+    if (!sourceKey || !classificationId || !mode) return [];
+    return (config?.classificationColumns || {})[`${sourceKey}.${classificationId}.${mode}`] || [];
+  }
 
+  function makeColumnReport(columns) {
+    return { columns: Array.isArray(columns) ? columns : [] };
+  }
   function handleRunSource(source) {
     if (!source) return;
-    const state = sourceState[source.id] || {};
-    const classification = state.classification || getDefaultClassification(source.id);
-    const dataMode = state.dataMode || getDefaultMode(source.id, classification);
-    if (!classification) return;
-    const prefKey = buildPrefKey(source.id, classification, dataMode);
-    store.pushRecent(prefKey);
-    const params = new URLSearchParams();
-    if (dateRange.from) params.set("from", dateRange.from);
-    if (dateRange.to) params.set("to", dateRange.to);
+    // Special sources with dedicated pages (no standard classification flow)
     if (source.id === "owner-statement") {
+      const params = new URLSearchParams();
+      if (dateRange.from) params.set("from", dateRange.from);
+      if (dateRange.to) params.set("to", dateRange.to);
       params.set("cost_method", costMethod);
       const qs = params.toString();
       navigate(`/reports/owner-statement${qs ? `?${qs}` : ""}`);
       return;
     }
     if (source.id === "expiry") {
+      const params = new URLSearchParams();
       if (workspaceFilters.warehouse_id) params.set("warehouse_id", workspaceFilters.warehouse_id);
       if (workspaceFilters.item_id) params.set("item_id", workspaceFilters.item_id);
       const qs = params.toString();
       navigate(`/reports/expiry-report${qs ? `?${qs}` : ""}`);
       return;
     }
+    const state = sourceState[source.id] || {};
+    const classification = state.classification || getDefaultClassification(source.id);
+    const dataMode = state.dataMode || getDefaultMode(source.id, classification);
+    const runClsDef = (classificationsBySource[source.id] || []).find((c) => c.id === classification);
+    if (!classification || !runClsDef) return;
+    const prefKey = buildPrefKey(source.id, classification, dataMode);
+    store.setColumnVisibility(prefKey, colVisibility);
+    store.pushRecent(prefKey);
+    const params = new URLSearchParams();
+    if (dateRange.from) params.set("from", dateRange.from);
+    if (dateRange.to) params.set("to", dateRange.to);
     if (scope.type !== "all" && scope.values?.[0]) {
       params.set("scope_type", scope.type);
       params.set("scope_value", scope.values[0]);
     }
     if (workspaceFilters.q) params.set("q", workspaceFilters.q);
-    if (selectedClsDef?.hasProfit) params.set("cost_method", costMethod);
-    const dimKeys = ["category_id","item_id","customer_id","supplier_id","user_id","warehouse_id","cashier_id","status","payment_type","movement_type","role","method_id","direction","doc_type","party_type","amount_min","amount_max","tax_type"];
-    dimKeys.forEach((k) => { if (workspaceFilters[k]) params.set(k, workspaceFilters[k]); });
+    if (runClsDef?.hasProfit) params.set("cost_method", costMethod);
+    const filterKeys = new Set([
+      ...(runClsDef?.dimensions || []),
+      ...((runClsDef?.filters || []).map((filter) => filter.key)),
+    ]);
+    filterKeys.forEach((key) => {
+      if (workspaceFilters[key]) params.set(key, workspaceFilters[key]);
+    });
+    (runClsDef?.multiSelectFilters || []).forEach((filter) => {
+      const values = workspaceFilters[filter.key];
+      if (Array.isArray(values) && values.length) params.set(filter.key, values.join(","));
+    });
     const qs = params.toString();
     navigate(`/reports/source/${source.id}/${classification}/${dataMode}${qs ? `?${qs}` : ""}`);
   }
@@ -272,7 +304,7 @@ export default function ReportsCenter() {
     store.toggleFavorite(sourceId);
   }
 
-  const selectedCategory = CATEGORIES.find((cat) => cat.id === SOURCE_CAT_MAP[selectedSource?.id]) || null;
+  const selectedCategory = (config?.categories || []).find((cat) => cat.id === SOURCE_CAT_MAP[selectedSource?.id]) || null;
   const invalidRange = dateRange.from > dateRange.to;
 
   const selectedClassifications = selectedSource ? (classificationsBySource[selectedSource.id] || []) : [];
@@ -283,40 +315,53 @@ export default function ReportsCenter() {
   const sourceCatId = SOURCE_CAT_MAP[selectedSource?.id] || "sales";
   const dimensions = useMemo(() => {
     if (!selectedClsDef?.dimensions || !selectedSource?.id) return [];
-    const pool = FILTER_DIMENSIONS[selectedSource.id] || [];
+    const pool = (config?.filterDimensions || {})[selectedSource.id] || [];
     return selectedClsDef.dimensions.map((key) => pool.find((d) => d.key === key)).filter(Boolean);
   }, [selectedClsDef, selectedSource?.id]);
+  const selectedPrefKey = selectedSource && selectedClassification
+    ? buildPrefKey(selectedSource.id, selectedClassification, selectedMode)
+    : "";
+  const selectedColumns = useMemo(
+    () => getClassificationColumns(selectedSource?.id, selectedClassification, selectedMode),
+    [config?.classificationColumns, selectedSource?.id, selectedClassification, selectedMode]
+  );
+  const selectedColumnReport = useMemo(() => makeColumnReport(selectedColumns), [selectedColumns]);
+
+  useEffect(() => {
+    if (!selectedPrefKey) return;
+    setColVisibility(store.getPreference(selectedPrefKey, "columnVisibility", {}) || {});
+  }, [selectedPrefKey]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-base)] text-zinc-900" dir="rtl" style={{ fontFamily: "Satoshi, sans-serif" }}>
-      
+    <div className="flex h-screen w-full overflow-hidden bg-[var(--bg-base)] text-text-primary" dir="rtl" style={{ fontFamily: "Satoshi, sans-serif" }}>
+
       {/* MIDDLE & TOP RAIL (Source Master Grid) */}
       <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-base)]">
-        
+
         {/* TOP RAIL (Categories + Search) */}
-        <div className="shrink-0 border-b border-zinc-200 bg-white flex items-center px-4 py-1.5 gap-1 z-20 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-2.5 ml-1.5 shrink-0">
+        <div className="shrink-0 border-b border-border-normal bg-bg-surface flex items-center px-4 py-1.5 gap-1 z-20 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1.5 border-l border-border-normal pl-2.5 ml-1.5 shrink-0">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-white">
               <LayoutTemplate size={14} strokeWidth={2.5} />
             </div>
-            <span className="text-[11px] font-black text-zinc-900">التقارير</span>
+            <span className="text-[11px] font-black text-text-primary">التقارير</span>
           </div>
           <button
             onClick={() => setActiveCat("all")}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-all font-bold text-[11px] whitespace-nowrap shrink-0 ${
-              activeCat === "all" ? "bg-zinc-100 text-zinc-900 shadow-sm border border-zinc-200" : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+              activeCat === "all" ? "bg-bg-overlay text-text-primary shadow-sm border border-border-normal" : "text-text-muted hover:bg-bg-base hover:text-text-primary"
             }`}
           >
             الكل
           </button>
-          {CATEGORIES.filter((cat) => populatedCatIds.has(cat.id)).map((cat) => {
+          {(config?.categories || []).filter((cat) => populatedCatIds.has(cat.id)).map((cat) => {
             const active = activeCat === cat.id;
             return (
               <button
                 key={cat.id}
                 onClick={() => setActiveCat(cat.id)}
                 className={`group relative flex items-center gap-1 px-2.5 py-1 rounded-md transition-all duration-300 font-bold text-[11px] whitespace-nowrap shrink-0 ${
-                  active ? "bg-white shadow-sm border border-zinc-200" : "hover:bg-zinc-50 text-zinc-500 hover:text-zinc-700"
+                  active ? "bg-bg-surface shadow-sm border border-border-normal" : "hover:bg-bg-base text-text-muted hover:text-text-primary"
                 }`}
                 style={active ? { color: cat.color } : {}}
               >
@@ -336,15 +381,15 @@ export default function ReportsCenter() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث..."
-                className="w-36 h-7 rounded-md border border-zinc-200 bg-white pl-2 pr-7 text-[11px] font-bold text-zinc-900 placeholder:text-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none"
+                className="w-36 h-7 rounded-md border border-border-normal bg-bg-surface pl-2 pr-7 text-[11px] font-bold text-text-primary placeholder:text-text-muted shadow-sm transition-all focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
               />
-              <Search size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors group-focus-within:text-emerald-500" />
+              <Search size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted transition-colors group-focus-within:text-primary" />
             </div>
             <button
               data-help="favorite-button"
               onClick={() => setOnlyFavs(!onlyFavs)}
               className={`flex h-7 w-7 items-center justify-center rounded-md border transition-all shadow-sm ${
-                onlyFavs ? "border-amber-400 bg-amber-50 text-amber-600" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
+                onlyFavs ? "border-warning-border bg-warning-bg text-warning-text" : "border-border-normal bg-bg-surface text-text-secondary hover:border-border-strong"
               }`}
               title="المفضلة"
             >
@@ -358,41 +403,41 @@ export default function ReportsCenter() {
           <div data-help="report-categories" className="max-w-4xl mx-auto w-full">
             {filtered.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 mb-4"><Search size={24} /></div>
-                <h3 className="text-[16px] font-black text-zinc-900 mb-1">لا توجد مصادر مطابقة</h3>
-                <p className="text-sm text-zinc-500">جرب البحث بكلمات أخرى أو تغيير الفئة.</p>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-overlay text-text-muted mb-4"><Search size={24} /></div>
+                <h3 className="text-[16px] font-black text-text-primary mb-1">لا توجد مصادر مطابقة</h3>
+                <p className="text-sm text-text-muted">جرب البحث بكلمات أخرى أو تغيير الفئة.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 auto-rows-max items-start">
                 {filtered.map((source) => {
-                  const cat = CATEGORIES.find((c) => c.id === SOURCE_CAT_MAP[source.id]) || CATEGORIES[0];
+                  const cat = (config?.categories || []).find((c) => c.id === SOURCE_CAT_MAP[source.id]) || (config?.categories || [])[0] || {};
                   const sel = selectedId === source.id;
                   const fav = store.favorites.has(source.id);
                   const classifications = classificationsBySource[source.id] || [];
                   const state = sourceState[source.id] || {};
                   const classification = state.classification || getDefaultClassification(source.id);
                   const clsDef = classifications.find((c) => c.id === classification);
-                  const exportFormats = ["pdf", "excel", "print"];
+                  const exportFormats = ["pdf", "excel", "csv", "print"];
                   const SourceIcon = source.icon;
                   return (
                     <div
                       key={source.id}
                       onClick={() => setSelectedId(source.id)}
                       className={`group relative flex flex-col overflow-hidden rounded-[24px] p-5 transition-all duration-300 cursor-pointer text-right border ${
-                        sel 
-                          ? "bg-white border-emerald-500 shadow-[0_8px_30px_rgba(5,150,105,0.12)] ring-1 ring-emerald-500" 
-                          : "bg-white border-zinc-200 shadow-sm hover:border-emerald-300 hover:shadow-md"
+                        sel
+                          ? "bg-bg-surface border-primary shadow-[0_8px_30px_rgba(5,150,105,0.12)] ring-1 ring-primary"
+                          : "bg-bg-surface border-border-normal shadow-sm hover:border-primary hover:shadow-md"
                       }`}
                     >
                       {/* Top Row: Icon + Title + Fav */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 group-hover:bg-white transition-colors" style={{ color: source.color }}>
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-base group-hover:bg-bg-surface transition-colors" style={{ color: source.color }}>
                             <SourceIcon size={20} strokeWidth={2.5} />
                           </div>
                           <div>
-                            <div className="text-[11px] font-black uppercase tracking-widest mb-1 text-zinc-500">{cat.label} · {source.id}</div>
-                            <h3 className={`text-[15px] font-black leading-tight transition-colors ${sel ? "text-emerald-600" : "text-zinc-900 group-hover:text-emerald-600"}`}>
+                            <div className="text-[11px] font-black uppercase tracking-widest mb-1 text-text-muted">{cat.label} · {source.id}</div>
+                            <h3 className={`text-[15px] font-black leading-tight transition-colors ${sel ? "text-primary" : "text-text-primary group-hover:text-primary"}`}>
                               {source.label}
                             </h3>
                           </div>
@@ -400,17 +445,17 @@ export default function ReportsCenter() {
                         <button
                           type="button"
                           onClick={(e) => toggleFav(e, source.id)}
-                          className={`shrink-0 p-1.5 rounded-full transition-colors ${fav ? "text-amber-500 bg-amber-50" : "text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100"}`}
+                          className={`shrink-0 p-1.5 rounded-full transition-colors ${fav ? "text-warning-text bg-warning-bg" : "text-text-muted hover:text-text-secondary hover:bg-bg-overlay"}`}
                         >
                           <Star size={16} fill={fav ? "currentColor" : "none"} strokeWidth={fav ? 0 : 2} />
                         </button>
                       </div>
 
                       <div className="mb-4 space-y-1.5">
-                        <p className="text-xs font-medium text-slate-500 line-clamp-2 leading-relaxed">
+                        <p className="text-xs font-medium text-text-secondary line-clamp-2 leading-relaxed">
                           {getReportDescription(source.id, classification || clsDef?.label_key)}
                         </p>
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-text-muted">
                           <span>{classifications.length} تصنيفات</span>
                           <span>•</span>
                           <span>{clsDef ? (clsDef.availableModes || ["detailed"]).map((m) => m === "detailed" ? "تفصيلي" : m === "summary" ? "ملخص" : m).join(" / ") : ""}</span>
@@ -418,18 +463,17 @@ export default function ReportsCenter() {
                       </div>
 
                       {/* Embedded Preview */}
-                      <div className="mt-auto pt-4 border-t border-zinc-100">
-                        <div className="text-[11px] font-bold text-zinc-400 mb-2">أعمدة التقرير ومعاينة:</div>
-                        <ColumnPreviewStrip catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} />
-                        <GhostPreviewRows catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={null} dateRange={dateRange} scope={scope} />
+                      <div className="mt-auto pt-4 border-t border-border-subtle">
+                        <div className="text-[11px] font-bold text-text-muted mb-2">أعمدة التقرير:</div>
+                        <ColumnPreviewStrip catId={previewKeyForSource(source.id)} colVisibility={colVisibility} report={makeColumnReport(getClassificationColumns(source.id, classification, state.dataMode || getDefaultMode(source.id, classification)))} />
                       </div>
 
                       {/* Export Hints */}
                       <div className="absolute bottom-5 left-5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {exportFormats.map(fmt => {
-                          const Cfg = FORMAT_ICONS[fmt];
+                          const Cfg = (config?.formatIcons || {})[fmt];
                           if (!Cfg) return null;
-                          return <div key={fmt} className="h-6 w-6 rounded flex items-center justify-center bg-zinc-50" style={{color: Cfg.color}} title={Cfg.label}><Cfg.icon size={12} strokeWidth={2.5}/></div>
+                          return <div key={fmt} className="h-6 w-6 rounded flex items-center justify-center bg-bg-base" style={{color: Cfg.color}} title={Cfg.label}><Cfg.icon size={12} strokeWidth={2.5}/></div>
                         })}
                       </div>
                     </div>
@@ -450,21 +494,21 @@ export default function ReportsCenter() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-[420px] shrink-0 border-r border-zinc-200 bg-white flex flex-col z-30 shadow-[4px_0_24px_rgba(0,0,0,0.04)]"
+            className="w-[420px] shrink-0 border-r border-border-normal bg-bg-surface flex flex-col z-30 shadow-[4px_0_24px_rgba(0,0,0,0.04)]"
           >
             {/* Inspector Header */}
-            <div className="shrink-0 p-8 border-b border-zinc-100 bg-zinc-50/50">
-              <div className="text-[11px] font-black uppercase tracking-widest text-zinc-400 mb-2">إعدادات التقرير</div>
-              <h2 className="text-[20px] font-black text-zinc-900 leading-tight">{selectedSource.label}</h2>
+            <div className="shrink-0 p-8 border-b border-border-subtle bg-bg-base/50">
+              <div className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">إعدادات التقرير</div>
+              <h2 className="text-[20px] font-black text-text-primary leading-tight">{selectedSource.label}</h2>
             </div>
 
             {/* Inspector Body */}
             <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 scrollbar-thin scrollbar-thumb-zinc-200">
-              
+
               {/* 1. Classification Selector */}
               <div className="space-y-3">
-                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                  <span className="h-5 w-1 rounded-full bg-emerald-500"></span> التصنيف
+                <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                  <span className="h-5 w-1 rounded-full bg-primary"></span> التصنيف
                 </h3>
                 <select
                   value={selectedClassification}
@@ -475,7 +519,7 @@ export default function ReportsCenter() {
                       [selectedSource.id]: { classification: clsId, dataMode: prev[selectedSource.id]?.dataMode || getDefaultMode(selectedSource.id, clsId) },
                     }));
                   }}
-                  className="w-full h-12 px-4 rounded-2xl border border-zinc-200 bg-zinc-50 text-sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  className="w-full h-12 px-4 rounded-2xl border border-border-normal bg-bg-base text-sm font-bold text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 >
                   {selectedClassifications.map((cls) => (
                     <option key={cls.id} value={cls.id}>{clsLabel(cls)}</option>
@@ -486,8 +530,8 @@ export default function ReportsCenter() {
               {/* 2. Data Mode Toggle */}
               {selectedClsDef && selectedClsDef.availableModes && selectedClsDef.availableModes.length > 1 && (
                 <div className="space-y-3">
-                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                    <span className="h-5 w-1 rounded-full bg-emerald-500"></span> وضع البيانات
+                  <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                    <span className="h-5 w-1 rounded-full bg-primary"></span> وضع البيانات
                   </h3>
                   <DataModeToggle
                     availableModes={selectedClsDef.availableModes}
@@ -505,11 +549,11 @@ export default function ReportsCenter() {
               {/* 3. Scope Selector */}
               {selectedClsDef?.supportsScope && (
                 <div className="space-y-3">
-                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                    <span className="h-5 w-1 rounded-full bg-emerald-500"></span> النطاق التحليلي
+                  <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                    <span className="h-5 w-1 rounded-full bg-primary"></span> النطاق التحليلي
                   </h3>
                   <ScopeSelector
-                    scopeOptions={SCOPE_OPTIONS[SOURCE_CAT_MAP[selectedSource.id]] || SCOPE_OPTIONS.sales}
+                    scopeOptions={config?.scopeOptions?.[SOURCE_CAT_MAP[selectedSource.id]] || config?.scopeOptions?.sales || []}
                     scope={scope}
                     onScopeChange={setScope}
                   />
@@ -519,17 +563,17 @@ export default function ReportsCenter() {
               {/* 4. Date Range */}
               {selectedClsDef?.supportsDates && (
                 <div className="space-y-3">
-                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                    <span className="h-5 w-1 rounded-full bg-emerald-500"></span> الفترة الزمنية
+                  <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                    <span className="h-5 w-1 rounded-full bg-primary"></span> الفترة الزمنية
                   </h3>
                   <DatePresets activeFrom={dateRange.from} activeTo={dateRange.to} onApply={setDateRange} />
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-zinc-500 mb-1.5">من تاريخ</label>
+                      <label className="block text-[11px] font-bold text-text-muted mb-1.5">من تاريخ</label>
                       <RDate value={dateRange.from} onChange={(v) => setDateRange({ ...dateRange, from: v })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-zinc-500 mb-1.5">إلى تاريخ</label>
+                      <label className="block text-[11px] font-bold text-text-muted mb-1.5">إلى تاريخ</label>
                       <RDate value={dateRange.to} onChange={(v) => setDateRange({ ...dateRange, to: v })} />
                     </div>
                   </div>
@@ -539,17 +583,17 @@ export default function ReportsCenter() {
 
               {/* 5. Search + Dimension Filters */}
               <div className="space-y-3">
-                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                  <span className="h-5 w-1 rounded-full bg-emerald-500"></span> <Search size={13} /> فلاتر التقرير
+                <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                  <span className="h-5 w-1 rounded-full bg-primary"></span> <Search size={13} /> فلاتر التقرير
                 </h3>
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 space-y-3">
+                <div className="rounded-2xl border border-border-normal bg-bg-base/50 p-3 space-y-3">
                   <div className="relative">
-                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                    <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                     <input ref={searchRef} type="text" value={workspaceFilters.q || ""}
                       onChange={(e) => handleWorkspaceFilter("q", e.target.value)}
                       onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef })}
                       placeholder="بحث عام..."
-                      className="w-full h-9 pr-9 pl-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-zinc-400"
+                      className="w-full h-9 pr-9 pl-3 rounded-xl border border-border-normal bg-bg-surface text-2sm font-bold text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-text-muted"
                     />
                   </div>
                   {dimensions.map((dim) => (
@@ -559,12 +603,12 @@ export default function ReportsCenter() {
                   ))}
                   {selectedClsDef?.hasProfit && (
                     <div className="space-y-1">
-                      <label className="block text-[11px] font-bold text-zinc-500">طريقة التكلفة</label>
+                      <label className="block text-[11px] font-bold text-text-muted">طريقة التكلفة</label>
                       <select ref={costMethodRef} value={costMethod} onChange={(e) => setCostMethod(e.target.value)}
                         onKeyDown={e => handleKeyDown(e, { nextRef: submitRef, prevRef: searchRef })}
-                        className="w-full h-9 px-3 rounded-xl border border-zinc-200 bg-white text-2sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                        className="w-full h-9 px-3 rounded-xl border border-border-normal bg-bg-surface text-2sm font-bold text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                       >
-                        {COST_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
+                        {(config?.costMethods || [{ value: "wacc", label: "متوسط التكلفة (WACC)" }]).map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                       </select>
                     </div>
                   )}
@@ -573,25 +617,33 @@ export default function ReportsCenter() {
 
               {/* 6. Column Toggles */}
               <div className="space-y-3">
-                <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                  <span className="h-5 w-1 rounded-full bg-emerald-500"></span> أعمدة التقرير
+                <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                  <span className="h-5 w-1 rounded-full bg-primary"></span> أعمدة التقرير
                 </h3>
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4">
-                  <ColumnToggleList catId={previewKeyForSource(selectedSource.id)} colVisibility={colVisibility} onChange={setColVisibility} report={null} />
+                <div className="rounded-2xl border border-border-normal bg-bg-base/50 p-4">
+                  {selectedColumns.length ? (
+                    <ColumnToggleList catId={previewKeyForSource(selectedSource.id)} colVisibility={colVisibility} onChange={setColVisibility} report={selectedColumnReport} />
+                  ) : (
+                    <p className="text-2sm font-bold text-text-muted">لا توجد أعمدة معرفة لهذا التقرير.</p>
+                  )}
                 </div>
               </div>
 
               {/* 7. Multi-select filters */}
               {selectedClsDef?.multiSelectFilters?.map((msf) => (
                 <div key={msf.key} className="space-y-3">
-                  <h3 className="text-2sm font-black text-zinc-900 flex items-center gap-2">
-                    <span className="h-5 w-1 rounded-full bg-emerald-500"></span> {CLS_ARABIC[msf.label_key] || msf.label_key}
+                  <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
+                    <span className="h-5 w-1 rounded-full bg-primary"></span> {CLS_ARABIC[msf.label_key] || msf.label_key}
                   </h3>
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 space-y-2">
+                  <div className="rounded-2xl border border-border-normal bg-bg-base/50 p-3 space-y-2">
                     {msf.options.map((opt) => (
                       <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 rounded accent-emerald-500" />
-                        <span className="text-2sm font-bold text-zinc-700">{clsOptionLabel(opt)}</span>
+                        <input type="checkbox" className="w-4 h-4 rounded accent-primary" checked={(workspaceFilters[msf.key] || []).includes(opt.value)} onChange={(e) => {
+                          const current = workspaceFilters[msf.key] || [];
+                          const next = e.target.checked ? [...current, opt.value] : current.filter((v) => v !== opt.value);
+                          handleWorkspaceFilter(msf.key, next);
+                        }} />
+                        <span className="text-2sm font-bold text-text-primary">{clsOptionLabel(opt)}</span>
                       </label>
                     ))}
                   </div>
@@ -601,16 +653,16 @@ export default function ReportsCenter() {
             </div>
 
             {/* Inspector Footer Action */}
-            <div className="shrink-0 p-6 border-t border-zinc-200 bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
+            <div className="shrink-0 p-6 border-t border-border-normal bg-bg-surface shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
               <PermissionGate page="reports" action="view">
               <button
                 ref={submitRef}
                 onClick={() => handleRunSource(selectedSource)}
-                disabled={!selectedClassification}
+                disabled={!selectedClassification && selectedSource?.id !== "owner-statement" && selectedSource?.id !== "expiry"}
                 onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => submitRef.current?.click() })}
-                className="w-full relative flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 py-4 text-[15px] font-black text-white transition-all hover:bg-emerald-600 hover:shadow-lg disabled:opacity-50 overflow-hidden group"
+                className="w-full relative flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-[15px] font-black text-white transition-all hover:bg-primary-600 hover:shadow-lg disabled:opacity-50 overflow-hidden group"
               >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                <div className="absolute inset-0 bg-bg-surface/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
                 <span className="relative z-10 flex items-center gap-2">
                   <Play size={18} fill="currentColor" className="transition-transform group-hover:scale-110" />
                   تشغيل التقرير
@@ -621,9 +673,9 @@ export default function ReportsCenter() {
 
           </motion.div>
         ) : (
-          <div className="w-[420px] shrink-0 border-r border-zinc-200 bg-white flex flex-col items-center justify-center text-center p-8">
-            <Settings2 size={40} className="text-zinc-200 mb-4" />
-            <p className="text-sm font-bold text-zinc-400">حدد مصدراً لعرض إعداداته</p>
+          <div className="w-[420px] shrink-0 border-r border-border-normal bg-bg-surface flex flex-col items-center justify-center text-center p-8">
+            <Settings2 size={40} className="text-text-muted mb-4" />
+            <p className="text-sm font-bold text-text-muted">حدد مصدراً لعرض إعداداته</p>
           </div>
         )}
       </AnimatePresence>

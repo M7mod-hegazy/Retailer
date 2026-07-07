@@ -26,7 +26,7 @@
  * }
  */
 
-import { seedFamilyLayout } from "../layout/layoutModel";
+import { seedFamilyLayout, SHOW_KEY } from "../layout/layoutModel";
 
 /** Deep-clone plain preset data (presets are JSON-safe by construction). */
 const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
@@ -36,10 +36,15 @@ const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
  * The target family's layout is REPLACED by the preset layout (seeded first so
  * missing fields stay sane); other families and unrelated flat fields are
  * preserved. Flat fields in the preset overwrite same-named settings.
+ *
+ * Auto-enables show_* flags for any block type that has a SHOW_KEY entry and
+ * appears in the preset's order — so blocks like QR, logo, branch, etc.
+ * actually render when the preset includes them. Explicit flat settings in
+ * the preset still win (e.g. show_qr: false in preset flat stays false).
  */
-export function applyPreset(settings = {}, preset) {
+export function applyPreset(settings = {}, preset, scope = "_global") {
   if (!preset || !preset.family) return settings;
-  const seeded = seedFamilyLayout(preset.family);
+  const seeded = seedFamilyLayout(preset.family, scope);
   const presetLayout = clone(preset.layout || {});
   const nextFamily = {
     ...seeded,
@@ -49,8 +54,17 @@ export function applyPreset(settings = {}, preset) {
     margins: { ...(presetLayout.margins || {}) },
     order: presetLayout.order ? [...presetLayout.order] : seeded.order,
   };
+  // Auto-enable show_* flags for blocks in the preset order
+  const autoShow = {};
+  if (nextFamily.order) {
+    nextFamily.order.forEach((type) => {
+      const sk = SHOW_KEY[type];
+      if (sk) autoShow[sk] = true;
+    });
+  }
   return {
     ...settings,
+    ...autoShow,
     ...(clone(preset.flat) || {}),
     layout: {
       ...(settings.layout || {}),

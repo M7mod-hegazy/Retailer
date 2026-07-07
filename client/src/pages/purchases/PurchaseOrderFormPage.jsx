@@ -1036,6 +1036,7 @@ export default function PurchaseOrderFormPage() {
           notes: notes || "",
           created_at: invoiceCreatedAt || loadedCreatedAt || new Date().toISOString(),
           lines: lines.map(l => ({
+            ...l,
             item_name: l.name,
             code: l.code || "",
             quantity: l.quantity,
@@ -1044,6 +1045,8 @@ export default function PurchaseOrderFormPage() {
           })),
           discount,
           increase,
+          subtotal: totals.sub,
+          total: totals.total,
         }}
         operationLabel="أمر توريد"
         confirmLabel="حفظ وطباعة"

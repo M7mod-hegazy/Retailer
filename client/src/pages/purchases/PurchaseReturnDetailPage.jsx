@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, RotateCcw, Package, X, Printer,
 } from "lucide-react";
@@ -303,10 +303,17 @@ export default function PurchaseReturnDetailPage() {
         onClose={() => setPrintOpen(false)}
         docType="purchase_return"
         invoice={{
+          ...doc,
           invoice_no: doc.doc_no,
-          created_at: doc.created_at,
           customer_name: doc.supplier_name,
+          cashier_name: doc.created_by_username || "",
+          subtotal: doc.subtotal || doc.total || 0,
+          total: doc.total || 0,
+          discount: doc.discount || 0,
+          increase: doc.increase || 0,
+          notes: doc.notes || "",
           lines: (doc.lines || []).map(l => ({
+            ...l,
             item_name: l.item_name_ar || l.item_name,
             quantity: l.quantity,
             unit_price: l.unit_cost,

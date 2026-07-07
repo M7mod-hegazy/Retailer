@@ -22,6 +22,7 @@ import { useInvoiceActivation } from "../../hooks/useInvoiceActivation";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useAuthStore } from "../../stores/authStore";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import Modal from "../../components/ui/Modal";
@@ -191,6 +192,7 @@ function OriginalInvoicePreview({ invoice }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SalesReturnFormPage() {
   const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
   const location = useLocation();
   const editReturnId = location.state?.edit_return_id || null;
   const isEditMode = !!editReturnId;
@@ -1972,9 +1974,14 @@ export default function SalesReturnFormPage() {
           invoice_no: docNo,
           created_at: invoiceCreatedAt || new Date().toISOString(),
           customer_name: customer?.name,
+          cashier_name: user?.name || "",
           discount: Number(headerDiscount) || 0,
           increase: Number(headerIncrease) || 0,
+          total: total || 0,
+          subtotal: subtotal || 0,
+          notes: returnNotes || "",
           lines: (mode === "direct" ? cart : invoiceLines.filter(l => l.checked)).map(l => ({
+            ...l,
             item_name: l.item_name,
             quantity: mode === "direct" ? l.quantity : l.qty_to_return,
             unit_price: l.unit_price,

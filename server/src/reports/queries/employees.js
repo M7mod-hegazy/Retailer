@@ -1,10 +1,11 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function employeeAdjustments(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  return db.prepare(`
+  let sql = `
     SELECT ea.id, e.name AS employee_name,
       ea.adjustment_type, ea.amount, ea.reason,
       u.full_name AS created_by,
@@ -14,7 +15,14 @@ function employeeAdjustments(startDate, endDate, opts = {}) {
     LEFT JOIN users u ON u.id = ea.user_id
     WHERE 1=1 ${addDateFilter("ea.created_at", startDate, endDate, params)}
     ORDER BY ea.created_at DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeeList(startDate, endDate, opts = {}) {
@@ -23,7 +31,7 @@ function employeeList(startDate, endDate, opts = {}) {
   const statusFilter = archived
     ? "AND (e.is_active = 0)"
     : "AND (e.is_active = 1 OR e.is_active IS NULL)";
-  const sql = `
+  let sql = `
     SELECT e.id, e.name AS employee_name, e.job_title, e.salary, e.salary_period,
       e.working_days_per_month,
       CASE
@@ -42,7 +50,13 @@ function employeeList(startDate, endDate, opts = {}) {
     WHERE 1=1 ${statusFilter}
     ORDER BY e.name ASC
   `;
-  return db.prepare(sql).all();
+  const allParams = [];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeeDeductions(startDate, endDate, opts = {}) {
@@ -52,7 +66,7 @@ function employeeDeductions(startDate, endDate, opts = {}) {
   if (opts.employee_id) { parts.push("AND ed.employee_id = ?"); params.push(Number(opts.employee_id)); }
   if (opts.deduction_type) { parts.push("AND ed.deduction_type = ?"); params.push(opts.deduction_type); }
   if (opts.status) { parts.push("AND ed.status = ?"); params.push(opts.status); }
-  const sql = `
+  let sql = `
     SELECT ed.id, ed.created_at AS date, e.name AS employee_name,
       ed.deduction_type,
       CASE ed.deduction_type
@@ -68,7 +82,13 @@ function employeeDeductions(startDate, endDate, opts = {}) {
     WHERE 1=1 ${parts.join(" ")}
     ORDER BY ed.created_at DESC
   `;
-  return db.prepare(sql).all(...params);
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeeBonuses(startDate, endDate, opts = {}) {
@@ -78,7 +98,7 @@ function employeeBonuses(startDate, endDate, opts = {}) {
   if (opts.employee_id) { parts.push("AND eb.employee_id = ?"); params.push(Number(opts.employee_id)); }
   if (opts.bonus_type) { parts.push("AND eb.bonus_type = ?"); params.push(opts.bonus_type); }
   if (opts.status) { parts.push("AND eb.status = ?"); params.push(opts.status); }
-  const sql = `
+  let sql = `
     SELECT eb.id, eb.created_at AS date, e.name AS employee_name,
       eb.bonus_type,
       CASE eb.bonus_type
@@ -95,7 +115,13 @@ function employeeBonuses(startDate, endDate, opts = {}) {
     WHERE 1=1 ${parts.join(" ")}
     ORDER BY eb.created_at DESC
   `;
-  return db.prepare(sql).all(...params);
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeeAdvances(startDate, endDate, opts = {}) {
@@ -104,7 +130,7 @@ function employeeAdvances(startDate, endDate, opts = {}) {
   const parts = [`${addDateFilter("ea.created_at", startDate, endDate, params)}`];
   if (opts.employee_id) { parts.push("AND ea.employee_id = ?"); params.push(Number(opts.employee_id)); }
   if (opts.status) { parts.push("AND ea.status = ?"); params.push(opts.status); }
-  const sql = `
+  let sql = `
     SELECT ea.id, ea.created_at AS date, e.name AS employee_name,
       ea.amount, ea.remaining_balance,
       (ea.amount - ea.remaining_balance) AS repaid_amount,
@@ -115,7 +141,13 @@ function employeeAdvances(startDate, endDate, opts = {}) {
     WHERE 1=1 ${parts.join(" ")}
     ORDER BY ea.created_at DESC
   `;
-  return db.prepare(sql).all(...params);
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeePayroll(startDate, endDate, opts = {}) {
@@ -124,7 +156,7 @@ function employeePayroll(startDate, endDate, opts = {}) {
   const parts = [`${addDateFilter("ss.settled_at", startDate, endDate, params)}`];
   if (opts.employee_id) { parts.push("AND ss.employee_id = ?"); params.push(Number(opts.employee_id)); }
   if (opts.payment_method) { parts.push("AND ss.payment_method = ?"); params.push(opts.payment_method); }
-  const sql = `
+  let sql = `
     SELECT ss.id, ss.settled_at AS date, e.name AS employee_name,
       ss.period_start, ss.period_end, ss.base_salary, ss.total_bonuses,
       ss.total_deductions, ss.advance_deductions, ss.net_salary,
@@ -134,7 +166,13 @@ function employeePayroll(startDate, endDate, opts = {}) {
     WHERE 1=1 ${parts.join(" ")}
     ORDER BY ss.settled_at DESC
   `;
-  return db.prepare(sql).all(...params);
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function employeeFullHistory(startDate, endDate, opts = {}) {
@@ -201,7 +239,13 @@ function employeeFullHistory(startDate, endDate, opts = {}) {
     params.push(opts.tx_type);
   }
 
-  return db.prepare(sql).all(...params);
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 module.exports = {

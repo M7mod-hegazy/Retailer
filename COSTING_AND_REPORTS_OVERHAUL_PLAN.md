@@ -731,3 +731,312 @@ Page keeps its current layout and identity. **Only the two confusing/redundant t
 - 5 tabs → 3 tabs
 - No identity change, no reframing, no navigation change
 - One small link added for power users who want the Section 12 deep view
+
+---
+
+## 15. Smart Improvement Suggestions — Approved by Owner (2026-07-06)
+
+> Discussed interactively through the audit process. All 15 suggestions were reviewed and approved.
+
+### 15.1 S1 — Single Source of Truth for Config
+
+**Decision:** ✅ **Delete `reportsCenterConfig.js`**. Server serves config via API. Client fetches on load.
+
+**Problem:** Config duplicated across `registry.js` (869 lines), `columns.js` (1034 lines), `reportsCenterConfig.js` (861 lines), plus labels in 4+ other files. They frequently drift out of sync (~35+ legacy-only slugs missing from new system).
+
+**Solution:**
+1. Add `GET /api/reports/system-config` endpoint that serves the complete report metadata (sources, classifications, filters, columns, labels)
+2. Client fetches config on Reports Center mount instead of importing `reportsCenterConfig.js`
+3. Delete `reportsCenterConfig.js` (~861 lines removed)
+4. Consolidate ALL Arabic labels into `AR_LABELS` in `columns.js` and serve via API
+
+**No UI pages affected.** All current pages (ReportsCenter, SourceWorkspacePage, ReportWorkspacePage) stay identical.
+
+**Cost:** Medium. Requires refactoring client to use async config loading. Need loading/error states for config fetch.
+
+---
+
+### 15.2 S2 — Eliminate the Two-System Duality
+
+**Decision:** ✅ **Full migration.** Remove legacy `reports[]`, `slugSourceMap`, `clsMap`. Every slug maps to source+classification.
+
+**Problem:** Two parallel architectures — old slug-based (`REPORT_REGISTRY.reports[]` + `/api/reports/run/:slug`) and new source-classification-based (`REPORT_REGISTRY.classifications{}` + `/api/reports/source/:sourceKey/run`). Connected by fragile backward compat maps with 5 broken entries (P12) and 2 wrong-query mappings.
+
+**Solution:**
+1. Ensure EVERY slug has a source + classification mapping (currently ~35+ legacy-only slugs missing)
+2. Create missing classifications: `cheques` source (3 classes), `shifts` and `user-activity` under `employees`, etc.
+3. Remove legacy `REPORT_REGISTRY.reports[]` array
+4. Remove `slugSourceMap` and `clsMap` backward compat objects
+5. Make `/api/reports/run/:slug` a thin wrapper that looks up slug → source/classification and delegates to the new endpoint
+
+**Cost:** High. ~35+ slugs need classification mappings. But eliminates an entire class of bugs permanently.
+
+---
+
+### 15.3 S3 — Server-Side Pagination and Filtering
+
+**Decision:** ✅ **Full fix.** Add LIMIT/OFFSET to all queries. Remove `applyRowFilters`. Fix column name mismatches.
+
+**Problem:** ALL queries load ALL matching rows into memory, then `.slice()` for pagination. No `LIMIT/OFFSET` in any query. For 100K+ rows this is a memory bomb. Also, `applyRowFilters()` checks `category_id` but SQL outputs `category_name` — filters silently become no-ops.
+
+**Solution:**
+1. Add `LIMIT ? OFFSET ?` to ALL aggregate report queries
+2. Pass `page`/`pageSize` from route handler into query functions
+3. Replace `applyRowFilters()` with SQL WHERE clause filters (fix column name mapping)
+4. Add `COUNT(*) OVER()` or separate count query for `total_rows` metadata
+5. Cap `pageSize` at a reasonable maximum (configurable)
+
+**Cost:** High — every query file needs modification. But critical for production reliability.
+
+---
+
+### 15.4 S4 — Normalized Return Shapes
+
+**Decision:** ✅ **Standard shape.** All functions return `{ rows, meta }`. Fix `profitByCategory` object bug.
+
+**Problem:** Every query function returns a different shape. Most return flat arrays `[]`, but `profitByCategory()` returns `{ rows: [...], summary: { total_expenses } }`. The dispatcher has no normalization — it returns whatever the function returns. This will crash any code that iterates the result (P16).
+
+**Solution:**
+1. Define a standard return type: `{ rows: [...], meta: { total_rows, page, page_size, cost_method, generated_at } }`
+2. Wrap all query function calls in a normalization layer in `index.js`
+3. Fix `profitByCategory()` to return the standard shape (move `total_expenses` to `meta`)
+4. Route handler always expects the normalized shape
+
+**Cost:** Low — one normalization function in index.js, minor changes to profitByCategory.
+
+---
+
+### 15.5 S5 — Report Descriptions for ALL Reports
+
+**Decision:** ✅ **All 105 reports.** Write Arabic descriptions for every report slug.
+
+**Problem:** 91 of 105 reports (87%) have NO description in `REPORT_DESCRIPTIONS`. Users can't tell what a report shows without opening it or reading the SQL.
+
+**Solution:**
+1. Write 1-2 sentence Arabic descriptions for ALL 105 report slugs in `columns.js` → `REPORT_DESCRIPTIONS`
+2. Show descriptions as tooltips on report cards in ReportsCenter grid
+3. Add info icons on workspace pages that show the description
+4. Descriptions explain: what data is shown, what filters apply, how to interpret key columns
+
+**Cost:** Very low — ~2 hours of writing strings (~210 sentences).
+
+---
+
+### 15.6 S6 — Smart Default Filters Per Classification
+
+**Decision:** ✅ **Full review.** Review all ~93 classifications. Keep only relevant filters per classification.
+
+**Problem:** Almost every classification blindly copies the source's ENTIRE filter dimension pool. Example: "Slow Moving Items" shows filters for customer_id, cashier_id, payment_type, status — none relevant to inventory aging.
+
+**Solution:**
+1. Review each classification's `dimensions[]` array and keep ONLY relevant filters
+2. Example mappings:
+   - `slow-moving` → `warehouse_id`, `category_id` only
+   - `sales-heatmap` → `date_range` only (remove customer, cashier, payment, status)
+   - `margin-by-item` → `category_id`, `item_id`, `date_range` only
+   - `vat` → `date_range`, `status` only
+   - `employee-deductions` → `employee_id`, `status`, `date_range` only
+3. Remove overlapping scope/dimension filters (Phase 1 of main fix checklist)
+
+**Cost:** Medium — reviewing all ~93 classifications. Can be done incrementally per source.
+
+---
+
+### 15.7 S7 — Report Caching Layer
+
+**Decision:** ✅ **Add caching.** In-memory cache with TTL for heavy aggregate queries.
+
+**Problem:** Heavy queries (profit-loss joins 7+ tables, inventory-valuation scans all stock_levels) run on EVERY page load. No caching.
+
+**Solution:**
+1. Add in-memory cache (`node-cache` or simple `Map` with TTL)
+2. Cache key = `slug + JSON.stringify(opts)`
+3. Default TTL: 30-60 seconds for most reports
+4. Allow manual cache busting via `?nocache=true` query param
+5. Selective: cache only heavy reports (profit-loss, inventory-valuation, cash-flow, cost-method-comparison)
+
+**Cost:** Low — ~50 lines of cache middleware. Care needed for cache invalidation when data changes.
+
+---
+
+### 15.8 S8 — CSV Export Support
+
+**Decision:** ✅ **Add CSV.** With Arabic UTF-8 BOM encoding.
+
+**Problem:** Only Excel (.xlsx), PDF, and DOCX exports exist. No CSV for external analysis, large datasets, or data interchange.
+
+**Solution:**
+1. Add `exportRowsToCsv()` to `exportService.js`
+2. Add `"csv"` to allowed formats in `report.routes.js`
+3. Set UTF-8 BOM for Arabic text support in Excel
+4. Stream directly to response (no temp file needed)
+5. Proper MIME type `text/csv; charset=utf-8`
+
+**Cost:** Very low — ~30 lines of code.
+
+---
+
+### 15.9 S9 — Column Customization Persistence Verification
+
+**Decision:** ✅ **Full verify + fix.** Ensure store methods are called on every column change.
+
+**Problem:** `reportsStore.js` supports per-report column settings (visibility, order, width) via localStorage, but it's unclear if `SourceWorkspacePage` and `ReportWorkspacePage` actually CALL these store methods.
+
+**Solution:**
+1. Audit `SourceWorkspacePage.jsx` — verify every column change action calls the corresponding store method
+2. Audit `ReportWorkspacePage.jsx` — same
+3. Fix any missing store calls
+4. Add "Reset to defaults" button for column layout
+5. Add column freeze/pin support
+
+**Cost:** Low — audit and minor wiring fixes.
+
+---
+
+### 15.10 S10 — Theme System Migration
+
+**Decision:** ✅ **Full theme migration.** Replace ALL hardcoded colors with CSS theme variables across all reports files.
+
+**Problem (F43 inventory):**
+- `bg-white` used ~30+ times (dropdowns, modals, content areas)
+- `bg-slate-100` on all bottom total rows → invisible in dark themes
+- `COL_TYPE_STYLE` hardcodes emerald/indigo/blue/amber for data cells
+- `OwnerStatementPage` has entire `THEME_CLASSES` object with hardcoded emerald/blue/indigo/cyan/purple/rose/amber
+- Violates AGENTS.md mandate for theme CSS variables
+
+**Solution (comprehensive per-file inventory in REPORTS_AUDIT_FINDINGS.md §F43):**
+1. Replace ALL `bg-white` → `bg-bg-surface`
+2. Replace total row backgrounds (`bg-slate-100`/`bg-gray-100`) → `bg-bg-overlay`
+3. Replace dropdown/popover backgrounds → `bg-bg-surface` + `border-border-normal`
+4. Replace modal backdrop overlays (`bg-black/50`, `bg-slate-950/65`) → `bg-bg-overlay`
+5. Replace `COL_TYPE_STYLE` hardcoded colors → semantic theme variables
+6. Replace `OwnerStatementPage.THEME_CLASSES` → CSS variable classes
+7. Test with ALL 6 themes (emerald, slate, amber, rose, indigo, blue)
+
+**Cost:** Medium — ~50+ changes across 5 files. Testing with 6 themes is the time-consuming part.
+
+---
+
+### 15.11 S11 — Streaming Export for Large Datasets
+
+**Decision:** ✅ **Best practice streaming.** All formats stream directly to response. No temp files. All features preserved.
+
+**Problem:** ALL exports write to temp file → `readFileSync` → send. Doubles memory usage. Temp file cleanup is incomplete (no `close` event handler).
+
+**Solution:**
+1. **CSV**: stream directly to response with `res.write()` — no temp file
+2. **Excel**: ExcelJS supports `write(res)` — pipe workbook directly to response (same formatting, RTL support, number styles)
+3. **PDF**: PDFKit supports `doc.pipe(res)` — stream directly (same fonts, headers, page numbers, alternating rows)
+4. Remove all temp file intermediate code
+5. Add `close` event handler for client disconnect cleanup
+
+**All existing export features preserved.** Memory usage drops from 2x to 1x.
+
+**Cost:** Medium — refactoring exportService to accept response streams instead of file paths.
+
+---
+
+### 15.12 S12 — Automated Test Framework for Reports
+
+**Decision:** ✅ **Full test suite.** Parameterized tests for all query functions + route integration tests + export snapshot tests.
+
+**Problem (F41):** < 2% test coverage. Only 1 query function out of ~90+ has a test. Zero tests for registry, columns, dispatcher, helpers, routes, export, or client UI.
+
+**Solution:**
+1. Create test helper that seeds known DB state (customers, items, invoices, payments, stock)
+2. Write parameterized tests for EVERY query function: call with known data → assert exact output rows and columns
+3. Write integration tests for every route endpoint: HTTP request → assert response shape, status codes, error handling
+4. Write snapshot tests for every export format (Excel, PDF, DOCX, CSV)
+5. Add CI pipeline to run report tests on every PR
+6. Existing seed pattern in `server/tests/reports.test.js` serves as template
+
+**Cost:** HIGH — most expensive suggestion. ~90 query functions × 2 tests (happy path + edge case) = ~180 tests. But enables ALL other changes to happen safely.
+
+---
+
+### 15.13 S13 — Report Generation History & Scheduling
+
+**Decision:** ✅ **Full system.** Run-and-save for any report. Scheduled daily/weekly/monthly reports. Comparison view.
+
+**Problem:** All reports are "live" — they always show current data. You can't run "Profit & Loss for March" and keep that snapshot. No historical record.
+
+**Solution:**
+1. Add `report_snapshots` table (similar to `owner_statements` pattern)
+2. "Run and Save" button on any report — stores result with timestamp
+3. Scheduled report generation (daily/weekly/monthly) via `node-cron`
+4. Comparison view: current vs saved snapshot
+5. Owner Statement already proves this pattern (save + lock + compare)
+
+**Cost:** High — new DB table, new API endpoints, UI for snapshot management. But proven pattern from owner-statement.
+
+---
+
+### 15.14 S14 — Chart Integration for Time-Series Reports
+
+**Decision:** ✅ **Full chart integration.** Line/bar/pie charts for time-series reports with table/chart toggle.
+
+**Problem:** Reports like daily-sales, period-comparison, profit-by-period are inherently visual but show only tabular data.
+
+**Solution:**
+1. Check if Chart.js or Recharts already exists in the project (`package.json`)
+2. Add chart rendering to 5 key reports (priority order):
+   - `daily-sales`: line chart (sales trend over time) — HIGH VALUE
+   - `period-comparison`: grouped bar chart (period 1 vs period 2) — HIGH VALUE
+   - `profit-by-period`: line chart (profit trend) — HIGH VALUE
+   - `sales-by-payment`: pie/donut chart (payment method distribution) — MEDIUM
+   - `sales-by-cashier`: horizontal bar chart — MEDIUM
+3. Pre-compute chart data in the query function: `{ rows: [...], chart: { labels, datasets } }`
+4. Toggle between table and chart view in the workspace page
+
+**Cost:** Medium — depends on whether chart lib already exists. Integration in query functions + UI toggle.
+
+---
+
+### 15.15 S15 — Consistent Currency Formatting
+
+**Decision:** ✅ **Settings-driven currency.** Centralized `formatMoney()` utility reading from `settings` table.
+
+**Problem:**
+- `OwnerStatementPage` hardcodes "ج.م" in ~15 places
+- Inconsistent: some reports use `settings.currency_symbol`, others don't
+- `settings` table has `currency_code`, `currency_symbol`, `decimal_places` but reports system doesn't read them
+
+**Solution:**
+1. Create centralized `formatMoney(amount, currencySymbol, decimalPlaces)` utility
+2. Read currency settings ONCE in `buildOpts()` and pass via `opts` to all query functions
+3. Use in all report rendering and exports
+4. Remove ALL hardcoded "ج.م" and "EGP" strings
+5. Respect `settings.decimal_places` (currently 2)
+
+**Cost:** Low — utility function + find-and-replace across reporting files.
+
+---
+
+### 15.16 Execution Priority
+
+Suggested order for implementing the 15 suggestions:
+
+**Wave 1 — Foundation (do first, enables everything else):**
+1. **S12** — Test framework (safety net for all other changes)
+2. **S3** — Server-side pagination (critical for production reliability)
+3. **S4** — Normalized return shapes (fixes P16 crash)
+
+**Wave 2 — Config & Architecture:**
+4. **S1** — Single config source (delete reportsCenterConfig.js)
+5. **S2** — Eliminate two-system duality (full migration)
+6. **S6** — Smart default filters (per classification review)
+
+**Wave 3 — User-Facing Features:**
+7. **S10** — Theme migration (fixes all hardcoded colors)
+8. **S8** — CSV export (quick win)
+9. **S5** — Report descriptions (quick win)
+10. **S15** — Currency formatting (settings-driven)
+
+**Wave 4 — Performance & Polish:**
+11. **S7** — Report caching (30-60s TTL)
+11. **S9** — Column persistence verification
+12. **S11** — Streaming export (memory optimization)
+
+**Wave 5 — Advanced Features:**
+13. **S14** — Chart integration (time-series reports)
+14. **S13** — Report history/scheduling (snapshot system)

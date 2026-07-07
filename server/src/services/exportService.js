@@ -51,6 +51,7 @@ async function exportRowsToExcelV2({
   worksheetName = "Report",
   columns,
   rtl = true,
+  res = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const workbook = new ExcelJS.Workbook();
@@ -146,6 +147,11 @@ async function exportRowsToExcelV2({
     worksheet.mergeCells(footerRow.number, 1, footerRow.number, keys.length);
   }
 
+  if (res) {
+    await workbook.xlsx.write(res);
+    return null;
+  }
+
   const filePath = path.join(os.tmpdir(), `${worksheetName}-${Date.now()}.xlsx`);
   await workbook.xlsx.writeFile(filePath);
   return filePath;
@@ -201,6 +207,7 @@ async function exportRowsToDocx({
   filters = null,
   totals = {},
   companyName = "",
+  res = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const keys = Array.isArray(columns) && columns.length
@@ -347,13 +354,30 @@ async function exportRowsToDocx({
             children: [new TextRun({ text: companyName, size: 20, color: "64748b", rightToLeft: rtl })],
           }),
         ] : []),
-        // Date range line
-        ...(filters?.from && filters?.to ? [
+        // Filter info lines
+        ...(filters ? [
           new Paragraph({
             alignment: rtl ? AlignmentType.RIGHT : AlignmentType.LEFT,
             spacing: { after: 40 },
-            children: [new TextRun({ text: `الفترة: ${filters.from} إلى ${filters.to}`, size: 18, color: "64748b", italics: true, rightToLeft: rtl })],
+            children: [new TextRun({
+              text: [filters.from && filters.to ? `الفترة: ${filters.from} إلى ${filters.to}` : ""].filter(Boolean).join(""),
+              size: 18, color: "64748b", italics: true, rightToLeft: rtl,
+            })],
           }),
+          ...(() => {
+            const filterLabels = { status: "الحالة", payment_type: "نوع الدفع", movement_type: "نوع الحركة", customer_id: "العميل", supplier_id: "المورد", category_id: "التصنيف", item_id: "الصنف", cashier_id: "الكاشير", warehouse_id: "المخزن", user_id: "المستخدم", action: "الإجراء", resource: "الموارد", method_id: "طريقة الدفع", direction: "الاتجاه", doc_type: "نوع المستند", party_type: "نوع الطرف", amount_min: "الحد الأدنى", amount_max: "الحد الأقصى", tax_type: "نوع الضريبة", treasury_id: "الخزينة", bank_id: "البنك" };
+            const parts = [];
+            for (const [k, v] of Object.entries(filters)) {
+              if (k === "from" || k === "to") continue;
+              const label = filterLabels[k] || k;
+              parts.push(`${label}: ${v}`);
+            }
+            return parts.length ? [new Paragraph({
+              alignment: rtl ? AlignmentType.RIGHT : AlignmentType.LEFT,
+              spacing: { after: 40 },
+              children: [new TextRun({ text: parts.join("  |  "), size: 18, color: "64748b", italics: true, rightToLeft: rtl })],
+            })] : [];
+          })(),
         ] : []),
         // Title with accent bar
         new Paragraph({
@@ -389,8 +413,12 @@ async function exportRowsToDocx({
     }],
   });
 
-  const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.docx`);
   const buffer = await Packer.toBuffer(doc);
+  if (res) {
+    res.end(buffer);
+    return null;
+  }
+  const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.docx`);
   fs.writeFileSync(filePath, buffer);
   return filePath;
 }
@@ -409,9 +437,9 @@ async function exportRowsToPdfV3({
   showTotals = true,
   showPageNumbers = true,
   totals = {},
+  res = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
-  const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.pdf`);
   const sizeMap = { A4: "A4", A5: "A5", Letter: "LETTER" };
   const doc = new PDFDocument({
     margin: 40,
@@ -419,8 +447,8 @@ async function exportRowsToPdfV3({
     layout: orientation === "landscape" ? "landscape" : "portrait",
     autoFirstPage: true,
   });
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
+  const pdfStream = res || fs.createWriteStream(path.join(os.tmpdir(), `${title}-${Date.now()}.pdf`));
+  doc.pipe(pdfStream);
 
   const keys = Array.isArray(columns) && columns.length
     ? columns.map((c) => c.key)
@@ -434,16 +462,32 @@ async function exportRowsToPdfV3({
     // Top accent bar
     doc.rect(0, 0, doc.page.width, 8).fill("#0f172a");
     // Title area with background
-    doc.rect(40, 20, doc.page.width - 80, 35).fill("#f8fafc");
-    doc.roundedRect(40, 20, doc.page.width - 80, 35, 4);
-    doc.fill("#f8fafc");
+    doc.roundedRect(40, 20, doc.page.width - 80, 35, 4).fill("#f8fafc");
     // Title text - use Arial for Arabic support
     doc.fontSize(16).font(FONT_ARIAL_BOLD).fillColor("#0f172a");
     doc.text(title, 50, 28, { align: "center" });
     // Filter info below title
+    const filterParts = [];
     if (filters?.from && filters?.to) {
+      filterParts.push(`الفترة: ${filters.from} إلى ${filters.to}`);
+    }
+    const filterLabels = {
+      status: "الحالة", payment_type: "نوع الدفع", movement_type: "نوع الحركة",
+      customer_id: "العميل", supplier_id: "المورد", category_id: "التصنيف",
+      item_id: "الصنف", cashier_id: "الكاشير", warehouse_id: "المخزن",
+      user_id: "المستخدم", action: "الإجراء", resource: "الموارد",
+      method_id: "طريقة الدفع", direction: "الاتجاه", doc_type: "نوع المستند",
+      party_type: "نوع الطرف", amount_min: "الحد الأدنى", amount_max: "الحد الأقصى",
+      tax_type: "نوع الضريبة", treasury_id: "الخزينة", bank_id: "البنك",
+    };
+    for (const [k, v] of Object.entries(filters || {})) {
+      if (k === "from" || k === "to") continue;
+      const label = filterLabels[k] || k;
+      filterParts.push(`${label}: ${v}`);
+    }
+    if (filterParts.length) {
       doc.fontSize(9).font(FONT_ARIAL).fillColor("#64748b");
-      doc.text(`الفترة: ${filters.from} إلى ${filters.to}`, 50, 48, { align: "center" });
+      doc.text(filterParts.join("  |  "), 50, 48, { align: "center" });
     }
     doc.y = 70;
   };
@@ -563,7 +607,54 @@ async function exportRowsToPdfV3({
   }
 
   doc.end();
-  await new Promise((resolve) => stream.on("finish", resolve));
+  if (res) {
+    await new Promise((resolve) => res.on("finish", resolve));
+    return null;
+  }
+  await new Promise((resolve) => pdfStream.on("finish", resolve));
+  return pdfStream.path;
+}
+
+async function exportRowsToCsv({ rows = [], title = "Report", columns = [], res = null }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const keys = Array.isArray(columns) && columns.length
+    ? columns.map((c) => c.key)
+    : Object.keys(safeRows[0] || {});
+  const headers = Array.isArray(columns) && columns.length
+    ? columns.map((c) => c.label)
+    : keys;
+
+  if (res) {
+    res.write("\uFEFF");
+    res.write(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\r\n");
+    for (const row of safeRows) {
+      const vals = keys.map(k => {
+        const v = row[k];
+        if (v == null) return "";
+        const s = String(v);
+        return `"${s.replace(/"/g, '""')}"`;
+      });
+      res.write(vals.join(",") + "\r\n");
+    }
+    res.end();
+    return null;
+  }
+
+  const lines = [];
+  // BOM for Arabic/UTF-8 support in Excel
+  lines.push("\uFEFF" + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(","));
+  for (const row of safeRows) {
+    const vals = keys.map(k => {
+      const v = row[k];
+      if (v == null) return "";
+      const s = String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    });
+    lines.push(vals.join(","));
+  }
+
+  const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.csv`);
+  fs.writeFileSync(filePath, lines.join("\r\n"), "utf8");
   return filePath;
 }
 
@@ -574,4 +665,5 @@ module.exports = {
   exportRowsToPdfV2,
   exportRowsToDocx,
   exportRowsToPdfV3,
+  exportRowsToCsv,
 };

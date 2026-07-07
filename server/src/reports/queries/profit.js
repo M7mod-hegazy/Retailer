@@ -79,10 +79,9 @@ function profitByCategory(startDate, endDate, opts = {}) {
     ORDER BY gross_profit DESC
   `);
   const rows = stmt.all(...params, ...(category_id ? [category_id] : []));
-  return {
-    rows,
-    summary: { total_expenses: totalExpenses },
-  };
+  // Normalize to flat array (P16): attach metadata as array property
+  rows.totalExpenses = totalExpenses;
+  return rows;
 }
 
 function profitByCustomer(startDate, endDate, opts = {}) {

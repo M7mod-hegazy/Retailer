@@ -144,14 +144,23 @@ function checkItemMargin(item_id, db_instance) {
 /**
  * Get all items currently below minimum margin threshold.
  */
-function getItemsBelowMargin(db_instance) {
+function getItemsBelowMargin(db_instance, opts = {}) {
   const db = db_instance || getDb();
   const settings = db.prepare("SELECT min_margin_percent FROM settings WHERE id = 1").get();
   const global_min = Number(settings?.min_margin_percent ?? 15);
 
-  const items = db.prepare(
-    "SELECT id, name, sale_price, purchase_price, min_margin_percent FROM items WHERE deleted_at IS NULL"
-  ).all();
+  let itemQuery = "SELECT id, name, sale_price, purchase_price, min_margin_percent FROM items WHERE deleted_at IS NULL";
+  const params = [];
+
+  // If date range provided, restrict to items with sales activity in that period
+  if (opts.startDate || opts.endDate) {
+    itemQuery += " AND id IN (SELECT DISTINCT il.item_id FROM invoice_lines il JOIN invoices i ON i.id = il.invoice_id WHERE i.status != 'cancelled'";
+    if (opts.startDate) { itemQuery += " AND DATE(i.created_at) >= ?"; params.push(opts.startDate); }
+    if (opts.endDate) { itemQuery += " AND DATE(i.created_at) <= ?"; params.push(opts.endDate); }
+    itemQuery += ")";
+  }
+
+  const items = db.prepare(itemQuery).all(...params);
 
   const results = [];
   for (const item of items) {

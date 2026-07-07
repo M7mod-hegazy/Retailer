@@ -1,5 +1,6 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function tableColumns(db, table) {
   try {
@@ -101,7 +102,7 @@ function installmentPlans(startDate, endDate, opts = {}) {
       FROM ajal_schedules
       GROUP BY debt_id
     ) s ON s.debt_id = d.id` : "";
-  return db.prepare(`
+  let sql = `
     SELECT d.id, COALESCE(c.name, 'عميل') AS customer_name,
       ROUND(COALESCE(d.original_amount, 0), 2) AS total,
       ROUND(COALESCE(d.paid_amount, 0), 2) AS paid_amount,
@@ -124,7 +125,14 @@ function installmentPlans(startDate, endDate, opts = {}) {
     ${scheduleJoin}
     WHERE ${where} ${invoiceJoinFilter}
     ORDER BY d.created_at DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function legacyInstallmentCollections(db, startDate, endDate, opts) {
@@ -152,7 +160,7 @@ function installmentCollections(startDate, endDate, opts = {}) {
   const paymentDateExpr = tableColumns(db, "ajal_payments").has("payment_date") ? "COALESCE(ap.payment_date, ap.created_at)" : "ap.created_at";
   const dateClause = addDateFilter(paymentDateExpr, startDate, endDate, params).replace(/^ AND /, "");
   const dateWhere = dateClause ? ` AND ${dateClause}` : "";
-  return db.prepare(`
+  let sql = `
     SELECT ap.id, d.id AS plan_id, COALESCE(c.name, 'عميل') AS customer_name,
       ROUND(COALESCE(ap.amount, 0), 2) AS collected,
       ROUND(COALESCE(ap.amount, 0), 2) AS installment_amount,
@@ -170,7 +178,14 @@ function installmentCollections(startDate, endDate, opts = {}) {
     LEFT JOIN payment_methods pm ON pm.id = ap.payment_method_id
     WHERE ${where}${dateWhere}
     ORDER BY ${paymentDateExpr} DESC, ap.id DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function installmentsByCustomer(startDate, endDate, opts = {}) {
@@ -206,7 +221,7 @@ function installmentsByCustomer(startDate, endDate, opts = {}) {
       FROM ajal_schedules
       GROUP BY debt_id
     ) s ON s.debt_id = d.id` : "";
-  return db.prepare(`
+  let sql = `
     SELECT COALESCE(c.name, 'عميل') AS customer_name,
       COUNT(d.id) AS plan_count,
       ROUND(SUM(COALESCE(d.original_amount, 0)), 2) AS total_amount,
@@ -223,7 +238,14 @@ function installmentsByCustomer(startDate, endDate, opts = {}) {
     WHERE ${where}
     GROUP BY d.customer_id
     ORDER BY total_remaining DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function legacyInstallmentDelinquent(db, opts) {
@@ -254,7 +276,7 @@ function installmentDelinquent(startDate, endDate, opts = {}) {
   const params = [];
   const where = debtWhere(db, "d", opts, null, null, null, params);
   if (tableExists(db, "ajal_schedules")) {
-    return db.prepare(`
+    let sql = `
       SELECT s.id, d.id AS plan_id, COALESCE(c.name, 'عميل') AS customer_name,
         ROUND(COALESCE(d.original_amount, 0), 2) AS total,
         CASE WHEN COALESCE(d.original_amount, 0) > COALESCE(d.paid_amount, 0) THEN ROUND(COALESCE(d.original_amount, 0) - COALESCE(d.paid_amount, 0), 2) ELSE 0 END AS remaining,
@@ -277,9 +299,16 @@ function installmentDelinquent(startDate, endDate, opts = {}) {
         AND s.due_date IS NOT NULL
         AND DATE(s.due_date) < DATE('now', 'localtime')
       ORDER BY days_overdue DESC
-    `).all(...params);
+    `;
+    const allParams = [...params];
+    if (opts.page || opts.pageSize) {
+      const p = paginateSql(sql, opts);
+      sql = p.sql;
+      allParams.push(...p.params);
+    }
+    return db.prepare(sql).all(...allParams);
   }
-  return db.prepare(`
+  let sql = `
     SELECT d.id, COALESCE(c.name, 'عميل') AS customer_name,
       ROUND(COALESCE(d.original_amount, 0), 2) AS total,
       CASE WHEN COALESCE(d.original_amount, 0) > COALESCE(d.paid_amount, 0) THEN ROUND(COALESCE(d.original_amount, 0) - COALESCE(d.paid_amount, 0), 2) ELSE 0 END AS remaining,
@@ -300,7 +329,14 @@ function installmentDelinquent(startDate, endDate, opts = {}) {
       AND d.due_date IS NOT NULL
       AND DATE(d.due_date) < DATE('now', 'localtime')
     ORDER BY days_overdue DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 module.exports = {

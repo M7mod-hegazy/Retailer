@@ -69,6 +69,11 @@ function ensurePrintColumns() {
   add("pos_voice_enabled",   "INTEGER DEFAULT 0");
   add("smart_lock_enabled", "INTEGER DEFAULT 1");
   add("smart_lock_timeout_minutes", "INTEGER DEFAULT 15");
+  add("sms_enabled",        "INTEGER DEFAULT 0");
+  add("sms_api_url",        "TEXT");
+  add("sms_api_key",        "TEXT");
+  add("sms_sender",         "TEXT");
+  add("sms_body_template",  "TEXT");
   // Log summary to help debug any persistence issues
   if (added > 0) console.log(`[settings] Added ${added} missing print-setting columns`);
 }
@@ -98,6 +103,7 @@ const COLUMN_META = {
   tax_enabled: "bool",
   pos_voice_enabled: "bool",
   smart_lock_enabled: "bool",
+  sms_enabled: "bool",
   smart_lock_timeout_minutes: "int",
   logo_on_invoices: "bool", logo_on_receipts: "bool",
   logo_on_sidebar: "bool", logo_on_reports: "bool",

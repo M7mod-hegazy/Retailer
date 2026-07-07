@@ -18,6 +18,7 @@ import CategorySearchField from "../../components/ui/CategorySearchField";
 import Highlight from "../../components/ui/Highlight";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useAuthStore } from "../../stores/authStore";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
@@ -44,6 +45,7 @@ function fmtDateTime(d) {
 
 export default function BranchTransferFormPage() {
   const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
   const [searchParams] = useSearchParams();
   const { id: editId } = useParams();
   const isEditMode = Boolean(editId);
@@ -870,9 +872,19 @@ export default function BranchTransferFormPage() {
   const displayDate = isEditMode ? lockedDate : draftTime;
 
   const invoiceDummy = {
+    ...(savedDoc || {}),
     invoice_number: savedDoc ? savedDoc.reference_no : (displayRef || (isReceive ? "BT-R-??????" : "BT-S-??????")),
+    invoice_no: savedDoc ? savedDoc.reference_no : (displayRef || (isReceive ? "BT-R-??????" : "BT-S-??????")),
     created_at: savedDoc ? savedDoc.created_at : new Date().toISOString(),
+    customer_name: branches.find(b => String(b.id) === String(partnerBranch))?.name || "فرع آخر",
+    cashier_name: user?.name || "",
+    total: totalCost || 0,
+    subtotal: totalCost || 0,
+    discount: 0,
+    increase: 0,
+    notes: notes || "",
     lines: lines.map(l => ({
+      ...l,
       item_code: l.code,
       item_name: l.item_name,
       quantity: l.quantity,

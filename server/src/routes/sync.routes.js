@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { getDb } = require("../config/database");
-const logger = require("../config/logger");
 const https = require("https");
 const http = require("http");
 const { createSnapshot } = require("./syncHelpers");
@@ -113,7 +112,7 @@ router.post("/register-webhook", async (req, res) => {
 
     const apiRes = await apiFetch(cfg.ecom_url, `/api/sync/admin/stores/${cfg.store_id}/webhook`, {
       method: "PUT",
-      body: JSON.stringify({ webhookUrl, isActive: true, webhookSecret }),
+      body: { webhookUrl, isActive: true, webhookSecret },
       storeId: cfg.store_id,
       apiKey: cfg.api_key,
     });
@@ -159,11 +158,20 @@ router.get("/status", async (req, res) => {
 });
 
 // ── GET /api/sync/verify — staged connection verification ──
-router.get("/verify", async (req, res) => {
+// Accepts optional overrides (ecom_url / store_id / api_key) via query or body so the
+// setup wizard can test the values being entered BEFORE they are saved.
+const verifyHandler = async (req, res) => {
   try {
     const db = getDb();
-    const cfg = getConfig(db);
-    if (!cfg) return res.json({ ok: false, steps: [
+    const src = { ...(req.query || {}), ...(req.body || {}) };
+    const saved = getConfig(db) || {};
+    const cfg = {
+      ...saved,
+      ...(src.ecom_url ? { ecom_url: src.ecom_url } : {}),
+      ...(src.store_id ? { store_id: src.store_id } : {}),
+      ...(src.api_key ? { api_key: src.api_key } : {}),
+    };
+    if (!cfg.ecom_url || !cfg.store_id || !cfg.api_key) return res.json({ ok: false, steps: [
       { key: "domain", status: "error", message: "Sync not configured" },
       { key: "server", status: "skip" },
       { key: "auth", status: "skip" },
@@ -240,7 +248,9 @@ router.get("/verify", async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
-});
+};
+router.get("/verify", verifyHandler);
+router.post("/verify", verifyHandler);
 
 // ── GET /api/sync/check — get changes available from E-com ──
 router.get("/check", async (req, res) => {
@@ -1125,5 +1135,90 @@ router.post("/snapshots/:id/rollback", (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// ── Auto-sync: pull ALL products changed on the store since last_sync_at ──
+// Used by the scheduler (server/src/jobs/syncScheduler.js). Pages through the
+// store's /available/products (sorted updatedAt desc) and upserts every change.
+async function autoPullAll(db) {
+  const cfg = getConfig(db);
+  if (!cfg || !cfg.ecom_url || !cfg.store_id || !cfg.api_key) return { skipped: "not_configured" };
+
+  const runStart = new Date().toISOString();
+  const since = cfg.last_sync_at || new Date(0).toISOString();
+  const MAX_PAGES = 50;
+  const LIMIT = 100;
+
+  const collected = [];
+  let page = 1;
+  let pages = 1;
+  do {
+    const qs = `?since=${encodeURIComponent(since)}&limit=${LIMIT}&page=${page}`;
+    const apiRes = await apiFetch(cfg.ecom_url, `/api/sync/available/products${qs}`, {
+      storeId: cfg.store_id,
+      apiKey: cfg.api_key,
+    });
+    if (apiRes.status !== 200) {
+      if (page === 1) return { ok: false, error: apiRes.data?.error || `HTTP ${apiRes.status}` };
+      break;
+    }
+    const items = apiRes.data?.items || [];
+    collected.push(...items);
+    pages = apiRes.data?.pages || 1;
+    page += 1;
+  } while (page <= pages && page <= MAX_PAGES);
+
+  const results = { imported: 0, failed: 0 };
+  const applyOne = db.transaction((product) => {
+    const existing = db.prepare("SELECT id FROM items WHERE code = ?").get(product.sku);
+    if (existing) {
+      db.prepare(
+        "UPDATE items SET name = ?, name_en = ?, sale_price = ?, stock = ?, description = ?, ecom_id = ?, last_synced_at = datetime('now'), sync_status = 'synced' WHERE id = ?"
+      ).run(
+        product.nameAr || product.name,
+        product.name || "",
+        product.price ?? null,
+        product.stock ?? null,
+        product.description || null,
+        product._id || null,
+        existing.id,
+      );
+    } else {
+      db.prepare(
+        "INSERT INTO items (name, name_en, code, sale_price, stock, description, ecom_id, sync_status, last_synced_at, is_active, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, 'synced', datetime('now'), 1, 'product')"
+      ).run(
+        product.nameAr || product.name || "Unknown",
+        product.name || "",
+        product.sku || "",
+        product.price || 0,
+        product.stock || 0,
+        product.description || "",
+        product._id || null,
+      );
+    }
+  });
+
+  for (const product of collected) {
+    try { applyOne(product); results.imported++; }
+    catch { results.failed++; }
+  }
+
+  db.prepare(
+    "INSERT INTO sync_log (direction, status, items_total, items_succeeded, items_failed, error_details, started_at, completed_at) VALUES ('pull', ?, ?, ?, ?, ?, ?, datetime('now'))"
+  ).run(
+    results.failed ? "partial" : "success",
+    collected.length,
+    results.imported,
+    results.failed,
+    JSON.stringify({ auto: true }),
+    runStart,
+  );
+
+  // Advance the cursor to the start of this run so nothing is missed.
+  db.prepare("UPDATE sync_config SET last_sync_at = ? WHERE id = ?").run(runStart, cfg.id);
+
+  return { ok: true, ...results, total: collected.length };
+}
+
+router.autoPullAll = autoPullAll;
 
 module.exports = router;

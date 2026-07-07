@@ -7,13 +7,13 @@ import {
   Globe, ShoppingBag, Layers, TrendingUp, Shield,
   CheckSquare, Square, SlidersHorizontal, Zap, Scale,
   ChevronDown, ChevronUp, Info, Truck, Undo2,
-  ExternalLink,
+  ExternalLink, Play, Monitor, Smartphone,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { getSyncStatus, getSyncCheck, getSyncLogs, getPendingChanges, applySync, pullProducts, previewPull, getConflicts, resolveConflict, getSnapshots, previewRollback, executeRollback } from "../../services/syncService";
+import { getSyncStatus, getSyncCheck, getSyncLogs, getPendingChanges, applySync, pullProducts, previewPull, getConflicts, resolveConflict, getSnapshots, previewRollback, executeRollback, getOnlineOrders, prepareOnlineOrder, ignoreOnlineOrder } from "../../services/syncService";
 import { useSyncStore } from "../../stores/syncStore";
-import { useSSEConnectionStatus } from "../../hooks/useSSE";
+import { useSSEConnectionStatus, useSSE } from "../../hooks/useSSE";
 import ImagePreviewModal from "../../components/sync/ImagePreviewModal";
 import ReviewModal from "../../components/sync/ReviewModal";
 
@@ -562,21 +562,131 @@ function SyncProgressBar({ active }) {
 }
 
 /* ─── Branded Not Configured Page ─── */
+// White-label: resellers set VITE_STORE_PROMO_URL to their storefront-order/landing page.
+// When unset, the store-order CTAs are hidden and only the sync-setup CTA is shown.
+const STORE_PROMO_URL = import.meta.env.VITE_STORE_PROMO_URL || "";
+// Optional explainer video + storefront screenshots for the marketing page.
+// When unset, styled placeholders are shown so the layout stays intact.
+const STORE_VIDEO_URL = import.meta.env.VITE_STORE_VIDEO_URL || "";
+const STORE_SHOTS = [
+  import.meta.env.VITE_STORE_SHOT_1 || "",
+  import.meta.env.VITE_STORE_SHOT_2 || "",
+  import.meta.env.VITE_STORE_SHOT_3 || "",
+];
+
+/* ─── Marketing: video placeholder ─── */
+function VideoShowcase({ t }) {
+  return (
+    <div className="max-w-4xl mx-auto px-6 -mt-12 relative z-20 mb-10">
+      <div className="text-center mb-4">
+        <h2 className="text-xl md:text-2xl font-black text-text-primary">{t("sync.market.videoTitle")}</h2>
+        <p className="text-sm text-text-muted mt-1">{t("sync.market.videoSubtitle")}</p>
+      </div>
+      <a
+        href={STORE_VIDEO_URL || undefined}
+        target={STORE_VIDEO_URL ? "_blank" : undefined}
+        rel="noopener noreferrer"
+        className={`group block relative rounded-3xl overflow-hidden border border-gray-200 shadow-elevated bg-gradient-to-br from-primary/90 via-primary-600 to-primary/70 ${STORE_VIDEO_URL ? "cursor-pointer" : "cursor-default"}`}
+        style={{ aspectRatio: "16 / 9" }}
+      >
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 25% 30%, rgba(255,255,255,0.35) 0%, transparent 55%), radial-gradient(circle at 75% 75%, rgba(255,255,255,0.2) 0%, transparent 50%)" }} />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border border-white/40 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300 shadow-xl">
+            <Play className="h-9 w-9 ltr:ml-1 rtl:mr-1 fill-white" />
+          </div>
+          <span className="text-lg font-black">{t("sync.market.watchVideo")}</span>
+          {!STORE_VIDEO_URL && <span className="text-xs text-white/70 mt-1.5">{t("sync.market.videoHint")}</span>}
+        </div>
+        <span className="absolute top-3 rtl:right-3 ltr:left-3 text-[10px] font-bold bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full">{t("sync.market.videoPlaceholder")}</span>
+      </a>
+    </div>
+  );
+}
+
+/* ─── Marketing: "about the other side" + screenshots ─── */
+function StoreAbout({ t }) {
+  const points = [
+    t("sync.market.aboutPoint1"),
+    t("sync.market.aboutPoint2"),
+    t("sync.market.aboutPoint3"),
+    t("sync.market.aboutPoint4"),
+  ];
+  const shots = [
+    { url: STORE_SHOTS[0], caption: t("sync.market.shot1Caption"), icon: Globe },
+    { url: STORE_SHOTS[1], caption: t("sync.market.shot2Caption"), icon: ShoppingBag },
+    { url: STORE_SHOTS[2], caption: t("sync.market.shot3Caption"), icon: Monitor },
+  ];
+  return (
+    <div className="max-w-5xl mx-auto px-6 mb-10">
+      {/* Big explanation */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-7 md:p-9 mb-6">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-info-bg/50 text-info-text text-xs font-black mb-4">
+          <Globe className="h-3.5 w-3.5" />
+          {t("sync.market.aboutBadge")}
+        </span>
+        <h2 className="text-2xl md:text-3xl font-black text-text-primary leading-tight mb-4">{t("sync.market.aboutTitle")}</h2>
+        <p className="text-sm md:text-base text-text-secondary leading-loose mb-6">{t("sync.market.aboutBody")}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {points.map((p, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <CheckCircle2 className="h-5 w-5 text-success-text shrink-0 mt-0.5" />
+              <span className="text-sm font-bold text-text-primary leading-relaxed">{p}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Screenshot showcase */}
+      <div className="text-center mb-4">
+        <h3 className="text-lg font-black text-text-primary">{t("sync.market.showcaseTitle")}</h3>
+        <p className="text-xs text-text-muted mt-0.5">{t("sync.market.showcaseSubtitle")}</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {shots.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={i} className="group">
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                {/* browser chrome */}
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 border-b border-gray-200">
+                  <span className="w-2 h-2 rounded-full bg-danger-border" />
+                  <span className="w-2 h-2 rounded-full bg-warning-border" />
+                  <span className="w-2 h-2 rounded-full bg-success-border" />
+                </div>
+                {s.url ? (
+                  <img src={s.url} alt={s.caption} className="w-full object-cover" style={{ aspectRatio: "4 / 3" }} />
+                ) : (
+                  <div className="relative flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-primary-50/40" style={{ aspectRatio: "4 / 3" }}>
+                    <Icon className="h-10 w-10 text-primary/40 mb-2" />
+                    <span className="text-xs font-bold text-text-muted">{t("sync.market.shotPlaceholder")}</span>
+                    <span className="text-[10px] text-text-muted/70 mt-1 px-4 text-center">{t("sync.market.shotHint")}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs font-bold text-text-secondary text-center mt-2">{s.caption}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function NotConfiguredBranding({ onGoToConfig }) {
-  const websiteUrl = "elhegazi.vercel.app";
+  const { t } = useTranslation();
 
   const websiteFeatures = [
-    { icon: Globe, title: "متجر إلكتروني متكامل", desc: "اعرض منتجاتك على موقع إلكتروني احترافي — يعمل على مدار الساعة بدون خبرة تقنية" },
-    { icon: ShoppingBag, title: "إدارة المنتجات عن بُعد", desc: "أضف وعدّل منتجاتك من لوحة تحكم الموقع — الأسماء، الأسعار، المخزون، والصور" },
-    { icon: Layers, title: "صور متعددة لكل منتج", desc: "ارفع صور متعددة لكل منتج لعرضه بشكل احترافي وجذاب للعملاء" },
-    { icon: TrendingUp, title: "تحديث آني للأسعار", desc: "عدّل الأسعار وأضف العروض والتخفيضات على موقعك الإلكتروني مباشرة" },
+    { icon: Globe, title: t("sync.market.web1Title"), desc: t("sync.market.web1Desc") },
+    { icon: ShoppingBag, title: t("sync.market.web2Title"), desc: t("sync.market.web2Desc") },
+    { icon: Layers, title: t("sync.market.web3Title"), desc: t("sync.market.web3Desc") },
+    { icon: TrendingUp, title: t("sync.market.web4Title"), desc: t("sync.market.web4Desc") },
   ];
 
   const syncFeatures = [
-    { icon: ArrowLeftRight, title: "مزامنة ثنائية الاتجاه", desc: "اربط متجرك الإلكتروني بنظام نقاط البيع — المنتجات، المخزون، الأسعار، والصور في كلا الاتجاهين" },
-    { icon: Zap, title: "تحديث المخزون فورياً", desc: "بمجرد بيع منتج في المتجر، يتحدّث المخزون في موقعك الإلكتروني تلقائياً" },
-    { icon: Shield, title: "تحكم كامل بالحقول", desc: "اختر الحقول التي تريد مزامنتها — سعر فقط؟ مخزون فقط؟ أو الكل معاً" },
-    { icon: Clock, title: "سجل مزامنة واسترجاع", desc: "تتبع كل تغيير تمت مزامنته مع إمكانية الاسترجاع لأي نسخة سابقة بضغطة زر" },
+    { icon: ArrowLeftRight, title: t("sync.market.sync1Title"), desc: t("sync.market.sync1Desc") },
+    { icon: Zap, title: t("sync.market.sync2Title"), desc: t("sync.market.sync2Desc") },
+    { icon: ShoppingBag, title: t("sync.market.sync3Title"), desc: t("sync.market.sync3Desc") },
+    { icon: Undo2, title: t("sync.market.sync4Title"), desc: t("sync.market.sync4Desc") },
   ];
 
   return (
@@ -590,17 +700,17 @@ function NotConfiguredBranding({ onGoToConfig }) {
         <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 backdrop-blur-sm rounded-full text-sm font-bold mb-6 animate-fade-in">
             <Globe className="h-4 w-4" />
-            {websiteUrl}
+            {t("sync.market.badge")}
           </div>
 
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-3 animate-slide-up">
-            اربط متجرك الإلكتروني
+            {t("sync.market.heroTitle")}
             <br />
-            <span className="text-white/80">بنظام البيع والمخزون</span>
+            <span className="text-white/80">{t("sync.market.heroTitleAccent")}</span>
           </h1>
 
           <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: "150ms" }}>
-            موقع {websiteUrl} هو متجرك الإلكتروني — أدر منتجاتك وأسعارك ومخزونك من لوحة التحكم، ثم زامنها مع تطبيق نقاط البيع على جهازك.
+            {t("sync.market.heroSubtitle")}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 animate-slide-up" style={{ animationDelay: "300ms" }}>
@@ -609,39 +719,47 @@ function NotConfiguredBranding({ onGoToConfig }) {
               className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-white text-primary rounded-2xl text-sm font-black hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-primary/20"
             >
               <Settings2 className="h-4 w-4" />
-              ابدأ إعداد المزامنة
+              {t("sync.market.ctaSetup")}
               <ArrowLeftRight className="h-4 w-4" />
             </button>
-            <a
-              href="https://elhegazi.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 px-7 py-3.5 border-2 border-white/30 backdrop-blur-sm rounded-2xl text-sm font-black hover:bg-white/10 hover:border-white/50 active:scale-95 transition-all duration-300"
-            >
-              <Download className="h-4 w-4" />
-              اطلب تطبيق POS
-              <ExternalLink className="h-4 w-4" />
-            </a>
+            {STORE_PROMO_URL && (
+              <a
+                href={STORE_PROMO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 px-7 py-3.5 border-2 border-white/30 backdrop-blur-sm rounded-2xl text-sm font-black hover:bg-white/10 hover:border-white/50 active:scale-95 transition-all duration-300"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {t("sync.market.ctaGetStore")}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
           </div>
 
           <div className="flex items-center justify-center gap-6 text-white/50 text-xs animate-fade-in" style={{ animationDelay: "400ms" }}>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> بدون تعقيد</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> دقيقة وموثوقة</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> متوافقة مع AR</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> {t("sync.branding.trust1")}</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> {t("sync.branding.trust2")}</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> {t("sync.branding.trust3")}</span>
           </div>
         </div>
       </div>
 
+      {/* ── Explainer video (first prominent visual) ── */}
+      <VideoShowcase t={t} />
+
+      {/* ── About the online store + screenshots ── */}
+      <StoreAbout t={t} />
+
       {/* ── Website Capabilities ── */}
-      <div className="max-w-5xl mx-auto px-6 -mt-10 relative z-10 mb-8">
+      <div className="max-w-5xl mx-auto px-6 relative z-10 mb-8">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-info-bg/60 flex items-center justify-center">
               <Globe className="h-4 w-4 text-info-text" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-text-primary">موقع {websiteUrl} الإلكتروني</h2>
-              <p className="text-xs text-text-muted">ما يوفره موقع متجرك الإلكتروني من إمكانيات</p>
+              <h2 className="text-sm font-black text-text-primary">{t("sync.market.webTitle")}</h2>
+              <p className="text-xs text-text-muted">{t("sync.market.webSubtitle")}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -669,8 +787,8 @@ function NotConfiguredBranding({ onGoToConfig }) {
               <ArrowLeftRight className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-text-primary">مزامنة تطبيق POS مع الموقع</h2>
-              <p className="text-xs text-text-muted">ميزات إضافية عند ربط التطبيق بموقعك الإلكتروني</p>
+              <h2 className="text-sm font-black text-text-primary">{t("sync.market.syncTitle")}</h2>
+              <p className="text-xs text-text-muted">{t("sync.market.syncSubtitle")}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -695,9 +813,9 @@ function NotConfiguredBranding({ onGoToConfig }) {
       {/* ── Bottom CTA ── */}
       <div className="max-w-3xl mx-auto px-6 pb-16 text-center">
         <div className="bg-gradient-to-r from-primary/5 via-primary-50 to-primary/5 rounded-3xl border border-primary/20 p-8">
-          <h3 className="text-lg font-black text-text-primary mb-2">ابدأ الآن — مجاناً</h3>
+          <h3 className="text-lg font-black text-text-primary mb-2">{t("sync.market.bottomTitle")}</h3>
           <p className="text-sm text-text-secondary mb-6 max-w-lg mx-auto">
-            حمل تطبيق POS واربط متجرك الإلكتروني في دقائق. فريق الدعم الفني جاهز لمساعدتك على مدار الساعة.
+            {t("sync.market.bottomDesc")}
           </p>
           <div className="flex items-center justify-center gap-4">
             <button
@@ -705,17 +823,19 @@ function NotConfiguredBranding({ onGoToConfig }) {
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl text-sm font-black hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20"
             >
               <Settings2 className="h-4 w-4" />
-              إعداد المزامنة
+              {t("sync.market.ctaSetup")}
             </button>
-            <a
-              href="https://elhegazi.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-black text-text-secondary hover:bg-gray-100 active:scale-95 transition-all"
-            >
-              <Download className="h-4 w-4" />
-              طلب التطبيق
-            </a>
+            {STORE_PROMO_URL && (
+              <a
+                href={STORE_PROMO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-black text-text-secondary hover:bg-gray-100 active:scale-95 transition-all"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {t("sync.market.ctaLearnMore")}
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -765,6 +885,57 @@ export default function SyncPage() {
   const [rollbackState, setRollbackState] = useState("idle");
   const [rollbackProgress, setRollbackProgress] = useState({ current: 0, total: 0 });
   const [selectedSnapshotId, setSelectedSnapshotId] = useState(null);
+
+  const [onlineOrders, setOnlineOrders] = useState([]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [forwardingId, setForwardingId] = useState(null);
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await getOnlineOrders("pending", 50);
+      if (res?.ok) {
+        setOnlineOrders(res.items || []);
+        setPendingOrdersCount(res.pendingCount ?? (res.items || []).length);
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  // Live: a new online order arrives → refresh the queue + count.
+  useSSE({ onOrderNew: () => loadOrders() });
+
+  const forwardOrder = useCallback(async (orderId) => {
+    setForwardingId(orderId);
+    try {
+      const res = await prepareOnlineOrder(orderId);
+      if (!res?.ok) { toast.error("تعذّر تجهيز الطلب"); return; }
+      if (res.unmatched?.length) {
+        toast(`${res.unmatched.length} صنف غير مطابق سيتم تجاهله`, { icon: "⚠️" });
+      }
+      if (!res.prefill?.lines?.length) { toast.error("لا توجد أصناف مطابقة لتحويلها"); return; }
+      navigate("/pos", { state: { from_online_order_id: orderId, prefill: res.prefill } });
+    } catch {
+      toast.error("تعذّر تجهيز الطلب");
+    } finally {
+      setForwardingId(null);
+    }
+  }, [navigate]);
+
+  const dismissOrder = useCallback(async (orderId) => {
+    try {
+      await ignoreOnlineOrder(orderId);
+      loadOrders();
+    } catch {
+      toast.error("تعذّر تجاهل الطلب");
+    }
+  }, [loadOrders]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -1001,6 +1172,7 @@ export default function SyncPage() {
 
   /* ─── Main tabs ─── */
   const tabs = [
+    { id: "orders", label: "طلبات الموقع", count: pendingOrdersCount, icon: ShoppingBag },
     { id: "available", label: "متاح من الموقع", count: available.products?.length || 0, icon: Download },
     { id: "pending", label: "تغييرات محلية", count: pendingChanges?.length || 0, icon: Upload },
     { id: "logs", label: "سجل المزامنة", count: logs?.length || 0, icon: Clock },
@@ -1104,6 +1276,26 @@ export default function SyncPage() {
         </div>
       )}
 
+      {/* ── Live pending online-orders warning ── */}
+      {pendingOrdersCount > 0 && (
+        <button
+          onClick={() => setActiveTab("orders")}
+          className="w-full mb-6 flex items-center gap-3 p-4 rounded-2xl bg-warning-bg/30 border border-warning-border/50 hover:bg-warning-bg/50 transition-all duration-200 animate-fade-in text-right"
+        >
+          <div className="w-10 h-10 rounded-xl bg-warning-bg flex items-center justify-center shrink-0 relative">
+            <ShoppingBag className="h-5 w-5 text-warning-text" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger-text text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+              {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
+            </span>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-black text-warning-text">لديك {pendingOrdersCount} طلب جديد من الموقع بانتظار المراجعة</p>
+            <p className="text-xs text-text-secondary mt-0.5">اضغط لمراجعة الطلبات وتحويلها إلى فواتير بيع</p>
+          </div>
+          <ArrowLeftRight className="h-4 w-4 text-warning-text shrink-0" />
+        </button>
+      )}
+
       {/* ── Importance Banner ── */}
       <ImportanceBanner />
 
@@ -1142,6 +1334,7 @@ export default function SyncPage() {
       )}
 
       {/* ── Search + Filters + Bulk actions ── */}
+      {activeTab !== "orders" && (
       <div className="flex items-center gap-3 mb-4 animate-fade-in flex-wrap">
         <div className="relative flex-[2] min-w-[200px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -1238,6 +1431,7 @@ export default function SyncPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 mb-4 border-b border-gray-200">
@@ -1269,6 +1463,83 @@ export default function SyncPage() {
           );
         })}
       </div>
+
+      {/* ── Tab: Online orders review queue ── */}
+      {activeTab === "orders" && (
+        <div className="animate-slide-up">
+          <div className="mb-3 p-3 rounded-xl bg-info-bg/15 border border-info-border/30 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-info-bg/50 flex items-center justify-center shrink-0">
+              <ShoppingBag className="h-4 w-4 text-info-text" />
+            </div>
+            <div className="text-xs text-text-secondary leading-relaxed">
+              <span className="font-bold text-text-primary">طلبات المتجر الإلكتروني: </span>
+              الطلبات الجديدة من موقعك تظهر هنا. راجع كل طلب وحوّله إلى فاتورة بيع في نقاط البيع — تُطابق الأصناف بالباركود ويُطابق العميل برقم الهاتف. لا يتأثر المخزون إلا عند حفظ الفاتورة.
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {ordersLoading && onlineOrders.length === 0 ? (
+              <div className="p-10 text-center text-sm text-text-muted"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
+            ) : onlineOrders.length === 0 ? (
+              <EmptyState
+                icon={ShoppingBag}
+                title="لا توجد طلبات جديدة"
+                description="عندما يصل طلب جديد من متجرك الإلكتروني سيظهر هنا فوراً لتحويله إلى فاتورة."
+              />
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {onlineOrders.map((o) => (
+                  <div key={o.id} className="p-4 flex items-start gap-4 hover:bg-gray-50/40 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                      <ShoppingBag className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-text-primary">#{o.ecom_order_id}</span>
+                        <span className="text-xs text-text-muted">•</span>
+                        <span className="text-sm font-bold text-text-secondary">{o.customer_name || "عميل"}</span>
+                        {o.customer_phone && <span className="text-[11px] text-text-muted" dir="ltr">{o.customer_phone}</span>}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-xs text-text-muted">
+                        <span className="font-bold text-success-text">{Number(o.total || 0).toFixed(2)}</span>
+                        <span>{o.items_count || (o.items?.length || 0)} صنف</span>
+                        <span>{o.received_at}</span>
+                      </div>
+                      {Array.isArray(o.items) && o.items.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {o.items.slice(0, 6).map((it, i) => (
+                            <span key={i} className="text-[10px] bg-gray-50 border border-gray-200 rounded-lg px-2 py-0.5 text-text-secondary">
+                              {(it.name || it.sku || "?")} ×{it.quantity || it.qty || 1}
+                            </span>
+                          ))}
+                          {o.items.length > 6 && <span className="text-[10px] text-text-muted">+{o.items.length - 6}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={() => forwardOrder(o.id)}
+                        disabled={forwardingId === o.id}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white rounded-xl text-xs font-black hover:opacity-90 disabled:opacity-50 active:scale-95 transition"
+                      >
+                        {forwardingId === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
+                        تحويل إلى فاتورة
+                      </button>
+                      <button
+                        onClick={() => dismissOrder(o.id)}
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 border border-gray-200 rounded-xl text-xs font-bold text-text-muted hover:bg-gray-50 active:scale-95 transition"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        تجاهل
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Direction explanation: Pull ── */}
       {activeTab === "available" && (

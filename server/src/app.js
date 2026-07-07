@@ -62,6 +62,7 @@ const maintenanceRoutes = require("./routes/maintenance.routes");
 const assistantRoutes = require("./routes/assistant.routes");
 const syncRoutes = require("./routes/sync.routes");
 const webhookRoutes = require("./routes/webhook.routes");
+const reportSnapshotRoutes = require("./routes/reportSnapshot.routes");
 const { router: sseRouter } = require("./routes/sse.routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const { licenseEnforce } = require("./middleware/licenseEnforce");
@@ -216,6 +217,7 @@ function createApp() {
   app.use("/api/sync", syncRoutes);
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/sse", sseRouter);
+  app.use("/api", reportSnapshotRoutes);
 
   // Serve built React frontend in production web mode (client/dist must exist)
   const path = require("path");

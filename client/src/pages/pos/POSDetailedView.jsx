@@ -13,6 +13,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useAuthStore } from "../../stores/authStore";
 import DataGrid from "../../components/ui/DataGrid";
 import PanelEdgeRail from "./parts/PanelEdgeRail";
 import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
@@ -130,6 +131,8 @@ export default function POSDetailedView({ vm }) {
     activeMultiPayments, setActiveMultiPayments,
     multiModalOpen, setMultiModalOpen,
     waLeadPhone, setWaLeadPhone,
+    waLeadName, setWaLeadName,
+    walkInSet, setWalkInSet,
     lastSavedInvoice, setLastSavedInvoice,
     detailedItemResults, detailedCategories,
     getItemImage, handleGridItemClick, handleSelectItem,
@@ -755,7 +758,26 @@ export default function POSDetailedView({ vm }) {
               </div>
             </div>
 
-            {/* Customer Select */}
+            {/* Customer Select — hidden while a walk-in contact is committed */}
+            {walkInSet && waLeadPhone && !customer?.id ? (
+              <div data-help="customer-select" className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-2.5 py-1.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-sm">🚶</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-emerald-800 truncate">{waLeadName || "عميل نقدي"}</p>
+                  <p className="text-[10px] font-bold text-emerald-600 font-mono" dir="ltr">{waLeadPhone}</p>
+                </div>
+                <span className="hidden xl:block text-[9px] font-black text-emerald-600 shrink-0">يُحفظ مع الفاتورة</span>
+                <button onClick={() => setWalkInSet(false)} title="تعديل البيانات"
+                  className="shrink-0 px-1.5 py-1 rounded-md text-[10px] font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
+                  تعديل
+                </button>
+                <button onClick={() => { setWaLeadPhone(""); setWaLeadName(""); setWalkInSet(false); }}
+                  title="إزالة العميل النقدي والعودة لاختيار عميل"
+                  className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
             <div data-help="customer-select" className="flex items-center gap-2">
               <div className="relative z-[70] flex-1">
                 <div className={`pointer-events-none absolute inset-y-0 right-2.5 flex items-center ${hasCustomerBalance ? "text-amber-500" : "text-slate-400"}`}>
@@ -786,10 +808,7 @@ export default function POSDetailedView({ vm }) {
                   </div>
                 )}
               </div>
-              <button onClick={() => setQuickAddOpen(true)} title="إضافة رقم واتساب سريع" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-green-300 bg-green-50 text-green-600 hover:border-green-500 hover:bg-green-100 transition-colors shadow-sm text-base">
-                📱
-              </button>
-              <button onClick={() => setCustomerCreateOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-800 hover:text-slate-800 transition-colors shadow-sm">
+              <button onClick={() => setCustomerCreateOpen(true)} title="إنشاء حساب عميل جديد" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-800 hover:text-slate-800 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" />
               </button>
               {customer?.id && (
@@ -798,6 +817,7 @@ export default function POSDetailedView({ vm }) {
                 </button>
               )}
             </div>
+            )}
             {customer?.id && (
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
                 <div className="text-[11px] font-black text-amber-700 bg-amber-100/50 border border-amber-200 px-2 py-1 rounded-sm whitespace-nowrap">
@@ -816,7 +836,7 @@ export default function POSDetailedView({ vm }) {
               </div>
             )}
             {/* Default customer quick-select */}
-            {!customer?.id && customers.length > 0 && (
+            {!customer?.id && !(walkInSet && waLeadPhone) && customers.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {customers.slice(0, 3).map(c => (
                   <button
@@ -829,9 +849,10 @@ export default function POSDetailedView({ vm }) {
                 ))}
               </div>
             )}
-            {/* Optional WhatsApp number → auto-saved as a lead on sale completion (anonymous sale only) */}
-            {!customer?.id && (
-              <div className="flex items-center gap-2 mt-1 rounded-lg border border-green-100 bg-green-50/50 px-2.5 py-1.5">
+            {/* Walk-in capture → confirm to lock in; saved as a marketing lead with the sale */}
+            {!customer?.id && !(walkInSet && waLeadPhone) && (
+              <div className="flex items-center gap-1.5 mt-1 rounded-lg border border-emerald-200/70 bg-gradient-to-l from-emerald-50/70 to-green-50/30 px-2 py-1.5"
+                title="بيع لعميل بدون حساب؟ سجّل رقمه واضغط تأكيد — يُحفظ كجهة تسويق مع الفاتورة">
                 <span className="text-sm shrink-0">📱</span>
                 <input
                   ref={waLeadRef}
@@ -839,10 +860,27 @@ export default function POSDetailedView({ vm }) {
                   dir="ltr"
                   value={waLeadPhone}
                   onChange={(e) => setWaLeadPhone(e.target.value)}
-                  onKeyDown={(e) => handleFieldNav(e, { prevRef: sellerRef })}
-                  placeholder="واتساب (اختياري) — يُحفظ مع البيع"
-                  className="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-slate-700 outline-none placeholder:text-green-600/60 placeholder:font-normal text-right"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && waLeadPhone.replace(/\D/g, "").length >= 10) { setWalkInSet(true); return; }
+                    handleFieldNav(e, { prevRef: sellerRef });
+                  }}
+                  placeholder="واتساب العميل النقدي (اختياري)"
+                  className="w-[42%] min-w-0 rounded-md border border-emerald-200 bg-white/80 px-2 py-1 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-emerald-600/50 placeholder:font-normal text-right"
                 />
+                <input
+                  type="text"
+                  value={waLeadName}
+                  onChange={(e) => setWaLeadName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && waLeadPhone.replace(/\D/g, "").length >= 10) setWalkInSet(true); }}
+                  placeholder="الاسم (اختياري)"
+                  className="flex-1 min-w-0 rounded-md border border-emerald-100 bg-white/60 px-2 py-1 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-slate-400 placeholder:font-normal"
+                />
+                <button onClick={() => setWalkInSet(true)}
+                  disabled={waLeadPhone.replace(/\D/g, "").length < 10}
+                  title="اعتماد كعميل نقدي لهذه الفاتورة"
+                  className="shrink-0 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-black text-white hover:bg-emerald-700 disabled:opacity-40 transition-all active:scale-95">
+                  تأكيد
+                </button>
               </div>
             )}
           </div>
@@ -1465,10 +1503,13 @@ export default function POSDetailedView({ vm }) {
         onClose={() => setPrintPreview(false)}
         docType="pos_receipt"
         invoice={lastSavedInvoice ? {
+          ...lastSavedInvoice,
           invoice_no: lastSavedInvoice.invoice_no,
           created_at: lastSavedInvoice.date instanceof Date ? lastSavedInvoice.date.toISOString() : new Date().toISOString(),
           customer_name: lastSavedInvoice.customer?.name,
+          cashier_name: lastSavedInvoice.created_by_username || lastSavedInvoice.cashier_name || user?.name || "",
           lines: lastSavedInvoice.lines.map((l) => ({
+            ...l,
             item_name: l.item_name || l.name,
             quantity: l.quantity,
             unit_price: l.unit_price,
@@ -1481,6 +1522,7 @@ export default function POSDetailedView({ vm }) {
           notes: lastSavedInvoice.notes || null,
           discount: Number(lastSavedInvoice.discount || 0) + Number(lastSavedInvoice.promotionDiscount || 0),
           increase: Number(lastSavedInvoice.increase || 0),
+          subtotal: lastSavedInvoice.totals?.subtotal || lastSavedInvoice.totals?.total || lastSavedInvoice.subtotal || totals.subtotal || 0,
           total: lastSavedInvoice.totals?.total,
           tax_enabled: Number(lastSavedInvoice.tax_amount || 0) > 0 ? 1 : 0,
           tax_amount: Number(lastSavedInvoice.tax_amount || 0),
@@ -1490,7 +1532,11 @@ export default function POSDetailedView({ vm }) {
           invoice_no: docNo || invoiceNumber,
           created_at: new Date().toISOString(),
           customer_name: customer?.name,
+          walk_in_phone: !customer?.id && waLeadPhone.trim() ? waLeadPhone.trim() : null,
+          walk_in_name: !customer?.id && waLeadPhone.trim() ? (waLeadName.trim() || null) : null,
+          cashier_name: user?.name || "",
           lines: lines.map((l) => ({
+            ...l,
             item_name: l.item_name || l.name,
             quantity: l.quantity,
             unit_price: l.unit_price,
@@ -1510,6 +1556,7 @@ export default function POSDetailedView({ vm }) {
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
           increase: Number(increase || 0),
+          subtotal: totals.subtotal || totals.total || 0,
           total: totals.total,
           tax_enabled: taxCalc.taxAmount > 0 ? 1 : 0,
           tax_amount: taxCalc.taxAmount,
