@@ -3,7 +3,10 @@ const router = express.Router();
 const { getDb } = require("../config/database");
 const https = require("https");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const { createSnapshot } = require("./syncHelpers");
+const { getUploadsDir } = require("../middleware/upload");
 
 function getConfig(db) {
   return db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
@@ -259,12 +262,13 @@ router.get("/check", async (req, res) => {
     const cfg = getConfig(db);
     if (!cfg) return res.json({ ok: true, products: [], categories: [], stockChanges: [], totalProducts: 0, pages: 0 });
 
-    const since = req.query.since || cfg.last_sync_at || new Date(0).toISOString();
+    const since = new Date(0).toISOString();
     const search = req.query.search || "";
+    const page = req.query.page || 1;
 
     let path = `/api/sync/available/products?since=${encodeURIComponent(since)}`;
     if (search) path += `&search=${encodeURIComponent(search)}`;
-    if (req.query.page) path += `&page=${req.query.page}`;
+    path += `&page=${page}`;
 
     const apiRes = await apiFetch(cfg.ecom_url, path, {
       storeId: cfg.store_id,
@@ -287,13 +291,48 @@ router.get("/check", async (req, res) => {
       apiKey: cfg.api_key,
     });
 
+    // Enrich products with local comparison data
+    const products = (apiRes.data.items || []).map((p) => {
+      const localItem = db.prepare(`
+        SELECT i.id, i.name, i.name_en, i.code, i.sale_price, i.category_id,
+          COALESCE((SELECT SUM(quantity) FROM stock_levels sl WHERE sl.item_id = i.id), 0) AS stock
+        FROM items i WHERE i.code = ?
+      `).get(p.sku);
+      if (!localItem) {
+        return { ...p, localMatch: { exists: false } };
+      }
+      const localImages = db.prepare("SELECT image_url FROM item_images WHERE item_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 20").all(localItem.id);
+      const localPrimaryImage = localImages.length > 0 ? localImages[0].image_url : null;
+      const ecomImage = p.image || (p.images && p.images.length > 0 ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url) : null);
+      const localStock = Number(localItem.stock) || 0;
+      const ecomStock = p.stock != null ? p.stock : 0;
+      // Image match: presence-based (URLs differ because sync downloads to /uploads/)
+      const hasLocalImage = localImages.length > 0;
+      const hasEcomImage = ecomImage !== null;
+      return {
+        ...p,
+        localMatch: {
+          exists: true,
+          code: { local: localItem.code, ecom: p.sku, match: String(localItem.code || "").toLowerCase() === String(p.sku || "").toLowerCase() },
+          name: { local: localItem.name || localItem.name_en || "", ecom: p.nameAr || p.name || "", match: (localItem.name || localItem.name_en || "").trim().toLowerCase() === (p.nameAr || p.name || "").trim().toLowerCase() },
+          price: { local: localItem.sale_price, ecom: p.price, match: Number(localItem.sale_price) === Number(p.price) },
+          stock: { local: localStock, ecom: ecomStock, match: Number(localStock) === Number(ecomStock) },
+          image: { local: localPrimaryImage, ecom: ecomImage, match: hasLocalImage === hasEcomImage },
+          category: {
+            local: localItem.category_id,
+            ecom: p.category_id || p.category?.id || null,
+          },
+        },
+      };
+    });
+
     res.json({
       ok: true,
-      products: apiRes.data.items || [],
+      products,
       categories: catRes.data?.items || [],
       stockChanges: stockRes.data?.items || [],
       totalProducts: apiRes.data.total || 0,
-      pages: apiRes.data.pages || 0,
+      totalPages: apiRes.data.pages || 0,
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -364,12 +403,9 @@ router.post("/apply", async (req, res) => {
       apiRes.data.total || 0,
       apiRes.data.succeeded?.length || 0,
       apiRes.data.failed?.length || 0,
-      JSON.stringify(apiRes.data.failed || []),
+      JSON.stringify({ imported: apiRes.data.succeeded || [], failed: apiRes.data.failed || [] }),
       snapshotId
     );
-
-    // Update last_sync_at
-    db.prepare("UPDATE sync_config SET last_sync_at = datetime('now') WHERE id = ?").run(cfg.id);
 
     // Link snapshot to log
     if (snapshotId) {
@@ -390,6 +426,62 @@ router.post("/apply", async (req, res) => {
   }
 });
 
+// ── Download images from E-com and save locally ──
+async function downloadEcomImages(product, itemId, ecomBaseUrl, db) {
+  const imageUrls = [];
+  if (product.image) imageUrls.push(product.image);
+  if (product.images && Array.isArray(product.images)) {
+    product.images.forEach((img) => {
+      const url = typeof img === "string" ? img : (img?.url || img?.src);
+      if (url) imageUrls.push(url);
+    });
+  }
+  if (!imageUrls.length) return;
+
+  const uploadsDir = getUploadsDir();
+  const savedPaths = [];
+
+  for (let idx = 0; idx < imageUrls.length; idx++) {
+    const rawUrl = imageUrls[idx];
+    try {
+      const absoluteUrl = rawUrl.startsWith("http")
+        ? rawUrl
+        : `${ecomBaseUrl.replace(/\/+$/, "")}${rawUrl.startsWith("/") ? rawUrl : "/" + rawUrl}`;
+
+      let ext = ".jpg";
+      try {
+        const parsed = new URL(absoluteUrl);
+        const parsedExt = path.extname(parsed.pathname);
+        if (parsedExt) ext = parsedExt;
+      } catch {}
+
+      const safeSku = String(product.sku || itemId).replace(/[<>:"/\\|?*]/g, "_");
+      const filename = `sync_${safeSku}_${idx}${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+
+      const response = await fetch(absoluteUrl, { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) continue;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(filePath, buffer);
+
+      savedPaths.push(`/uploads/${filename}`);
+    } catch {
+      continue;
+    }
+  }
+
+  if (!savedPaths.length) return;
+
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM item_images WHERE item_id = ?").run(itemId);
+    const insert = db.prepare("INSERT INTO item_images (item_id, image_url, is_primary, sort_order) VALUES (?, ?, ?, ?)");
+    savedPaths.forEach((url, idx) => {
+      insert.run(itemId, url, idx === 0 ? 1 : 0, idx);
+    });
+  });
+  tx();
+}
+
 // ── POST /api/sync/pull — pull selected products from E-com ──
 router.post("/pull", async (req, res) => {
   try {
@@ -397,8 +489,23 @@ router.post("/pull", async (req, res) => {
     const cfg = getConfig(db);
     if (!cfg) return res.status(400).json({ ok: false, error: "Sync not configured" });
 
-    const { skus = [], fields = {} } = req.body;
+    const { skus = [], fields = {}, overrides = {}, categories: ecomCategories = [] } = req.body;
     if (!skus.length) return res.status(400).json({ ok: false, error: "No SKUs provided" });
+
+    // Build category map: ecom category id → local category_id (create if missing)
+    const catIdMap = {};
+    for (const ec of ecomCategories) {
+      if (!ec.id || !ec.name) continue;
+      const local = db.prepare("SELECT id FROM item_categories WHERE name = ? OR (name_en IS NOT NULL AND name_en = ?)").get(ec.name, ec.name);
+      if (local) {
+        catIdMap[ec.id] = local.id;
+      } else {
+        const info = db.prepare("INSERT INTO item_categories (name, created_at) VALUES (?, datetime('now'))").run(ec.name);
+        catIdMap[ec.id] = info.lastInsertRowid;
+      }
+    }
+
+    const defaultWhId = db.prepare("SELECT id FROM warehouses ORDER BY id ASC LIMIT 1").get()?.id || 1;
 
     const apiRes = await apiFetch(cfg.ecom_url, "/api/sync/pull/products", {
       method: "POST",
@@ -416,24 +523,30 @@ router.post("/pull", async (req, res) => {
     // Snapshot: capture current state of affected items before pull
     const snapshotItems = [];
     const skuFieldsMap = {};
+    const oldValuesMap = {};
     for (const product of (apiRes.data.items || [])) {
       const existing = db.prepare("SELECT id, name, name_en, sale_price, stock, description FROM items WHERE code = ?").get(product.sku);
       const skuFields = fields[product.sku] || {};
       skuFieldsMap[product.sku] = skuFields;
       if (existing) {
+        const oldImages = db.prepare("SELECT image_url FROM item_images WHERE item_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC").all(existing.id).map(r => r.image_url);
+        const oldVals = {
+          name: existing.name,
+          name_en: existing.name_en,
+          sale_price: existing.sale_price,
+          stock: existing.stock,
+          description: existing.description,
+          image_urls: oldImages,
+        };
         snapshotItems.push({
           sku: product.sku,
           action: "update",
-          oldValues: {
-            name: existing.name,
-            name_en: existing.name_en,
-            sale_price: existing.sale_price,
-            stock: existing.stock,
-            description: existing.description,
-          },
+          oldValues: oldVals,
         });
+        oldValuesMap[product.sku] = oldVals;
       } else {
         snapshotItems.push({ sku: product.sku, action: "create", oldValues: null });
+        oldValuesMap[product.sku] = null;
       }
     }
 
@@ -447,26 +560,42 @@ router.post("/pull", async (req, res) => {
       try {
         const existing = db.prepare("SELECT id FROM items WHERE code = ?").get(product.sku);
         const skuFields = skuFieldsMap[product.sku] || {};
+        const oldVals = oldValuesMap[product.sku];
+        let itemId = null;
+        const changes = [];
 
         if (existing) {
+          itemId = existing.id;
           const updateParts = [];
           const updateParams = [];
 
           if (skuFields.name !== false) {
             updateParts.push("name = ?", "name_en = ?");
-            updateParams.push(product.nameAr || product.name, product.name);
+            const newName = product.nameAr || product.name;
+            const newNameEn = product.name;
+            updateParams.push(newName, newNameEn);
+            if (oldVals) {
+              changes.push({ field: "name", oldValue: oldVals.name, newValue: newName });
+              changes.push({ field: "name_en", oldValue: oldVals.name_en, newValue: newNameEn });
+            }
           }
           if (skuFields.price !== false) {
+            const newPrice = product.price ?? null;
             updateParts.push("sale_price = ?");
-            updateParams.push(product.price ?? null);
+            updateParams.push(newPrice);
+            if (oldVals) changes.push({ field: "price", oldValue: oldVals.sale_price, newValue: newPrice });
           }
           if (skuFields.stock !== false) {
+            const newStock = product.stock ?? null;
             updateParts.push("stock = ?");
-            updateParams.push(product.stock ?? null);
+            updateParams.push(newStock);
+            if (oldVals) changes.push({ field: "stock", oldValue: oldVals.stock, newValue: newStock });
           }
           if (skuFields.description !== false) {
+            const newDesc = product.description || null;
             updateParts.push("description = ?");
-            updateParams.push(product.description || null);
+            updateParams.push(newDesc);
+            if (oldVals) changes.push({ field: "description", oldValue: oldVals.description, newValue: newDesc });
           }
 
           updateParts.push("ecom_id = ?", "last_synced_at = datetime('now')", "sync_status = 'synced'");
@@ -475,22 +604,52 @@ router.post("/pull", async (req, res) => {
           if (updateParts.length > 3) {
             db.prepare(`UPDATE items SET ${updateParts.join(", ")} WHERE id = ?`).run(...updateParams);
           }
-          results.imported.push({ sku: product.sku, action: "updated", fields: Object.keys(skuFields).filter((k) => skuFields[k] !== false) });
+          results.imported.push({
+            sku: product.sku,
+            action: "updated",
+            fields: Object.keys(skuFields).filter((k) => skuFields[k] !== false),
+            changes,
+          });
         } else {
-          // Create new — always import all fields for new products
-          const info = db.prepare(`
-            INSERT INTO items (name, name_en, code, sale_price, stock, description, ecom_id, sync_status, last_synced_at, is_active, item_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'synced', datetime('now'), 1, 'product')
-          `).run(
-            product.nameAr || product.name || "Unknown",
-            product.name || "",
-            product.sku || "",
-            product.price || 0,
-            product.stock || 0,
-            product.description || "",
-            product._id || null,
-          );
-          results.imported.push({ sku: product.sku, action: "created", id: info.lastInsertRowid });
+          const ov = overrides[product.sku] || {};
+          const useName = ov.name !== undefined ? ov.name : (product.nameAr || product.name || "Unknown");
+          const useNameEn = ov.name_en !== undefined ? ov.name_en : (product.name || "");
+          const usePrice = ov.price !== undefined ? ov.price : product.price;
+          const useCode = ov.code !== undefined ? ov.code : (product.sku || "");
+          const useStock = ov.stock !== undefined ? ov.stock : product.stock;
+          const useDesc = ov.description !== undefined ? ov.description : product.description;
+          const useCategoryId = ov.category_id || catIdMap[product.category_id] || catIdMap[product.category?.id] || null;
+          const usePurchasePrice = ov.purchase_price !== undefined ? ov.purchase_price : (product.purchase_price ?? 0);
+          const useWholesalePrice = ov.wholesale_price !== undefined ? ov.wholesale_price : (product.wholesale_price ?? 0);
+          const useBarcode = ov.barcode !== undefined ? ov.barcode : (product.barcode || null);
+
+          const cols = ["name", "name_en", "code", "sale_price", "purchase_price", "wholesale_price", "stock", "description", "barcode", "ecom_id", "sync_status", "is_active", "item_type"];
+          const vals = [useName, useNameEn, useCode, usePrice ?? 0, usePurchasePrice, useWholesalePrice, useStock ?? 0, useDesc || null, useBarcode, product._id || null, "synced", 1, "product"];
+
+          if (useCategoryId) { cols.push("category_id"); vals.push(useCategoryId); }
+
+          let sql = `INSERT INTO items (${cols.join(", ")}, last_synced_at) VALUES (${vals.map(() => "?").join(", ")}, datetime('now'))`;
+          const insResult = db.prepare(sql).run(...vals);
+          itemId = insResult.lastInsertRowid;
+
+          // Create stock_levels entry for default warehouse if stock was set
+          if (useStock > 0) {
+            const existingSl = db.prepare("SELECT id FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(itemId, defaultWhId);
+            if (!existingSl) {
+              db.prepare("INSERT INTO stock_levels (item_id, warehouse_id, quantity) VALUES (?, ?, ?)").run(itemId, defaultWhId, useStock);
+            }
+          }
+
+          const ch = [];
+          if (skuFields.name !== false) ch.push({ field: "name", newValue: useName });
+          if (skuFields.price !== false) ch.push({ field: "price", newValue: usePrice });
+          if (skuFields.stock !== false) ch.push({ field: "stock", newValue: useStock });
+          if (skuFields.description !== false) ch.push({ field: "description", newValue: useDesc });
+          results.imported.push({ sku: product.sku, action: "created", id: itemId, changes: ch });
+        }
+
+        if (skuFields.images !== false && itemId) {
+          await downloadEcomImages(product, itemId, cfg.ecom_url, db);
         }
       } catch (err) {
         results.failed.push({ sku: product.sku, error: err.message });
@@ -505,7 +664,7 @@ router.post("/pull", async (req, res) => {
       results.imported.length + results.failed.length,
       results.imported.length,
       results.failed.length,
-      JSON.stringify(results.failed),
+      JSON.stringify({ imported: results.imported, failed: results.failed }),
       snapshotId
     );
 
@@ -516,8 +675,6 @@ router.post("/pull", async (req, res) => {
         db.prepare("UPDATE sync_snapshots SET sync_log_id = ? WHERE id = ?").run(logEntry.id, snapshotId);
       }
     }
-
-    db.prepare("UPDATE sync_config SET last_sync_at = datetime('now') WHERE id = ?").run(cfg.id);
 
     res.json({ ok: true, ...results });
   } catch (err) {
@@ -589,6 +746,8 @@ router.post("/preview-pull", async (req, res) => {
         fields: skuFields,
         hasImages: !!(product.images?.length || product.image),
         imageCount: (product.images ? product.images.length : 0) + (product.image ? 1 : 0),
+        ecomCategoryId: product.category_id || product.category?.id || null,
+        ecomCategoryName: product.category?.name || null,
       });
     }
 
@@ -814,6 +973,32 @@ router.get("/logs", (req, res) => {
     const limit = Math.min(100, Number(req.query.limit) || 20);
     const logs = db.prepare("SELECT * FROM sync_log ORDER BY created_at DESC LIMIT ?").all(limit);
     res.json({ ok: true, items: logs });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /api/sync/logs/:id — single log detail ──
+router.get("/logs/:id", (req, res) => {
+  try {
+    const db = getDb();
+    const log = db.prepare("SELECT * FROM sync_log WHERE id = ?").get(req.params.id);
+    if (!log) return res.status(404).json({ ok: false, error: "Log not found" });
+
+    if (log.error_details) {
+      try { log.error_details = JSON.parse(log.error_details); } catch {}
+    }
+
+    let snapshot = null;
+    if (log.snapshot_id) {
+      snapshot = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(log.snapshot_id);
+      if (snapshot) {
+        try { snapshot.snapshot_data = JSON.parse(snapshot.snapshot_data); } catch {}
+        try { snapshot.metadata = JSON.parse(snapshot.metadata); } catch {}
+      }
+    }
+
+    res.json({ ok: true, item: { ...log, snapshot } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -1048,31 +1233,47 @@ router.post("/snapshots/:id/rollback-preview", (req, res) => {
     const snap = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(req.params.id);
     if (!snap) return res.status(404).json({ ok: false, error: "Snapshot not found" });
 
-    const data = JSON.parse(snap.snapshot_data);
+    let data;
+    try { data = JSON.parse(snap.snapshot_data); }
+    catch { return res.status(400).json({ ok: false, error: "بيانات اللقطة تالفة (JSON غير صالح)" }); }
+
     let itemsToDelete = 0;
     let itemsToRestore = 0;
     let pricesToRevert = 0;
     let stockToRevert = 0;
+    let skipped = 0;
+    let conflicts = 0;
 
     if (snap.direction === "pull" && data.items) {
       for (const item of data.items) {
+        if (!item.sku) { skipped++; continue; }
+        const existing = db.prepare("SELECT id, sale_price, stock, name, deleted_at FROM items WHERE code = ?").get(item.sku);
         if (item.action === "create") {
-          itemsToDelete++;
+          if (existing && !existing.deleted_at) itemsToDelete++;
+          else skipped++;
         } else if (item.action === "update" && item.oldValues) {
-          itemsToRestore++;
-          if (item.oldValues.sale_price !== undefined) pricesToRevert++;
-          if (item.oldValues.stock !== undefined) stockToRevert++;
+          if (existing) {
+            const hasConflict = (
+              (item.oldValues.sale_price !== undefined && Number(existing.sale_price) !== Number(item.oldValues.sale_price)) ||
+              (item.oldValues.stock !== undefined && Number(existing.stock) !== Number(item.oldValues.stock)) ||
+              (item.oldValues.name !== undefined && existing.name !== item.oldValues.name)
+            );
+            if (hasConflict) conflicts++;
+            itemsToRestore++;
+            if (item.oldValues.sale_price !== undefined) pricesToRevert++;
+            if (item.oldValues.stock !== undefined) stockToRevert++;
+          } else skipped++;
         }
       }
     } else if (snap.direction === "push" && data.changes) {
-      itemsToRestore = data.changes.length;
       for (const ch of data.changes) {
-        if (ch.field_name === "sale_price") pricesToRevert++;
-        else if (ch.field_name === "stock") stockToRevert++;
+        const existing = db.prepare("SELECT id FROM sync_changes WHERE id = ?").get(ch.id);
+        if (existing) { itemsToRestore++; if (ch.field_name === "sale_price") pricesToRevert++; else if (ch.field_name === "stock") stockToRevert++; }
+        else skipped++;
       }
     }
 
-    res.json({ ok: true, itemsToDelete, itemsToRestore, pricesToRevert, stockToRevert });
+    res.json({ ok: true, itemsToDelete, itemsToRestore, pricesToRevert, stockToRevert, skipped, conflicts });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -1085,52 +1286,94 @@ router.post("/snapshots/:id/rollback", (req, res) => {
     const snap = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(req.params.id);
     if (!snap) return res.status(404).json({ ok: false, error: "Snapshot not found" });
 
-    const data = JSON.parse(snap.snapshot_data);
-    let restoredCount = 0;
+    let data;
+    try { data = JSON.parse(snap.snapshot_data); }
+    catch { return res.status(400).json({ ok: false, error: "بيانات اللقطة تالفة (JSON غير صالح)" }); }
 
-    if (snap.direction === "pull" && data.items) {
-      for (const item of data.items) {
-        if (item.action === "create") {
-          const existing = db.prepare("SELECT id FROM items WHERE code = ?").get(item.sku);
-          if (existing) {
-            db.prepare("DELETE FROM items WHERE id = ?").run(existing.id);
-            restoredCount++;
-          }
-        } else if (item.action === "update" && item.oldValues) {
-          const existing = db.prepare("SELECT id FROM items WHERE code = ?").get(item.sku);
-          if (existing) {
-            const sets = [];
-            const vals = [];
-            if (item.oldValues.name !== undefined) { sets.push("name = ?"); vals.push(item.oldValues.name); }
-            if (item.oldValues.name_en !== undefined) { sets.push("name_en = ?"); vals.push(item.oldValues.name_en); }
-            if (item.oldValues.sale_price !== undefined) { sets.push("sale_price = ?"); vals.push(item.oldValues.sale_price); }
-            if (item.oldValues.stock !== undefined) { sets.push("stock = ?"); vals.push(item.oldValues.stock); }
-            if (item.oldValues.description !== undefined) { sets.push("description = ?"); vals.push(item.oldValues.description); }
-            if (sets.length > 0) {
-              vals.push(existing.id);
-              db.prepare(`UPDATE items SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
-              restoredCount++;
+    const results = { restored: 0, skipped: 0, conflict: 0, failed: 0, errors: [] };
+
+    const tx = db.transaction(() => {
+      if (snap.direction === "pull" && data.items) {
+        for (const item of data.items) {
+          try {
+            if (!item.sku) { results.skipped++; continue; }
+            const existing = db.prepare("SELECT id, sale_price, stock, name, deleted_at FROM items WHERE code = ?").get(item.sku);
+
+            if (item.action === "create") {
+              if (existing) {
+                if (existing.deleted_at) { results.skipped++; continue; }
+                // Clean up orphaned data before hard-delete
+                db.prepare("DELETE FROM stock_levels WHERE item_id = ?").run(existing.id);
+                db.prepare("DELETE FROM item_images WHERE item_id = ?").run(existing.id);
+                db.prepare("DELETE FROM items WHERE id = ?").run(existing.id);
+                results.restored++;
+              } else skipped++;
+            } else if (item.action === "update" && item.oldValues) {
+              if (!existing) { results.skipped++; continue; }
+
+              // Conflict detection: skip if user changed values after snapshot
+              const hasConflict = (
+                (item.oldValues.sale_price !== undefined && Number(existing.sale_price) !== Number(item.oldValues.sale_price)) ||
+                (item.oldValues.stock !== undefined && Number(existing.stock) !== Number(item.oldValues.stock)) ||
+                (item.oldValues.name !== undefined && existing.name !== item.oldValues.name)
+              );
+              if (hasConflict) { results.conflict++; continue; }
+
+              const sets = [];
+              const vals = [];
+              if (item.oldValues.name !== undefined) { sets.push("name = ?"); vals.push(item.oldValues.name); }
+              if (item.oldValues.name_en !== undefined) { sets.push("name_en = ?"); vals.push(item.oldValues.name_en); }
+              if (item.oldValues.sale_price !== undefined) { sets.push("sale_price = ?"); vals.push(item.oldValues.sale_price); }
+              if (item.oldValues.stock !== undefined) { sets.push("stock = ?"); vals.push(item.oldValues.stock); }
+              if (item.oldValues.description !== undefined) { sets.push("description = ?"); vals.push(item.oldValues.description); }
+              if (sets.length > 0) {
+                vals.push(existing.id);
+                db.prepare(`UPDATE items SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+                results.restored++;
+              }
+              // Restore old images if captured
+              if (item.oldValues.image_urls && Array.isArray(item.oldValues.image_urls)) {
+                db.prepare("DELETE FROM item_images WHERE item_id = ?").run(existing.id);
+                const insert = db.prepare("INSERT INTO item_images (item_id, image_url, is_primary, sort_order) VALUES (?, ?, ?, ?)");
+                item.oldValues.image_urls.forEach((url, idx) => {
+                  insert.run(existing.id, url, idx === 0 ? 1 : 0, idx);
+                });
+              }
             }
+          } catch (err) {
+            results.failed++;
+            results.errors.push({ sku: item.sku, error: err.message });
           }
         }
-      }
-    } else if (snap.direction === "push" && data.changes) {
-      for (const ch of data.changes) {
-        const existing = db.prepare("SELECT id FROM sync_changes WHERE id = ?").get(ch.id);
-        if (existing) {
-          db.prepare("UPDATE sync_changes SET status = 'pending' WHERE id = ?").run(ch.id);
-          restoredCount++;
+      } else if (snap.direction === "push" && data.changes) {
+        for (const ch of data.changes) {
+          const existing = db.prepare("SELECT id FROM sync_changes WHERE id = ?").get(ch.id);
+          if (existing) {
+            db.prepare("UPDATE sync_changes SET status = 'pending' WHERE id = ?").run(ch.id);
+            results.restored++;
+          } else results.skipped++;
         }
       }
-    }
+    });
+
+    tx();
+
+    const total = results.restored + results.skipped + results.conflict + results.failed;
+    const statusVal = results.failed > 0 ? "partial" : (results.conflict > 0 ? "partial" : "success");
 
     // Record the rollback in sync_log
     db.prepare(`
       INSERT INTO sync_log (direction, status, items_total, items_succeeded, items_failed, error_details, started_at, completed_at)
-      VALUES ('rollback', 'success', ?, ?, 0, ?, datetime('now'), datetime('now'))
-    `).run(restoredCount, restoredCount, JSON.stringify({ snapshot_id: snap.id }));
+      VALUES ('rollback', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(
+      statusVal,
+      total,
+      results.restored,
+      results.failed,
+      JSON.stringify(results)
+    );
 
-    res.json({ ok: true, restored_count: restoredCount });
+    res.json({ ok: true, ...results });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -1168,6 +1411,8 @@ async function autoPullAll(db) {
   } while (page <= pages && page <= MAX_PAGES);
 
   const results = { imported: 0, failed: 0 };
+  const processedItems = [];
+
   const applyOne = db.transaction((product) => {
     const existing = db.prepare("SELECT id FROM items WHERE code = ?").get(product.sku);
     if (existing) {
@@ -1182,8 +1427,9 @@ async function autoPullAll(db) {
         product._id || null,
         existing.id,
       );
+      processedItems.push({ product, itemId: existing.id });
     } else {
-      db.prepare(
+      const info = db.prepare(
         "INSERT INTO items (name, name_en, code, sale_price, stock, description, ecom_id, sync_status, last_synced_at, is_active, item_type) VALUES (?, ?, ?, ?, ?, ?, ?, 'synced', datetime('now'), 1, 'product')"
       ).run(
         product.nameAr || product.name || "Unknown",
@@ -1194,12 +1440,23 @@ async function autoPullAll(db) {
         product.description || "",
         product._id || null,
       );
+      processedItems.push({ product, itemId: info.lastInsertRowid });
     }
   });
 
   for (const product of collected) {
     try { applyOne(product); results.imported++; }
     catch { results.failed++; }
+  }
+
+  // Download images for all processed items (non-blocking, errors silently swallowed)
+  for (const { product, itemId } of processedItems) {
+    try {
+      const hasImages = product.image || (product.images?.length > 0);
+      if (hasImages) {
+        await downloadEcomImages(product, itemId, cfg.ecom_url, db);
+      }
+    } catch {}
   }
 
   db.prepare(
@@ -1218,6 +1475,75 @@ async function autoPullAll(db) {
 
   return { ok: true, ...results, total: collected.length };
 }
+
+// ── PUSH CATALOG — send all active POS items to website's StoreCatalog ──
+router.post("/push-catalog", async (req, res) => {
+  try {
+    const db = getDb();
+    const cfg = getConfig(db);
+    if (!cfg) return res.status(400).json({ ok: false, error: "Sync not configured" });
+
+    // Get all active items (products, not services)
+    const items = db.prepare(`
+      SELECT i.id, i.code, i.name, i.name_en, i.sale_price, i.stock, i.item_type
+      FROM items i
+      WHERE i.code IS NOT NULL AND i.code != ''
+        AND (i.deleted_at IS NULL)
+        AND i.is_active = 1
+        AND (i.item_type = 'product' OR i.item_type IS NULL)
+      ORDER BY i.id
+    `).all();
+
+    // Get all item images
+    const allImages = db.prepare(`
+      SELECT item_id, image_url, is_primary FROM item_images ORDER BY is_primary DESC, sort_order ASC
+    `).all();
+    const imagesByItem = {};
+    for (const img of allImages) {
+      if (!imagesByItem[img.item_id]) imagesByItem[img.item_id] = [];
+      if (imagesByItem[img.item_id].length < 5) imagesByItem[img.item_id].push(img.image_url);
+    }
+
+    const products = items.map((item) => {
+      const itemImages = imagesByItem[item.id] || [];
+      return {
+        sku: item.code,
+        name: item.name_en || item.name || item.code,
+        nameAr: item.name || item.name_en || item.code,
+        price: Number(item.sale_price) || 0,
+        stock: Math.max(0, Number(item.stock)) || 0,
+        image: itemImages[0] || "",
+        images: itemImages,
+        categorySlug: "",
+      };
+    });
+
+    // Chunk into batches of 500 to avoid request size limits
+    const CHUNK_SIZE = 500;
+    let totalCreated = 0;
+    for (let i = 0; i < products.length; i += CHUNK_SIZE) {
+      const chunk = products.slice(i, i + CHUNK_SIZE);
+      const apiRes = await apiFetch(cfg.ecom_url, "/api/sync/store-catalog", {
+        method: "POST",
+        storeId: cfg.store_id,
+        apiKey: cfg.api_key,
+        body: { products: chunk },
+      });
+      if (apiRes.status === 200) {
+        totalCreated += apiRes.data?.created || 0;
+      }
+    }
+
+    res.json({
+      ok: true,
+      total: products.length,
+      pushed: totalCreated,
+      message: `تم دفع ${products.length} منتج إلى كتالوج المتجر`,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 router.autoPullAll = autoPullAll;
 

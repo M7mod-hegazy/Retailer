@@ -37,13 +37,13 @@ export async function applySync(data) {
   return res.data;
 }
 
-export async function pullProducts(skus, fields = {}) {
-  const res = await api.post("/api/sync/pull", { skus, fields });
+export async function pullProducts(skus, fields = {}, categories = [], overrides = {}) {
+  const res = await api.post("/api/sync/pull", { skus, fields, categories, overrides });
   return res.data;
 }
 
-export async function previewPull(skus, fields = {}) {
-  const res = await api.post("/api/sync/preview-pull", { skus, fields });
+export async function previewPull(skus, fields = {}, categories = []) {
+  const res = await api.post("/api/sync/preview-pull", { skus, fields, categories });
   return res.data;
 }
 
@@ -57,8 +57,13 @@ export async function uploadSyncImage(sku, imageUrl) {
   return res.data;
 }
 
-export async function getSyncLogs(limit = 20, extra = {}) {
+export async function getSyncLogs(limit = 50, extra = {}) {
   const res = await api.get("/api/sync/logs", { params: { limit, ...extra } });
+  return res.data;
+}
+
+export async function getSyncLog(id) {
+  const res = await api.get(`/api/sync/logs/${id}`);
   return res.data;
 }
 
@@ -125,6 +130,12 @@ export async function previewRollback(id) {
 
 export async function executeRollback(id) {
   const res = await api.post(`/api/sync/snapshots/${id}/rollback`);
+  return res.data;
+}
+
+// ── Push full product catalog to website for comparison ──
+export async function pushStoreCatalog() {
+  const res = await api.post("/api/sync/push-catalog");
   return res.data;
 }
 
