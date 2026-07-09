@@ -45,11 +45,13 @@ const PAGE_PERMISSIONS = {
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view','add'] },
   backup: { label: 'النسخ الاحتياطي', actions: ['view','create','restore','export','empty'] },
   whatsapp_crm: { label: 'مركز الرسائل والحملات', actions: ['view','add','edit','delete'] },
+  whatsapp_receipt: { label: 'إرسال إيصال واتساب', actions: ['send'] },
 };
 
 // Default permissions for new user role (POS only)
 const DEFAULT_USER_PERMISSIONS = {
   pos: ['view', 'add'],
+  whatsapp_receipt: ['send'],
 };
 
 // Role permission presets

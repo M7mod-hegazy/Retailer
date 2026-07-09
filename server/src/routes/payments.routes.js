@@ -7,6 +7,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { toSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -215,6 +216,13 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
         type: "info",
         link: paymentAuditId ? `/history?log_id=${paymentAuditId}` : `/payments`,
       });
+      if (pType === "customer") {
+        notifyOwner(TG.CUSTOMER_PAYMENT, {
+          customerName: partyName,
+          amount: payment?.amount || 0,
+          method: payment?.method,
+        });
+      }
     } catch (_) {}
     res.status(201).json({ success: true, data: payment });
   } catch (error) {

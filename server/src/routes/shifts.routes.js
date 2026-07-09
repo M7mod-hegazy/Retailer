@@ -5,6 +5,7 @@ const { nowSql } = require("../utils/datetime");
 const { requirePagePermission } = require("../middleware/permission");
 const NotificationModel = require("../models/notification.model");
 const { auditMutation } = require("../middleware/audit");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 router.use(authRequired);
@@ -67,6 +68,7 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
       const payOuts = db.prepare("SELECT COALESCE(SUM(amount), 0) AS val FROM shift_transactions WHERE shift_id = ? AND transaction_type = 'pay_out'").get(shiftId)?.val || 0;
       const expectedCash = openingCash + cashSales + payIns - payOuts;
       const diff = Math.round((closingCash - expectedCash) * 100) / 100;
+      const invoicesCount = db.prepare("SELECT COUNT(*) AS val FROM invoices WHERE shift_id = ?").get(shiftId)?.val || 0;
       if (diff !== 0) {
         NotificationModel.create({
           title: "🔁 فرق في إغلاق الوردية",
@@ -75,6 +77,14 @@ router.post("/close", requirePagePermission("pos", "add"), (req, res, next) => {
           link: `/shifts`,
         });
       }
+      notifyOwner(TG.SHIFT_CLOSE, {
+        shiftId,
+        openingCash,
+        closingCash,
+        expectedCash,
+        discrepancy: diff,
+        invoicesCount,
+      });
     } catch (_) {}
     req.audit("update", "shifts", { id: shiftId }, `📋 تم إغلاق وردية`);
     res.json({ success: true, data: closedShift });

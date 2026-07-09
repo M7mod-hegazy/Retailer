@@ -37,7 +37,8 @@ export function getPrintBaseCss({ pageSizeStr = "80mm auto", fontStack } = {}) {
     thead { display: table-header-group; }
     tfoot { display: table-footer-group; }
     img { max-width: 100%; height: auto; }
-    .rpt-page-outer { page-break-inside: avoid; }`;
+    .rpt-page-outer { page-break-inside: avoid; }
+    tr { break-inside: avoid; page-break-inside: avoid; }`;
 }
 
 /**

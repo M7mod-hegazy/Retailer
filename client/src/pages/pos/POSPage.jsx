@@ -164,6 +164,7 @@ export default function POSPage() {
   const [stockLoaded, setStockLoaded]     = useState(false);
   const [storeSettings, setStoreSettings] = useState({ company_name: "المتجر", address: "" });
   const [printPreview, setPrintPreview] = useState(false);
+  const [waSendOpen, setWaSendOpen] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
   const [pendingViewMode, setPendingViewMode] = useState(null);

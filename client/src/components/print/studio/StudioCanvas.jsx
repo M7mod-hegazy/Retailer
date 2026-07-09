@@ -121,7 +121,8 @@ export default function StudioCanvas({ st, children }) {
   const smartPages = smartBreaksMm.length + 1;
   const theoryPages = pageH && contentMm ? Math.max(1, Math.ceil(contentMm / pageH - 0.005)) : 1;
   const pages = smartPages > 1 ? smartPages : theoryPages;
-  const fillRatio = combined
+  const fillRatio = pageH && contentMm ? contentMm / pageH : 0;
+  const fitTone = fillRatio <= 0.92 ? "ok" : fillRatio <= 1.0 ? "warn" : "over";
 
   const paperMm = parseFloat(size) || 80;
   const isCalibrated = !!(st.calibration && st.calibration.printAreaWidthMm > 0);
@@ -195,19 +196,21 @@ export default function StudioCanvas({ st, children }) {
     st.setSelected(null);
   };
 
-  // Determine page height for each page: smart break height or exact page height
+  // pageBreaksMm are positions from content top where pages break.
+  // Each page's height = break[i] - (break[i-1] || 0), last page auto.
+  // Offset for page i = break[i-1] || 0 (content position to shift up).
   const pageHeightFor = (pageIdx) => {
     if (pageBreaksMm.length === 0) return pageHeightStr(size, orientation);
+    if (pageIdx === 0) return `${pageBreaksMm[0]}mm`;
     if (pageIdx < pageBreaksMm.length) {
-      return `${pageBreaksMm[pageIdx]}mm`;
+      return `${pageBreaksMm[pageIdx] - pageBreaksMm[pageIdx - 1]}mm`;
     }
     return "auto";
   };
 
   const contentOffsetFor = (pageIdx) => {
     if (pageIdx === 0) return 0;
-    const prevBreaks = pageBreaksMm.slice(0, pageIdx);
-    return prevBreaks.reduce((a, b) => a + b, 0);
+    return pageBreaksMm[pageIdx - 1];
   };
   const marginTopFor = (pageIdx) => {
     return `-${contentOffsetFor(pageIdx)}mm`;
@@ -228,7 +231,7 @@ export default function StudioCanvas({ st, children }) {
     }
 
     const contentNode = (
-      <div ref={(el) => { if (pageIdx === undefined || pageIdx === 0) measureRef.current = el; }}>
+      <div ref={measureRef}>
         <LayoutRenderer family={family} size={size} orientation={orientation} invoice={st.invoiceData}
           settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
       </div>
@@ -448,7 +451,7 @@ export default function StudioCanvas({ st, children }) {
           className="absolute top-3 right-3 flex items-center gap-2 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 shadow">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--bg-input)]">
-              <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%` }} className="h-full rounded-full" />
+              <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%`, background: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }} className="h-full rounded-full" />
             </div>
             <span className="text-[9px] font-black text-[var(--text-secondary)]">
               {Math.round(fillRatio * 100)}% · {pages} {pages > 1 ? "صفحات" : "صفحة"}

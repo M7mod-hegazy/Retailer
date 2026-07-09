@@ -32,6 +32,7 @@ import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
 import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import BranchTransferFormBottomBar from "./BranchTransferFormBottomBar";
 import { formatNumber } from "../../utils/currency";
+import SmartTooltip from "../../components/ui/SmartTooltip";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
@@ -77,6 +78,7 @@ export default function BranchTransferFormPage() {
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [originalQuantities, setOriginalQuantities] = useState({});
 
   // Draft ref number & datetime (shown once first item added)
   const [draftRef, setDraftRef] = useState("");
@@ -200,6 +202,14 @@ export default function BranchTransferFormPage() {
       setNotes(doc.notes || "");
       setLockedRef(doc.reference_no);
       setLockedDate(new Date(doc.created_at));
+      
+      const origMap = {};
+      (doc.lines || []).forEach(l => {
+        const key = `${l.item_id}_${l.warehouse_id}`;
+        origMap[key] = (origMap[key] || 0) + Number(l.quantity);
+      });
+      setOriginalQuantities(origMap);
+
       setLines((doc.lines || []).map(l => ({
         id: Math.random().toString(36).substr(2, 9),
         item_id: l.item_id,
@@ -420,7 +430,7 @@ export default function BranchTransferFormPage() {
       .filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(whId))
       .reduce((s, l) => s + Number(l.quantity), 0);
     const totalRequested = existingQty + qty;
-    const stockAtWh = getStockQty(selectedItem.id, whId);
+    const stockAtWh = getVirtualStock(selectedItem.id, whId);
     if (!isReceive && stockAtWh < totalRequested) {
       return toast.error(`المخزون غير كافٍ في ${selectedWarehouse?.name || "المخزن"} (متاح: ${stockAtWh})`);
     }
@@ -497,8 +507,14 @@ export default function BranchTransferFormPage() {
     return stockLevels[itemId]?.[warehouseId] ?? 0;
   }
 
+  function getVirtualStock(itemId, warehouseId) {
+    const current = getStockQty(itemId, warehouseId);
+    const original = originalQuantities[`${itemId}_${warehouseId}`] || 0;
+    return current + original;
+  }
+
   function getEffectiveMaxQty(itemId, warehouseId) {
-    if (!isReceive) return getStockQty(itemId, warehouseId);
+    if (!isReceive) return getVirtualStock(itemId, warehouseId);
     return Infinity;
   }
 
@@ -628,8 +644,7 @@ export default function BranchTransferFormPage() {
     {
       id: "warehouse", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
       render: (l, i) => {
-        const whStock = stockLevels[l.item_id] || {};
-        const hasStock = l.warehouse_id ? (whStock[l.warehouse_id] || 0) > 0 : false;
+        const hasStock = l.warehouse_id ? (getVirtualStock(l.item_id, l.warehouse_id) || 0) > 0 : false;
         const isOut = !isReceive && l.warehouse_id && !hasStock && Number(l.quantity) > 0;
         return (
           <select value={l.warehouse_id}
@@ -639,7 +654,7 @@ export default function BranchTransferFormPage() {
             }`}
           >
             {warehouses.map(w => {
-              const sqty = whStock[w.id] || 0;
+              const sqty = getVirtualStock(l.item_id, w.id);
               return <option key={w.id} value={w.id}>{w.name} ({sqty})</option>;
             })}
           </select>
@@ -898,6 +913,16 @@ export default function BranchTransferFormPage() {
     navigate("/operations/branch-transfer");
   }, [navigate]);
 
+  const disabledReason = isSaving
+    ? "جاري الحفظ..."
+    : !lines.length
+      ? "يجب إضافة صنف واحد على الأقل للمستند"
+      : !partnerBranch
+        ? (isReceive ? "يرجى اختيار الفرع المرسل للحفظ" : "يرجى اختيار الفرع المستلم للحفظ")
+        : hasStockErrors
+          ? "يوجد خطأ في كميات المخزون لبعض الأصناف"
+          : `خطأ غير معروف (تفاصيل: الأصناف=${lines.length}، الفرع=${partnerBranch || "فارغ"}، خطأ مخزون=${hasStockErrors ? "نعم" : "لا"})`;
+
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 font-sans relative" dir="rtl">
       {saveSuccess && (
@@ -994,15 +1019,19 @@ export default function BranchTransferFormPage() {
               المستندات
             </DocumentActionButton>
             <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
-                <DocumentActionButton
-                  data-help="bt-form-submit"
-                  variant="ghost"
-                  icon={CheckCircle}
-                  onClick={() => handleSaveClick()}
-                  disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
-                >
-                  {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
-                </DocumentActionButton>
+              <SmartTooltip content={disabledReason} side="bottom" fill>
+                <div className="inline-block">
+                  <DocumentActionButton
+                    data-help="bt-form-submit"
+                    variant="ghost"
+                    icon={CheckCircle}
+                    onClick={() => handleSaveClick()}
+                    disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
+                  >
+                    {isEditMode ? "حفظ التعديلات" : "حفظ بدون طباعة"}
+                  </DocumentActionButton>
+                </div>
+              </SmartTooltip>
             </PermissionGate>
             {isEditMode && (
               <PermissionGate page="branch_transfer" action="delete">
@@ -1017,15 +1046,19 @@ export default function BranchTransferFormPage() {
               </PermissionGate>
             )}
             <PermissionGate page="branch_transfer" action="print">
-              <DocumentActionButton
-                variant="primary"
-                identity={isReceive ? "emerald" : "indigo"}
-                icon={Printer}
-                onClick={() => setPreviewOpen(true)}
-                disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
-              >
-                طباعة  
-              </DocumentActionButton>
+              <SmartTooltip content={disabledReason} side="bottom" fill>
+                <div className="inline-block">
+                  <DocumentActionButton
+                    variant="primary"
+                    identity={isReceive ? "emerald" : "indigo"}
+                    icon={Printer}
+                    onClick={() => setPreviewOpen(true)}
+                    disabled={isSaving || !lines.length || !partnerBranch || hasStockErrors}
+                  >
+                    طباعة  
+                  </DocumentActionButton>
+                </div>
+              </SmartTooltip>
             </PermissionGate>
           </>
         }
@@ -1056,7 +1089,11 @@ export default function BranchTransferFormPage() {
                     value={partnerBranch}
                     onChange={e => setPartnerBranch(e.target.value)}
                     onKeyDown={e => handleFieldKeyDown(e, { nextRef: notesRef, prevRef: addBtnRef })}
-                    className={`w-full appearance-none rounded-[10px] border border-slate-200/80 px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20`}
+                    className={`w-full appearance-none rounded-[10px] border px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 ${
+                      lines.length > 0 && !partnerBranch
+                        ? "border-rose-500 ring-2 ring-rose-500/10 focus:border-rose-500 focus:ring-rose-500/20"
+                        : `border-slate-200/80 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20`
+                    }`}
                   >
                     <option value="">اختر الفرع...</option>
                     {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
@@ -1072,6 +1109,12 @@ export default function BranchTransferFormPage() {
                   <Settings className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
+              {lines.length > 0 && !partnerBranch && (
+                <div className="mt-2 text-[11px] font-black text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span>يرجى اختيار الفرع لإتاحة حفظ المستند</span>
+                </div>
+              )}
             </div>
           </div>
 

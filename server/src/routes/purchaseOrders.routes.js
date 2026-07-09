@@ -3,6 +3,7 @@ const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -126,6 +127,22 @@ router.post("/", requirePagePermission("purchase_orders", "add"), (req, res) => 
     );
   }
 
+  try {
+    const orderId = result.lastInsertRowid;
+    const supplier = payload.supplier_id
+      ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(payload.supplier_id)
+      : null;
+    const total = (payload.lines || []).reduce((s, l) => s + Number(l.quantity || 0) * Number(l.unit_cost || 0), 0)
+      - Math.max(0, Number(payload.discount || 0))
+      + Math.max(0, Number(payload.increase || 0));
+    notifyOwner(TG.PURCHASE_CREATED, {
+      id: orderId,
+      reference: docNo,
+      kind: "order",
+      supplierName: supplier?.name,
+      total: Math.max(0, total),
+    });
+  } catch (_) {}
   req.audit("create", "purchaseOrders", { id: result.lastInsertRowid }, `📦 تم إنشاء أمر شراء`);
   res.status(201).json({
     success: true,

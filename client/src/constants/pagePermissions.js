@@ -6,6 +6,7 @@ export const ACTION_LABELS = {
   edit: "تعديل",
   delete: "حذف",
   print: "طباعة",
+  send: "إرسال",
   void: "إلغاء",
   hold: "تعليق",
   discount: "خصم",
@@ -38,6 +39,7 @@ export const ACTION_DESCRIPTIONS = {
   edit: "تعديل وتحديث السجلات والبيانات الموجودة",
   delete: "حذف السجلات والبيانات نهائياً",
   print: "طباعة التقارير والفواتير والمستندات",
+  send: "إرسال مستند أو رسالة إلى جهة اتصال عبر واتساب أو غيره",
   void: "إلغاء الفواتير والمعاملات المالية",
   hold: "تعليق الفاتورة مؤقتاً لاستكمالها لاحقاً",
   discount: "منح خصومات على فواتير البيع",
@@ -105,6 +107,7 @@ export const PAGE_PERMISSIONS = {
   updates: { label: 'التحديثات', actions: ['view'] },
   history: { label: 'سجل النشاط', actions: ['view'] },
   whatsapp_crm: { label: 'مركز الرسائل والحملات', actions: ['view', 'add', 'edit', 'delete'] },
+  whatsapp_receipt: { label: 'إرسال إيصال واتساب', actions: ['send'] },
   restaurant_tables: { label: 'طاولات المطعم', actions: ['view', 'add', 'edit', 'delete'] },
   restaurant_modifiers: { label: 'إضافات المطعم (موديفير)', actions: ['view', 'add', 'edit', 'delete'] },
   gold_pricing: { label: 'تسعير الذهب', actions: ['view', 'add', 'edit', 'delete'] },
@@ -115,6 +118,7 @@ export const PAGE_PERMISSIONS = {
 // Default permissions for new user role (POS only)
 export const DEFAULT_USER_PERMISSIONS = {
   pos: ['view', 'add'],
+  whatsapp_receipt: ['send'],
 };
 
 // Role permission presets
@@ -125,5 +129,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'send', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

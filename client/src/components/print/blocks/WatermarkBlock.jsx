@@ -10,8 +10,9 @@ export default function WatermarkBlock({ settings: s, props = {}, family, editin
   if (!showWatermark) return null;
   const text = props.text != null ? props.text : (g(s, "watermark_text") || (editing ? "نسخة" : ""));
   if (!text || !String(text).trim()) return null;
+  const variant = props.variant || "standard";
   const angle = props.angle != null ? props.angle : -30;
-  const opacity = props.opacity != null ? props.opacity : (showWatermark ? 0.08 : 0.12);
+  const opacity = props.opacity != null ? props.opacity : (variant === "light" ? 0.04 : variant === "strong" ? 0.18 : (showWatermark ? 0.08 : 0.12));
   const fontSize = props.fontSize != null ? props.fontSize : 64;
   const color = props.color != null ? props.color : "#0f172a";
 

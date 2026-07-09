@@ -294,7 +294,30 @@ function QuickEntryModal({ type, onClose }) {
 }
 
 // ─── Magnetic nav card ────────────────────────────────────────────────────────
-function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
+// ─── Channel status dots (WhatsApp / SMS / Telegram) ──────────────────────────
+function ChannelStatusDots({ status, className = "" }) {
+  if (!status) return null;
+  const dots = [
+    { key: "whatsapp", label: "واتساب", on: !!status.whatsapp?.connected },
+    { key: "sms", label: "رسائل SMS", on: !!status.sms?.connected },
+    { key: "telegram", label: "تيليجرام", on: !!status.telegram?.connected },
+  ];
+  return (
+    <div
+      className={`flex items-center gap-1 ${className}`}
+      title={dots.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}
+    >
+      {dots.map((d) => (
+        <span
+          key={d.key}
+          className={`w-1.5 h-1.5 rounded-full ${d.on ? "bg-[var(--success-text)]" : "bg-[var(--text-muted)] opacity-40"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAction }) {
   const navigate = useNavigate();
   const ref = useRef(null);
   const x = useMotionValue(0);
@@ -377,6 +400,13 @@ function MagneticCard({ item, active, updateAvailable, onQuickAction }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-white" />
                   تحديث
                 </span>
+              )}
+
+              {item.pageKey === "whatsapp_crm" && channelsStatus && (
+                <ChannelStatusDots
+                  status={channelsStatus}
+                  className="bg-[var(--bg-input)] rounded-full px-2 py-1.5 self-center"
+                />
               )}
 
               {/* Branch-transfer: two stacked action buttons */}
@@ -690,6 +720,24 @@ export default function DashboardPage() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
+  // ── Messaging channels status (WhatsApp / SMS / Telegram) ────────────────
+  const [channelsStatus, setChannelsStatus] = useState(null);
+  const canViewChannels = canView("whatsapp_crm") || canView("settings");
+
+  useEffect(() => {
+    if (!canViewChannels) return;
+    let cancelled = false;
+    function load() {
+      api.get("/api/whatsapp/channels-status")
+        .then((res) => { if (!cancelled) setChannelsStatus(res.data?.data || null); })
+        .catch(() => { if (!cancelled) setChannelsStatus(null); });
+    }
+    load();
+    window.addEventListener("focus", load);
+    const id = setInterval(load, 30000);
+    return () => { cancelled = true; window.removeEventListener("focus", load); clearInterval(id); };
+  }, [canViewChannels]);
+
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey, item.featureKey));
   const visibleModules = NAV_MODULES.map((module) => ({
     ...module,
@@ -764,6 +812,15 @@ export default function DashboardPage() {
 
           {/* Live Clock + version */}
           <div className="flex items-center gap-3" dir="ltr">
+            {channelsStatus && (
+              <Link
+                to="/whatsapp-crm"
+                title={`واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · رسائل SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"}`}
+                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-2.5 py-1.5 self-end mb-1 shadow-xl flex items-center gap-1.5 hover:bg-[var(--chip-on-primary-hover)] transition-colors"
+              >
+                <ChannelStatusDots status={channelsStatus} />
+              </Link>
+            )}
             {appVersion && appVersion !== "web" && (
               <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
                 {isServerOnline ? (
@@ -1068,7 +1125,7 @@ export default function DashboardPage() {
                 const hasFamilies = activeModule.items.some(item => item.family);
                 if (!hasFamilies) {
                   return activeModule.items.map((item) => (
-                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} channelsStatus={channelsStatus} onQuickAction={setQuickModal} />
                   ));
                 }
                 const groups = {};
@@ -1106,12 +1163,12 @@ export default function DashboardPage() {
                       <div className="h-px w-full bg-[var(--border-subtle)]" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
                         {salesItems.map(item => (
-                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} channelsStatus={channelsStatus} onQuickAction={setQuickModal} />
                         ))}
                         <div className="relative ltr:pl-5 rtl:pr-5">
                           <div className="hidden xl:block absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-px bg-[var(--border-subtle)]" />
                           {otherItems.map(item => (
-                            <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                            <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} channelsStatus={channelsStatus} onQuickAction={setQuickModal} />
                           ))}
                         </div>
                       </div>
@@ -1124,7 +1181,7 @@ export default function DashboardPage() {
                       <div className="h-px w-full bg-[var(--border-subtle)]" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
                         {purchasesItems.map(item => (
-                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                          <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} channelsStatus={channelsStatus} onQuickAction={setQuickModal} />
                         ))}
                       </div>
                     </div>,
@@ -1140,7 +1197,7 @@ export default function DashboardPage() {
                     <div className="h-px w-full bg-[var(--border-subtle)]" />
                   </div>,
                   ...items.map(item => (
-                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} onQuickAction={setQuickModal} />
+                    <MagneticCard key={item.path} item={item} active={isActive(item.path)} updateAvailable={updateAvailable} channelsStatus={channelsStatus} onQuickAction={setQuickModal} />
                   )),
                 ]);
               })()}

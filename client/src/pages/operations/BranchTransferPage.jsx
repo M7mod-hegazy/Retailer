@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
   Eye, Warehouse, Pencil,
@@ -156,7 +156,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
           )}
 
           <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col max-h-[400px]">
-            <div className={`${gridCols} bg-slate-50 border-b border-slate-200 px-2`}>
+            <div className={`grid ${gridCols} bg-slate-50 border-b border-slate-200 px-2`}>
               {headerCols.map((h, i) => (
                 <div key={i} className={`px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center ${i < headerCols.length - 1 ? "border-l border-slate-200/50" : ""} ${i === headerCols.length - 1 ? "text-slate-900" : ""}`}>
                   {h}
@@ -168,7 +168,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
                 <div className="flex items-center justify-center h-32 text-slate-400 text-sm font-black">القائمة خالية</div>
               ) : (
                 lines.map(l => (
-                  <div key={l.id} className={`${gridCols} items-center rounded-xl hover:bg-slate-50 p-3 transition-colors`}>
+                  <div key={l.id} className={`grid ${gridCols} items-center rounded-xl hover:bg-slate-50 p-3 transition-colors`}>
                     <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400 truncate">{l.item_code || l.barcode || "—"}</div>
                     <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900 truncate">{l.item_name}</div>
                     <div className="px-2 text-center border-l border-slate-100 text-2sm font-bold text-slate-500">{l.unit_name || "—"}</div>

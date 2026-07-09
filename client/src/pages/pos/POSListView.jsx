@@ -27,6 +27,7 @@ import PanelEdgeRail from "./parts/PanelEdgeRail";
 import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
 import HeldDropdown from "./parts/HeldDropdown";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import GalleryModal from "./parts/GalleryModal";
 import POSTodayModal from "../../components/pos/POSTodayModal";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";

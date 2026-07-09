@@ -85,12 +85,58 @@ export default function CustomFieldBlock({ invoice = {}, settings: s, props = {}
   }
   if (!label && !text) return null;
 
+  const variant = props.variant || "standard";
   const align = props.align || "between";
   const isRoll = family === "roll";
   const strong = { fontWeight: isRoll ? 900 : 800 };
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
   // Mark daily-number output so the print pipeline advances the counter once
   // per real print (preview shows peek, print commits next — they match).
   const daily = source === "computed" && (props.compute || "grand_total") === "daily_no" ? { "data-daily-no": "1" } : {};
+
+  if (variant === "boxed") {
+    return (
+      <div {...daily} style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        border: isRoll ? "1px solid #000" : `1px solid ${accent}30`,
+        background: isRoll ? "transparent" : `${accent}03`,
+        borderRadius: "6px",
+        padding: "6px 10px",
+        margin: "3px 0"
+      }}>
+        <span style={{ fontWeight: 800, color: isRoll ? "#000" : accent }}>{label ? `${label}` : ""}</span>
+        <span style={{ ...strong, color: isRoll ? "#000" : accent }}>{text}</span>
+      </div>
+    );
+  }
+
+  if (variant === "highlighted") {
+    return (
+      <div {...daily} style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: isRoll ? "#000" : accent,
+        borderRadius: "4px",
+        padding: "6px 10px",
+        color: "#ffffff",
+        margin: "3px 0"
+      }}>
+        <span style={{ fontWeight: 900 }}>{label ? `${label}` : ""}</span>
+        <span style={{ fontWeight: 900 }}>{text}</span>
+      </div>
+    );
+  }
+
+  if (variant === "inline") {
+    return (
+      <span {...daily} style={{ fontSize: "9.5px", color: "#64748b", marginInlineEnd: "8px" }}>
+        {label ? `${label}: ` : ""}<span style={{ fontWeight: 700, color: "#334155" }}>{text}</span>
+      </span>
+    );
+  }
 
   if (align === "between") {
     return (

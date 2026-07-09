@@ -2,6 +2,7 @@
 const { getDb } = require("../config/database");
 const NotificationModel = require("../models/notification.model");
 const logger = require("../config/logger");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 const { today: cairoToday } = require("../utils/datetime");
 
 // node-cron does NOT catch errors thrown inside a task callback. These jobs run
@@ -49,6 +50,15 @@ function scanAndCreateNotifications() {
     type: "warning",
     link: "/stock",
   });
+
+  try {
+    notifyOwner(TG.LOW_STOCK, {
+      productName: sample,
+      currentQuantity: count,
+      minQuantity: count,
+      summary: true,
+    });
+  } catch (_) {}
 }
 
 function startNotificationJobs() {

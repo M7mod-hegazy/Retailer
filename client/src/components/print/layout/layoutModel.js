@@ -17,12 +17,27 @@ export function familyForSize(size) {
 }
 
 // Per-family default item-table columns (mirror the legacy tables).
-export function defaultColumns(family) {
+export function defaultColumns(family, size = "80mm") {
   if (family === "roll") {
+    if (size === "58mm") {
+      return [
+        { key: "name", label: "الصنف", visible: true, align: "right" },
+        { key: "qty", label: "كمية", visible: true, align: "center" },
+        { key: "total", label: "إجمالي", visible: true, align: "left" },
+      ];
+    }
     return [
       { key: "code", label: "كود", visible: true, align: "right" },
       { key: "name", label: "الصنف", visible: true, align: "right" },
       { key: "qty", label: "كمية", visible: true, align: "center" },
+      { key: "total", label: "إجمالي", visible: true, align: "left" },
+    ];
+  }
+  if (size === "A5") {
+    return [
+      { key: "name", label: "المنتج", visible: true, align: "right" },
+      { key: "qty", label: "كمية", visible: true, align: "center" },
+      { key: "price", label: "سعر", visible: true, align: "center" },
       { key: "total", label: "إجمالي", visible: true, align: "left" },
     ];
   }
@@ -171,14 +186,21 @@ export function defaultReportColumns(scope) {
   }
 }
 
-export function seedFamilyLayout(family, scope = "_global") {
-  const orderKey = DEFAULT_ORDER[scope] ? scope : family;
+export function seedFamilyLayout(family, scope = "_global", size = "") {
+  let order = [];
+  if (DEFAULT_ORDER[scope]) {
+    const val = DEFAULT_ORDER[scope];
+    order = Array.isArray(val) ? [...val] : [...(val[family] || DEFAULT_ORDER[family])];
+  } else {
+    order = [...DEFAULT_ORDER[family]];
+  }
+  const targetSize = size || (family === "roll" ? "80mm" : "A4");
   return {
-    order: [...DEFAULT_ORDER[orderKey]],
+    order,
     inserted: [],
     // Columns live in perBlock.items_table.columns or perBlock.report_table.columns
     perBlock: {
-      items_table: { columns: defaultColumns(family) },
+      items_table: { columns: defaultColumns(family, targetSize) },
       report_table: { columns: defaultReportColumns(scope) },
     },
     margins: {},
@@ -207,10 +229,10 @@ export function resolveEffectiveLayout(globalScopeSettings, docSettings, family,
 
 // Returns a NEW settings object with layout.roll / layout.page seeded if absent.
 // Existing layout entries are preserved untouched. Non-mutating.
-export function ensureLayout(settings = {}, scope = "_global") {
+export function ensureLayout(settings = {}, scope = "_global", size = "") {
   const layout = { ...(settings.layout || {}) };
   FAMILIES.forEach((fam) => {
-    if (!layout[fam]) layout[fam] = seedFamilyLayout(fam, scope);
+    if (!layout[fam]) layout[fam] = seedFamilyLayout(fam, scope, size);
   });
   return { ...settings, layout };
 }

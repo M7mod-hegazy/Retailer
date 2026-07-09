@@ -14,9 +14,12 @@ export default function BranchBlock({ settings: s, props = {}, family, editing }
   const showPhone = props.showPhone === true;
   const showTaxId = props.showTaxId === true;
 
+  const variant = props.variant || "standard";
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+
   const renderExtra = () => {
     return (
-      <div style={{ fontSize: "9.5px", fontWeight: 500, color: "#64748b", display: "flex", flexDirection: "column", gap: "1px", marginTop: "2px" }}>
+      <div style={{ fontSize: "9px", fontWeight: 500, color: "#64748b", display: "flex", flexDirection: "column", gap: "1px", marginTop: "2px" }}>
         {showPhone && phone && (
           <div>الهاتف: <span style={{ fontFamily: "monospace" }}>{phone}</span></div>
         )}
@@ -28,6 +31,34 @@ export default function BranchBlock({ settings: s, props = {}, family, editing }
   };
 
   if (family === "page") {
+    if (variant === "badge") {
+      return (
+        <div style={{
+          display: "inline-flex",
+          flexDirection: "column",
+          gap: "2px",
+          border: `1px solid ${accent}40`,
+          background: `${accent}0d`,
+          padding: "4px 10px",
+          borderRadius: "6px",
+          color: accent,
+          fontSize: "11px",
+          fontWeight: 700
+        }}>
+          <div>{name}</div>
+          {renderExtra()}
+        </div>
+      );
+    }
+
+    if (variant === "inline") {
+      return (
+        <span style={{ fontSize: "10px", color: "#64748b", fontWeight: 500, opacity: 0.85 }}>
+          {name} {showPhone && phone ? ` (${phone})` : ""}
+        </span>
+      );
+    }
+
     return (
       <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
         <div>{name}</div>
@@ -35,6 +66,16 @@ export default function BranchBlock({ settings: s, props = {}, family, editing }
       </div>
     );
   }
+
+  if (variant === "badge") {
+    return (
+      <div style={{ border: "1px solid #000", padding: "4px 8px", margin: "2px 0", textAlign: "center", fontSize: "10px" }}>
+        <div style={{ fontWeight: 800 }}>{name}</div>
+        {renderExtra()}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div>{name}</div>

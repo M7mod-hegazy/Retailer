@@ -7,6 +7,7 @@ const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 const { applyPurchaseLinePriceUpdates, revertPurchaseLinePriceUpdates } = require("../services/priceLockService");
 const { capturePurchaseReturnLineOverrides } = require("../services/overrideTrackingService");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 const { applyReturnAdjustment } = require("../services/returnService");
 const { recordBankMovement } = require("../services/bankService");
 const { requirePagePermission } = require("../middleware/permission");
@@ -473,12 +474,18 @@ router.get("/returns", requirePagePermission("purchase_returns", "view"), (req, 
   const safeSort = allowedSort.includes(sort) ? sort : "created_at";
   const safeDir = dir === "asc" ? "ASC" : "DESC";
   const returns = db.prepare(`
-    SELECT pr.*, s.name AS supplier_name, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
+    SELECT pr.*, s.name AS supplier_name,
+           COALESCE(
+             COALESCE(NULLIF(u.full_name, ''), u.username),
+             COALESCE(NULLIF(up.full_name, ''), up.username),
+             'النظام'
+           ) AS created_by_username,
            p.doc_no AS original_purchase_no
     FROM purchase_returns pr
     LEFT JOIN suppliers s ON s.id = pr.supplier_id
     LEFT JOIN users u ON u.id = pr.created_by
     LEFT JOIN purchases p ON p.id = pr.purchase_id
+    LEFT JOIN users up ON up.id = p.created_by
     WHERE ${conditions.join(" AND ")}
     ORDER BY ${safeSort === "settlement_type" ? "pr.settlement_type" : `pr.${safeSort}`} ${safeDir}
   `).all(...params);
@@ -496,13 +503,18 @@ router.get("/returns/:id", requirePagePermission("purchase_returns", "view"), (r
                s.phone AS supplier_phone,
                p.doc_no AS original_purchase_no,
                t.name AS treasury_name,
-               COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
+               COALESCE(
+                 COALESCE(NULLIF(u.full_name, ''), u.username),
+                 COALESCE(NULLIF(up.full_name, ''), up.username),
+                 'النظام'
+               ) AS created_by_username,
                u.full_name AS created_by_name
         FROM purchase_returns pr
         LEFT JOIN suppliers s ON s.id = pr.supplier_id
         LEFT JOIN purchases p ON p.id = pr.purchase_id
         LEFT JOIN treasuries t ON t.id = pr.treasury_id
         LEFT JOIN users u ON u.id = pr.created_by
+        LEFT JOIN users up ON up.id = p.created_by
         WHERE pr.id = ?
       `).get(req.params.id);
       if (!pr) throw new Error("Return not found");
@@ -845,6 +857,13 @@ router.post("/", requirePagePermission("purchases", "add"), (req, res, next) => 
         body: `مشتريات جديدة #${purchaseId} — المورد: ${supplierName} — المبلغ: ${purchaseTotal}`,
         type: "info",
         link: purchaseAuditId ? `/history?log_id=${purchaseAuditId}` : `/purchases/${purchaseId}`,
+      });
+      notifyOwner(TG.PURCHASE_CREATED, {
+        id: purchaseId,
+        reference: purchase?.doc_no,
+        kind: "receipt",
+        supplierName,
+        total: purchaseTotal,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: purchase });

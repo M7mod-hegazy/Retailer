@@ -38,6 +38,7 @@ const { toJid, normalizeDigits } = require("../../server/src/utils/phone");
 let sock = null;
 let qrCode = null;
 let waStatus = "disconnected";
+let waLastError = null;
 let statusListeners = [];
 let dailySentCount = 0;
 let dailyResetDate = new Date().toISOString().slice(0, 10);
@@ -46,11 +47,12 @@ const THROTTLE_MIN_MS = 8000;
 const THROTTLE_MAX_MS = 20000;
 
 function notifyStatus() {
-  statusListeners.forEach(fn => fn({ status: waStatus, qr: qrCode }));
+  statusListeners.forEach(fn => fn({ status: waStatus, qr: qrCode, error: waLastError }));
 }
 
-function setStatus(s) {
+function setStatus(s, err) {
   waStatus = s;
+  if (err) waLastError = err;
   if (s !== "qr") qrCode = null;
   notifyStatus();
 }
@@ -118,57 +120,96 @@ function storeMessage(db, jid, direction, msg, pushName) {
 }
 
 // ─── Connect ──────────────────────────────────────────────────────────────
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
+let reconnectAttempt = 0;
+let reconnectTimer = null;
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectAttempt += 1;
+  // Exponential backoff: 5s, 10s, 20s, 40s, then cap at 60s
+  const delay = Math.min(5000 * 2 ** Math.min(reconnectAttempt - 1, 4), 60000);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect().catch(() => {});
+  }, delay);
+}
+
 async function connect() {
   if (waStatus === "connected" || waStatus === "connecting") return;
-  const ready = await loadBaileys();
-  if (!ready) return;
-  setStatus("connecting");
-
-  const authDir = getAuthDir();
-  fs.mkdirSync(authDir, { recursive: true });
-
-  let version;
-  try { ({ version } = await fetchLatestBaileysVersion()); }
-  catch (_) { version = [2, 3000, 1015901307]; }
-
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
-
-  sock = makeWASocket({
-    version,
-    auth: state,
-    printQRInTerminal: false,
-    logger: { level: "silent", fatal() {}, error() {}, warn() {}, info() {}, debug() {}, trace() {}, child() { return this; } },
-    syncFullHistory: true,
-  });
-
-  sock.ev.on("creds.update", saveCreds);
-
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect, qr } = update;
-    if (qr) {
-      (async () => {
-        try {
-          const QRCode = require("qrcode");
-          qrCode = await QRCode.toDataURL(qr, { width: 256, margin: 1 });
-        } catch (_) {
-          qrCode = qr;
-        }
-        setStatus("qr");
-      })();
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  try {
+    setStatus("connecting");
+    const ready = await withTimeout(loadBaileys(), 30000, "WhatsApp engine load timed out");
+    if (!ready) {
+      setStatus("error", "WhatsApp engine (Baileys) is not available");
+      scheduleReconnect();
+      return;
     }
-    if (connection === "open") { setStatus("connected"); startOutboxDrainer(); }
-    if (connection === "close") {
-      const code = lastDisconnect?.error?.output?.statusCode;
-      const loggedOut = code === DisconnectReason?.loggedOut;
-      if (loggedOut) {
-        clearAuth();
-        setStatus("disconnected");
-      } else {
-        setStatus("disconnected");
-        setTimeout(connect, 5000);
+
+    const authDir = getAuthDir();
+    fs.mkdirSync(authDir, { recursive: true });
+
+    let version;
+    try { ({ version } = await withTimeout(fetchLatestBaileysVersion(), 15000, "Could not fetch WhatsApp version")); }
+    catch (_) { version = [2, 3000, 1015901307]; }
+
+    const { state, saveCreds } = await useMultiFileAuthState(authDir);
+
+    sock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: false,
+      logger: { level: "silent", fatal() {}, error() {}, warn() {}, info() {}, debug() {}, trace() {}, child() { return this; } },
+      syncFullHistory: true,
+      // Keep the socket alive and retrying for as long as possible
+      defaultQueryTimeoutMs: 60000,
+      connectTimeoutMs: 60000,
+      keepAliveIntervalMs: 15000,
+      // Baileys internal retry options
+      retryRequestDelayMs: 250,
+      maxMsgRetryCount: 5,
+    });
+
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      if (qr) {
+        (async () => {
+          try {
+            const QRCode = require("qrcode");
+            qrCode = await QRCode.toDataURL(qr, { width: 256, margin: 1 });
+          } catch (_) {
+            qrCode = qr;
+          }
+          setStatus("qr");
+        })();
       }
-    }
-  });
+      if (connection === "open") {
+        reconnectAttempt = 0;
+        setStatus("connected");
+        startOutboxDrainer();
+      }
+      if (connection === "close") {
+        const code = lastDisconnect?.error?.output?.statusCode;
+        const reason = lastDisconnect?.error?.message || "WhatsApp connection closed";
+        const loggedOut = code === DisconnectReason?.loggedOut;
+        if (loggedOut) {
+          clearAuth();
+          setStatus("disconnected");
+        } else {
+          setStatus("disconnected", reason);
+          scheduleReconnect();
+        }
+      }
+    });
 
   // ─── Contact name caching ────────────────────────────────────────────
   sock.ev.on("contacts.upsert", (contacts) => {
@@ -209,6 +250,10 @@ async function connect() {
       }
     } catch (_) {}
   });
+  } catch (err) {
+    setStatus("error", err?.message || "WhatsApp connect failed");
+    scheduleReconnect();
+  }
 }
 
 function clearAuth() {
@@ -405,4 +450,4 @@ setTimeout(() => {
   }
 }, 3000); // let the app/db finish booting first
 
-module.exports = { connect, disconnect, sendText, sendImage, normalizePhone, onStatusChange, setDbProvider, listenForOptOut, resolveContactName, hasSavedSession, getStatus: () => ({ status: waStatus, qr: qrCode, phone: waStatus === "connected" && sock ? sock.user?.id?.split(":")[0]?.replace(/[^0-9]/g, "") : null }) };
+module.exports = { connect, disconnect, sendText, sendImage, normalizePhone, onStatusChange, setDbProvider, listenForOptOut, resolveContactName, hasSavedSession, getStatus: () => ({ status: waStatus, qr: qrCode, error: waLastError, phone: waStatus === "connected" && sock ? sock.user?.id?.split(":")[0]?.replace(/[^0-9]/g, "") : null }) };

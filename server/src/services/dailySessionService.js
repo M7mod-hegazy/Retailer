@@ -1,4 +1,5 @@
 const { today: cairoToday, nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("./telegramService");
 
 // Cairo wall-clock timestamp. Delegates to the shared Intl-based utility so it
 // is correct regardless of process.env.TZ or host timezone configuration.
@@ -659,6 +660,19 @@ function closeDailySession(db, dateText, actualCash, notes, userId) {
   if (next && next.status === "open") {
     db.prepare("UPDATE daily_sessions SET opening_balance = ? WHERE id = ?").run(actual, next.id);
   }
+
+  try {
+    notifyOwner(TG.DAILY_CLOSE, {
+      date,
+      openingBalance: summary.opening_balance || session.opening_balance || 0,
+      expectedCash: summary.expected_cash || 0,
+      actualCash: actual,
+      discrepancy,
+      cashSales: summary.pos_cash_sales || 0,
+      creditSales: summary.pos_credit_sales || 0,
+      invoicesCount: summary.invoices_count || 0,
+    }, db);
+  } catch (_) {}
 
   return db.prepare("SELECT * FROM daily_sessions WHERE id = ?").get(session.id);
 }

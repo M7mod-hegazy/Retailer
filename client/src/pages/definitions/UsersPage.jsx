@@ -83,7 +83,7 @@ function getAvatarStyle(id) {
 // Unknown keys (e.g. newly-added feature pages) auto-fall into "features".
 const PAGE_CATEGORY_MAP = {
   // sales
-  pos: "sales", sales_returns: "sales", quotations: "sales", promotions: "sales", analytics: "sales",
+  pos: "sales", sales_returns: "sales", quotations: "sales", promotions: "sales", analytics: "sales", whatsapp_receipt: "sales",
   // purchases
   purchases: "purchases", purchase_orders: "purchases", purchase_returns: "purchases",
   // stock

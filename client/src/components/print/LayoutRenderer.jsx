@@ -14,7 +14,11 @@ import { g, rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/b
 // production print path (editing=false / no designer), so output stays clean.
 export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", orientation = "portrait", editing = false, designer = null, scope }) {
   const famLayout = (layout || settings.layout || {})[family] || {};
-  let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : (DEFAULT_ORDER[scope] || DEFAULT_ORDER[family]);
+  let orderVal = DEFAULT_ORDER[scope] || DEFAULT_ORDER[family];
+  if (orderVal && !Array.isArray(orderVal)) {
+    orderVal = orderVal[family] || DEFAULT_ORDER[family];
+  }
+  let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : orderVal;
   // "increase" (رسوم/إضافة) is a newer money block. Layouts saved before it
   // existed won't list it, so surface it right after the discount line (falling
   // back to just before the grand total). Safe to force in — IncreaseBlock
@@ -115,7 +119,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     items.push({
       type, group: entry.group,
       node: designer ? <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment>
-        : <div key={`f-${selKey}-${key}`} data-block-key={selKey} style={{display:"contents"}}>{node}</div>,
+        : <div key={`f-${selKey}-${key}`} data-block-key={selKey}>{node}</div>,
     });
   };
 

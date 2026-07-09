@@ -108,6 +108,11 @@ Use `npx electron -e "..."` (not `node`) to load `better-sqlite3` — it is comp
 nodemon sometimes restarts before the previous process fully releases port 5000.
 Fix: run `npm run kill:retailer-processes` then restart the dev server.
 
+## Git Safety Rules
+
+- **NEVER run `git checkout`** — use `git switch <branch>` or `git restore <file>` instead. `git checkout` is banned.
+- **NEVER run `git stash`** without asking the user first. It can cause data loss.
+
 ## Important Conventions
 
 - **RTL-first:** UI is Arabic/RTL by default. Use Tailwind's `rtl:` and `ltr:` variants for directional styles; avoid hardcoded `left`/`right`.

@@ -109,7 +109,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
 // ----------------------------------------------------------------------
 // Inline Quick-Add Row
 // ----------------------------------------------------------------------
-function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
+function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategoryClick, canAddCategory, lastAddedCategoryId }) {
   const EMPTY = { amount: "", category_id: "", note: "", payment_method: "cash", created_at: today() };
   const [form, setForm] = useState(EMPTY);
   const recordMethods = useRecordOnlyMethods();
@@ -118,6 +118,12 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
   const noteRef = useRef(null);
   const dateRef = useRef(null);
   const isToday = form.created_at === today();
+
+  useEffect(() => {
+    if (lastAddedCategoryId) {
+      setForm(f => ({ ...f, category_id: lastAddedCategoryId }));
+    }
+  }, [lastAddedCategoryId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -165,7 +171,19 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
 
         {/* Category */}
         <div className="flex flex-col gap-1.5 shrink-0">
-          <label className="text-[10px] font-black text-slate-450 dark:text-zinc-500 uppercase tracking-wider px-0.5">التصنيف <span className="text-[var(--danger)]">*</span></label>
+          <div className="flex items-center justify-between px-0.5">
+            <label className="text-[10px] font-black text-slate-450 dark:text-zinc-500 uppercase tracking-wider">التصنيف <span className="text-[var(--danger)]">*</span></label>
+            {canAddCategory && (
+              <button 
+                type="button"
+                onClick={onAddCategoryClick}
+                title="إضافة قسم جديد"
+                className="text-[10px] font-black text-amber-600 dark:text-amber-450 hover:text-amber-700 dark:hover:text-amber-350 flex items-center gap-0.5 hover:underline transition-all"
+              >
+                <Plus className="h-2.5 w-2.5" /> جديد
+              </button>
+            )}
+          </div>
           <div className="relative">
             <select
               ref={categoryRef} value={form.category_id}
@@ -240,7 +258,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate }) {
 // ----------------------------------------------------------------------
 // Raycast-style Command Palette Overlay
 // ----------------------------------------------------------------------
-function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, saving }) {
+function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, saving, onAddCategoryClick, canAddCategory }) {
   const [form, setForm] = useState(initialData || {
     amount: "", category_id: "", note: "", payment_method: "cash"
   });
@@ -258,7 +276,13 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
       else setForm({ amount: "", category_id: "", note: "", payment_method: "cash" });
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (initialData?.category_id) {
+      setForm(f => ({ ...f, category_id: initialData.category_id }));
+    }
+  }, [initialData?.category_id]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -316,7 +340,18 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف السحب <span className="text-amber-500">*</span></label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف السحب <span className="text-amber-500">*</span></label>
+                {canAddCategory && (
+                  <button
+                    type="button"
+                    onClick={onAddCategoryClick}
+                    className="text-[11px] font-black text-amber-600 dark:text-amber-455 hover:text-amber-700 dark:hover:text-amber-350 flex items-center gap-0.5 hover:underline transition-all"
+                  >
+                    <Plus className="h-3 w-3" /> جديد
+                  </button>
+                )}
+              </div>
               <select 
                 ref={categoryRef}
                 value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}
@@ -424,6 +459,38 @@ export default function WithdrawalsListPage() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdData, setCmdData] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatSaving, setNewCatSaving] = useState(false);
+  const [lastAddedCategoryId, setLastAddedCategoryId] = useState(null);
+  const canAddCategory = usePermission("financial_categories", "add");
+
+  async function handleAddCategory(name) {
+    if (newCatSaving) return;
+    setNewCatSaving(true);
+    try {
+      const response = await api.post("/api/withdrawals/categories", { name, description: "" });
+      const newCat = response.data?.data;
+      toast.success(`تمت إضافة القسم "${name}" بنجاح`);
+      
+      const cR = await api.get("/api/withdrawals/categories");
+      setCategories(cR.data?.data || []);
+      
+      if (newCat?.id) {
+        setLastAddedCategoryId(newCat.id);
+        if (cmdOpen) {
+          setCmdData(prev => ({ ...prev, category_id: newCat.id }));
+        } else {
+          setCatFilter(newCat.id);
+        }
+      }
+      setNewCatOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "فشل إضافة القسم");
+    } finally {
+      setNewCatSaving(false);
+    }
+  }
 
   const canBackdate = usePermission("withdrawals", "backdate_records");
 
@@ -560,6 +627,16 @@ export default function WithdrawalsListPage() {
                     <span className="font-black text-slate-700 dark:text-zinc-300 font-mono">{fmt(stats.total)} ج.م</span>
                   </div>
                 </div>
+                {canAddCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setNewCatOpen(true)}
+                    className="px-3 py-1 rounded-xl text-[10.5px] font-black bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30 hover:bg-amber-105 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1 shadow-sm shadow-amber-500/5 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                    <span>إضافة قسم جديد</span>
+                  </button>
+                )}
               </div>
 
               {/* DECK 2: Filters & Search */}
@@ -570,7 +647,7 @@ export default function WithdrawalsListPage() {
                   <input
                     value={query} onChange={e => setQuery(e.target.value)}
                     placeholder="ابحث في المسحوب له أو التصنيف أو الرقم..." 
-                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-4 text-2sm font-bold text-zinc-800 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
+                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-4 text-2sm font-bold text-zinc-805 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
                   />
                 </div>
 
@@ -590,29 +667,36 @@ export default function WithdrawalsListPage() {
                 />
               </div>
 
-              {/* DECK 3: Inline Quick Add Form (Permanently connected via visual bridge link) */}
-              <div>
-                {/* Visual Bridge */}
-                <div className="relative flex items-center justify-center py-1 bg-slate-50/50 dark:bg-zinc-900/30">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-dashed border-slate-200 dark:border-zinc-800" />
-                  </div>
-                  <span className="relative px-3 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-[10px] font-black text-slate-400 dark:text-zinc-500 tracking-widest border border-slate-200/60 dark:border-zinc-700/60 uppercase flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    لوحة الإدخال السريع
-                  </span>
-                </div>
+            </div>
+          </div>
+        </div>
 
-                <div className="p-4 pt-2 bg-slate-50/30 dark:bg-zinc-900/10 border-t border-slate-100 dark:border-zinc-800">
-                  <InlineAddForm
-                    categories={categories}
-                    onSubmit={handleSave}
-                    saving={saving}
-                    canBackdate={canBackdate}
-                  />
-                </div>
+        {/* ------------------------------------------------------------- */}
+        {/* QUICK ADD CONTROL PANEL - Standalone Deck */}
+        {/* ------------------------------------------------------------- */}
+        <div className="mx-auto w-full max-w-4xl mt-6 relative z-20">
+          <div className="relative group/addpanel">
+            {/* Ambient Glow */}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/5 to-emerald-500/5 rounded-[28px] blur-lg opacity-70 pointer-events-none" />
+            
+            <div className="relative flex flex-col rounded-[26px] bg-[var(--bg-surface)] border border-[var(--border-normal)] shadow-[var(--shadow-card)] overflow-hidden">
+              <div className="px-5 py-3 bg-slate-50/50 dark:bg-zinc-900/30 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between">
+                <span className="text-[11px] font-black text-slate-500 dark:text-zinc-400 tracking-widest uppercase flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5 text-amber-500" />
+                  لوحة الإدخال السريع للمسحوبات
+                </span>
               </div>
-
+              <div className="p-5">
+                <InlineAddForm
+                  categories={categories}
+                  onSubmit={handleSave}
+                  saving={saving}
+                  canBackdate={canBackdate}
+                  onAddCategoryClick={() => setNewCatOpen(true)}
+                  canAddCategory={canAddCategory}
+                  lastAddedCategoryId={lastAddedCategoryId}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -737,10 +821,118 @@ export default function WithdrawalsListPage() {
             categories={categories} 
             onSubmit={handleSave} 
             saving={saving} 
+            onAddCategoryClick={() => setNewCatOpen(true)}
+            canAddCategory={canAddCategory}
           />
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {newCatOpen && (
+          <QuickCategoryModal
+            isOpen={newCatOpen}
+            onClose={() => setNewCatOpen(false)}
+            onSubmit={handleAddCategory}
+            saving={newCatSaving}
+            title="إضافة قسم مسحوبات جديد"
+            colorTheme="amber"
+          />
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Quick Add Category Modal
+// ----------------------------------------------------------------------
+function QuickCategoryModal({ isOpen, onClose, onSubmit, saving, title, colorTheme }) {
+  const [name, setName] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const colorClasses = {
+    rose: {
+      btn: "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500/20",
+      border: "focus:border-rose-400 focus:ring-rose-500/10",
+      accent: "text-rose-600 bg-rose-50"
+    },
+    emerald: {
+      btn: "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500/20",
+      border: "focus:border-emerald-400 focus:ring-emerald-500/10",
+      accent: "text-emerald-600 bg-emerald-50"
+    },
+    amber: {
+      btn: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500/20",
+      border: "focus:border-amber-400 focus:ring-amber-500/10",
+      accent: "text-amber-600 bg-amber-50"
+    }
+  }[colorTheme || "rose"];
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" dir="rtl">
+      <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative w-full max-w-md bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-white p-6 overflow-hidden flex flex-col"
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <h3 className="text-md font-black text-slate-800">
+            {title}
+          </h3>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) onSubmit(name.trim()); }} className="mt-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">اسم القسم الجديد</label>
+            <input 
+              ref={inputRef}
+              type="text"
+              required
+              placeholder="مثلاً: سلف موظفين، مسحوبات شخصية..."
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className={`w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white transition-all ${colorClasses.border}`}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 h-10 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !name.trim()}
+              className={`rounded-xl text-white font-black text-sm px-6 h-10 transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 ${colorClasses.btn}`}
+            >
+              {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              <span>حفظ القسم</span>
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 }

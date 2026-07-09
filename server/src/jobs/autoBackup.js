@@ -1,5 +1,6 @@
 const { performBackup } = require("../services/backupService");
 const { getDb } = require("../config/database");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 // Interval/staleness-based auto-backup engine.
 //
@@ -76,8 +77,18 @@ function runDueBackupIfNeeded(opts = {}) {
 
     const result = performBackup({ triggerType: "auto", label: reason });
     stampLastBackup(db, result?.summary?.createdAt || new Date().toISOString());
+    notifyOwner(TG.BACKUP_RESULT, {
+      success: true,
+      reason,
+      filePath: result?.dbPath,
+    }, db);
     return true;
-  } catch {
+  } catch (err) {
+    notifyOwner(TG.BACKUP_RESULT, {
+      success: false,
+      reason,
+      error: err?.message || String(err),
+    }, getDb());
     // Never let an auto-backup failure crash the caller (esp. before-quit).
     return false;
   }

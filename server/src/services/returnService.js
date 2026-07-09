@@ -584,7 +584,11 @@ function getReturnDetails(id) {
            c.phone AS customer_phone,
            i.invoice_no AS original_invoice_no,
            t.name AS treasury_name,
-           COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username,
+           COALESCE(
+             COALESCE(NULLIF(u.full_name, ''), u.username),
+             COALESCE(NULLIF(ui.full_name, ''), ui.username),
+             'النظام'
+           ) AS created_by_username,
            u.full_name AS created_by_name,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amendment_of) AS amendment_of_no,
            (SELECT doc_no FROM sales_returns WHERE id = sr.amended_by)   AS amended_by_no
@@ -593,6 +597,7 @@ function getReturnDetails(id) {
     LEFT JOIN invoices i ON i.id = sr.invoice_id
     LEFT JOIN treasuries t ON t.id = sr.treasury_id
     LEFT JOIN users u ON u.id = sr.created_by
+    LEFT JOIN users ui ON ui.id = i.user_id
     WHERE sr.id = ?
   `).get(id);
   if (!sr) return null;

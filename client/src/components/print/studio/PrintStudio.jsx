@@ -11,7 +11,7 @@ import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import {
   ensureLayout, seedFamilyLayout, resolveEffectiveLayout, defaultColumns,
-  SHOW_KEY, newInsertId, normalizeLayout,
+  defaultReportColumns, SHOW_KEY, newInsertId, normalizeLayout,
 } from "../layout/layoutModel";
 import { printContent, getPrinterForPageSize, buildPrintDocument, isElectronPrint } from "../../../services/printService";
 import { resolveCalibration, withCalibration } from "../../../services/printCalibration";
@@ -68,7 +68,7 @@ function writeStash(map) {
 // TemplateDocPreview + TEMPLATE_PREVIEW_DOCS now live in ./TemplateDocPreview
 // (shared with DocPresetPicker).
 
-export default function PrintStudio({ open = true, onClose, initialScope = "_global", initialSize = "" }) {
+export default function PrintStudio({ open = true, onClose, initialScope = "_global", initialSize = "", initialOrientation = "portrait" }) {
   // ── server data ────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [appSettings, setAppSettings] = useState({});
@@ -86,7 +86,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [dragOverKey, setDragOverKey] = useState(null);
   const [resizing, setResizing] = useState(false);
   const [zoom, setZoom] = useState(family === "roll" ? 1.1 : 0.7);
-  const [orientation, setOrientation] = useState("portrait");
+  const [orientation, setOrientation] = useState(initialOrientation || "portrait");
   const [sampleId, setSampleId] = useState("normal");
   const [compare, setCompare] = useState(false);
   const [showRuler, setShowRuler] = useState(false);
@@ -145,6 +145,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setSelected(null); setHovered(null); setEditingKey(null);
     setPast([]); setFuture([]);
     if (initialSize) setSize(initialSize);
+    setOrientation(initialOrientation || "portrait");
   }, [open]);
 
   // ── draft accessors ────────────────────────────────────────────────────

@@ -47,14 +47,15 @@ export default function ImageBlock({ props = {}, family, editing }) {
     return null;
   }
 
-  const maxHeight = props.maxHeight != null ? props.maxHeight : 60;
+  const variant = props.variant || "standard";
+  const maxHeight = props.maxHeight != null ? props.maxHeight : (variant === "banner" ? 120 : 60);
   const justifyContent = ALIGN_MAP[props.align] || ALIGN_MAP.center;
 
-  const borderWidth = props.borderWidth != null ? Number(props.borderWidth) : 0;
+  const borderWidth = props.borderWidth != null ? Number(props.borderWidth) : (variant === "card" ? 1 : 0);
   const borderStyle = props.borderStyle || "solid";
-  const borderColor = props.borderColor || "#000";
-  const borderRadius = props.borderRadius != null ? Number(props.borderRadius) : 0;
-  const shadow = props.shadow || "none";
+  const borderColor = props.borderColor || (variant === "card" ? "#e2e8f0" : "#000");
+  const borderRadius = props.borderRadius != null ? Number(props.borderRadius) : (variant === "card" ? 8 : variant === "banner" ? 4 : 0);
+  const shadow = props.shadow || (variant === "card" ? "md" : "none");
   const shadowMap = {
     none: "none",
     sm: "0 1px 2px rgba(0,0,0,0.05)",
@@ -64,15 +65,17 @@ export default function ImageBlock({ props = {}, family, editing }) {
 
   const imgStyle = {
     maxHeight: `${maxHeight}px`,
-    objectFit: "contain",
+    objectFit: variant === "banner" ? "cover" : "contain",
     display: "block",
+    ...(variant === "banner" ? { width: "100%" } : {}),
+    ...(variant === "card" ? { padding: "4px", background: "#fff" } : {}),
     ...(borderWidth > 0 ? { border: `${borderWidth}px ${borderStyle} ${borderColor}` } : {}),
     ...(borderRadius > 0 ? { borderRadius: `${borderRadius}px` } : {}),
     boxShadow: shadowMap[shadow] || "none"
   };
 
   return (
-    <div style={{ display: "flex", justifyContent, margin: "2mm 0" }}>
+    <div style={{ display: "flex", justifyContent, margin: "2mm 0", width: "100%" }}>
       <img src={displaySrc} alt="" style={imgStyle} />
     </div>
   );

@@ -72,5 +72,27 @@ export const DEFAULT_ORDER = {
     "report_table",
     "notes", "footer_text", "signature_lines",
   ],
+  account_statement: [
+    "watermark", "logo", "company_name", "branch", "address", "tax_id",
+    "doc_title", "doc_number", "doc_date",
+    "account_statement_party",
+    "account_statement_ledger",
+    "account_statement_summary",
+    "notes", "footer_text", "signature_lines",
+  ],
+  branch_transfer: {
+    roll: [
+      "logo", "company_name", "branch", "address", "tax_id",
+      "doc_number", "doc_date",
+      "items_table",
+      "notes", "footer_text", "receiver_signature",
+    ],
+    page: [
+      "watermark", "logo", "company_name", "branch", "address", "tax_id",
+      "doc_title", "doc_number", "doc_date",
+      "items_table",
+      "notes", "footer_text", "signature_lines", "receiver_signature",
+    ]
+  },
 };
 

@@ -13,24 +13,26 @@ export default function FooterTextBlock({ invoice = {}, settings: s, props = {},
   const text = resolvePlaceholders(rawText, invoice, s)
     || (editing ? DEFAULT_TEXT : "");
   if (!text) return null;
+  const variant = props.variant || "standard";
   const fontSize = `${g(s, "footer_font_size") || 10}px`;
   const align = props.align || "center";
-  
-  const bg = props.background || "transparent";
-  const borderWidth = props.borderWidth != null ? Number(props.borderWidth) : 0;
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+
+  const bg = props.background || (variant === "boxed" ? `${accent}05` : "transparent");
+  const borderWidth = props.borderWidth != null ? Number(props.borderWidth) : (variant === "boxed" ? 1 : 0);
   const borderStyle = props.borderStyle || "solid";
-  const borderColor = props.borderColor || "#e2e8f0";
-  const padding = props.padding != null ? `${props.padding}px` : "0px";
+  const borderColor = props.borderColor || accent;
+  const padding = props.padding != null ? `${props.padding}px` : (variant === "boxed" ? "6px 12px" : "0px");
 
   const blockStyle = {
     textAlign: align,
-    fontSize,
-    color: "#475569",
-    fontWeight: 600,
+    fontSize: variant === "centered" ? `${(g(s, "footer_font_size") || 10) + 2}px` : fontSize,
+    color: variant === "boxed" ? accent : "#475569",
+    fontWeight: variant === "centered" ? 800 : 600,
     fontStyle: "italic",
     background: bg,
     padding,
-    ...(borderWidth > 0 ? { border: `${borderWidth}px ${borderStyle} ${borderColor}` } : {}),
+    ...(borderWidth > 0 ? { border: `${borderWidth}px ${borderStyle} ${borderColor}`, borderRadius: "6px" } : {}),
   };
 
   if (family === "page") {

@@ -14,37 +14,92 @@ const INSERTABLE = [
   { type: "pattern_divider", label: "فاصل زخرفي", icon: Sparkles },
 ];
 
-function isBlockLogicalForScope(type, scope) {
-  // If the block is in the default order for this scope, it is always logical
-  const defOrder = DEFAULT_ORDER[scope] || DEFAULT_ORDER.page;
-  if (defOrder.includes(type)) return true;
+const SCOPE_ALLOWED_BLOCKS = {
+  branch_transfer: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date", "items_table",
+    "notes", "footer_text", "signature_lines", "receiver_signature",
+  ]),
+  account_statement: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "account_statement_party", "account_statement_ledger", "account_statement_summary",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  bank_statement: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "bank_statement_metrics", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  daily_treasury: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "daily_treasury_metrics", "daily_treasury_summaries", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  ajal_statement: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "ajal_party", "ajal_statement_metrics", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  ajal_schedule: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "ajal_party", "ajal_schedule_metrics", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  ajal_full_statement: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "ajal_full_statement_metrics", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  cheque_register: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "cheque_register_metrics", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  payment_methods_report: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date",
+    "payment_methods_report_metrics", "payment_methods_by_method", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ]),
+  reports_generic: new Set([
+    "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+    "doc_title", "doc_number", "doc_date", "report_table",
+    "notes", "footer_text", "signature_lines",
+  ])
+};
 
-  const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+const INVOICE_ALLOWED_BLOCKS = new Set([
+  "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
+  "doc_title", "doc_number", "doc_date", "customer", "cashier",
+  "items_table", "subtotal", "discount", "increase", "tax", "grand_total", "payments",
+  "notes", "footer_text", "qr", "barcode", "order_number", "image", "doc_grid", "bank_details",
+  "pattern_divider", "receiver_signature", "watermark", "signature_lines"
+]);
 
-  // Report-specific blocks must ONLY appear in their exact matching scope
-  if (type.endsWith("_metrics") || type.endsWith("_summaries") || type === "report_table" || type === "ajal_party" || type === "payment_methods_by_method") {
-    if (type.startsWith("bank_statement") && scope === "bank_statement") return true;
-    if (type.startsWith("daily_treasury") && scope === "daily_treasury") return true;
-    if (type.startsWith("ajal_statement") && scope === "ajal_statement") return true;
-    if (type.startsWith("ajal_schedule") && scope === "ajal_schedule") return true;
-    if (type.startsWith("ajal_full_statement") && scope === "ajal_full_statement") return true;
-    if (type.startsWith("cheque_register") && scope === "cheque_register") return true;
-    if (type.startsWith("payment_methods") && scope === "payment_methods_report") return true;
-    if (type === "ajal_party" && ["ajal_statement", "ajal_schedule"].includes(scope)) return true;
-    if (type === "report_table" && isReport) return true;
-    return false;
+function isBlockLogicalForScope(type, scope, family, size) {
+  // Inserted types are always logical
+  const isInserted = ["custom_text", "custom_field", "divider", "spacer", "pattern_divider"].includes(type);
+  if (isInserted) return true;
+
+  // Differentiate 58mm roll: hide elements that are too wide
+  if (size === "58mm") {
+    if (["barcode", "bank_details", "doc_grid"].includes(type)) return false;
   }
 
-  // Invoice-specific blocks must NOT appear in report scopes
-  const invoiceOnly = new Set([
-    "customer", "cashier", "items_table", "subtotal", "discount", "increase", "tax", "grand_total", "payments", "qr", "barcode", "order_number"
-  ]);
-  
-  if (isReport && invoiceOnly.has(type)) {
-    return false;
+  // Resolve scope specific allowed list
+  if (SCOPE_ALLOWED_BLOCKS[scope]) {
+    return SCOPE_ALLOWED_BLOCKS[scope].has(type);
   }
 
-  return true;
+  // Standard invoice scopes (or _global)
+  return INVOICE_ALLOWED_BLOCKS.has(type);
 }
 
 // Left panel: ordered block tree + hidden-blocks tray + inserted elements +
@@ -56,8 +111,11 @@ export default function StudioBlockTree({ st }) {
   const { fam, family, selected, hovered } = st;
 
   const isReport = st.scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(st.scope);
+  const isStatement = st.scope === "account_statement";
+
   const insertableList = INSERTABLE.filter(item => {
-    if (isReport && ["qr", "doc_grid", "bank_details"].includes(item.type)) return false;
+    if ((isReport || isStatement) && ["qr", "doc_grid", "bank_details"].includes(item.type)) return false;
+    if (st.size === "58mm" && ["doc_grid", "bank_details"].includes(item.type)) return false;
     return true;
   });
 
@@ -67,7 +125,7 @@ export default function StudioBlockTree({ st }) {
       e.families.includes(family) &&
       e.group !== "inserted" &&
       !fam.order.includes(t) &&
-      isBlockLogicalForScope(t, st.scope)
+      isBlockLogicalForScope(t, st.scope, family, st.size)
     );
   });
 

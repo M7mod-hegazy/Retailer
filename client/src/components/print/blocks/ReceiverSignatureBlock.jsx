@@ -37,6 +37,9 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
   const showId   = props.showId   !== undefined ? props.showId   : false;
   const compact  = props.compact  !== undefined ? props.compact  : false;
 
+  const variant = props.variant || "standard";
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+
   const defaultLineWidth = isRoll ? "48mm" : "60mm";
   const lineWidth = props.lineWidth || defaultLineWidth;
 
@@ -49,7 +52,7 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
   const wrapStyle = {
     marginTop: mt,
     paddingTop: compact ? "6px" : "8px",
-    borderTop: `1px dashed ${borderColor}`,
+    borderTop: variant === "boxed" ? "none" : `1px dashed ${borderColor}`,
     direction: "rtl",
     ...(editing && !show ? { opacity: 0.4, border: "1px dashed #7c3aed" } : {}),
   };
@@ -74,6 +77,68 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
       }} />
     </div>
   );
+
+  if (variant === "boxed") {
+    return (
+      <div style={{
+        ...wrapStyle,
+        border: family === "page" ? `1px solid ${accent}30` : "1px solid #000",
+        background: family === "page" ? `${accent}03` : "transparent",
+        borderRadius: "8px",
+        padding: "12px 14px",
+      }}>
+        {label && (
+          <div style={{
+            fontSize: headingSize,
+            fontWeight: 900,
+            color: family === "page" ? accent : borderColor,
+            textAlign: "center",
+            letterSpacing: "0.3px",
+            marginBottom: "8px",
+            borderBottom: family === "page" ? `1px dashed ${accent}30` : "1px dashed #000",
+            paddingBottom: "4px"
+          }}>
+            {label}
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          {showName && <BlankLine text="الاسم" />}
+          {showId   && <BlankLine text="رقم الهوية" />}
+          {showDate && <BlankLine text="التاريخ" />}
+          <BlankLine text="التوقيع" />
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "split" && family === "page") {
+    return (
+      <div style={wrapStyle}>
+        {label && (
+          <div style={{
+            fontSize: headingSize,
+            fontWeight: 900,
+            color: borderColor,
+            textAlign: "center",
+            letterSpacing: "0.3px",
+            marginBottom: "8px",
+          }}>
+            {label}
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            {showName && <BlankLine text="الاسم" />}
+            {showId   && <BlankLine text="رقم الهوية" />}
+          </div>
+          <div>
+            {showDate && <BlankLine text="التاريخ" />}
+            <BlankLine text="التوقيع" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={wrapStyle}>

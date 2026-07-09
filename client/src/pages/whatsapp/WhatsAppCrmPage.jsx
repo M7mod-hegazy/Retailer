@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import html2canvas from "html2canvas";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
 
@@ -245,18 +246,24 @@ const TABS = [
   { id: "inbox", label: "صندوق الوارد", icon: Inbox },
   { id: "marketing", label: "العملاء والحملات", icon: Megaphone },
   { id: "templates", label: "القوالب", icon: FileText },
+  { id: "telegram", label: "Telegram", icon: Send },
 ];
 
 export default function WhatsAppCrmPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [waStatus, setWaStatus] = useState({ status: "loading" });
   const [smsEnabled, setSmsEnabled] = useState(false);
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
 
   const refreshConfig = useCallback(() => {
     api.get("/api/whatsapp/crm/config")
       .then(r => setSmsEnabled(Boolean(r.data?.data?.sms_enabled)))
+      .catch(() => {});
+    api.get("/api/telegram/config")
+      .then(r => setTelegramEnabled(Boolean(r.data?.data?.enabled)))
       .catch(() => {});
   }, []);
 
@@ -305,6 +312,10 @@ export default function WhatsAppCrmPage() {
                 <span className={`inline-block w-2 h-2 rounded-full ${smsEnabled ? "bg-white" : "bg-white/30"}`} />
                 SMS: {smsEnabled ? "مفعّلة" : "غير مفعّلة"}
               </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-white/15 backdrop-blur">
+                <span className={`inline-block w-2 h-2 rounded-full ${telegramEnabled ? "bg-white" : "bg-white/30"}`} />
+                {t("telegram.channelName")}: {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}
+              </div>
               <button onClick={fetchStats}
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 transition-all active:scale-95 backdrop-blur">
                 <RefreshCw className={`h-4 w-4 ${statsLoading ? "animate-spin" : ""}`} />
@@ -336,10 +347,11 @@ export default function WhatsAppCrmPage() {
       {/* ── Tab Content ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
-          {activeTab === "dashboard" && <DashboardTab stats={stats} loading={statsLoading} waStatus={waStatus} smsEnabled={smsEnabled} onRefresh={fetchStats} onConfigChanged={refreshConfig} setActiveTab={setActiveTab} />}
+          {activeTab === "dashboard" && <DashboardTab stats={stats} loading={statsLoading} waStatus={waStatus} smsEnabled={smsEnabled} telegramEnabled={telegramEnabled} onRefresh={fetchStats} onConfigChanged={refreshConfig} setActiveTab={setActiveTab} />}
           {activeTab === "inbox" && <InboxTab />}
           {activeTab === "marketing" && <MarketingTab smsEnabled={smsEnabled} />}
           {activeTab === "templates" && <TemplatesTab />}
+          {activeTab === "telegram" && <TelegramTab telegramEnabled={telegramEnabled} onConfigChanged={refreshConfig} />}
         </div>
       </div>
     </div>
@@ -350,17 +362,20 @@ export default function WhatsAppCrmPage() {
 //  DASHBOARD TAB
 // ═══════════════════════════════════════════════════════════════════════════
 
-function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfigChanged, setActiveTab }) {
+function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, onRefresh, onConfigChanged, setActiveTab }) {
+  const { t } = useTranslation();
   const [linking, setLinking] = useState(false);
   const [engine, setEngine] = useState(waStatus);
   const [smsSetupOpen, setSmsSetupOpen] = useState(false);
+  const [connectError, setConnectError] = useState(null);
   const pollRef = useRef(null);
+  const connectAbortRef = useRef(null);
 
   useEffect(() => { setEngine(waStatus); }, [waStatus]);
 
   useEffect(() => {
     clearInterval(pollRef.current);
-    if (["connecting", "qr"].includes(engine.status)) {
+    if (["connecting", "qr", "error"].includes(engine.status)) {
       pollRef.current = setInterval(async () => {
         try {
           const r = await api.get("/api/whatsapp/engine-status");
@@ -373,12 +388,24 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
 
   async function handleLink() {
     setLinking(true);
+    setConnectError(null);
     try {
-      await api.post("/api/whatsapp/engine-connect");
+      connectAbortRef.current?.abort();
+      connectAbortRef.current = new AbortController();
+      await api.post("/api/whatsapp/engine-connect", null, {
+        signal: connectAbortRef.current.signal,
+        timeout: 120000, // WhatsApp connect can take up to 2 min while waiting for QR/scan
+      });
       onRefresh();
     } catch (e) {
-      toast.error(e.response?.data?.message || "فشل الاتصال");
-    } finally { setLinking(false); }
+      if (e.code === "ERR_CANCELED" || e.name === "AbortError" || e.message?.includes("aborted")) return;
+      const detail = e.response?.data?.message || e.message || t("whatsapp.connectFailed");
+      setConnectError(detail);
+      toast.error(detail);
+    } finally {
+      connectAbortRef.current = null;
+      setLinking(false);
+    }
   }
 
   async function handleUnlink() {
@@ -386,9 +413,19 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
     try {
       await api.post("/api/whatsapp/engine-disconnect");
       setEngine({ status: "disconnected" });
+      setConnectError(null);
     } catch (e) {
       toast.error(e.response?.data?.message || "فشل الفصل");
     }
+  }
+
+  async function handleClearAndRetry() {
+    setConnectError(null);
+    try {
+      await api.post("/api/whatsapp/engine-disconnect");
+      setEngine({ status: "disconnected" });
+    } catch (_) {}
+    await handleLink();
   }
 
   const isUnavailable = ["unavailable", "error"].includes(engine.status);
@@ -410,15 +447,16 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
       {/* ── Sending channels — one panel, both services, clear activation ── */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h2 className="text-sm font-black text-text-primary">قنوات الإرسال</h2>
-          <p className="text-[11px] font-bold text-text-muted">فعّل قناة واحدة على الأقل — تعمل القناتان معاً من نفس الصفحة</p>
+          <h2 className="text-sm font-black text-text-primary">{t("messaging.channelsTitle")}</h2>
+          <p className="text-[11px] font-bold text-text-muted">{t("messaging.channelsSubtitle")}</p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-3">
 
           {/* WhatsApp channel */}
           <div className={`relative overflow-hidden rounded-2xl border p-5 ${
             state === "connected" ? "bg-success-bg border-success-border"
             : state === "qr" ? "bg-warning-bg border-warning-border"
+            : state === "error" ? "bg-danger-bg border-danger-border"
             : "bg-bg-surface border-border-normal"
           }`}>
             <div className="flex items-start gap-3">
@@ -430,10 +468,10 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-text-primary">واتساب</h3>
+                  <h3 className="text-base font-black text-text-primary">{t("whatsapp.title")}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${theme.badgeText} ${theme.bg}`}>{theme.text}</span>
                 </div>
-                <p className="text-[11px] font-bold text-text-muted mt-0.5">مجاني — يرسل من حساب واتساب المتجر مباشرة</p>
+                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("whatsapp.desc")}</p>
                 {state === "connected" && (
                   <p className="text-sm font-bold text-success-text font-mono mt-1" dir="ltr">{engine.phone ? `+${engine.phone}` : ""}</p>
                 )}
@@ -443,10 +481,10 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
               </div>
               {!isUnavailable && (
                 state !== "connected" ? (
-                  <button onClick={handleLink} disabled={linking || state === "connecting" || state === "qr"}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-card hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-                    <Link className="h-3.5 w-3.5" />
-                    {state === "qr" ? "في انتظار المسح..." : "ربط واتساب"}
+                  <button onClick={handleLink} disabled={linking}
+                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-card hover:opacity-90 disabled:opacity-50 transition-all active:scale-95 min-w-[130px] justify-center">
+                    {linking ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
+                    {linking ? t("whatsapp.connecting") : state === "qr" ? t("whatsapp.waitingScan") : t("whatsapp.title")}
                   </button>
                 ) : (
                   <button onClick={handleUnlink}
@@ -457,34 +495,81 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
               )}
             </div>
 
-            {/* How to activate — shown until connected */}
-            {!isUnavailable && state !== "connected" && state !== "qr" && (
-              <ol className="mt-4 space-y-1.5 rounded-xl bg-bg-base p-3">
-                {["اضغط زر «ربط واتساب»", "افتح واتساب في هاتفك ← الإعدادات ← الأجهزة المرتبطة", "امسح رمز QR الذي سيظهر هنا"].map((step, i) => (
-                  <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-text-secondary">
-                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            )}
+            {/* Loading / QR / Error states */}
+            {!isUnavailable && state !== "connected" && (
+              <div className="mt-4">
+                {linking && state !== "qr" && (
+                  <div className="rounded-xl bg-bg-base p-4 text-center">
+                    <RefreshCw className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
+                    <p className="text-sm font-black text-text-primary">{t("whatsapp.connecting")}</p>
+                    <p className="text-[11px] font-bold text-text-muted mt-1">{t("whatsapp.qrHint")}</p>
+                  </div>
+                )}
 
-            {state === "qr" && engine.qr && (
-              <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-warning-border bg-bg-surface p-4">
-                <img src={engine.qr} alt="QR" className="h-44 w-44 rounded-lg border border-border-normal" />
-                <p className="text-xs font-bold text-text-secondary">واتساب ← الأجهزة المرتبطة ← امسح هذا الرمز</p>
+                {state === "qr" && engine.qr && (
+                  <div className="rounded-xl border border-warning-border bg-bg-surface p-4">
+                    <div className="flex flex-col items-center gap-3">
+                      <img src={engine.qr} alt="QR" className="h-48 w-48 rounded-xl border-2 border-warning-border" />
+                      <p className="text-sm font-black text-warning-text text-center">{t("whatsapp.waitingScan")}</p>
+                      <p className="text-[11px] font-bold text-text-secondary text-center max-w-xs">{t("whatsapp.qrHint")}</p>
+                    </div>
+                  </div>
+                )}
+
+                {connectError && (
+                  <div className="rounded-xl border border-danger-border bg-danger-bg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-danger">{t("whatsapp.connectFailed")}</p>
+                        <p className="text-[11px] font-bold text-danger-text mt-1">{connectError}</p>
+                        <p className="text-[11px] font-bold text-text-muted mt-2">{t("whatsapp.errorHint")}</p>
+                        <button onClick={handleClearAndRetry}
+                          className="mt-3 flex items-center gap-1.5 rounded-lg bg-danger px-4 py-2 text-xs font-black text-white hover:opacity-90 transition-all active:scale-95">
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          {t("whatsapp.clearSession")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {engine.error && !connectError && (
+                  <div className="rounded-xl border border-danger-border bg-danger-bg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-danger">{t("whatsapp.connectFailed")}</p>
+                        <p className="text-[11px] font-bold text-danger-text mt-1">{engine.error}</p>
+                        <p className="text-[11px] font-bold text-text-muted mt-2">{t("whatsapp.errorHint")}</p>
+                        <button onClick={handleClearAndRetry}
+                          className="mt-3 flex items-center gap-1.5 rounded-lg bg-danger px-4 py-2 text-xs font-black text-white hover:opacity-90 transition-all active:scale-95">
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          {t("whatsapp.clearSession")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!linking && state !== "qr" && !connectError && !engine.error && (
+                  <ol className="space-y-2 rounded-xl bg-bg-base p-3">
+                    {t("whatsapp.steps").split("|").map((step, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-text-secondary">
+                        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             )}
 
             {state === "connected" && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {[
-                  "الجلسة محفوظة — لا تحتاج QR عند كل تشغيل",
-                  "الرد بكلمة 'إلغاء' يوقف الرسائل التسويقية",
-                  "حتى 200 رسالة يومياً بفاصل آمن",
-                ].map(t => (
-                  <span key={t} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
-                    <Zap className="h-3 w-3 text-text-muted" />{t}
+                {t("whatsapp.connectedTags").split("|").map(tag => (
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                    <Zap className="h-3 w-3 text-text-muted" />{tag}
                   </span>
                 ))}
               </div>
@@ -501,12 +586,12 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-text-primary">رسائل SMS</h3>
+                  <h3 className="text-base font-black text-text-primary">{t("sms.title")}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-[11px] font-black text-white ${smsEnabled ? "bg-success-text" : "bg-text-muted"}`}>
                     {smsEnabled ? "مفعّلة" : "غير مفعّلة"}
                   </span>
                 </div>
-                <p className="text-[11px] font-bold text-text-muted mt-0.5">مدفوعة — تصل لأي هاتف حتى بدون واتساب أو إنترنت</p>
+                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("sms.desc")}</p>
               </div>
               <button onClick={() => setSmsSetupOpen(true)}
                 className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${
@@ -520,15 +605,67 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, onRefresh, onConfi
             </div>
 
             {smsEnabled ? (
-              <p className="mt-4 rounded-xl bg-bg-base p-3 text-[11px] font-bold text-text-secondary">
-                الخدمة جاهزة — عند إنشاء حملة جديدة اختر قناة «رسائل SMS» وستُرسل عبر بوابة المزوّد.
-              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {t("sms.connectedTags").split("|").map(tag => (
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                    <Zap className="h-3 w-3 text-text-muted" />{tag}
+                  </span>
+                ))}
+              </div>
             ) : (
-              <ol className="mt-4 space-y-1.5 rounded-xl bg-bg-base p-3">
-                {["اشترك لدى مزوّد رسائل SMS (مثل SMS Misr) واحصل على رابط البوابة ومفتاح API", "اضغط زر «تفعيل SMS» وأدخل بيانات المزوّد", "جرّب الإرسال لرقمك — سيظهر خيار SMS عند إنشاء الحملات"].map((step, i) => (
-                  <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-text-secondary">
+              <ol className="mt-4 space-y-2 rounded-xl bg-bg-base p-3">
+                {t("sms.steps").split("|").map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-text-secondary">
                     <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
-                    {step}
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          {/* Telegram channel */}
+          <div className={`relative overflow-hidden rounded-2xl border p-5 ${
+            telegramEnabled ? "bg-success-bg border-success-border" : "bg-bg-surface border-border-normal"
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-card text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+                <Send className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-text-primary">{t("telegram.channelName")}</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-black text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+                    {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}
+                  </span>
+                </div>
+                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("telegram.channelDesc")}</p>
+              </div>
+              <button onClick={() => setActiveTab("telegram")}
+                className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${
+                  telegramEnabled
+                    ? "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-base"
+                    : "bg-primary text-white shadow-card hover:opacity-90"
+                }`}>
+                {telegramEnabled ? <Settings className="h-3.5 w-3.5" /> : <Link className="h-3.5 w-3.5" />}
+                {telegramEnabled ? t("telegram.settings") : t("telegram.activate")}
+              </button>
+            </div>
+
+            {telegramEnabled ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {t("telegram.connectedTags").split("|").map(tag => (
+                  <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                    <Zap className="h-3 w-3 text-text-muted" />{tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <ol className="mt-4 space-y-2 rounded-xl bg-bg-base p-3">
+                {t("telegram.steps").split("|").map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-text-secondary">
+                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
+                    <span>{step}</span>
                   </li>
                 ))}
               </ol>
@@ -1244,9 +1381,9 @@ function AddContactModal({ onClose }) {
           </button>
           <button onClick={save} disabled={!phone.trim() || saving}
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            حفظ
-          </button>
+                  {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {t("telegram.save")}
+                </button>
         </div>
       </div>
     </div>
@@ -1705,6 +1842,233 @@ function SmsSetupModal({ onClose, onSaved }) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function TelegramTab({ telegramEnabled, onConfigChanged }) {
+  const { t } = useTranslation();
+  const [config, setConfig] = useState({
+    telegram_enabled: false,
+    telegram_bot_token: "",
+    telegram_chat_id: "",
+    telegram_api_base: "https://api.telegram.org",
+    telegram_notify_new_invoice: true,
+    telegram_notify_daily_close: true,
+    telegram_notify_important_actions: true,
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    api.get("/api/settings").then(r => {
+      const d = r.data?.data || {};
+      const loaded = {
+        telegram_enabled: Boolean(d.telegram_enabled),
+        telegram_bot_token: d.telegram_bot_token || "",
+        telegram_chat_id: d.telegram_chat_id || "",
+        telegram_api_base: d.telegram_api_base || "https://api.telegram.org",
+        telegram_notify_new_invoice: d.telegram_notify_new_invoice !== 0 && d.telegram_notify_new_invoice !== false && d.telegram_notify_new_invoice !== "0",
+        telegram_notify_daily_close: d.telegram_notify_daily_close !== 0 && d.telegram_notify_daily_close !== false && d.telegram_notify_daily_close !== "0",
+        telegram_notify_important_actions: d.telegram_notify_important_actions !== 0 && d.telegram_notify_important_actions !== false && d.telegram_notify_important_actions !== "0",
+      };
+      setConfig(loaded);
+      setSaved(loaded.telegram_enabled && Boolean(loaded.telegram_bot_token) && Boolean(loaded.telegram_chat_id));
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    if (config.telegram_enabled && (!config.telegram_bot_token.trim() || !config.telegram_chat_id.trim())) {
+      toast.error(t("telegram.validation"));
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put("/api/settings", config);
+      setSaved(config.telegram_enabled && Boolean(config.telegram_bot_token.trim()) && Boolean(config.telegram_chat_id.trim()));
+      toast.success(config.telegram_enabled ? t("telegram.saveSuccessOn") : t("telegram.saveSuccessOff"));
+      onConfigChanged?.();
+    } catch (e) { toast.error(e.response?.data?.message || t("telegram.saveError")); }
+    finally { setSaving(false); }
+  }
+
+  async function sendTest() {
+    setTesting(true);
+    try {
+      await api.post("/api/telegram/test");
+      toast.success(t("telegram.testSuccess"));
+    } catch (e) { toast.error(e.response?.data?.message || t("telegram.testError")); }
+    finally { setTesting(false); }
+  }
+
+  const StepBadge = ({ n, done }) => (
+    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
+      done ? "bg-success-text text-white" : "bg-primary text-white"
+    }`}>
+      {done ? <Check className="h-3.5 w-3.5" /> : n}
+    </span>
+  );
+
+  function Toggle({ label, hint, checked, onChange, disabled }) {
+    return (
+      <label className={`block rounded-lg border border-border-normal bg-bg-input px-4 py-3 ${disabled ? "opacity-60" : "cursor-pointer"}`}>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-text-primary">{label}</span>
+          <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled}
+            className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
+        </div>
+        {hint && <p className="mt-1 text-[11px] font-bold text-text-muted">{hint}</p>}
+      </label>
+    );
+  }
+
+  if (loading) return <div className="flex items-center justify-center py-16"><RefreshCw className="h-8 w-8 animate-spin text-text-muted" /></div>;
+  if (loadError) return <EmptyState icon={Settings} title={t("telegram.loadError")} description={t("telegram.loadError")} />;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-card text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+            <Send className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-text-primary flex items-center gap-2">
+              {t("telegram.title")}
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-black text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+                {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}
+              </span>
+            </h2>
+            <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("telegram.subtitle")}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Left column — settings */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Step 1 — bot credentials */}
+          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+            <div className="flex items-center gap-2.5 mb-4">
+              <StepBadge n="١" done={Boolean(config.telegram_bot_token.trim()) && Boolean(config.telegram_chat_id.trim())} />
+              <div>
+                <p className="text-sm font-black text-text-primary">{t("telegram.step1")}</p>
+                <p className="text-[11px] font-bold text-text-muted">{t("telegram.step1Hint")}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.botToken")} *</label>
+                <input type="password" dir="ltr" value={config.telegram_bot_token}
+                  onChange={e => setConfig(c => ({ ...c, telegram_bot_token: e.target.value }))}
+                  placeholder={t("telegram.botTokenPlaceholder")}
+                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.chatId")} *</label>
+                  <input type="text" dir="ltr" value={config.telegram_chat_id}
+                    onChange={e => setConfig(c => ({ ...c, telegram_chat_id: e.target.value }))}
+                    placeholder={t("telegram.chatIdPlaceholder")}
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.apiBase")}</label>
+                  <input type="url" dir="ltr" value={config.telegram_api_base}
+                    onChange={e => setConfig(c => ({ ...c, telegram_api_base: e.target.value }))}
+                    placeholder={t("telegram.apiBasePlaceholder")}
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                </div>
+              </div>
+              <details className="group">
+                <summary className="text-[11px] font-black text-text-muted cursor-pointer hover:text-text-secondary transition-colors list-none flex items-center gap-1">
+                  <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                  {t("telegram.guideTitle")}
+                </summary>
+                <div className="mt-2 rounded-lg bg-bg-base p-3 text-[11px] font-bold text-text-secondary space-y-2 leading-relaxed">
+                  <p>{t("telegram.guideStep1")}</p>
+                  <p>{t("telegram.guideStep2")}</p>
+                  <p>{t("telegram.guideStep3")}</p>
+                  <p>{t("telegram.guideStep4")}</p>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          {/* Step 2 — event toggles */}
+          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+            <div className="flex items-center gap-2.5 mb-4">
+              <StepBadge n="٢" done={saved} />
+              <p className="text-sm font-black text-text-primary">{t("telegram.step2")}</p>
+            </div>
+            <div className="space-y-2">
+              <Toggle label={t("telegram.toggleNewInvoice")} checked={config.telegram_notify_new_invoice} onChange={e => setConfig(c => ({ ...c, telegram_notify_new_invoice: e.target.checked }))} />
+              <Toggle label={t("telegram.toggleDailyClose")} checked={config.telegram_notify_daily_close} onChange={e => setConfig(c => ({ ...c, telegram_notify_daily_close: e.target.checked }))} />
+              <Toggle label={t("telegram.toggleImportantActions")} hint={t("telegram.toggleImportantActionsHint")} checked={config.telegram_notify_important_actions} onChange={e => setConfig(c => ({ ...c, telegram_notify_important_actions: e.target.checked }))} />
+            </div>
+          </div>
+
+          {/* Step 3 — enable + save + test */}
+          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+            <div className="flex items-center gap-2.5 mb-4">
+              <StepBadge n="٣" done={saved} />
+              <p className="text-sm font-black text-text-primary">{t("telegram.step3")}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <label className="flex flex-1 items-center justify-between rounded-lg border border-border-normal bg-bg-input px-4 py-3 cursor-pointer">
+                <span className="text-xs font-black text-text-primary">{t("telegram.enable")}</span>
+                <input type="checkbox" checked={config.telegram_enabled}
+                  onChange={e => setConfig(c => ({ ...c, telegram_enabled: e.target.checked }))}
+                  className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
+              </label>
+              <button onClick={save} disabled={saving}
+                className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+                {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {t("telegram.save")}
+              </button>
+              <button onClick={sendTest} disabled={testing || !saved}
+                title={!saved ? t("telegram.testTooltip") : t("telegram.step4")}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-6 py-3 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95">
+                {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {t("telegram.test")}
+              </button>
+            </div>
+            {!saved && (
+              <p className="mt-3 text-[11px] font-bold text-text-muted">{t("telegram.step4Hint")}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Right column — info */}
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+            <h3 className="text-sm font-black text-text-primary mb-3 flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary" /> {t("telegram.infoTitle")}
+            </h3>
+            <ul className="space-y-2 text-[11px] font-bold text-text-secondary leading-relaxed">
+              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info1")}</span></li>
+              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info2")}</span></li>
+              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info3")}</span></li>
+              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info4")}</span></li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+            <h3 className="text-sm font-black text-text-primary mb-3 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-warning-text" /> {t("telegram.eventsTitle")}
+            </h3>
+            <ul className="space-y-2 text-[11px] font-bold text-text-secondary leading-relaxed">
+              {t("telegram.eventsList").split("|").map((item, i) => (
+                <li key={i} className="flex items-start gap-2"><Check className="h-3 w-3 text-success-text shrink-0 mt-0.5" /><span>{item}</span></li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );

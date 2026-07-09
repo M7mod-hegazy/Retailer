@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet,
-  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2,
+  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2, MessageCircle,
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -12,7 +12,7 @@ import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintStudio from "./studio/PrintStudio";
 import { resolveEffectiveLayout } from "./layout/layoutModel";
-import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr } from "./studio/studioData";
+import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, PX_PER_MM } from "./studio/studioData";
 import { applyPreset } from "./presets/presetEngine";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
@@ -40,6 +40,7 @@ export default function PrintPreviewModal({
   reportColumns = [],
   totalRows = 0,
   onExportAllColumns,
+  onSendWhatsApp,
   children,
 }) {
   const { handleDetach } = useDetach("print-preview", {
@@ -58,6 +59,8 @@ export default function PrintPreviewModal({
   const [columnWeights, setColumnWeights] = useState({});
   const [docSettingsLoaded, setDocSettingsLoaded] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
+  const [smartBreaksMm, setSmartBreaksMm] = useState([]);
+  const [pageViewMode, setPageViewMode] = useState("stacked");
   const instantFired = useRef(false);
 
   const isDragging = useRef(false);
@@ -161,6 +164,26 @@ export default function PrintPreviewModal({
 
   const activeTemplate = template || (cfg ? cfg.defaultSize : "A4");
   const isThermal = activeTemplate === "58mm" || activeTemplate === "80mm";
+  const isPageDoc = !isThermal && activeTemplate !== "58mm" && activeTemplate !== "80mm";
+
+  // Measure hidden content for smart page breaks (page docs only)
+  useLayoutEffect(() => {
+    if (!open || isThermal || renderContent || !printAllRef.current) {
+      setSmartBreaksMm([]);
+      return;
+    }
+    const dims = pageDimensions(activeTemplate, orientation);
+    const pageHmm = dims.hMm;
+    if (!pageHmm || pageHmm <= 0) { setSmartBreaksMm([]); return; }
+    requestAnimationFrame(() => {
+      const breaks = findNaturalBreaks(printAllRef.current, pageHmm, PX_PER_MM);
+      setSmartBreaksMm(breaks);
+    });
+  }, [open, activeTemplate, orientation, isThermal, renderContent, docSettings, docSettingsLoaded]);
+
+  const smartPages = smartBreaksMm.length + 1;
+  const hasSmartBreaks = isPageDoc && smartBreaksMm.length > 0;
+  const displayTotalPages = hasSmartBreaks ? smartPages : totalPrintPages;
 
   // Column fitting logic
   const scoreColumn = (col) => {
@@ -251,7 +274,7 @@ export default function PrintPreviewModal({
   }, [printPage]);
 
   const goToPage = (p) => {
-    setPrintPage(Math.max(1, Math.min(p, totalPrintPages)));
+    setPrintPage(Math.max(1, Math.min(p, displayTotalPages)));
     setPan({ x: 0, y: 0 });
   };
 
@@ -310,6 +333,56 @@ export default function PrintPreviewModal({
     return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A4" scope={docType} />;
   };
 
+  // Build page-clipped preview for smart-break page docs
+  const smartPreviewContent = useMemo(() => {
+    if (!hasSmartBreaks) return null;
+    const doc = renderDoc();
+    const dims = pageDimensions(activeTemplate, orientation);
+    const pageHeightFull = dims.hMm;
+    const breaks = smartBreaksMm;
+    const pages = smartPages;
+
+    const pgH = (idx) => {
+      if (idx === 0) return breaks[0];
+      if (idx < breaks.length) return breaks[idx] - breaks[idx - 1];
+      return pageHeightFull;
+    };
+    const pgOff = (idx) => (idx === 0 ? 0 : breaks[idx - 1]);
+
+    const pageDiv = (i) => {
+      const ph = pgH(i);
+      return (
+        <div key={i} style={{ height: `${ph}mm`, overflow: "hidden", position: "relative", background: "#fff", boxShadow: "0 2px 12px rgba(0,0,0,0.15)", borderRadius: "1mm", marginBottom: i < pages - 1 ? "6mm" : 0 }}>
+          {pages > 1 && (
+            <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", zIndex: 25, pointerEvents: "none", fontSize: "7px", fontWeight: 700, color: "#94a3b8", background: "#fff", padding: "0 4px", borderRadius: "0 0 2px 2px", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
+            {i + 1} / {pages}
+          </div>)}
+          <div style={{ marginTop: `-${pgOff(i)}mm` }}>{doc}</div>
+        </div>
+      );
+    };
+
+    if (pageViewMode === "page") {
+      const i = Math.min(printPage - 1, pages - 1);
+      return <div>{pageDiv(i)}</div>;
+    }
+
+    if (pageViewMode === "grid") {
+      const cols = 2;
+      const w = pageWidthStr(activeTemplate, orientation);
+      return (
+        <div style={{ width: `calc(${w} * ${cols} + 4mm)` }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${w})`, gap: "4mm" }}>
+            {Array.from({ length: pages }).map((_, i) => pageDiv(i))}
+          </div>
+        </div>
+      );
+    }
+
+    // Stacked (default)
+    return <div>{Array.from({ length: pages }).map((_, i) => pageDiv(i))}</div>;
+  }, [hasSmartBreaks, smartBreaksMm, smartPages, printPage, pageViewMode, activeTemplate, orientation, docSettings, docSettingsLoaded, fetchedGlobalSettings, globalSettings, globalScopeSettings, docType, operationLabel, invoice, isReportDoc, reportColumns]);
+
   const handlePrint = () => {
     const pageSizeStr = printPageSizeStr(activeTemplate, orientation);
 
@@ -327,6 +400,32 @@ export default function PrintPreviewModal({
         buildIframeAndPrint(html, pageSizeStr, afterPrint);
         return;
       }
+
+      // If we have smart breaks, build paged HTML using the SAME clipping
+      // technique as the preview: each page is a fixed-height div with
+      // overflow:hidden, and the full content is shifted by a negative
+      // margin so only the relevant slice is visible.  This GUARANTEES the
+      // print matches the preview because both use identical rendering.
+      // (CSS break-after:page on <tr> is unreliable in Chromium, so we
+      //  can't rely on injecting page-break styles into the DOM.)
+      if (hasSmartBreaks && smartBreaksMm.length > 0) {
+        const pageW = pageWidthStr(activeTemplate, orientation);
+        const pageHmm = pageDimensions(activeTemplate, orientation).hMm;
+        const contentHtml = sourceNode.innerHTML;
+        const pages = smartBreaksMm.length + 1;
+
+        let pagedHtml = "";
+        for (let i = 0; i < pages; i++) {
+          const offset = i === 0 ? 0 : smartBreaksMm[i - 1];
+          const isLast = i === pages - 1;
+          pagedHtml += `<div style="width:${pageW};height:${pageHmm}mm;overflow:hidden;position:relative;${isLast ? "" : "page-break-after:always;break-after:page;"}">`;
+          pagedHtml += `<div style="margin-top:-${offset}mm;width:${pageW};">${contentHtml}</div>`;
+          pagedHtml += `</div>`;
+        }
+        buildIframeAndPrint(pagedHtml, pageSizeStr, afterPrint);
+        return;
+      }
+
       const rawHtml = sourceNode.innerHTML;
       buildIframeAndPrint(rawHtml, pageSizeStr, afterPrint);
     });
@@ -395,8 +494,12 @@ export default function PrintPreviewModal({
 
   return (
     <>
-      {/* Hidden container — all pages rendered via React for measurement only */}
-      <div ref={printAllRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}>
+      {/* Hidden container — rendered at true paper width so block heights match print */}
+      <div ref={printAllRef} style={{
+        position: "fixed", left: "-9999px", top: 0,
+        visibility: "hidden", pointerEvents: "none",
+        width: isThermal ? activeTemplate : pageWidthStr(activeTemplate, orientation),
+      }}>
         {renderContent && totalPrintPages > 0
           ? Array.from({ length: totalPrintPages }).map((_, i) => (
               <div key={i} style={{ pageBreakAfter: i < totalPrintPages - 1 ? "always" : undefined }}>
@@ -449,7 +552,7 @@ export default function PrintPreviewModal({
                          : pageWidthStr(activeTemplate, orientation),
                   }}
                 >
-                  {renderDoc()}
+                  {smartPreviewContent || renderDoc()}
                 </div>
               </div>
 
@@ -469,7 +572,7 @@ export default function PrintPreviewModal({
 
               {/* Page indicator overlay — always visible */}
               <div className="absolute bottom-4 right-4 flex items-center gap-0.5 rounded-[10px] bg-[var(--bg-surface)]/90 border border-[var(--border-normal)] shadow-md backdrop-blur-sm px-2 py-1 z-50" dir="ltr">
-                <button onClick={() => goToPage(1)} disabled={printPage <= 1}
+                <button onClick={() => goToPage(1)} disabled={printPage <= 1 || displayTotalPages <= 1}
                   className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <SkipBack size={12} />
                 </button>
@@ -478,13 +581,13 @@ export default function PrintPreviewModal({
                   <ChevronRight size={14} />
                 </button>
                 <span className="text-[11px] font-bold text-[var(--text-primary)] tabular-nums min-w-[44px] text-center mx-1">
-                  {formatNumber(printPage, { decimals: 0 })} / {formatNumber(totalPrintPages, { decimals: 0 })}
+                  {formatNumber(printPage, { decimals: 0 })} / {formatNumber(displayTotalPages, { decimals: 0 })}
                 </span>
-                <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
+                <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= displayTotalPages}
                   className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <ChevronLeft size={14} />
                 </button>
-                <button onClick={() => goToPage(totalPrintPages)} disabled={printPage >= totalPrintPages}
+                <button onClick={() => goToPage(displayTotalPages)} disabled={printPage >= displayTotalPages}
                   className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-25 transition-colors">
                   <SkipForward size={12} />
                 </button>
@@ -519,6 +622,15 @@ export default function PrintPreviewModal({
                   className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-[12px] text-sm font-black transition-all shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:scale-95"
                 >
                   <Printer size={16} /> طباعة
+                </button>
+              )}
+
+              {onSendWhatsApp && (
+                <button
+                  onClick={() => { onClose(); onSendWhatsApp(); }}
+                  className="w-full flex items-center justify-center gap-2 rounded-[12px] border border-success-border bg-success-bg px-3 py-3 text-sm font-black text-success-text transition-all hover:bg-success-bg/80 active:scale-95"
+                >
+                  <MessageCircle size={16} /> إرسال عبر واتساب
                 </button>
               )}
 
@@ -565,6 +677,17 @@ export default function PrintPreviewModal({
                     className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-all ${orientation === "landscape" ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
                     عرضي
                   </button>
+                </div>
+              )}
+
+              {hasSmartBreaks && (
+                <div className="flex gap-1">
+                  {["stacked", "page", "grid"].map((mode) => (
+                    <button key={mode} type="button" onClick={() => setPageViewMode(mode)}
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-all ${pageViewMode === mode ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
+                      {mode === "stacked" ? "عمودي" : mode === "page" ? "فردي" : "شبكي"}
+                    </button>
+                  ))}
                 </div>
               )}
 
@@ -699,7 +822,7 @@ export default function PrintPreviewModal({
           </div>
 
           {/* Bottom bar: page navigation + thumbnails */}
-          {totalPrintPages > 1 && (
+          {displayTotalPages > 1 && (
             <div className="flex items-center gap-3 shrink-0 bg-[var(--bg-surface)] rounded-[12px] border border-[var(--border-normal)] p-2">
               {/* Page navigation */}
               <div className="flex items-center gap-1">
@@ -717,19 +840,19 @@ export default function PrintPreviewModal({
                     value={printPage}
                     onChange={(e) => {
                       const v = parseInt(e.target.value, 10);
-                      if (v >= 1 && v <= totalPrintPages) goToPage(v);
+                      if (v >= 1 && v <= displayTotalPages) goToPage(v);
                     }}
                     className="w-10 h-8 text-center rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] text-2sm font-bold"
                     min={1}
-                    max={totalPrintPages}
+                    max={displayTotalPages}
                   />
-                  <span className="text-[11px] font-bold text-[var(--text-secondary)]">/ {formatNumber(totalPrintPages, { decimals: 0 })}</span>
+                  <span className="text-[11px] font-bold text-[var(--text-secondary)]">/ {formatNumber(displayTotalPages, { decimals: 0 })}</span>
                 </div>
-                <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= totalPrintPages}
+                <button onClick={() => goToPage(printPage + 1)} disabled={printPage >= displayTotalPages}
                   className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <ChevronLeft size={14} />
                 </button>
-                <button onClick={() => goToPage(totalPrintPages)} disabled={printPage >= totalPrintPages}
+                <button onClick={() => goToPage(displayTotalPages)} disabled={printPage >= displayTotalPages}
                   className="p-1.5 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input-hover)] disabled:opacity-30">
                   <SkipForward size={14} />
                 </button>
@@ -737,7 +860,7 @@ export default function PrintPreviewModal({
 
               {/* Thumbnails strip */}
               <div className="flex items-center gap-1.5 overflow-x-auto flex-1 px-2" style={{ scrollbarWidth: "thin" }}>
-                {Array.from({ length: totalPrintPages }).map((_, idx) => {
+                {Array.from({ length: displayTotalPages }).map((_, idx) => {
                   const pageNum = idx + 1;
                   const isActive = pageNum === printPage;
                   return (
@@ -771,6 +894,7 @@ export default function PrintPreviewModal({
           onClose={reloadAfterStudio}
           initialScope={isReportDoc ? "reports_generic" : docType}
           initialSize={activeTemplate}
+          initialOrientation={orientation}
         />
       )}
     </>

@@ -8,6 +8,7 @@ const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
 
 const { auditMutation } = require("../middleware/audit");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 router.use(auditMutation);
@@ -159,7 +160,14 @@ router.post("/login", (req, res, next) => {
       setTimeout(() => loginAttempts.delete(normalizedUsername), lockDuration);
     }
     loginAttempts.set(normalizedUsername, attemptData);
-    
+    try {
+      notifyOwner(TG.FAILED_LOGIN, {
+        username: normalizedUsername,
+        time: new Date().toISOString(),
+        ip: req.ip || req.socket?.remoteAddress || "unknown",
+      });
+    } catch (_) {}
+
     const err = new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
     err.status = 401;
     return next(err);

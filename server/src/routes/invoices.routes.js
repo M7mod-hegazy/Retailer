@@ -9,6 +9,7 @@ const { generateDocNumber } = require("../utils/docNumber");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { nowSql, today } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -192,11 +193,17 @@ router.get("/returns", requirePagePermission("sales_returns", "view"), (req, res
     const safeSort = allowedSort.includes(sort) ? sort : "created_at";
     const safeDir = dir === "asc" ? "ASC" : "DESC";
     const returns = db.prepare(`
-      SELECT sr.*, c.name AS customer_name, i.invoice_no AS original_invoice_no, COALESCE(NULLIF(u.full_name, ''), u.username) AS created_by_username
+      SELECT sr.*, c.name AS customer_name, i.invoice_no AS original_invoice_no,
+             COALESCE(
+               COALESCE(NULLIF(u.full_name, ''), u.username),
+               COALESCE(NULLIF(ui.full_name, ''), ui.username),
+               'النظام'
+             ) AS created_by_username
       FROM sales_returns sr
       LEFT JOIN customers c ON c.id = sr.customer_id
       LEFT JOIN invoices i ON i.id = sr.invoice_id
       LEFT JOIN users u ON u.id = sr.created_by
+      LEFT JOIN users ui ON ui.id = i.user_id
       WHERE ${conditions.join(" AND ")}
       ORDER BY ${safeSort === "refund_method" ? "sr.refund_method" : `sr.${safeSort}`} ${safeDir}
     `).all(...params);
@@ -465,6 +472,16 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: resolvedUserId, _user: req.user };
   const invoice = createInvoice(payload);
   const invoiceAuditId = req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
+  try {
+    notifyOwner(TG.NEW_INVOICE, {
+      id: invoice?.id,
+      invoiceNo: invoice?.invoice_no,
+      total: invoice?.total,
+      customerName: invoice?.customer_name || req.body?.customer_name,
+      paymentType: invoice?.payment_type,
+      createdAt: invoice?.created_at,
+    });
+  } catch (_) {}
   if (payload.quotation_id) {
     req.audit("update", "quotations", { id: Number(payload.quotation_id), invoice_id: invoice?.id }, `📋 تم تحويل عرض سعر #${payload.quotation_id} إلى فاتورة ${invoice?.invoice_no || invoice?.id}`);
   }
@@ -477,6 +494,12 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
         body: `فاتورة #${invoice.id} للعميل ${customerName} — المبلغ: ${invoice.total}`,
         type: "info",
         link: invoiceAuditId ? `/history?log_id=${invoiceAuditId}` : `/invoices/${invoice.id}`,
+      });
+      notifyOwner(TG.LARGE_INVOICE, {
+        id: invoice.id,
+        invoiceNo: invoice.invoice_no,
+        total: invoice.total,
+        customerName,
       });
     }
   } catch (_) {}
@@ -495,6 +518,11 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
           type: "warning",
           link: invoiceAuditId ? `/history?log_id=${invoiceAuditId}` : `/invoices/${invoice.id}`,
         });
+        notifyOwner(TG.LARGE_DISCOUNT, {
+          id: invoice.id,
+          invoiceNo: invoice.invoice_no,
+          discountPercent: discount,
+        });
       }
     }
   } catch (_) {}
@@ -503,7 +531,10 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
 
 router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
   try {
-    const salesReturn = createReturn(Number(req.params.id), req.body || {});
+    const salesReturn = createReturn(Number(req.params.id), {
+      ...(req.body || {}),
+      user_id: req.user?.id || req.body?.user_id || null
+    });
     const returnAuditId = req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
     try {
       const invoiceId = req.params.id;
@@ -513,6 +544,11 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, 
         body: `مرتجع على الفاتورة #${invoiceId} — بمبلغ ${returnTotal}`,
         type: "info",
         link: returnAuditId ? `/history?log_id=${returnAuditId}` : `/invoices`,
+      });
+      notifyOwner(TG.SALES_RETURN, {
+        originalInvoiceId: invoiceId,
+        id: salesReturn?.id,
+        total: returnTotal,
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: salesReturn });
@@ -538,6 +574,11 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
         type: "warning",
         link: voidAuditId ? `/history?log_id=${voidAuditId}` : `/invoices/${req.params.id}`,
       });
+      notifyOwner(TG.INVOICE_VOIDED, {
+        id: Number(req.params.id),
+        reason: req.body.reason,
+        userName: req.user?.full_name || req.user?.username,
+      });
     } catch (_) {}
     res.json({ success: true, data: voided });
   } catch (error) {
@@ -549,6 +590,13 @@ router.delete("/:id", requirePagePermission("pos", "void"), (req, res, next) => 
   try {
     const result = cancelInvoice(Number(req.params.id), req.body?.reason, req.user?.id);
     req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    try {
+      notifyOwner(TG.INVOICE_VOIDED, {
+        id: Number(req.params.id),
+        reason: req.body?.reason,
+        userName: req.user?.full_name || req.user?.username,
+      });
+    } catch (_) {}
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

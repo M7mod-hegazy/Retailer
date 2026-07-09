@@ -12,6 +12,190 @@ import { PRINT_FONT_FAMILIES } from "../../../services/printFonts";
 import { COLUMN_CATALOG } from "./studioData";
 import { defaultReportColumns } from "../layout/layoutModel";
 
+const BLOCK_VARIANTS = {
+  company_name: [
+    { value: "standard", label: "افتراضي" },
+    { value: "retro-brutalist", label: "شريط معبأ (Brutalist)" },
+    { value: "underline-accent", label: "حاشية جانبية (Underline)" },
+    { value: "stacked-bilingual", label: "ثنائي اللغة (Bilingual)" },
+    { value: "initial-cap", label: "حرف بداية ضخم" },
+  ],
+  grand_total: [
+    { value: "band", label: "شريط معبّأ" },
+    { value: "boxed", label: "صندوق مزدوج" },
+    { value: "plain", label: "سطر بخط علوي" },
+    { value: "huge", label: "رقم ضخم متمركز" },
+    { value: "dual-row", label: "سطر مزدوج مع التفقيط" },
+    { value: "stripe", label: "شريط ممتد عريض" },
+    { value: "receipt-tape", label: "نمط إيصال (متقطع)" },
+    { value: "tag", label: "شارة السعر (تاغ)" },
+    { value: "split-amount", label: "مبلغ إجمالي منقسم" },
+  ],
+  payments: [
+    { value: "standard", label: "افتراضي" },
+    { value: "status-stamp", label: "ختم الحالة" },
+    { value: "table-row", label: "صفوف الجدول الموزعة" },
+    { value: "badge-pill", label: "كبسولات ملونة" },
+  ],
+  items_table: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "cards", label: "كروت منفصلة (فاخر)" },
+    { value: "minimalist-list", label: "قائمة مبسطة (هادئ)" },
+  ],
+  report_table: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "cards", label: "كروت منفصلة (فاخر)" },
+    { value: "minimalist-list", label: "قائمة مبسطة (هادئ)" },
+  ],
+  doc_title: [
+    { value: "standard", label: "عنوان عادي باللون المميز" },
+    { value: "badge", label: "شارة ملونة ممتلئة" },
+    { value: "ruled", label: "عنوان محاط بخطوط" },
+    { value: "brutalist", label: "مربع بروتالي حاد" },
+  ],
+  doc_number: [
+    { value: "standard", label: "الرقم كجزء من قائمة" },
+    { value: "boxed", label: "صندوق بارز ملون" },
+    { value: "inline", label: "رقم مدمج مبسط" },
+    { value: "giant", label: "رقم ضخم أعلى المستند" },
+  ],
+  doc_date: [
+    { value: "standard", label: "تاريخ عادي مع الوقت" },
+    { value: "inline", label: "سطر واحد خفيف" },
+    { value: "badge", label: "شارة تقويمية صغيرة" },
+  ],
+  customer: [
+    { value: "standard", label: "افتراضي جانبي" },
+    { value: "stacked", label: "تسمية فوق الاسم عريض" },
+    { value: "boxed", label: "صندوق بيانات العميل" },
+    { value: "two-column", label: "تقسيم لعمودين متقابلين" },
+  ],
+  cashier: [
+    { value: "standard", label: "افتراضي" },
+    { value: "inline", label: "بسطر واحد خفيف" },
+    { value: "badge", label: "شارة موظف" },
+  ],
+  logo: [
+    { value: "standard", label: "شعار طبيعي" },
+    { value: "circle", label: "دائري مع حدود" },
+    { value: "rounded", label: "زوايا ناعمة" },
+    { value: "boxed", label: "مؤطر بصندوق خفيف" },
+  ],
+  qr: [
+    { value: "standard", label: "افتراضي" },
+    { value: "centered", label: "متمركز في المنتصف" },
+    { value: "boxed", label: "مؤطر مع ترويسة" },
+    { value: "with-border", label: "مع إطار وتفاصيل" },
+  ],
+  notes: [
+    { value: "standard", label: "سطور ملاحظات عادية" },
+    { value: "boxed", label: "مربع إحاطة خفيف" },
+    { value: "alert", label: "تنبيه باللون التحذيري" },
+    { value: "quote", label: "مقتبس بخط جانبي سميك" },
+  ],
+  divider: [
+    { value: "solid", label: "مستمر" },
+    { value: "dashed", label: "متقطع" },
+    { value: "dotted", label: "منقط" },
+    { value: "double", label: "مزدوج" },
+    { value: "dots", label: "رموز نقاط · · ·" },
+    { value: "dash", label: "رموز شرطات — —" },
+    { value: "wave", label: "رموز موجات ∼ ∼" },
+  ],
+  spacer: [
+    { value: "small", label: "تباعد صغير 8px" },
+    { value: "medium", label: "تباعد متوسط 16px" },
+    { value: "large", label: "تباعد كبير 32px" },
+  ],
+  barcode: [
+    { value: "standard", label: "افتراضي بالرقم أسفله" },
+    { value: "centered", label: "متمركز بلا نص" },
+    { value: "compact", label: "مضغوط صغير" },
+  ],
+  order_number: [
+    { value: "standard", label: "افتراضي" },
+    { value: "huge", label: "رقم ضخم جداً" },
+    { value: "badge", label: "شارة طلب دائرية" },
+  ],
+  receipt_header_text: [
+    { value: "standard", label: "افتراضي" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
+    { value: "centered", label: "متمركز متباعد" },
+  ],
+  footer_text: [
+    { value: "standard", label: "افتراضي" },
+    { value: "boxed", label: "مؤطر بحدود خفيفة" },
+    { value: "centered", label: "متمركز متباعد" },
+  ],
+  signature_lines: [
+    { value: "standard", label: "افتراضي سطرين متقابلين" },
+    { value: "split", label: "ثلاثة خطوط موزعة" },
+    { value: "boxed", label: "مربعات توقيع مغلقة" },
+  ],
+  branch: [
+    { value: "standard", label: "افتراضي" },
+    { value: "badge", label: "شارة ملونة ممتلئة" },
+    { value: "inline", label: "سطر واحد خفيف" },
+  ],
+  address: [
+    { value: "standard", label: "افتراضي متسلسل" },
+    { value: "inline", label: "سطر مدمج بنقاط" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
+  ],
+  tax_id: [
+    { value: "standard", label: "افتراضي" },
+    { value: "boxed", label: "شارة رقمية مؤطرة" },
+    { value: "inline", label: "نص مدمج خفيف" },
+  ],
+  subtotal: [
+    { value: "standard", label: "افتراضي" },
+    { value: "plain", label: "بين خطين متقطعين" },
+    { value: "boxed", label: "صندوق مظلل ملون" },
+  ],
+  discount: [
+    { value: "standard", label: "افتراضي أحمر" },
+    { value: "badge", label: "شارة خصم ممتلئة" },
+    { value: "plain", label: "خط أحمر مدمج" },
+  ],
+  increase: [
+    { value: "standard", label: "افتراضي أخضر" },
+    { value: "plain", label: "خط رسوم مدمج" },
+    { value: "boxed", label: "صندوق رسوم مظلل" },
+  ],
+  tax: [
+    { value: "standard", label: "افتراضي" },
+    { value: "inline", label: "نص رمادي صغير" },
+    { value: "plain", label: "بين خطين متقطعين" },
+  ],
+  watermark: [
+    { value: "standard", label: "افتراضي (متوسط)" },
+    { value: "light", label: "شفاف خفيف جداً" },
+    { value: "strong", label: "شبه ظاهر ممتلئ" },
+  ],
+  receiver_signature: [
+    { value: "standard", label: "افتراضي متسلسل" },
+    { value: "boxed", label: "صندوق توقيع مغلق" },
+    { value: "split", label: "توزيع ثنائي متقابل" },
+  ],
+  custom_text: [
+    { value: "standard", label: "نص عادي" },
+    { value: "alert", label: "تنبيه تحذيري ملون" },
+    { value: "badge", label: "شارة ممتلئة ملونة" },
+    { value: "banner", label: "بنر عريض بخلفية ممتلئة" },
+  ],
+  custom_field: [
+    { value: "standard", label: "افتراضي" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
+    { value: "inline", label: "مدمج خفيف" },
+    { value: "highlighted", label: "شارة ممتلئة ملونة" },
+  ],
+  image: [
+    { value: "standard", label: "صورة عادية" },
+    { value: "card", label: "كرت بحدود وظل" },
+    { value: "banner", label: "بنر ممتد بالكامل" },
+  ],
+};
+
 // Where an inserted element sits in the flow — any block, or the very top.
 function InsertPosition({ st, ins, fam, inputCls }) {
   return (
@@ -377,6 +561,103 @@ export default function StudioInspector({ st }) {
               <button type="button" className={btnCls(false)} title="حذف (Delete)" onClick={st.deleteSelected}><Trash2 size={12} /></button>
             </div>
           </div>
+          
+          {/* block style / version navigator */}
+          {(() => {
+            const variants = BLOCK_VARIANTS[selType];
+            if (!variants) return null;
+
+            // Get current variant
+            let currentVal = "standard";
+            if (selInsert) {
+              if (selType === "divider") {
+                currentVal = selInsert.props?.style || "solid";
+              } else if (selType === "spacer") {
+                const h = selInsert.props?.height ?? 8;
+                currentVal = h <= 8 ? "small" : h <= 16 ? "medium" : "large";
+              } else {
+                currentVal = selInsert.props?.variant || "standard";
+              }
+            } else {
+              currentVal = st.ov(selected).variant || "standard";
+            }
+
+            const currentIndex = variants.findIndex(v => v.value === currentVal);
+            const activeIndex = currentIndex >= 0 ? currentIndex : 0;
+
+            const handleVariantChange = (newVal) => {
+              if (selInsert) {
+                if (selType === "divider") {
+                  st.setInsert(selInsert.id, { props: { style: newVal } });
+                } else if (selType === "spacer") {
+                  const h = newVal === "small" ? 8 : newVal === "medium" ? 16 : 32;
+                  st.setInsert(selInsert.id, { props: { height: h } });
+                } else {
+                  st.setInsert(selInsert.id, { props: { variant: newVal } });
+                }
+              } else {
+                st.setOverride(selected, { variant: newVal });
+              }
+            };
+
+            const goPrev = () => {
+              const prevIdx = (activeIndex - 1 + variants.length) % variants.length;
+              handleVariantChange(variants[prevIdx].value);
+            };
+
+            const goNext = () => {
+              const nextIdx = (activeIndex + 1) % variants.length;
+              handleVariantChange(variants[nextIdx].value);
+            };
+
+            return (
+              <div className="rounded-xl border border-[var(--border-accent)] bg-[var(--accent-soft)] p-3">
+                <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-[var(--primary)]">
+                  <span>شكل العنصر / نسخة التصميم</span>
+                  <span className="text-[9px] opacity-75">
+                    {activeIndex + 1} من {variants.length}
+                  </span>
+                </div>
+                
+                {/* Navigator controls */}
+                <div className="flex items-center justify-between gap-2">
+                  <button type="button" onClick={goPrev}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input)] text-[var(--text-primary)] text-xs font-black">
+                    ◄
+                  </button>
+                  <div className="flex-1 text-center">
+                    <div className="text-[12px] font-extrabold text-[var(--text-primary)]">
+                      {variants[activeIndex]?.label || "افتراضي"}
+                    </div>
+                    <div className="text-[9px] text-[var(--text-muted)] font-mono">
+                      {variants[activeIndex]?.value}
+                    </div>
+                  </div>
+                  <button type="button" onClick={goNext}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-normal)] bg-[var(--bg-surface)] hover:bg-[var(--bg-input)] text-[var(--text-primary)] text-xs font-black">
+                    ►
+                  </button>
+                </div>
+
+                {/* Grid of variant badges/buttons */}
+                <div className="mt-2.5 grid grid-cols-2 gap-1 max-h-32 overflow-y-auto pr-1">
+                  {variants.map((v) => {
+                    const isSelected = v.value === currentVal;
+                    return (
+                      <button key={v.value} type="button" onClick={() => handleVariantChange(v.value)}
+                        className={`rounded-lg px-2 py-1.5 text-center text-[10px] font-bold transition-all border ${
+                          isSelected 
+                            ? "bg-[var(--primary)] border-[var(--primary)] text-white shadow-sm" 
+                            : "bg-[var(--bg-surface)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"
+                        }`}>
+                        {v.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* free position — every block, every paper size */}
           <Section title="الموضع">

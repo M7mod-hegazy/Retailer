@@ -11,9 +11,10 @@ export default function BarcodeBlock({ invoice = {}, settings: s, props = {}, fa
   const number = resolveDocNo(invoice) || (editing ? "1234567890" : "");
   if (!number) return null;
 
+  const variant = props.variant || "standard";
   const type = props.type || "CODE128";
-  const align = props.align || "center";
-  const heightMm = props.height || (family === "page" ? 12 : 10);
+  const align = variant === "centered" ? "center" : (props.align || "center");
+  const heightMm = props.height || (variant === "compact" ? 6 : family === "page" ? 12 : 10);
 
   const [qrUrl, setQrUrl] = useState(null);
 
@@ -50,7 +51,7 @@ export default function BarcodeBlock({ invoice = {}, settings: s, props = {}, fa
 
   const alignSelf = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
   const textAlign = align;
-  const showText = props.showText !== false;
+  const showText = variant !== "compact" && props.showText !== false;
   const textFontSize = props.textFontSize || 10;
 
   return (

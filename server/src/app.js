@@ -51,6 +51,7 @@ const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
 const whatsappCrmRoutes = require("./routes/whatsappCrm.routes");
+const telegramRoutes = require("./routes/telegram.routes");
 const leadsRoutes = require("./routes/leads.routes");
 const itemUnitsRoutes = require("./routes/itemUnits.routes");
 const variantsRoutes = require("./routes/variants.routes");
@@ -208,6 +209,7 @@ function createApp() {
   app.use("/api/pricing", pricingRoutes);
   app.use("/api/whatsapp", whatsappRoutes);
   app.use("/api/whatsapp/crm", whatsappCrmRoutes);
+  app.use("/api/telegram", telegramRoutes);
   app.use("/api/leads", leadsRoutes);
   app.use("/api/repair-orders", repairOrdersRoutes);
   app.use("/api/restaurant", restaurantRoutes);

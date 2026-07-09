@@ -3,6 +3,7 @@ import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
   Package, UserPlus, Calendar, Loader2, ChevronDown, Filter, Settings2,
+  AlertTriangle,
 } from "lucide-react";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -37,6 +38,7 @@ import { formatNumber } from "../../utils/currency";
 import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
 import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import PurchaseReturnFormBottomBar from "./PurchaseReturnFormBottomBar";
+import SmartTooltip from "../../components/ui/SmartTooltip";
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -919,6 +921,24 @@ export default function PurchaseReturnFormPage() {
                 <Lock className="h-3 w-3" /> محفوظة
               </div>
             )}
+            {discountExceedsCap && !isLocked && (
+              <div className={`flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-1.5 text-xs font-black transition-all shadow-sm ${
+                supervisorOverride
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
+              }`}>
+                {supervisorOverride ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+                )}
+                <span>
+                  {supervisorOverride
+                    ? "تم تفعيل موافقة المشرف على الخصم"
+                    : `الخصم يتجاوز ${maxDiscountPercent}% — يتطلب موافقة المشرف`}
+                </span>
+              </div>
+            )}
             {mode && (
               <div className="flex gap-1.5">
                 <input readOnly value={invoiceIsActive ? (docNo || "") : "—"} className="h-7 w-28 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-400 cursor-not-allowed outline-none" />
@@ -968,15 +988,19 @@ export default function PurchaseReturnFormPage() {
             )}
             {mode && !isLocked && (
               <PermissionGate page="purchase_returns" action={isEditMode ? "edit" : "add"}>
-                <DocumentActionButton
-                  variant="primary"
-                  identity="amber"
-                  onClick={() => setShowSaveConfirmModal(true)}
-                  disabled={isSaving || !total}
-                  loading={isSaving}
-                >
-                  {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
-                </DocumentActionButton>
+                <SmartTooltip content={discountExceedsCap && !supervisorOverride ? `الخصم يتجاوز الحد المسموح به (${maxDiscountPercent}%) — يتطلب موافقة المشرف للمتابعة` : ""}>
+                  <div className="inline-block">
+                    <DocumentActionButton
+                      variant="primary"
+                      identity="amber"
+                      onClick={() => setShowSaveConfirmModal(true)}
+                      disabled={isSaving || !total || (discountExceedsCap && !supervisorOverride)}
+                      loading={isSaving}
+                    >
+                      {isSaving ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ المرتجع"}
+                    </DocumentActionButton>
+                  </div>
+                </SmartTooltip>
               </PermissionGate>
             )}
           </>
@@ -1171,12 +1195,24 @@ export default function PurchaseReturnFormPage() {
                     {adjustmentTouched ? "معدّل يدوياً" : "محسوب تلقائياً من أمر الشراء الأصلي"}
                   </div>
                 )}
-                {discountExceedsCap && !isLocked && (
-                  <label className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-300 px-2 py-1.5 text-[11px] font-bold text-amber-800 cursor-pointer">
-                    <input type="checkbox" checked={supervisorOverride} onChange={e => setSupervisorOverride(e.target.checked)} className="accent-amber-600" />
-                    الخصم يتجاوز {maxDiscountPercent}% — موافقة المشرف
-                  </label>
-                )}
+                 {discountExceedsCap && !isLocked && (
+                   <label className={`flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-xs font-black cursor-pointer transition-all duration-300 ${
+                     supervisorOverride
+                       ? "bg-emerald-50 border border-emerald-300 text-emerald-800"
+                       : "bg-rose-50 border-2 border-rose-500 text-rose-700 animate-pulse shadow-md shadow-rose-500/10"
+                   }`}>
+                     <input
+                       type="checkbox"
+                       checked={supervisorOverride}
+                       onChange={e => setSupervisorOverride(e.target.checked)}
+                       className={`w-4 h-4 rounded transition-all ${
+                         supervisorOverride ? "accent-emerald-600" : "accent-rose-600 ring-2 ring-rose-500/30"
+                       }`}
+                     />
+                     <AlertTriangle className={`h-4 w-4 shrink-0 ${supervisorOverride ? "text-emerald-500" : "text-rose-500"}`} />
+                     <span>الخصم يتجاوز {maxDiscountPercent}% — موافقة المشرف</span>
+                   </label>
+                 )}
                 <div className="flex items-center justify-between border-t border-amber-200/60 pt-2 mt-0.5">
                   <span className="text-2sm font-black text-amber-700">صافي المرتجع</span>
                   <span className="text-[16px] font-black text-amber-800">{formatMoney(total)} ج.م</span>

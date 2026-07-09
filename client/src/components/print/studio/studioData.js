@@ -46,40 +46,102 @@ export function pageSizeStrFor(size, orientation = "portrait") {
 }
 
 /**
- * Find natural page breaks by snapping to block boundaries instead of cutting
- * through blocks. Scans [data-block-key] elements and places breaks at the
- * nearest block boundary within a snap range (30mm) above the theoretical
- * page-height cut. Returns break positions in mm from content top.
+ * Find natural page breaks using absolute block positions.
+ *
+ * Each block already has an absolute offsetTop from the container top.
+ * We walk blocks in document order and track the last page-start edge.
+ * When a block's bottom would exceed (pageStart + pageHeight), we emit
+ * a break at the PREVIOUS block's bottom edge (so we never cut a block).
+ * The last page has no trailing break.
+ *
+ * Edge cases handled:
+ *  - Gaps between blocks (whitespace/spacers) are counted correctly.
+ *  - A block taller than one full page is left whole on its own page.
+ *  - A minimum block height of 2px filters out invisible spacer nodes.
  */
 export function findNaturalBreaks(containerEl, pageHmm, pxPerMm = PX_PER_MM) {
   if (!containerEl || !pageHmm || pageHmm <= 0) return [];
-  const blocks = containerEl.querySelectorAll("[data-block-key]");
-  if (!blocks.length) return [];
-  const blockBottoms = [];
-  blocks.forEach((b) => {
-    const top = b.offsetTop;
-    const h = b.offsetHeight;
-    if (h > 4 && top >= 0) blockBottoms.push(top + h);
-  });
-  if (!blockBottoms.length) return [];
-  blockBottoms.sort((a, b) => a - b);
-  const totalPx = blockBottoms[blockBottoms.length - 1];
-  const pagePx = pageHmm * pxPerMm;
-  const SNAP_PX = 30 * pxPerMm;
-  const breaksMm = [];
-  let cursorPx = pagePx;
-  while (cursorPx < totalPx) {
-    let bestPx = null;
-    for (const btm of blockBottoms) {
-      const diff = cursorPx - btm;
-      if (diff >= 0 && diff <= SNAP_PX) {
-        if (bestPx === null || (cursorPx - btm) < (cursorPx - bestPx)) bestPx = btm;
+
+  /**
+   * Walk the offsetParent chain from `el` up to `container` to get
+   * the element's top in container-local px. This is scroll-independent
+   * and works even when the container is off-screen (e.g. fixed left:-9999px).
+   */
+  function offsetTopRelativeTo(el, container) {
+    let top = 0;
+    let node = el;
+    while (node && node !== container) {
+      top += node.offsetTop;
+      node = node.offsetParent;
+    }
+    return top;
+  }
+
+  // Collect candidate break units.
+  // • Top-level [data-block-key] elements are the coarse units (logo, header,
+  //   totals, footer, …).
+  // • For the items table and report table — which can be arbitrarily tall —
+  //   we drill into individual <tr> elements so we never cut through a row.
+  //   We keep the thead as part of the first set of rows (don't break after thead).
+  const rects = [];
+
+  const topBlocks = containerEl.querySelectorAll(":scope > * [data-block-key], [data-block-key]");
+  const seenBlocks = new Set();
+
+  topBlocks.forEach((block) => {
+    const key = block.getAttribute("data-block-key");
+    if (seenBlocks.has(key)) return; // deduplicate (only first occurrence per key)
+    seenBlocks.add(key);
+
+    const blockH = block.offsetHeight;
+    if (blockH < 2) return;
+
+    const blockTopPx = offsetTopRelativeTo(block, containerEl);
+    const pagePx = pageHmm * pxPerMm;
+
+    // If this block is taller than one page, expand it into individual <tr> rows
+    // so we can break between rows rather than being forced to swallow the whole block.
+    if (blockH > pagePx * 0.6) {
+      const rows = block.querySelectorAll("tbody tr, tr");
+      if (rows.length > 1) {
+        rows.forEach((tr) => {
+          const h = tr.offsetHeight;
+          if (h < 2) return;
+          const topPx = offsetTopRelativeTo(tr, containerEl);
+          rects.push({ topPx, bottomPx: topPx + h });
+        });
+        return; // don't also push the whole block
       }
     }
-    const actualPx = bestPx !== null ? bestPx : cursorPx;
-    breaksMm.push(Math.round((actualPx / pxPerMm) * 10) / 10);
-    cursorPx = actualPx + pagePx;
+
+    rects.push({ topPx: blockTopPx, bottomPx: blockTopPx + blockH });
+  });
+
+  if (!rects.length) return [];
+  rects.sort((a, b) => a.topPx - b.topPx);
+
+  // Remove exact duplicates that can appear when nested selectors match the same el
+  const unique = rects.filter((r, i) => i === 0 || r.topPx !== rects[i - 1].topPx);
+
+  const pagePx = pageHmm * pxPerMm;
+  const breaksMm = [];
+  let pageStartPx = 0;  // absolute top of the current page (container-px)
+  let prevBottomPx = 0; // bottom edge of the last accepted unit
+
+  for (let i = 0; i < unique.length; i++) {
+    const { topPx, bottomPx } = unique[i];
+
+    // Does this unit overflow the current page?
+    if (bottomPx > pageStartPx + pagePx && prevBottomPx > pageStartPx) {
+      // Emit a break at the previous unit's bottom; start a new page there.
+      breaksMm.push(Math.round((prevBottomPx / pxPerMm) * 10) / 10);
+      pageStartPx = prevBottomPx;
+    }
+
+    // Accept this unit onto the current page (even if it's oversized).
+    prevBottomPx = bottomPx;
   }
+
   return breaksMm;
 }
 

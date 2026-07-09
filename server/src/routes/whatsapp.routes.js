@@ -4,6 +4,7 @@ const { authRequired } = require("../middleware/auth");
 const { requirePagePermission, requireAnyPagePermission } = require("../middleware/permission");
 const { nowSql } = require("../utils/datetime");
 const { sendSms, getSmsConfig } = require("../services/smsService");
+const { getTelegramConfig } = require("../services/telegramService");
 
 // Load the WhatsApp engine — works in Electron and plain Node
 let engine = null;
@@ -20,6 +21,27 @@ router.use(authRequired);
 router.get("/engine-status", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (_req, res) => {
   if (!engine) return res.json({ success: true, data: { status: "unavailable" } });
   res.json({ success: true, data: engine.getStatus() });
+});
+
+// Aggregated connection status for WhatsApp, SMS and Telegram — used by the
+// dashboard's small status indicator so it doesn't need three round trips.
+router.get("/channels-status", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (_req, res) => {
+  try {
+    const db = getDb();
+    const waStatus = engine ? engine.getStatus() : { status: "unavailable" };
+    const smsConfig = getSmsConfig(db);
+    const tgConfig = getTelegramConfig(db);
+    res.json({
+      success: true,
+      data: {
+        whatsapp: { connected: waStatus.status === "connected", status: waStatus.status },
+        sms: { connected: Boolean(smsConfig) },
+        telegram: { connected: Boolean(tgConfig?.enabled) },
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 router.post("/engine-connect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (_req, res) => {

@@ -55,7 +55,8 @@ export default function QrBlock({ invoice = {}, settings: s, props = {}, family,
   if (!showQr) return null;
 
   const size = g(s, "qr_size") || 80;
-  const alignment = g(s, "qr_alignment") || "right";
+  const variant = props.variant || "standard";
+  const alignment = variant === "centered" ? "center" : (g(s, "qr_alignment") || props.align || "right");
   const customContent = g(s, "qr_content");
   const qrMode = g(s, "qr_mode") || "free_text";
   const companyName = g(s, "company_name");
@@ -64,7 +65,7 @@ export default function QrBlock({ invoice = {}, settings: s, props = {}, family,
 
   const fgColor = props.fgColor || "#000000";
   const bgColor = props.bgColor || "#ffffff";
-  const margin = props.margin !== undefined ? Number(props.margin) : 1;
+  const margin = props.margin !== undefined ? Number(props.margin) : (variant === "boxed" ? 2 : 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,17 +88,14 @@ export default function QrBlock({ invoice = {}, settings: s, props = {}, family,
   }, [size, customContent, qrMode, companyName, taxId, invoice?.total, invoice?.created_at, invoice?.tax_amount, invoice?.invoice_no, fgColor, bgColor, margin]);
 
   const justifyContent = alignMap[alignment] || "flex-end";
+  const borderStyle = (variant === "with-border" || variant === "boxed") ? "1px solid #cbd5e1" : "none";
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
 
-  if (dataUrl) {
+  const renderQrImg = () => {
+    if (dataUrl) {
+      return <img src={dataUrl} alt="QR" style={{ width: `${size}px`, height: `${size}px`, border: borderStyle, padding: variant === "with-border" ? "2px" : "0", background: "#fff", display: "block" }} />;
+    }
     return (
-      <div style={{ display: "flex", justifyContent, marginTop: "8px" }}>
-        <img src={dataUrl} alt="QR" style={{ width: `${size}px`, height: `${size}px` }} />
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", justifyContent, marginTop: "8px" }}>
       <div
         style={{
           width: `${size}px`,
@@ -113,6 +111,32 @@ export default function QrBlock({ invoice = {}, settings: s, props = {}, family,
       >
         QR
       </div>
+    );
+  };
+
+  if (variant === "boxed") {
+    return (
+      <div style={{ display: "flex", justifyContent, marginTop: "8px" }}>
+        <div style={{
+          display: "inline-flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "4px",
+          border: family === "page" ? `1px solid ${accent}30` : "1px solid #000",
+          background: family === "page" ? `${accent}03` : "transparent",
+          padding: "6px",
+          borderRadius: "8px"
+        }}>
+          {renderQrImg()}
+          <span style={{ fontSize: "8px", color: family === "page" ? accent : "#475569", fontWeight: 800 }}>رمز التحقق الضريبي</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent, marginTop: "8px" }}>
+      {renderQrImg()}
     </div>
   );
 }

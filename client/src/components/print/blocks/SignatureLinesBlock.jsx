@@ -16,6 +16,56 @@ export default function SignatureLinesBlock({ settings: s, props = {}, family, e
   const labels = Array.isArray(props.labels) && props.labels.length
     ? props.labels
     : (count === 3 ? DEFAULT_LABELS_3 : DEFAULT_LABELS_2);
+  const variant = props.variant || "standard";
+  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+
+  if (variant === "boxed") {
+    return (
+      <div style={{
+        display: "flex",
+        justifyContent: "space-around",
+        gap: "10mm",
+        marginTop: "16mm"
+      }}>
+        {labels.slice(0, count).map((label, i) => (
+          <div key={i} style={{
+            textAlign: "center",
+            flex: 1,
+            border: `1px solid ${accent}30`,
+            background: `${accent}03`,
+            borderRadius: "8px",
+            padding: "8px 12px 20px 12px",
+          }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, color: accent, marginBottom: "12mm" }}>{label}</div>
+            <div style={{ borderTop: `1px dashed ${accent}60`, width: "40mm", margin: "0 auto" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "split") {
+    return (
+      <div style={{
+        display: "flex",
+        justifyContent: "space-around",
+        gap: "0mm",
+        marginTop: "16mm"
+      }}>
+        {labels.slice(0, count).map((label, i) => (
+          <div key={i} style={{
+            textAlign: "center",
+            flex: 1,
+            borderRight: i > 0 ? "1px solid #e2e8f0" : "none",
+            padding: "0 10px"
+          }}>
+            <div style={{ fontSize: "10px", fontWeight: 700, color: "#475569", marginBottom: "10mm" }}>{label}</div>
+            <div style={{ borderTop: "1px solid #94a3b8", width: "40mm", margin: "0 auto" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
