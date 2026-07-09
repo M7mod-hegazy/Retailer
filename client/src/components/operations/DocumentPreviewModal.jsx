@@ -204,8 +204,10 @@ function extraNotes(doc, docType) {
 function infoBarFields(doc, docType, config) {
   if (!doc || !config) return [];
   const fields = [];
-  const party = doc[config.partyKey] || config.partyFallback;
-  const phone = config.partyPhoneKey ? doc[config.partyPhoneKey] : null;
+  // Anonymous sale with a captured walk-in contact → show it as the party
+  const isWalkIn = !doc[config.partyKey] && config.partyKey === "customer_name" && doc.walk_in_phone;
+  const party = doc[config.partyKey] || (isWalkIn ? `🚶 عميل نقدي${doc.walk_in_name ? ` — ${doc.walk_in_name}` : ""}` : config.partyFallback);
+  const phone = (config.partyPhoneKey ? doc[config.partyPhoneKey] : null) || (isWalkIn ? doc.walk_in_phone : null);
   fields.push({ label: config.partyLabel, value: phone ? `${party} • ${phone}` : party, icon: User });
   fields.push({ label: "التاريخ", value: doc.created_at ? dateTime(doc.created_at).split(" -")[0] : "—", icon: Calendar });
   fields.push({

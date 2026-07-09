@@ -1,5 +1,6 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter } = require("../helpers");
+const { addDateFilter, addPaymentTypeFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function _detailPurchaseQuery(startDate, endDate, opts = {}) {
   const db = getDb();
@@ -38,8 +39,9 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
 function purchaseSummary(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  const { supplier_id, category_id, item_id } = opts;
-  if (supplier_id || category_id || item_id || opts.status || opts.payment_type) return _detailPurchaseQuery(startDate, endDate, opts);
+  const { supplier_id, category_id, item_id, status, payment_type } = opts;
+  const dateFilter = addDateFilter("p.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "p", params);
   return db.prepare(`
     SELECT DATE(p.created_at) AS date,
       COUNT(*) AS purchase_count,
@@ -49,20 +51,28 @@ function purchaseSummary(startDate, endDate, opts = {}) {
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value
     FROM purchases p
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
+      ${status ? " AND p.status = ?" : ""}
+      ${ptFilter}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
     GROUP BY DATE(p.created_at)
     ORDER BY date DESC
-  `).all(...params, ...(supplier_id ? [supplier_id] : []), ...(category_id ? [category_id] : []), ...(item_id ? [item_id] : []));
+  `).all(
+    ...params,
+    ...(supplier_id ? [supplier_id] : []),
+    ...(status ? [status] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+  );
 }
 
 function detailedPurchases(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT p.id, p.doc_no AS purchase_no,
       DATE(p.created_at) AS date,
       s.name AS supplier_name, p.total, p.discount AS total_discount,
@@ -82,21 +92,31 @@ function detailedPurchases(startDate, endDate, opts = {}) {
       ${payment_type ? " AND p.payment_method = ?" : ""}
     GROUP BY p.id
     ORDER BY p.created_at DESC
-  `).all(
+  `;
+  const allParams = [
     ...params,
     ...(supplier_id ? [supplier_id] : []),
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
     ...(status ? [status] : []),
     ...(payment_type ? [payment_type] : []),
-  );
+  ];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function purchasesBySupplier(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  const { supplier_id } = opts;
-  if (opts.status || opts.payment_type || opts.category_id || opts.item_id) return _detailPurchaseQuery(startDate, endDate, opts);
+  const returnParams = [];
+  const { supplier_id, status, payment_type, category_id, item_id } = opts;
+  const returnDateFilter = addDateFilter("pr.created_at", startDate, endDate, returnParams);
+  const dateFilter = addDateFilter("p.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "p", params);
   return db.prepare(`
     SELECT s.name AS supplier_name,
       COUNT(p.id) AS purchase_count,
@@ -110,15 +130,25 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
     LEFT JOIN (
       SELECT pr.supplier_id, SUM(pr.total) AS return_total
       FROM purchase_returns pr
-      WHERE pr.status = 'active'
-        ${addDateFilter("pr.created_at", startDate, endDate, params)}
+      WHERE pr.status = 'active' ${returnDateFilter}
       GROUP BY pr.supplier_id
     ) pr ON pr.supplier_id = s.id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
+      ${status ? " AND p.status = ?" : ""}
+      ${ptFilter}
+      ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
+      ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
     GROUP BY s.id
     ORDER BY total_purchases DESC
-  `).all(...params, ...(supplier_id ? [supplier_id] : []));
+  `).all(
+    ...returnParams,
+    ...params,
+    ...(supplier_id ? [supplier_id] : []),
+    ...(status ? [status] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+  );
 }
 
 function purchasesByItem(startDate, endDate, opts = {}) {

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
@@ -166,6 +166,8 @@ export default function InvoiceDetailPage() {
         prefill: {
           customer_id: invoice.customer_id,
           customer_name: invoice.customer_name,
+          walk_in_phone: invoice.walk_in_phone || null,
+          walk_in_name: invoice.walk_in_name || null,
           lines: (invoice.lines || []).map(l => ({
             item_id: l.item_id,
             item_name: l.item_name || l.name,
@@ -265,7 +267,21 @@ export default function InvoiceDetailPage() {
           <section className="grid grid-cols-5 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">العميل</span>
-              <span className="text-sm font-black text-slate-800">{invoice.customer_name || "عميل نقدي"}</span>
+              {invoice.customer_name ? (
+                <span className="text-sm font-black text-slate-800">{invoice.customer_name}</span>
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black">
+                    🚶 عميل نقدي
+                  </span>
+                  {invoice.walk_in_phone && (
+                    <span className="text-xs font-bold text-slate-600">
+                      {invoice.walk_in_name ? `${invoice.walk_in_name} — ` : ""}
+                      <span className="font-mono" dir="ltr">{invoice.walk_in_phone}</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
@@ -456,12 +472,20 @@ export default function InvoiceDetailPage() {
       <PrintPreviewModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
-        docType="sales_invoice"
+        docType="pos_receipt"
         invoice={{
+          ...invoice,
           invoice_no: invoice.invoice_no,
           created_at: invoice.created_at,
           customer_name: invoice.customer_name,
+          cashier_name: invoice.created_by_username || invoice.cashier_name || "",
+          subtotal: invoice.subtotal || invoice.total || 0,
+          total: invoice.total || 0,
+          discount: invoice.discount || 0,
+          increase: invoice.increase || 0,
+          notes: invoice.notes || "",
           lines: (invoice.lines || []).map(l => ({
+            ...l,
             item_name: l.item_name || l.name,
             quantity: l.quantity,
             unit_price: l.unit_price,

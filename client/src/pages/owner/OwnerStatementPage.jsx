@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -33,12 +33,16 @@ import {
   CornerDownLeft,
   FileDown
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
 import { formatNumber } from "../../utils/currency";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import ErrorBoundary from "../../components/ErrorBoundary";
+import ErrorFallbackPage from "../error/ErrorFallbackPage";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 
 const COST_METHODS = [
   { value: "wacc", label: "المتوسط المرجح" },
@@ -201,83 +205,84 @@ function rowsTotalForMetric(metricKey, rows) {
     if (totalRow) return Number(totalRow.amount || 0);
     return rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
   }
-  return rows.reduce((sum, row) => sum + Number(row.value ?? row.balance ?? row.total_due ?? row.amount ?? 0), 0);
+  const field = metricKey === "stock" ? "value" : (metricKey === "ar" || metricKey === "ap") ? "balance" : "amount";
+  return rows.reduce((sum, row) => sum + Number(row[field] ?? 0), 0);
 }
 
 const THEME_CLASSES = {
   net_profit: {
     icon: Sparkles,
-    accentBg: "bg-emerald-600",
-    gradient: "from-slate-900 to-slate-950 border border-slate-800 shadow-[0_12px_30px_rgba(0,0,0,0.25)]",
-    cardCls: "border-emerald-500/30",
+    accentBg: "bg-success-text",
+    gradient: "from-bg-bg-base to-bg-bg-base border border-border-strong shadow-card",
+    cardCls: "border-primary",
     headerBg: "bg-primary text-white",
   },
   stock: {
     icon: Database,
-    accentBg: "bg-blue-600",
-    bgTextCls: "bg-blue-50 text-blue-700 border border-blue-100",
-    cardCls: "border-slate-200 hover:border-blue-400 hover:shadow-md",
+    accentBg: "bg-info-text",
+    bgTextCls: "bg-info-bg text-info-text border-info-border",
+    cardCls: "border-border-normal hover:border-info-border hover:shadow-md",
     trend: "+2.4% متوقع",
-    trendCls: "bg-blue-50 text-blue-700 border border-blue-100",
-    headerBg: "bg-blue-600 text-white",
+    trendCls: "bg-info-bg text-info-text border-info-border",
+    headerBg: "bg-primary text-white",
   },
   cash: {
     icon: Wallet,
-    accentBg: "bg-indigo-600",
-    bgTextCls: "bg-indigo-50 text-indigo-700 border border-indigo-100",
-    cardCls: "border-slate-200 hover:border-indigo-400 hover:shadow-md",
+    accentBg: "bg-primary",
+    bgTextCls: "bg-primary-50 text-primary border-primary",
+    cardCls: "border-border-normal hover:border-primary hover:shadow-md",
     trend: "رصيد مستقر",
-    trendCls: "bg-indigo-50 text-indigo-700 border border-indigo-100",
-    headerBg: "bg-indigo-600 text-white",
+    trendCls: "bg-primary-50 text-primary border-primary",
+    headerBg: "bg-primary text-white",
   },
   ar: {
     icon: Users,
-    accentBg: "bg-cyan-600",
-    bgTextCls: "bg-cyan-50 text-cyan-700 border border-cyan-100",
-    cardCls: "border-slate-200 hover:border-cyan-400 hover:shadow-md",
+    accentBg: "bg-primary",
+    bgTextCls: "bg-primary-50 text-primary border-primary",
+    cardCls: "border-border-normal hover:border-primary hover:shadow-md",
     trend: "-1.8% تحصيل",
-    trendCls: "bg-cyan-50 text-cyan-700 border border-cyan-100",
-    headerBg: "bg-cyan-600 text-white",
+    trendCls: "bg-primary-50 text-primary border-primary",
+    headerBg: "bg-primary text-white",
   },
   ap: {
     icon: Users,
-    accentBg: "bg-purple-600",
-    bgTextCls: "bg-purple-50 text-purple-700 border border-purple-100",
-    cardCls: "border-slate-200 hover:border-purple-400 hover:shadow-md",
+    accentBg: "bg-primary",
+    bgTextCls: "bg-primary-50 text-primary border-primary",
+    cardCls: "border-border-normal hover:border-primary hover:shadow-md",
     trend: "+4.1% توريد",
-    trendCls: "bg-purple-50 text-purple-700 border border-purple-100",
-    headerBg: "bg-purple-600 text-white",
+    trendCls: "bg-primary-50 text-primary border-primary",
+    headerBg: "bg-primary text-white",
   },
   expenses: {
     icon: TrendingDown,
-    accentBg: "bg-rose-600",
-    bgTextCls: "bg-rose-50 text-rose-700 border border-rose-100",
-    cardCls: "border-slate-200 hover:border-rose-400 hover:shadow-md",
+    accentBg: "bg-danger-text",
+    bgTextCls: "bg-danger-bg text-danger-text border-danger-border",
+    cardCls: "border-border-normal hover:border-danger-border hover:shadow-md",
     trend: "تحت الرقابة",
-    trendCls: "bg-rose-50 text-rose-700 border border-rose-100",
-    headerBg: "bg-rose-600 text-white",
+    trendCls: "bg-danger-bg text-danger-text border-danger-border",
+    headerBg: "bg-primary text-white",
   },
   revenues: {
     icon: TrendingUp,
-    accentBg: "bg-emerald-600",
-    bgTextCls: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-    cardCls: "border-slate-200 hover:border-emerald-400 hover:shadow-md",
+    accentBg: "bg-success-text",
+    bgTextCls: "bg-success-bg text-success-text border-success-border",
+    cardCls: "border-border-normal hover:border-success-border hover:shadow-md",
     trend: "+8.9% إضافي",
-    trendCls: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-    headerBg: "bg-emerald-600 text-white",
+    trendCls: "bg-success-bg text-success-text border-success-border",
+    headerBg: "bg-primary text-white",
   },
   withdrawals: {
     icon: ShoppingBag,
-    accentBg: "bg-amber-600",
-    bgTextCls: "bg-amber-50 text-amber-700 border border-amber-100",
-    cardCls: "border-slate-200 hover:border-amber-400 hover:shadow-md",
+    accentBg: "bg-warning-text",
+    bgTextCls: "bg-warning-bg text-warning-text border-warning-border",
+    cardCls: "border-border-normal hover:border-warning-border hover:shadow-md",
     trend: "معدل طبيعي",
-    trendCls: "bg-amber-50 text-amber-700 border border-amber-100",
-    headerBg: "bg-amber-600 text-white",
+    trendCls: "bg-warning-bg text-warning-text border-warning-border",
+    headerBg: "bg-primary text-white",
   },
 };
 
-function MetricModal({ metric, rows, period, onClose }) {
+function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("");
   const [pageSize, setPageSize] = useState(50);
@@ -302,12 +307,12 @@ function MetricModal({ metric, rows, period, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/65 backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
+      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-bg-overlay backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 380, damping: 30 } }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
-          className="flex max-h-[85vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.5rem] bg-white border border-slate-100 shadow-2xl font-sans"
+          className="flex max-h-[85vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.5rem] bg-bg-surface border border-border-normal shadow-2xl font-sans"
           dir="rtl"
           onClick={(event) => event.stopPropagation()}
         >
@@ -333,14 +338,14 @@ function MetricModal({ metric, rows, period, onClose }) {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="بحث سريع..."
-                  className="w-44 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 py-2 pr-9 pl-3 text-xs font-bold outline-none focus:bg-white focus:text-slate-900 focus:placeholder-slate-400 transition-all"
+                  className="w-44 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 py-2 pr-9 pl-3 text-xs font-bold outline-none focus:bg-white focus:text-text-primary focus:placeholder-slate-400 transition-all"
                 />
               </div>
 
               <select
                 value={sortKey}
                 onChange={(event) => setSortKey(event.target.value)}
-                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-slate-900"
+                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
               >
                 <option value="">ترتيب تلقائي</option>
                 {columns.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -349,21 +354,21 @@ function MetricModal({ metric, rows, period, onClose }) {
               <select
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-slate-900"
+                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
               >
                 {[50, 100, 200].map((size) => <option key={size} value={size}>عرض {size}</option>)}
               </select>
 
               <button
                 onClick={() => exportCsv(`${metric.key}-${period.from}-${period.to}.csv`, filtered, columns)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-slate-900 px-4 py-2 text-xs font-black transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
               >
                 <FileDown size={13} /> Excel
               </button>
 
               <button
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-slate-900 px-4 py-2 text-xs font-black transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
               >
                 <Printer size={13} /> طباعة
               </button>
@@ -386,34 +391,34 @@ function MetricModal({ metric, rows, period, onClose }) {
           )}
 
           {/* Table Container */}
-          <div className="flex-1 overflow-auto bg-slate-50/20 scrollbar-thin">
+          <div className="flex-1 overflow-auto bg-bg-base/20 scrollbar-thin">
             <table className="w-full min-w-[760px] border-collapse text-right text-xs">
-              <thead className="sticky top-0 bg-slate-100/90 backdrop-blur-md text-[11px] font-black uppercase text-slate-500 border-b border-slate-200/80">
+              <thead className="sticky top-0 bg-bg-overlay/90 backdrop-blur-md text-[11px] font-black uppercase text-text-muted border-b border-border-normal/80">
                 <tr>
                   {columns.map(([key, label]) => (
-                    <th key={key} className="px-6 py-4 font-black text-slate-500 tracking-wider">
+                    <th key={key} className="px-6 py-4 font-black text-text-muted tracking-wider">
                       {label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-border-subtle bg-bg-surface">
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="py-20 text-center text-xs font-bold text-slate-400">
+                    <td colSpan={columns.length} className="py-20 text-center text-xs font-bold text-text-muted">
                       لا توجد بيانات مطابقة للبحث أو الفترة المحددة
                     </td>
                   </tr>
                 ) : (
                   visible.map((row, index) => (
-                    <tr key={index} className="hover:bg-slate-50/40 transition-colors">
+                    <tr key={index} className="hover:bg-bg-base/40 transition-colors">
                       {columns.map(([key, , type]) => {
                         const val = displayValue(row, key, type);
                         const isMoney = key === "value" || key === "balance" || key === "total_due" || key === "amount";
                         return (
-                          <td key={key} className="px-6 py-3.5 font-bold text-slate-700">
+                          <td key={key} className="px-6 py-3.5 font-bold text-text-primary">
                             {isMoney ? (
-                              <span className="font-mono text-slate-900 text-sm whitespace-nowrap" dir="ltr">{val} ج.م</span>
+                              <span className="font-mono text-text-primary text-sm whitespace-nowrap" dir="ltr">{val} {currencySymbol}</span>
                             ) : (
                               <span>{val}</span>
                             )}
@@ -428,14 +433,14 @@ function MetricModal({ metric, rows, period, onClose }) {
           </div>
 
           {/* Footer stats / pagination */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/50 px-6 py-4.5 text-xs font-black">
-            <div className="flex items-center gap-6 text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border-subtle bg-bg-base/50 px-6 py-4.5 text-xs font-black">
+            <div className="flex items-center gap-6 text-text-muted">
               <span className="flex items-center gap-2">
-                إجمالي المعروض الحالي: <span className="font-mono text-sm text-slate-900" dir="ltr">{money(displayTotal)} ج.م</span>
+                إجمالي المعروض الحالي: <span className="font-mono text-sm text-text-primary" dir="ltr">{money(displayTotal)} {currencySymbol}</span>
               </span>
-              <div className="w-px h-4 bg-slate-200" />
+              <div className="w-px h-4 bg-border-normal" />
               <span className="flex items-center gap-2">
-                إجمالي السجل الكلي: <span className="font-mono text-sm text-slate-900" dir="ltr">{money(fullTotal)} ج.م</span>
+                إجمالي السجل الكلي: <span className="font-mono text-sm text-text-primary" dir="ltr">{money(fullTotal)} {currencySymbol}</span>
               </span>
             </div>
 
@@ -443,15 +448,15 @@ function MetricModal({ metric, rows, period, onClose }) {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-sm"
+                className="rounded-xl border border-border-normal bg-bg-surface px-3.5 py-1.5 hover:bg-bg-overlay disabled:opacity-40 transition-colors shadow-sm"
               >
                 السابق
               </button>
-              <span className="text-slate-550 font-bold">الصفحة <strong className="text-slate-800 font-black">{page}</strong> من <strong className="text-slate-800 font-black">{pages}</strong></span>
+              <span className="text-text-secondary font-bold">الصفحة <strong className="text-text-primary font-black">{page}</strong> من <strong className="text-text-primary font-black">{pages}</strong></span>
               <button
                 disabled={page >= pages}
                 onClick={() => setPage((value) => Math.min(pages, value + 1))}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-sm"
+                className="rounded-xl border border-border-normal bg-bg-surface px-3.5 py-1.5 hover:bg-bg-overlay disabled:opacity-40 transition-colors shadow-sm"
               >
                 التالي
               </button>
@@ -467,34 +472,34 @@ function ComparePanel({ data, onClose }) {
   if (!data) return null;
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/65 backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
+      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-bg-overlay backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 380, damping: 30 } }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
-          className="w-full max-w-4xl rounded-[2.5rem] bg-white border border-white/60 p-6 shadow-2xl font-sans"
+          className="w-full max-w-4xl rounded-[2.5rem] bg-bg-surface border border-border-normal p-6 shadow-2xl font-sans"
           dir="rtl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="mb-6 flex items-center justify-between border-b border-border-subtle pb-4">
             <div className="space-y-1">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[11px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
                 <GitCompare size={11} className="text-indigo-400" /> تحليل ومقارنة الفترات
               </span>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-1.5">كشف مقارنة الفترات المالية</h2>
+              <h2 className="text-2xl font-black text-text-primary tracking-tight mt-1.5">كشف مقارنة الفترات المالية</h2>
             </div>
             <button
               onClick={onClose}
-              className="rounded-2xl p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200 active:scale-90"
+              className="rounded-2xl p-2 text-text-muted hover:text-text-primary hover:bg-bg-overlay transition-all border border-transparent hover:border-border-normal active:scale-90"
             >
               <X size={18} />
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-150 shadow-inner">
+          <div className="overflow-x-auto rounded-2xl border border-border-subtle shadow-inner">
             <table className="w-full text-right text-xs">
               <thead>
-                <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <tr className="bg-bg-base text-[11px] font-black text-text-muted uppercase tracking-wider border-b border-border-subtle">
                   <th className="px-5 py-3.5">البند المالي</th>
                   <th className="px-5 py-3.5">الفترة الأولى (أ)</th>
                   <th className="px-5 py-3.5">الفترة الثانية (ب)</th>
@@ -502,25 +507,25 @@ function ComparePanel({ data, onClose }) {
                   <th className="px-5 py-3.5">نسبة التغير (%)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-border-subtle bg-bg-surface">
                 {data.rows.map((row) => {
                   const isNegativeDiff = row.diff < 0;
                   return (
-                    <tr key={row.metric_key} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4 font-black text-slate-800">{row.label}</td>
-                      <td className="px-5 py-4 font-mono text-sm text-slate-600" dir="ltr">{money(row.left_value)} ج.م</td>
-                      <td className="px-5 py-4 font-mono text-sm text-slate-600" dir="ltr">{money(row.right_value)} ج.م</td>
-                      <td className={`px-5 py-4 font-mono text-sm font-black ${isNegativeDiff ? "text-rose-600" : "text-emerald-600"}`} dir="ltr">
+                    <tr key={row.metric_key} className="hover:bg-bg-base/50 transition-colors">
+                      <td className="px-5 py-4 font-black text-text-primary">{row.label}</td>
+                      <td className="px-5 py-4 font-mono text-sm text-text-secondary" dir="ltr">{money(row.left_value)} {currencySymbol}</td>
+                      <td className="px-5 py-4 font-mono text-sm text-text-secondary" dir="ltr">{money(row.right_value)} {currencySymbol}</td>
+                       <td className={`px-5 py-4 font-mono text-sm font-black ${isNegativeDiff ? "text-danger-text" : "text-success-text"}`} dir="ltr">
                         <span className="flex items-center justify-end gap-1">
-                          {money(row.diff)} ج.م
+                          {money(row.diff)} {currencySymbol}
                           {isNegativeDiff ? <ArrowDownRight size={13} /> : <ArrowUpRight size={13} />}
                         </span>
                       </td>
                       <td className="px-5 py-4">
                         {row.diff_pct == null ? (
-                          <span className="text-slate-400 font-bold">—</span>
+                          <span className="text-text-muted font-bold">—</span>
                         ) : (
-                          <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-mono font-black ${isNegativeDiff ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>
+                          <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-mono font-black ${isNegativeDiff ? "bg-danger-bg text-danger-text" : "bg-success-bg text-success-text"}`}>
                             {row.diff_pct >= 0 ? "+" : ""}{money(row.diff_pct)}%
                           </span>
                         )}
@@ -538,6 +543,7 @@ function ComparePanel({ data, onClose }) {
 }
 
 export default function OwnerStatementPage() {
+  const { t } = useTranslation();
   usePageTour("owner_statement");
   const [searchParams] = useSearchParams();
   const searchKey = searchParams.toString();
@@ -545,6 +551,7 @@ export default function OwnerStatementPage() {
   const [costMethod, setCostMethod] = useState(() => costMethodFromSearch(searchParams));
   const [data, setData] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
   const [activeSnapshot, setActiveSnapshot] = useState(null);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [selectedPaymentFlow, setSelectedPaymentFlow] = useState(null);
@@ -552,6 +559,8 @@ export default function OwnerStatementPage() {
   const [paymentFlowDetailsLoading, setPaymentFlowDetailsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("ج.م");
+  const [printOpen, setPrintOpen] = useState(false);
   const [leftCompare, setLeftCompare] = useState("");
   const [rightCompare, setRightCompare] = useState("");
   const [compareData, setCompareData] = useState(null);
@@ -591,8 +600,15 @@ export default function OwnerStatementPage() {
   }, [searchKey]);
 
   async function loadSnapshots() {
-    const res = await api.get("/api/owner-statements");
-    setSnapshots(res.data?.data || []);
+    setSnapshotsLoading(true);
+    try {
+      const res = await api.get("/api/owner-statements");
+      setSnapshots(res.data?.data || []);
+    } catch {
+      toast.error("تعذر تحميل أرشيف الإقفالات");
+    } finally {
+      setSnapshotsLoading(false);
+    }
   }
 
   async function loadCurrent() {
@@ -610,6 +626,15 @@ export default function OwnerStatementPage() {
   }
 
   useEffect(() => { loadSnapshots().catch(() => {}); }, []);
+  useEffect(() => {
+    api.get("/api/settings").then((res) => {
+      const data = res.data?.data;
+      if (Array.isArray(data)) {
+        const symbol = data.find((s) => s.setting_key === "currency_symbol")?.setting_value;
+        if (symbol) setCurrencySymbol(symbol);
+      }
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     if (!activeSnapshot) loadCurrent();
   }, [range.from, range.to, costMethod, activeSnapshot]);
@@ -678,6 +703,7 @@ export default function OwnerStatementPage() {
 
   async function handleCompare() {
     if (!leftCompare || !rightCompare) return toast.error("اختر نسختين للمقارنة");
+    if (leftCompare === rightCompare) return toast.error("اختر نسختين مختلفتين للمقارنة");
     const res = await api.get("/api/owner-statements/compare", { params: { left_id: leftCompare, right_id: rightCompare } });
     setCompareData(res.data?.data || null);
   }
@@ -706,7 +732,8 @@ export default function OwnerStatementPage() {
     }
   }
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] p-6 text-slate-900 font-sans selection:bg-indigo-100" dir="rtl">
+    <ErrorBoundary FallbackComponent={ErrorFallbackPage}>
+    <div className="min-h-screen bg-[var(--bg-base)] p-6 text-text-primary font-sans" dir="rtl">
       {/* Visual Mesh Glow Top Overlay */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-indigo-500/[0.015] rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-[400px] h-[250px] bg-emerald-500/[0.01] rounded-full blur-3xl pointer-events-none" />
@@ -719,15 +746,15 @@ export default function OwnerStatementPage() {
             <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-1.5 text-[11px] font-black text-white uppercase tracking-widest shadow-sm">
               <FileText size={11} className="text-indigo-400" /> لوحة صاحب المحل التأسيسية
             </div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+            <h1 className="text-3xl font-black text-text-primary tracking-tight flex items-center gap-3">
               {frozen ? "وثيقة الإقفال المحفوظة" : "الإقفال المالي والشهري"}
               {frozen && (
-                <span className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${activeSnapshot?.status === "locked" ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-amber-50 border-amber-100 text-amber-800"}`}>
+                <span className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${activeSnapshot?.status === "locked" ? "bg-success-bg border-success-border text-success-text" : "bg-warning-bg border-warning-border text-warning-text"}`}>
                   {activeSnapshot?.status === "locked" ? "مؤرشف ومقفل" : "نسخة مسودة"}
                 </span>
               )}
             </h1>
-            <p className="text-sm font-bold text-slate-500 max-w-2xl leading-relaxed">
+            <p className="text-sm font-bold text-text-muted max-w-2xl leading-relaxed">
               تحليل شامل لثمانية مؤشرات مالية أساسية لتقييم أداء المحل، تقييم مخزونه المالي، والتدفقات النقدية مع خيارات الأرشفة التاريخية والمقارنة.
             </p>
           </div>
@@ -748,13 +775,13 @@ export default function OwnerStatementPage() {
         </div>
 
         {/* Filter Command Center Deck */}
-        <div data-help="owner-filters" className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-[0_4px_25px_rgba(0,0,0,0.015)] relative overflow-hidden">
+        <div data-help="owner-filters" className="rounded-[2rem] border border-border-normal bg-bg-surface p-5 shadow-card relative overflow-hidden">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] items-center">
 
             {/* Range Presets and Custom Picks */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-100 rounded-2xl">
-                <Calendar size={15} className="text-slate-400 mr-1.5" />
+              <div className="flex items-center gap-2 p-2 bg-bg-base border border-border-subtle rounded-2xl">
+                <Calendar size={15} className="text-text-muted mr-1.5" />
                 <input
                   disabled={frozen}
                   type="date"
@@ -762,9 +789,9 @@ export default function OwnerStatementPage() {
                   value={range.from}
                   onChange={(event) => updateRange({ ...range, from: event.target.value })}
                   onKeyDown={e => handleKeyDown(e, { nextRef: toRef, prevRef: null })}
-                  className="bg-transparent text-xs font-bold text-slate-700 outline-none disabled:opacity-60 cursor-pointer"
+                  className="bg-transparent text-xs font-bold text-text-primary outline-none disabled:opacity-60 cursor-pointer"
                 />
-                <span className="text-[11px] font-bold text-slate-400 px-1">إلى</span>
+                <span className="text-[11px] font-bold text-text-muted px-1">إلى</span>
                 <input
                   disabled={frozen}
                   type="date"
@@ -772,21 +799,21 @@ export default function OwnerStatementPage() {
                   value={range.to}
                   onChange={(event) => updateRange({ ...range, to: event.target.value })}
                   onKeyDown={e => handleKeyDown(e, { nextRef: costMethodRef, prevRef: fromRef })}
-                  className="bg-transparent text-xs font-bold text-slate-700 outline-none disabled:opacity-60 cursor-pointer"
+                  className="bg-transparent text-xs font-bold text-text-primary outline-none disabled:opacity-60 cursor-pointer"
                 />
               </div>
 
-              <div className="h-6 w-px bg-slate-200" />
+              <div className="h-6 w-px bg-border-normal" />
 
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black text-slate-400 block tracking-wider">تقييم الكلفة:</span>
+                <span className="text-[11px] font-black text-text-muted block tracking-wider">تقييم الكلفة:</span>
                 <select
                   disabled={frozen}
                   ref={costMethodRef}
                   value={costMethod}
                   onChange={(event) => { setActiveSnapshot(null); setCostMethod(event.target.value); }}
                   onKeyDown={e => handleKeyDown(e, { nextRef: leftCompareRef, prevRef: toRef })}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-black text-slate-700 outline-none cursor-pointer disabled:opacity-60"
+                  className="rounded-2xl border border-border-normal bg-bg-base px-3.5 py-2 text-xs font-black text-text-primary outline-none cursor-pointer disabled:opacity-60"
                 >
                   {COST_METHODS.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}
                 </select>
@@ -794,13 +821,13 @@ export default function OwnerStatementPage() {
 
               {!frozen && (
                 <>
-                  <div className="h-6 w-px bg-slate-200" />
+                  <div className="h-6 w-px bg-border-normal" />
                   <div className="flex flex-wrap gap-1.5">
                     {QUICK_RANGES.map((preset) => (
                       <button
                         key={preset.key}
                         onClick={() => updateRange(applyQuickRange(preset.key))}
-                        className="rounded-xl border border-slate-100 hover:border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-[11px] font-black text-slate-600 transition-colors shadow-sm"
+                        className="rounded-xl border border-border-normal hover:border-border-strong bg-bg-surface hover:bg-bg-overlay px-3.5 py-2 text-[11px] font-black text-text-secondary transition-colors shadow-sm"
                       >
                         {preset.label}
                       </button>
@@ -815,9 +842,9 @@ export default function OwnerStatementPage() {
               <button
                 onClick={loadCurrent}
                 disabled={frozen || loading}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-xs font-black text-slate-700 disabled:opacity-40 transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-border-normal bg-bg-surface hover:bg-bg-overlay px-5 py-2.5 text-xs font-black text-text-primary disabled:opacity-40 transition-colors shadow-sm"
               >
-                <RefreshCcw size={13} className={loading ? "animate-spin text-slate-400" : "text-slate-400"} /> تحديث السجل
+                <RefreshCcw size={13} className={loading ? "animate-spin text-text-muted" : "text-text-muted"} /> تحديث السجل
               </button>
 
               {canSave && (
@@ -841,10 +868,10 @@ export default function OwnerStatementPage() {
               )}
 
               <button
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 px-5 py-2.5 text-xs font-black text-slate-700 transition-colors shadow-sm"
+                onClick={() => setPrintOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-border-normal bg-bg-surface hover:bg-bg-overlay px-5 py-2.5 text-xs font-black text-text-primary transition-colors shadow-sm"
               >
-                <Printer size={13} className="text-slate-400" /> طباعة الصفحة
+                <Printer size={13} className="text-text-muted" /> طباعة الصفحة
               </button>
             </div>
           </div>
@@ -852,7 +879,7 @@ export default function OwnerStatementPage() {
 
         {/* Main Dashboard Bento Grid (Re-architected to a 3-column system to balance orphans) */}
         {loading ? (
-          <div className="rounded-[2.5rem] border border-slate-100 bg-white p-24 text-center text-slate-400 shadow-sm flex flex-col items-center justify-center gap-3">
+          <div className="rounded-[2.5rem] border border-border-normal bg-bg-surface p-24 text-center text-text-muted shadow-card flex flex-col items-center justify-center gap-3">
             <Loader2 className="animate-spin text-indigo-500" size={36} />
             <span className="text-xs font-black">جاري مراجعة وتحليل السجلات الحالية...</span>
           </div>
@@ -878,14 +905,14 @@ export default function OwnerStatementPage() {
 
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-2xl ${isLoss ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"} border border-white/10`}>
+                      <div className={`p-2.5 rounded-2xl ${isLoss ? "bg-danger-text/20 text-danger-text" : "bg-success-text/20 text-success-text"} border border-white/10`}>
                         <DollarSign size={20} />
                       </div>
                       <span className="text-lg font-black text-white">
                         {netProfitMetric.label}
                       </span>
                     </div>
-                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[11px] font-black ${isLoss ? "bg-rose-500/35 text-rose-200" : "bg-emerald-500/35 text-emerald-200"} border border-white/5`}>
+                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[11px] font-black ${isLoss ? "bg-danger-text/35 text-danger-text" : "bg-success-text/35 text-success-text"} border border-white/5`}>
                       إجمالي
                     </span>
                   </div>
@@ -893,13 +920,13 @@ export default function OwnerStatementPage() {
                   <div className="mt-8 relative z-10 space-y-2">
                     <span className="text-xs font-bold text-white/60 block">القيمة النهائية للفترة</span>
                     <div className="font-mono text-5xl font-extrabold tracking-tight text-white leading-none whitespace-nowrap">
-                      {money(netProfitMetric.value)} <span className={`text-lg font-sans font-black ${isLoss ? "text-rose-400" : "text-emerald-400"} mr-1.5`}>ج.م</span>
+                      {money(netProfitMetric.value)} <span className={`text-lg font-sans font-black ${isLoss ? "text-danger-text" : "text-success-text"} mr-1.5`}>{currencySymbol}</span>
                     </div>
                   </div>
 
                   <div className="mt-8 pt-4 border-t border-white/10 flex justify-between items-center relative z-10">
                     <span className="text-xs font-bold text-white/50">كشف مختصر لصافي الربح</span>
-                    <span className={`text-xs font-black ${isLoss ? "text-rose-300 hover:text-rose-200" : "text-emerald-300 hover:text-emerald-200"} flex items-center gap-1`}>
+                    <span className={`text-xs font-black ${isLoss ? "text-danger-text hover:text-danger-text" : "text-success-text hover:text-success-text"} flex items-center gap-1`}>
                       عرض الكشف التفصيلي <ChevronLeft size={12} className="stroke-[2.5]" />
                     </span>
                   </div>
@@ -918,39 +945,39 @@ export default function OwnerStatementPage() {
                     whileHover={{ y: -4, scale: 1.01 }}
                     key={metric.key}
                     onClick={() => setSelectedMetric(metric)}
-                    className={`rounded-[2.5rem] border ${cfg.cardCls} bg-white p-6 text-right transition-all flex flex-col justify-between group shadow-sm min-h-[190px]`}
+                    className={`rounded-[2.5rem] border ${cfg.cardCls} bg-bg-surface p-6 text-right transition-all flex flex-col justify-between group shadow-card min-h-[190px]`}
                   >
                     <div className="space-y-5">
                       {/* Top bar with vertical accent line and icon */}
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <div className={`w-1.5 h-5 rounded-full ${cfg.accentBg}`} />
-                          <span className="text-lg font-black text-slate-900 tracking-tight">
+                          <span className="text-lg font-black text-text-primary tracking-tight">
                             {metric.label}
                           </span>
                         </div>
-                        <div className={`p-2 rounded-xl ${cfg.bgTextCls || "bg-slate-100 text-slate-650"} transition-all`}>
+                        <div className={`p-2 rounded-xl ${cfg.bgTextCls || "bg-bg-overlay text-text-secondary"} transition-all`}>
                           <Icon size={16} className="stroke-[2.2]" />
                         </div>
                       </div>
 
                       {/* Core numbers stack with maximum clarity */}
                       <div className="space-y-1">
-                        <span className="text-xs font-bold text-slate-500 block tracking-wider">القيمة الإجمالية المعتمدة</span>
-                        <div className="font-mono text-3xl font-extrabold text-slate-950 tracking-tight leading-none whitespace-nowrap">
-                          {money(metric.value)} <span className="text-xs font-sans font-black text-slate-500 mr-1.5">ج.م</span>
+                        <span className="text-xs font-bold text-text-muted block tracking-wider">القيمة الإجمالية المعتمدة</span>
+                        <div className="font-mono text-3xl font-extrabold text-text-primary tracking-tight leading-none whitespace-nowrap">
+                          {money(metric.value)} <span className="text-xs font-sans font-black text-text-muted mr-1.5">{currencySymbol}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Trend indicator and action footer */}
-                    <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <div className="mt-6 pt-4 border-t border-border-subtle flex items-center justify-between">
                       {cfg.trend ? (
                         <span className={`inline-flex rounded-lg px-2.5 py-0.5 text-[11px] font-black ${cfg.trendCls}`}>
                           {cfg.trend}
                         </span>
                       ) : (
-                        <span className="text-[11px] font-bold text-slate-400">سجل اليوم</span>
+                        <span className="text-[11px] font-bold text-text-muted">سجل اليوم</span>
                       )}
 
                       <span className="text-xs font-black text-indigo-600 group-hover:text-indigo-800 flex items-center gap-0.5">
@@ -963,15 +990,15 @@ export default function OwnerStatementPage() {
           </div>
         )}
 
-        <section data-help="owner-payment-flow" className="rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <section data-help="owner-payment-flow" className="rounded-[2.5rem] border border-border-normal bg-bg-surface p-6 shadow-card">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-2.5 text-emerald-700">
+              <div className="rounded-2xl border border-success-border bg-success-bg p-2.5 text-success-text">
                 <Wallet size={18} />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-sm font-black text-slate-900">تدفقات وسائل الدفع</h3>
-                <p className="text-[10px] font-bold text-slate-500">
+                <h3 className="text-sm font-black text-text-primary">تدفقات وسائل الدفع</h3>
+                <p className="text-[10px] font-bold text-text-muted">
                   من <span dir="ltr" className="font-mono">{display?.period_start || range.from}</span> إلى <span dir="ltr" className="font-mono">{display?.period_end || range.to}</span>
                 </p>
               </div>
@@ -985,26 +1012,26 @@ export default function OwnerStatementPage() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <div className="mb-2 flex items-center justify-between text-emerald-700">
+            <div className="rounded-2xl border border-success-border bg-success-bg/70 p-4">
+              <div className="mb-2 flex items-center justify-between text-success-text">
                 <span className="text-[11px] font-black">إجمالي الداخل</span>
                 <ArrowDownRight size={15} />
               </div>
-              <div className="font-mono text-xl font-black text-emerald-900" dir="ltr">{money(paymentFlowTotals.totalIn)} ج.م</div>
+              <div className="font-mono text-xl font-black text-success-text" dir="ltr">{money(paymentFlowTotals.totalIn)} {currencySymbol}</div>
             </div>
-            <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
-              <div className="mb-2 flex items-center justify-between text-rose-700">
+            <div className="rounded-2xl border border-danger-border bg-danger-bg/70 p-4">
+              <div className="mb-2 flex items-center justify-between text-danger-text">
                 <span className="text-[11px] font-black">إجمالي الخارج</span>
                 <ArrowUpRight size={15} />
               </div>
-              <div className="font-mono text-xl font-black text-rose-900" dir="ltr">{money(paymentFlowTotals.totalOut)} ج.م</div>
+              <div className="font-mono text-xl font-black text-danger-text" dir="ltr">{money(paymentFlowTotals.totalOut)} {currencySymbol}</div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="mb-2 flex items-center justify-between text-slate-600">
+            <div className="rounded-2xl border border-border-normal bg-bg-base p-4">
+              <div className="mb-2 flex items-center justify-between text-text-secondary">
                 <span className="text-[11px] font-black">الصافي</span>
                 <Activity size={15} />
               </div>
-              <div className={`font-mono text-xl font-black ${paymentFlowTotals.net < 0 ? "text-rose-700" : "text-slate-950"}`} dir="ltr">{money(paymentFlowTotals.net)} ج.م</div>
+              <div className={`font-mono text-xl font-black ${paymentFlowTotals.net < 0 ? "text-danger-text" : "text-text-primary"}`} dir="ltr">{money(paymentFlowTotals.net)} {currencySymbol}</div>
             </div>
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
               <div className="mb-2 flex items-center justify-between text-indigo-700">
@@ -1017,19 +1044,19 @@ export default function OwnerStatementPage() {
 
           <div className="mt-4 grid gap-3 lg:grid-cols-4">
             {paymentFlowRows.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-8 text-center text-xs font-bold text-slate-400 lg:col-span-4">
+              <div className="rounded-2xl border border-dashed border-border-normal bg-bg-base/50 py-8 text-center text-xs font-bold text-text-muted lg:col-span-4">
                 لا توجد تدفقات وسائل دفع في الفترة المحددة
               </div>
             ) : paymentFlowRows.map((row) => (
-              <button type="button" onClick={() => openPaymentFlowDetails(row)} key={`${row.method_id || row.method_name}-${row.method_type}`} className="rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition-all hover:border-emerald-300 hover:shadow-md">
+              <button type="button" onClick={() => openPaymentFlowDetails(row)} key={`${row.method_id || row.method_name}-${row.method_type}`} className="rounded-2xl border border-border-normal bg-bg-surface p-4 text-right shadow-sm transition-all hover:border-success-border hover:shadow-md">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-black text-slate-900">{row.method_name || "وسيلة غير محددة"}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">{formatNumber(row.transaction_count || 0)}</span>
+                  <span className="truncate text-sm font-black text-text-primary">{row.method_name || "وسيلة غير محددة"}</span>
+                  <span className="rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-black text-text-muted">{formatNumber(row.transaction_count || 0)}</span>
                 </div>
-                <div className="space-y-2 text-[11px] font-bold text-slate-500">
-                  <div className="flex items-center justify-between"><span>داخل</span><span className="font-mono text-emerald-700" dir="ltr">{money(row.total_in)} ج.م</span></div>
-                  <div className="flex items-center justify-between"><span>خارج</span><span className="font-mono text-rose-700" dir="ltr">{money(row.total_out)} ج.م</span></div>
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-2"><span>الصافي</span><span className={`font-mono ${Number(row.net_amount || 0) < 0 ? "text-rose-700" : "text-slate-900"}`} dir="ltr">{money(row.net_amount)} ج.م</span></div>
+                <div className="space-y-2 text-[11px] font-bold text-text-muted">
+                  <div className="flex items-center justify-between"><span>داخل</span><span className="font-mono text-success-text" dir="ltr">{money(row.total_in)} {currencySymbol}</span></div>
+                  <div className="flex items-center justify-between"><span>خارج</span><span className="font-mono text-danger-text" dir="ltr">{money(row.total_out)} {currencySymbol}</span></div>
+                  <div className="flex items-center justify-between border-t border-border-normal pt-2"><span>الصافي</span><span className={`font-mono ${Number(row.net_amount || 0) < 0 ? "text-danger-text" : "text-text-primary"}`} dir="ltr">{money(row.net_amount)} {currencySymbol}</span></div>
                 </div>
               </button>
             ))}
@@ -1042,7 +1069,7 @@ export default function OwnerStatementPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay p-4 backdrop-blur-sm"
               onClick={() => setSelectedPaymentFlow(null)}
             >
               <motion.div
@@ -1050,13 +1077,13 @@ export default function OwnerStatementPage() {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.96, y: 16 }}
                 onClick={(event) => event.stopPropagation()}
-                className="max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
+                className="max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-border-normal bg-bg-surface shadow-modal"
               >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle p-5">
                   <div>
-                    <h3 className="text-base font-black text-slate-900">{selectedPaymentFlow.method_name || "وسيلة دفع"}</h3>
-                    <p className="mt-1 text-[11px] font-bold text-slate-500">
-                      داخل {money(selectedPaymentFlow.total_in)} ج.م · خارج {money(selectedPaymentFlow.total_out)} ج.م · صافي {money(selectedPaymentFlow.net_amount)} ج.م
+                    <h3 className="text-base font-black text-text-primary">{selectedPaymentFlow.method_name || "وسيلة دفع"}</h3>
+                    <p className="mt-1 text-[11px] font-bold text-text-muted">
+                      داخل {money(selectedPaymentFlow.total_in)} {currencySymbol} · خارج {money(selectedPaymentFlow.total_out)} {currencySymbol} · صافي {money(selectedPaymentFlow.net_amount)} {currencySymbol}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1066,20 +1093,20 @@ export default function OwnerStatementPage() {
                     >
                       فتح التقرير الكامل <ChevronLeft size={13} />
                     </Link>
-                    <button onClick={() => setSelectedPaymentFlow(null)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">
+                    <button onClick={() => setSelectedPaymentFlow(null)} className="rounded-xl border border-border-normal p-2 text-text-muted hover:bg-bg-base">
                       <X size={16} />
                     </button>
                   </div>
                 </div>
                 <div className="max-h-[62vh] overflow-auto p-5">
                   {paymentFlowDetailsLoading ? (
-                    <div className="flex items-center justify-center gap-2 py-16 text-xs font-black text-slate-400"><Loader2 className="animate-spin" size={18} /> جاري تحميل التفاصيل...</div>
+                    <div className="flex items-center justify-center gap-2 py-16 text-xs font-black text-text-muted"><Loader2 className="animate-spin" size={18} /> جاري تحميل التفاصيل...</div>
                   ) : paymentFlowDetails.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-xs font-bold text-slate-400">لا توجد تفاصيل لهذه الوسيلة في الفترة</div>
+                    <div className="rounded-2xl border border-dashed border-border-normal bg-bg-base py-12 text-center text-xs font-bold text-text-muted">لا توجد تفاصيل لهذه الوسيلة في الفترة</div>
                   ) : (
                     <table className="w-full min-w-[760px] text-right text-xs">
                       <thead>
-                        <tr className="border-b border-slate-100 text-[10px] font-black text-slate-400">
+                        <tr className="border-b border-border-subtle text-[10px] font-black text-text-muted">
                           <th className="px-3 py-2">التاريخ</th>
                           <th className="px-3 py-2">المستند</th>
                           <th className="px-3 py-2">النوع</th>
@@ -1091,14 +1118,14 @@ export default function OwnerStatementPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {paymentFlowDetails.map((row, index) => (
-                          <tr key={`${row.id || row.doc_no || index}-${index}`} className="hover:bg-slate-50/70">
-                            <td className="px-3 py-3 font-mono text-slate-600" dir="ltr">{row.created_at || row.date || "-"}</td>
-                            <td className="px-3 py-3 font-black text-slate-800">{row.doc_no || "-"}</td>
-                            <td className="px-3 py-3 text-slate-600">{row.doc_type_label || row.doc_type || "-"}</td>
-                            <td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black ${row.direction === "out" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{row.direction_label || row.direction}</span></td>
-                            <td className="px-3 py-3 text-slate-600">{row.party || "-"}</td>
-                            <td className="px-3 py-3 font-mono font-black text-slate-900" dir="ltr">{money(row.amount)} ج.م</td>
-                            <td className={`px-3 py-3 font-mono font-black ${Number(row.net_amount || 0) < 0 ? "text-rose-700" : "text-emerald-700"}`} dir="ltr">{money(row.net_amount)} ج.م</td>
+                          <tr key={`${row.id || row.doc_no || index}-${index}`} className="hover:bg-bg-base/70">
+                            <td className="px-3 py-3 font-mono text-text-secondary" dir="ltr">{row.created_at || row.date || "-"}</td>
+                            <td className="px-3 py-3 font-black text-text-primary">{row.doc_no || "-"}</td>
+                            <td className="px-3 py-3 text-text-secondary">{row.doc_type_label || row.doc_type || "-"}</td>
+                            <td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black ${row.direction === "out" ? "bg-danger-bg text-danger-text" : "bg-success-bg text-success-text"}`}>{row.direction_label || row.direction}</span></td>
+                            <td className="px-3 py-3 text-text-secondary">{row.party || "-"}</td>
+                            <td className="px-3 py-3 font-mono font-black text-text-primary" dir="ltr">{money(row.amount)} {currencySymbol}</td>
+                            <td className={`px-3 py-3 font-mono font-black ${Number(row.net_amount || 0) < 0 ? "text-danger-text" : "text-success-text"}`} dir="ltr">{money(row.net_amount)} {currencySymbol}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1113,20 +1140,20 @@ export default function OwnerStatementPage() {
         <div className="grid gap-6 lg:grid-cols-2">
 
           {/* Snapshots Audit Trails Panel */}
-          <div data-help="owner-snapshots" className="rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.015)]">
-            <div className="mb-4 flex items-center gap-2.5 border-b border-slate-100 pb-3">
+          <div data-help="owner-snapshots" className="rounded-[2.5rem] border border-border-normal bg-bg-surface p-6 shadow-card">
+            <div className="mb-4 flex items-center gap-2.5 border-b border-border-subtle pb-3">
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
                 <FileLock2 size={16} />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-sm font-black text-slate-800">أرشيف الإقفالات والنسخ المحفوظة</h3>
-                <p className="text-[9px] font-bold text-slate-500">مراجعة وتثبيت التسويات التاريخية المحفوظة للمحل</p>
+                <h3 className="text-sm font-black text-text-primary">أرشيف الإقفالات والنسخ المحفوظة</h3>
+                <p className="text-[9px] font-bold text-text-muted">مراجعة وتثبيت التسويات التاريخية المحفوظة للمحل</p>
               </div>
             </div>
 
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin">
               {snapshots.length === 0 ? (
-                <div className="py-12 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-slate-50/20">
+                <div className="py-12 text-center text-xs font-bold text-text-muted border border-dashed border-border-normal rounded-2xl bg-bg-base/20">
                   لا توجد إقفالات مالية مؤرشفة حتى الآن
                 </div>
               ) : (
@@ -1136,26 +1163,26 @@ export default function OwnerStatementPage() {
                     <button
                       key={snapshot.id}
                       onClick={() => loadSnapshot(snapshot.id)}
-                      className="flex w-full items-center justify-between border border-slate-200 hover:border-indigo-200 rounded-2xl p-4 text-right hover:bg-slate-50/50 transition-all shadow-sm"
+                      className="flex w-full items-center justify-between border border-border-normal hover:border-indigo-200 rounded-2xl p-4 text-right hover:bg-bg-base/50 transition-all shadow-sm"
                     >
                       <div className="space-y-1">
-                        <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                        <div className="text-xs font-black text-text-primary flex items-center gap-1.5">
                           <span>من {snapshot.period_start} إلى {snapshot.period_end}</span>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-black ${isLocked ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-black ${isLocked ? "bg-success-bg text-success-text" : "bg-warning-bg text-warning-text"}`}>
                             {isLocked ? <Lock size={9} /> : <Unlock size={9} />}
                             {isLocked ? "مغلق تاريخي" : "سجل مسودة"}
                           </span>
                         </div>
-                        <div className="text-[9px] font-bold text-slate-400">
-                          طريقة التكلفة: <strong className="text-slate-600">{COST_METHOD_LABELS[snapshot.cost_method] || snapshot.cost_method}</strong>
+                        <div className="text-[9px] font-bold text-text-muted">
+                          طريقة التكلفة: <strong className="text-text-secondary">{COST_METHOD_LABELS[snapshot.cost_method] || snapshot.cost_method}</strong>
                         </div>
                       </div>
 
                       <div className="text-left font-mono">
-                        <span className="text-[9px] font-bold text-slate-400 block font-sans">صافي الربح</span>
+                        <span className="text-[9px] font-bold text-text-muted block font-sans">صافي الربح</span>
                         <div className="flex items-baseline justify-end gap-0.5">
-                          <span className="text-xs font-black text-slate-800">{money(snapshot.net_profit)}</span>
-                          <span className="text-[8px] font-sans font-bold text-slate-400">ج.م</span>
+                          <span className="text-xs font-black text-text-primary">{money(snapshot.net_profit)}</span>
+                          <span className="text-[8px] font-sans font-bold text-text-muted">{currencySymbol}</span>
                         </div>
                       </div>
                     </button>
@@ -1166,27 +1193,27 @@ export default function OwnerStatementPage() {
           </div>
 
           {/* Quick Period Comparisons Deck */}
-          <div data-help="owner-compare" className="rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-[0_4px_25px_rgba(0,0,0,0.015)] flex flex-col justify-between">
+          <div data-help="owner-compare" className="rounded-[2.5rem] border border-border-normal bg-bg-surface p-6 shadow-card flex flex-col justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <div className="mb-4 flex items-center gap-2.5 border-b border-border-subtle pb-3">
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
                   <GitCompare size={16} />
                 </div>
                 <div className="space-y-0.5">
-                  <h3 className="text-sm font-black text-slate-800">مقارنة فترتين ماليتين</h3>
-                  <p className="text-[9px] font-bold text-slate-500">تحليل الفروقات والنمو المالي للنسخ المحفوظة</p>
+                  <h3 className="text-sm font-black text-text-primary">مقارنة فترتين ماليتين</h3>
+                  <p className="text-[9px] font-bold text-text-muted">تحليل الفروقات والنمو المالي للنسخ المحفوظة</p>
                 </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2 mt-4">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الأولى (أ):</label>
+                  <label className="text-[11px] font-black text-text-muted block tracking-wider mr-1">الفترة الأولى (أ):</label>
                   <select
                     ref={leftCompareRef}
                     value={leftCompare}
                     onChange={(event) => setLeftCompare(event.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: rightCompareRef, prevRef: costMethodRef })}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs font-black text-slate-700 outline-none cursor-pointer"
+                    className="w-full rounded-2xl border border-border-normal bg-bg-base px-3.5 py-3 text-xs font-black text-text-primary outline-none cursor-pointer"
                   >
                     <option value="">اختر نسخة أولى...</option>
                     {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>#{snapshot.id} ({snapshot.period_start})</option>)}
@@ -1194,13 +1221,13 @@ export default function OwnerStatementPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-black text-slate-400 block tracking-wider mr-1">الفترة الثانية (ب):</label>
+                  <label className="text-[11px] font-black text-text-muted block tracking-wider mr-1">الفترة الثانية (ب):</label>
                   <select
                     ref={rightCompareRef}
                     value={rightCompare}
                     onChange={(event) => setRightCompare(event.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: leftCompareRef })}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs font-black text-slate-700 outline-none cursor-pointer"
+                    className="w-full rounded-2xl border border-border-normal bg-bg-base px-3.5 py-3 text-xs font-black text-text-primary outline-none cursor-pointer"
                   >
                     <option value="">اختر نسخة ثانية...</option>
                     {snapshots.map((snapshot) => <option key={snapshot.id} value={snapshot.id}>#{snapshot.id} ({snapshot.period_start})</option>)}
@@ -1209,8 +1236,8 @@ export default function OwnerStatementPage() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex items-center justify-between mt-6">
-              <p className="text-[9px] font-bold text-slate-500 leading-relaxed max-w-[280px]">
+            <div className="pt-6 border-t border-border-subtle flex items-center justify-between mt-6">
+              <p className="text-[9px] font-bold text-text-muted leading-relaxed max-w-[280px]">
                 سيتم استخراج كشف مقارن مفصل يوضح الفروقات بين المؤشرات وقيمة النمو المالي ونسبة الانحراف المئوية.
               </p>
               <button
@@ -1232,9 +1259,38 @@ export default function OwnerStatementPage() {
         rows={selectedMetric ? (display?.rows?.[selectedMetric.key] || []) : []}
         period={range}
         onClose={() => setSelectedMetric(null)}
+        currencySymbol={currencySymbol}
       />
 
       <ComparePanel data={compareData} onClose={() => setCompareData(null)} />
+
+      <PrintPreviewModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        docType="owner_statement"
+        renderContent={(settings) => (
+          <div className="p-8 font-sans" dir="rtl">
+            <div className="mb-6 text-center border-b pb-4">
+              <h1 className="text-2xl font-black mb-1">كشف صاحب المحل</h1>
+              <p className="text-sm text-text-secondary">
+                من {display?.period_start || range.from} إلى {display?.period_end || range.to}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {(display?.metrics || []).map((metric) => (
+                <div key={metric.key} className="border rounded-2xl p-4 bg-bg-surface">
+                  <div className="text-sm font-black text-text-primary mb-2">{metric.label}</div>
+                  <div className="font-mono text-xl font-black text-text-primary" dir="ltr">
+                    {money(metric.value)} {settings.currency_symbol || currencySymbol}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      />
+
     </div>
+    </ErrorBoundary>
   );
 }

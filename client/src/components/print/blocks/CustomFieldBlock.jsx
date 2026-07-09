@@ -48,18 +48,40 @@ function computedValue(compute, invoice, s) {
   }
 }
 
-export default function CustomFieldBlock({ invoice = {}, settings: s, props = {}, family }) {
+// Mock values per compute key — coherent with the global mock invoice scenario
+const MOCK_COMPUTED = {
+  subtotal:    { v: 500,   money: true },
+  discount:    { v: 25,    money: true },
+  tax:         { v: 75,    money: true },
+  increase:    { v: 15,    money: true },
+  grand_total: { v: 565,   money: true },
+  paid:        { v: 565,   money: true },
+  remaining:   { v: 0,     money: true },
+  change:      { v: 0,     money: true },
+  item_count:  { v: 3,     money: false },
+  total_qty:   { v: 4,     money: false },
+  daily_no:    { v: "42",  money: false },
+};
+
+export default function CustomFieldBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const label = props.label !== undefined ? props.label : "";
   const source = props.source || "text";
   let text = "";
   if (source === "computed") {
-    const { v, money } = computedValue(props.compute || "grand_total", invoice, s);
+    const computeKey = props.compute || "grand_total";
+    const realResult = computedValue(computeKey, invoice, s);
+    // Use real computed value if non-zero, else fall back to specific mock
+    const { v, money } = (realResult.v || realResult.v === 0)
+      ? (realResult.v !== 0 ? realResult : (editing ? (MOCK_COMPUTED[computeKey] || realResult) : realResult))
+      : realResult;
     const useMoney = props.money !== undefined ? props.money : money;
-    text = useMoney ? `${g(s, "currency_symbol")} ${smartFormat(v, s)}` : String(v);
+    text = useMoney ? `${g(s, "currency_symbol")} ${smartFormat(Number(v) || 0, s)}` : String(v);
   } else if (source === "token") {
-    text = resolvePlaceholders(props.value || "", invoice, s);
+    const resolved = resolvePlaceholders(props.value || "", invoice, s);
+    text = resolved || (editing ? `{${props.value || "رمز_متغير"}}` : "");
   } else {
-    text = props.value !== undefined ? String(props.value) : "";
+    text = props.value !== undefined ? String(props.value)
+      : (editing ? "[ نص ثابت قابل للتعديل ]" : "");
   }
   if (!label && !text) return null;
 

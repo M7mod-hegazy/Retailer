@@ -143,85 +143,87 @@ export default function StudioCanvas({ st, children }) {
   );
 
   return (
-    <div className="relative flex-1 overflow-auto bg-[var(--bg-base)] p-6" onClick={() => st.setSelected(null)}>
-      {children ? (
-        // template-doc mode: centered real template (or info card)
-        <div className="flex min-h-full w-full">
-          <div className="m-auto" style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ width: SHEET_W[size], background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
-              {children}
+    <div className="relative flex-1 min-h-0 bg-[var(--bg-base)]">
+      <div className="h-full w-full overflow-auto p-6" onClick={() => st.setSelected(null)}>
+        {children ? (
+          // template-doc mode: centered real template (or info card)
+          <div className="flex min-h-full w-full">
+            <div className="m-auto" style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: SHEET_W[size], background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+                {children}
+              </div>
             </div>
           </div>
-        </div>
-      ) : st.compare ? (
-        <div className="flex min-h-full w-full">
-          <div className="m-auto flex items-start justify-center gap-8" onClick={(e) => e.stopPropagation()}>
-            {SIZES[family].map((sz) => (
-              <div key={sz} className="flex flex-col items-center gap-1">
-                <span className="text-[11px] font-black text-[var(--text-muted)]">{sz}</span>
-                <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
-                  <LayoutRenderer family={family} size={sz} invoice={st.invoiceData}
-                    settings={{ ...st.canvasSettings, receipt_width: family === "roll" ? sz : st.canvasSettings.receipt_width }}
-                    layout={st.renderLayout} />
+        ) : st.compare ? (
+          <div className="flex min-h-full w-full">
+            <div className="m-auto flex items-start justify-center gap-8" onClick={(e) => e.stopPropagation()}>
+              {SIZES[family].map((sz) => (
+                <div key={sz} className="flex flex-col items-center gap-1">
+                  <span className="text-[11px] font-black text-[var(--text-muted)]">{sz}</span>
+                  <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+                    <LayoutRenderer family={family} size={sz} invoice={st.invoiceData}
+                      settings={{ ...st.canvasSettings, receipt_width: family === "roll" ? sz : st.canvasSettings.receipt_width }}
+                      layout={st.renderLayout} scope={st.scope} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ) : (
-        // m-auto inside a min-h-full flex row centers the sheet on BOTH axes
-        // while staying scroll-safe when the sheet outgrows the viewport.
-        <div className="flex min-h-full w-full">
-          <div ref={(el) => { sheetRef.current = el; if (st.sheetElRef) st.sheetElRef.current = el; }} className="m-auto"
-            style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "center center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
-            onClick={(e) => e.stopPropagation()}>
-            {st.showRuler && <MmRulers size={size} contentMm={contentMm} pageH={pageH} />}
-            {/* printable-band guides: what the thermal head can physically reach */}
-            {bandClipped && (
-              <>
-                <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
-                <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
-                <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: `${bandL}mm`, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
-                <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, right: 0, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
-              </>
-            )}
-            {/* magnetic center guide while free-dragging */}
-            {st.dragSnap?.centerX && (
-              <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
-            )}
-            <LayoutRenderer family={family} size={size} invoice={st.invoiceData}
-              settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} />
-            {overlayLayer}
+        ) : (
+          // m-auto inside a min-h-full flex row centers the sheet on BOTH axes
+          // while staying scroll-safe when the sheet outgrows the viewport.
+          <div className="flex min-h-full w-full">
+            <div ref={(el) => { sheetRef.current = el; if (st.sheetElRef) st.sheetElRef.current = el; }} className="m-auto"
+              style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "center center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
+              onClick={(e) => e.stopPropagation()}>
+              {st.showRuler && <MmRulers size={size} contentMm={contentMm} pageH={pageH} />}
+              {/* printable-band guides: what the thermal head can physically reach */}
+              {bandClipped && (
+                <>
+                  <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
+                  <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
+                  <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: `${bandL}mm`, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
+                  <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, right: 0, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
+                </>
+              )}
+              {/* magnetic center guide while free-dragging */}
+              {st.dragSnap?.centerX && (
+                <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
+              )}
+              <LayoutRenderer family={family} size={size} invoice={st.invoiceData}
+                settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
+              {overlayLayer}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* floating quick toolbar for the selected element */}
-      {!children && !st.compare && <FloatingToolbar st={st} />}
+        {/* floating quick toolbar for the selected element */}
+        {!children && !st.compare && <FloatingToolbar st={st} />}
 
-      {/* fit / overflow meter (page family) */}
-      {!children && family === "page" && !st.compare && pageH > 0 && (
-        <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 shadow">
-          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--bg-input)]">
-            <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%`, background: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }} className="h-full rounded-full" />
+        {/* fit / overflow meter (page family) */}
+        {!children && family === "page" && !st.compare && pageH > 0 && (
+          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 shadow">
+            <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--bg-input)]">
+              <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%`, background: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }} className="h-full rounded-full" />
+            </div>
+            <span className="text-[9px] font-black" style={{ color: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }}>
+              {Math.round(fillRatio * 100)}% · {pages} {pages > 1 ? "صفحات" : "صفحة"}
+            </span>
           </div>
-          <span className="text-[9px] font-black" style={{ color: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }}>
-            {Math.round(fillRatio * 100)}% · {pages} {pages > 1 ? "صفحات" : "صفحة"}
-          </span>
-        </div>
-      )}
+        )}
 
-      {/* band info chip (roll, calibrated only) */}
-      {!children && family === "roll" && isCalibrated && (
-        <button type="button" onClick={(e) => { e.stopPropagation(); st.setShowBand((v) => !v); }}
-          title="إظهار/إخفاء حدود منطقة الطباعة الفعلية"
-          className={`absolute top-3 left-3 rounded-lg border px-2.5 py-1.5 text-[9px] font-black shadow transition-colors ${st.showBand ? "border-[var(--border-normal)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]" : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-70"}`}>
-          منطقة الطباعة: {bandW}مم من {paperMm}مم {st.showBand ? "◉" : "◎"}
-        </button>
-      )}
+        {/* band info chip (roll, calibrated only) */}
+        {!children && family === "roll" && isCalibrated && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); st.setShowBand((v) => !v); }}
+            title="إظهار/إخفاء حدود منطقة الطباعة الفعلية"
+            className={`absolute top-3 left-3 rounded-lg border px-2.5 py-1.5 text-[9px] font-black shadow transition-colors ${st.showBand ? "border-[var(--border-normal)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]" : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-70"}`}>
+            منطقة الطباعة: {bandW}مم من {paperMm}مم {st.showBand ? "◉" : "◎"}
+          </button>
+        )}
+      </div>
 
-      {/* zoom control */}
-      <div className="absolute bottom-3 left-3 flex items-center overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow">
+      {/* zoom control — fixed position outside scroll container */}
+      <div className="absolute top-3 left-3 z-50 flex items-center overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow">
         <button type="button" onClick={(e) => { e.stopPropagation(); st.setZoom((z) => Math.min(4, Math.round((z + 0.1) * 10) / 10)); }}
           className="px-2.5 py-1.5 text-sm font-black text-[var(--text-primary)] hover:bg-[var(--bg-input)]">+</button>
         <span className="min-w-[42px] px-1 text-center text-[11px] font-black text-[var(--text-secondary)]">{Math.round(zoom * 100)}%</span>

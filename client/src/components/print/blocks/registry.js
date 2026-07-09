@@ -28,6 +28,19 @@ import BarcodeBlock from "./BarcodeBlock";
 import OrderNumberBlock from "./OrderNumberBlock";
 import ImageBlock from "./ImageBlock";
 import CustomFieldBlock from "./CustomFieldBlock";
+import DocGridBlock from "./DocGridBlock";
+import BankDetailsBlock from "./BankDetailsBlock";
+import PatternDividerBlock from "./PatternDividerBlock";
+import ReceiverSignatureBlock from "./ReceiverSignatureBlock";
+import {
+  BankStatementMetricsBlock, AjalStatementMetricsBlock, AjalScheduleMetricsBlock,
+  DailyTreasuryMetricsBlock, DailyTreasurySummariesBlock, AjalFullStatementMetricsBlock,
+  ChequeRegisterMetricsBlock, PaymentMethodsReportMetricsBlock, PaymentMethodsByMethodBlock,
+  ReportTableBlock, AjalPartyBlock
+} from "./ReportBlocks";
+import {
+  AccountStatementPartyBlock, AccountStatementLedgerBlock, AccountStatementSummaryBlock
+} from "./AccountStatementBlocks";
 
 const ALL = ["roll", "page"];
 
@@ -62,4 +75,27 @@ export const BLOCK_REGISTRY = {
   barcode:             { component: BarcodeBlock,           label: "باركود",         group: "foot",     families: ALL },
   order_number:        { component: OrderNumberBlock,       label: "رقم الطلب",      group: "head",     families: ALL },
   image:               { component: ImageBlock,             label: "صورة/بانر",      group: "brand",    families: ALL },
+  doc_grid:            { component: DocGridBlock,              label: "شبكة البيانات",       group: "dochead",  families: ALL },
+  bank_details:        { component: BankDetailsBlock,          label: "الحساب البنكي",       group: "foot",     families: ALL },
+  pattern_divider:     { component: PatternDividerBlock,       label: "فاصل زخرفي",          group: "inserted", families: ALL },
+  receiver_signature:  { component: ReceiverSignatureBlock,    label: "توقيع المستلم",       group: "foot",     families: ALL },
+
+  // Report specific blocks
+  bank_statement_metrics:         { component: BankStatementMetricsBlock,         label: "ملخص البنك (KPIs)",   group: "body", families: ["page"] },
+  ajal_statement_metrics:         { component: AjalStatementMetricsBlock,         label: "ملخص الآجل (KPIs)",   group: "body", families: ["page"] },
+  ajal_schedule_metrics:          { component: AjalScheduleMetricsBlock,          label: "ملخص الأقساط (KPIs)", group: "body", families: ["page"] },
+  daily_treasury_metrics:         { component: DailyTreasuryMetricsBlock,         label: "ملخص الخزينة (KPIs)", group: "body", families: ["page"] },
+  daily_treasury_summaries:       { component: DailyTreasurySummariesBlock,       label: "أرصدة الخزائن الكلية", group: "body", families: ["page"] },
+  ajal_full_statement_metrics:    { component: AjalFullStatementMetricsBlock,    label: "ملخص الأرصدة (KPIs)", group: "body", families: ["page"] },
+  cheque_register_metrics:        { component: ChequeRegisterMetricsBlock,        label: "ملخص الشيكات (KPIs)", group: "body", families: ["page"] },
+  payment_methods_report_metrics: { component: PaymentMethodsReportMetricsBlock, label: "ملخص الدفع (KPIs)",   group: "body", families: ["page"] },
+  payment_methods_by_method:      { component: PaymentMethodsByMethodBlock,      label: "ملخص وسائل الدفع الكلي", group: "body", families: ["page"] },
+  report_table:                   { component: ReportTableBlock,                   label: "جدول بيانات التقرير",  group: "body", families: ["page"] },
+  ajal_party:                     { component: AjalPartyBlock,                     label: "بيانات العميل الآجل",  group: "dochead", families: ["page"] },
+
+  // Account statement blocks
+  account_statement_party:         { component: AccountStatementPartyBlock,         label: "بيانات الطرف (كشف حساب)", group: "dochead", families: ["page"] },
+  account_statement_ledger:        { component: AccountStatementLedgerBlock,        label: "جدول حركات كشف الحساب",   group: "body",   families: ["page"] },
+  account_statement_summary:       { component: AccountStatementSummaryBlock,       label: "ملخص كشف الحساب (الإجمالي)", group: "totals", families: ["page"] },
 };
+

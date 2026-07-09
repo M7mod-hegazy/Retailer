@@ -16,9 +16,10 @@ router.use(authRequired);
 
 function buildOpts(query = {}) {
   const {
-    cost_method, q, status, payment_type, movement_type, action, resource, user_id,
+    cost_method, q, status, payment_type, movement_type, action, resource, user_id, role, is_active,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
+    employee_id, deduction_type, bonus_type, tx_type,
   } = query;
 
   // If caller didn't specify a cost method, fall back to the active setting
@@ -34,21 +35,29 @@ function buildOpts(query = {}) {
   }
 
   return {
-    q, status, payment_type, movement_type, action, resource, user_id,
+    q, status, payment_type, movement_type, action, resource, user_id, role, is_active,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
+    employee_id, deduction_type, bonus_type, tx_type,
     cost_method: activeCostMethod,
   };
 }
 
 function applyRowFilters(rows, opts = {}) {
-  const { category_id, item_id, customer_id, supplier_id, cashier_id } = opts;
-  if (!category_id && !item_id && !customer_id && !supplier_id && !cashier_id) return rows;
+  const { q, category_id, item_id, customer_id, supplier_id, cashier_id } = opts;
+  const needle = String(q || "").trim().toLowerCase();
+  if (!needle && !category_id && !item_id && !customer_id && !supplier_id && !cashier_id) return rows;
   return rows.filter((row) => {
     let match = true;
+    if (needle) {
+      match = Object.entries(row).some(([key, value]) => {
+        if (key.startsWith("_") || value == null || typeof value === "object") return false;
+        return String(value).toLowerCase().includes(needle);
+      });
+    }
     if (category_id) {
-      const rowCat = row.category_id;
-      if (rowCat !== undefined) {
+      const rowCat = row.category_id ?? row.category_name ?? row.category;
+      if (rowCat !== undefined && rowCat !== null) {
         match = match && String(rowCat) === String(category_id);
       }
     }
@@ -65,8 +74,11 @@ function applyRowFilters(rows, opts = {}) {
     if (supplier_id && row.supplier_id !== undefined) {
       match = match && String(row.supplier_id) === String(supplier_id);
     }
-    if (cashier_id && row.cashier_id !== undefined) {
-      match = match && String(row.cashier_id) === String(cashier_id);
+    if (cashier_id) {
+      const rowCashier = row.cashier_id ?? row.cashier;
+      if (rowCashier !== undefined && rowCashier !== null) {
+        match = match && String(rowCashier) === String(cashier_id);
+      }
     }
     return match;
   });
@@ -167,15 +179,38 @@ function requireReportExportAccess(sourceKeyOrParam) {
   };
 }
 
-// GET /api/reports/registry — return all report definitions
-router.get("/registry", requirePagePermission("reports", "view"), (_req, res) => {
-  res.json({
-    success: true,
-    data: {
-      ...REPORT_REGISTRY,
-      reports: REPORT_REGISTRY.reports.map(hydrateReportDefinition),
-    },
+// GET /api/reports/registry - return all report definitions
+function buildClassificationColumns() {
+  const result = {};
+  Object.entries(REPORT_REGISTRY.classifications || {}).forEach(([sourceKey, classes]) => {
+    (classes || []).forEach((cls) => {
+      (cls.availableModes || ["detailed"]).forEach((mode) => {
+        const querySlug = mode === "summary"
+          ? (cls.summaryQuery || cls.detailedQuery)
+          : (cls.detailedQuery || cls.summaryQuery);
+        if (!querySlug) return;
+        result[`${sourceKey}.${cls.id}.${mode}`] = getReportColumns(querySlug, []);
+      });
+    });
   });
+  return result;
+}
+
+function buildReportsConfigPayload() {
+  return {
+    ...REPORT_REGISTRY,
+    reports: REPORT_REGISTRY.reports.map(hydrateReportDefinition),
+    classificationColumns: buildClassificationColumns(),
+  };
+}
+
+router.get("/registry", requirePagePermission("reports", "view"), (_req, res) => {
+  res.json({ success: true, data: buildReportsConfigPayload() });
+});
+
+// GET /api/reports/config - dynamic report-center configuration
+router.get("/config", requirePagePermission("reports", "view"), (_req, res) => {
+  res.json({ success: true, data: buildReportsConfigPayload() });
 });
 
 // GET /api/reports/registry/:slug — return single report definition

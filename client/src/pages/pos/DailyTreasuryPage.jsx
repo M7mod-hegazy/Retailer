@@ -18,6 +18,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import DailyTreasuryTemplate from "../../components/print/templates/DailyTreasuryTemplate";
 import { formatNumber } from "../../utils/currency";
 import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
 
@@ -2776,30 +2777,24 @@ export default function DailyTreasuryPage() {
           onClose={() => setPrintOpen(false)}
           docType="daily_treasury"
           renderContent={(settings) => (
-            <div style={{ fontFamily: settings.print_font || "Cairo", direction: "rtl", padding: 24, fontSize: 12, color: "#1e293b" }}>
-              <div style={{ borderBottom: "3px solid " + (settings.accent_color || "#0f172a"), paddingBottom: 16, marginBottom: 16 }}>
-                <div style={{ fontSize: 22, fontWeight: 900 }}>تقرير الخزينة اليومية</div>
-                <div style={{ color: "#64748b" }}>التاريخ: {date}</div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}><strong>المتوقع</strong><br />{fmt(expected)} ج.م</div>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}><strong>الفعلية</strong><br />{fmt(actualCash || moneyTotal)} ج.م</div>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}><strong>الفروقات</strong><br />{fmt(discrepancy)} ج.م</div>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}><strong>عدد الحركات</strong><br />{sortedTransactions.length}</div>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                <thead><tr style={{ background: settings.accent_color || "#0f172a", color: "white" }}>{["التاريخ", "النوع", "المرجع", "الطرف", "المبلغ"].map((h) => <th key={h} style={{ padding: 8, textAlign: "right" }}>{h}</th>)}</tr></thead>
-                <tbody>{sortedTransactions.map((tx, i) => (
-                  <tr key={tx.doc_type + "-" + tx.id + "-" + i} style={{ background: i % 2 ? "white" : "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: 8 }}>{tx.created_at?.slice(0, 10) || date}</td>
-                    <td style={{ padding: 8 }}>{DOC_TYPE_LABEL[tx.doc_type] || tx.doc_type}</td>
-                    <td style={{ padding: 8 }}>{tx.doc_no || "#" + tx.id}</td>
-                    <td style={{ padding: 8 }}>{tx.party || tx.description || "—"}</td>
-                    <td style={{ padding: 8, fontWeight: 900 }}>{fmt(tx.amount)} ج.م</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
+            <DailyTreasuryTemplate
+              data={{
+                expected,
+                actualCash: actualCash || moneyTotal,
+                moneyTotal,
+                discrepancy,
+                transactions: sortedTransactions,
+                date,
+                opening_balance,
+                closing_balance,
+                notes,
+                status,
+                cashier_name,
+                totalIn,
+                totalOut,
+              }}
+              settings={settings}
+            />
           )}
         />
       )}

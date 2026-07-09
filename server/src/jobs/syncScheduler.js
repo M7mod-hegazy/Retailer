@@ -1,51 +1,46 @@
 const cron = require("node-cron");
 const { getDb } = require("../config/database");
 const logger = require("../config/logger");
+const syncRoutes = require("../routes/sync.routes");
 
-function runSafely(name, fn) {
-  try {
-    fn();
-  } catch (err) {
-    logger.error({ message: `Scheduled job failed: ${name}`, error: err.message, stack: err.stack });
-  }
-}
+// Guard so overlapping ticks (a slow pull) never run concurrently.
+let running = false;
 
-function runAutoSync() {
+async function runAutoSync() {
   const db = getDb();
   const cfg = db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
   if (!cfg || !cfg.auto_sync_enabled) return;
 
-  const since = cfg.last_sync_at || new Date(0).toISOString();
-  const apiRes = db.prepare("SELECT ecom_url, store_id, api_key FROM sync_config WHERE id = ?").get(cfg.id);
-  if (!apiRes) return;
+  // Respect the configured interval instead of firing every minute.
+  const interval = Math.max(1, Number(cfg.sync_interval_minutes) || 30);
+  if (cfg.last_auto_sync_at) {
+    // SQLite datetime('now') → "YYYY-MM-DD HH:MM:SS" (UTC). Normalize to ISO.
+    const last = new Date(cfg.last_auto_sync_at.replace(" ", "T") + "Z").getTime();
+    const elapsedMin = (Date.now() - last) / 60000;
+    if (Number.isFinite(elapsedMin) && elapsedMin < interval) return;
+  }
 
-  const http = require("http");
-  const url = new URL(apiRes.ecom_url);
-
-  const body = JSON.stringify({ storeId: apiRes.store_id, apiKey: apiRes.api_key, since });
-  const options = {
-    hostname: url.hostname,
-    port: url.port || 80,
-    path: "/api/sync/pull",
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
-    timeout: 30000,
-  };
-
-  const req = http.request(options, (res) => {
-    let data = "";
-    res.on("data", (chunk) => (data += chunk));
-    res.on("end", () => {
+  if (running) return;
+  running = true;
+  try {
+    const res = await syncRoutes.autoPullAll(db);
+    // Only stamp last_auto_sync_at on a real attempt (not "not configured").
+    if (res && res.ok) {
       db.prepare("UPDATE sync_config SET last_auto_sync_at = datetime('now') WHERE id = ?").run(cfg.id);
-    });
-  });
-  req.on("error", () => {});
-  req.write(body);
-  req.end();
+      logger.info({ message: "Auto-sync completed", imported: res.imported, failed: res.failed });
+    } else if (res && res.error) {
+      logger.warn({ message: "Auto-sync failed", error: res.error });
+    }
+  } catch (err) {
+    logger.error({ message: "Auto-sync error", error: err.message, stack: err.stack });
+  } finally {
+    running = false;
+  }
 }
 
 function startSyncScheduler() {
-  return cron.schedule("* * * * *", () => runSafely("syncScheduler", runAutoSync), { scheduled: true });
+  // Tick every minute; runAutoSync internally enforces sync_interval_minutes.
+  return cron.schedule("* * * * *", () => { runAutoSync(); }, { scheduled: true });
 }
 
 module.exports = { startSyncScheduler };

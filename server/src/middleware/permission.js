@@ -80,4 +80,21 @@ function userHasPagePermission(user, page, action) {
   return perms[page]?.includes(action) ?? false;
 }
 
-module.exports = { requirePermission, requirePagePermission, userHasPagePermission, getUserPermissions };
+// Pass when the user holds the action on ANY of the listed pages. Used for
+// shared resources (e.g. the WhatsApp engine is driven from both the settings
+// page and the WhatsApp CRM page).
+function requireAnyPagePermission(pages, action) {
+  return (req, res, next) => {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "unauthorized" });
+    if (user.role === "dev" || user.role === "admin") return next();
+
+    const perms = getUserPermissions(user);
+    if (pages.some((page) => perms[page]?.includes(action))) return next();
+
+    logPermissionDenial(user.id, pages[0], action, req.method, req.path, req);
+    return res.status(403).json({ error: "permission_denied", page: pages[0], action });
+  };
+}
+
+module.exports = { requirePermission, requirePagePermission, requireAnyPagePermission, userHasPagePermission, getUserPermissions };

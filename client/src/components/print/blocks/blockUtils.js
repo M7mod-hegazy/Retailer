@@ -1,6 +1,6 @@
 export const DEFAULTS = {
   receipt_width: "80mm", invoice_prefix: "INV",
-  receipt_header: "", receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
+  receipt_header: "أهلاً وسهلاً — نرحب بكم في متجرنا", receipt_footer: "شكراً لزيارتكم — يسعدنا خدمتكم دائماً",
   header_font_size: 16, body_font_size: 12, footer_font_size: 10,
   item_font_size: 12, print_font: "Tajawal", logo_max_height: 48,
   logo_alignment: "center", accent_color: "#0f172a",
@@ -19,8 +19,9 @@ export const DEFAULTS = {
   show_discount_line: true, show_payment_details: true, show_subtotal: true,
   show_phone: true, show_address: true, show_tax_id: true,
   show_branch: true, show_invoice_date: true,
-  show_notes: true,
+  show_notes: true, receipt_notes: "",
   show_watermark: false, show_signature_lines: false, show_barcode_line: false,
+  show_receiver_signature: false,
   tax_rate: 15, currency_symbol: "ر.س", show_item_code: true,
   address_font_size: 9, address_alignment: "right",
   tax_id_font_size: 9, tax_id_alignment: "right",

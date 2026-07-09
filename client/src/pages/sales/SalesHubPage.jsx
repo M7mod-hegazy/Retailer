@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
+import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAYMENT_LABELS = {
@@ -212,12 +213,19 @@ function PreviewDrawer({ invoiceId, onClose }) {
             <div className="flex flex-col gap-2.5">
               <div className="flex justify-between items-center text-sm">
                 <span className="font-bold text-zinc-400">الاسم</span>
-                <span className="font-black text-zinc-800">{d.customer_name || "عميل نقدي"}</span>
+                {d.customer_name ? (
+                  <span className="font-black text-zinc-800">{d.customer_name}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {d.walk_in_name && <span className="font-black text-zinc-800">{d.walk_in_name}</span>}
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black">🚶 عميل نقدي</span>
+                  </span>
+                )}
               </div>
-              {d.customer_phone && (
+              {(d.customer_phone || d.walk_in_phone) && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-bold text-zinc-400">الهاتف</span>
-                  <span className="font-mono font-black text-zinc-700">{d.customer_phone}</span>
+                  <span className="font-mono font-black text-zinc-700" dir="ltr">{d.customer_phone || d.walk_in_phone}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-sm">
@@ -430,7 +438,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
             </span>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
-            <span className="text-zinc-600">{row.customer_name || "عميل نقدي"}</span>
+            <span className="text-zinc-600">{invoiceCustomerText(row)}</span>
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
             <span dir="ltr">{fmtDate(row.created_at)}</span>
             {row.created_by_username && (
@@ -918,7 +926,7 @@ export default function SalesHubPage() {
                       <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-blue-50/10 transition-colors">
                         <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.invoice_no || "—"}</td>
                         <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                        <td className="px-5 py-4 font-bold text-zinc-700">{r.customer_name || "عميل نقدي"}</td>
+                        <td className="px-5 py-4 font-bold text-zinc-700">{invoiceCustomerText(r)}</td>
                         <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
                         <td className="px-5 py-4 font-bold text-zinc-800">
                           <div>{r.item_name || "—"}</div>

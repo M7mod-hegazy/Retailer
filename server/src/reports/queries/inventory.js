@@ -2,6 +2,7 @@ const { getDb } = require("../../config/database");
 const { addDateFilter, getCostColumnForValuation, getCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getLowStock } = require("../../services/reportService");
 const { deriveFIFO, deriveLIFO, hasTable } = require("../../services/costLedger");
+const { paginateSql } = require("../pagination");
 
 function slowMoving(startDate, endDate, opts = {}) {
   const db = getDb();
@@ -73,7 +74,7 @@ function stockMovements(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { movement_type, q, warehouse_id, category_id, item_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT COALESCE(i.code, 'ITEM-' || i.id) AS item_code,
       i.name AS item_name,
       COALESCE(w.name, '') AS warehouse_name,
@@ -94,14 +95,21 @@ function stockMovements(startDate, endDate, opts = {}) {
       ${item_id ? " AND i.id = ?" : ""}
       ${q ? " AND (COALESCE(i.name,'') LIKE ? OR COALESCE(i.code,'') LIKE ?)" : ""}
     ORDER BY sm.created_at DESC
-  `).all(
+  `;
+  const allParams = [
     ...params,
     ...(movement_type ? [movement_type] : []),
     ...(warehouse_id ? [warehouse_id] : []),
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
     ...(q ? [`%${q}%`, `%${q}%`] : []),
-  );
+  ];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function stockValuation(startDate, endDate, opts = {}) {
@@ -234,13 +242,18 @@ function inventoryAging(startDate, endDate, opts = {}) {
     FROM items it
     JOIN stock_levels sl ON sl.item_id = it.id
     LEFT JOIN stock_movements sm ON sm.item_id = it.id AND sm.deleted_at IS NULL
+      ${warehouse_id ? " AND sm.warehouse_id = ?" : ""}
     WHERE sl.quantity > 0 AND it.deleted_at IS NULL
       ${warehouse_id ? " AND sl.warehouse_id = ?" : ""}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
     GROUP BY it.id
     ORDER BY days_since_last_movement DESC
-  `).all(...(warehouse_id ? [warehouse_id] : []), ...(category_id ? [category_id] : []), ...(item_id ? [item_id] : []));
+  `).all(
+    ...(warehouse_id ? [warehouse_id, warehouse_id] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+  );
 }
 
 function deadStock(startDate, endDate, opts = {}) {

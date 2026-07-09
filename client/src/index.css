@@ -3771,7 +3771,7 @@ html[data-theme="dark"] {
 [data-theme="dark"] .focus\:bg-white:focus { background-color: var(--bg-surface) !important; }
 [data-theme="dark"] .focus\:border-transparent:focus { border-color: transparent !important; }
 
-/* ── Critical field highlight animation ── */
+/* Critical field highlight animation */
 @keyframes critical-pulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.4); }
   50%      { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.15); }
@@ -3779,4 +3779,13 @@ html[data-theme="dark"] {
 .critical-field-highlight {
   animation: critical-pulse 1s ease-in-out 3;
   border-radius: 4px;
+}
+
+/* Force high-contrast text and border rendering inside dark/accent printed headers */
+.print-dark-bg, .print-dark-bg * {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+.print-dark-bg img {
+  filter: none !important; /* ensure logo is not affected by other filters if any */
 }

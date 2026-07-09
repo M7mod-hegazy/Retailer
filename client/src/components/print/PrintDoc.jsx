@@ -6,8 +6,8 @@ import LayoutRenderer from "./LayoutRenderer";
  * Thin shim over the shared block library (LayoutRenderer, roll family).
  * Respects all settings toggles, custom text blocks, fonts, colors.
  */
-export function PrintThermalDoc({ invoice = {}, settings = {} }) {
-  return <LayoutRenderer family="roll" invoice={invoice} settings={settings} layout={settings.layout || null} />;
+export function PrintThermalDoc({ invoice = {}, settings = {}, scope }) {
+  return <LayoutRenderer family="roll" invoice={invoice} settings={settings} layout={settings.layout || null} scope={scope} />;
 }
 
 /**
@@ -15,6 +15,6 @@ export function PrintThermalDoc({ invoice = {}, settings = {} }) {
  * Thin shim over the shared block library (LayoutRenderer, page family + zones).
  * Respects all settings toggles, custom text blocks, fonts, colors.
  */
-export function PrintA4Doc({ invoice = {}, settings = {}, size = "A4" }) {
-  return <LayoutRenderer family="page" invoice={invoice} settings={settings} layout={settings.layout || null} size={size} />;
+export function PrintA4Doc({ invoice = {}, settings = {}, size = "A4", scope }) {
+  return <LayoutRenderer family="page" invoice={invoice} settings={settings} layout={settings.layout || null} size={size} scope={scope} />;
 }

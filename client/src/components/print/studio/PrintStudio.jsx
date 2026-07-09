@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import {
   X, Save, Printer, Undo2, Redo2, LayoutTemplate, FileDown,
   FlaskConical, Columns2, Ruler, Wrench, Globe, FileText, ChevronDown,
+  Menu,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../../services/api";
@@ -10,25 +11,40 @@ import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import {
   ensureLayout, seedFamilyLayout, resolveEffectiveLayout, defaultColumns,
-  SHOW_KEY, newInsertId,
+  SHOW_KEY, newInsertId, normalizeLayout,
 } from "../layout/layoutModel";
 import { printContent, getPrinterForPageSize, buildPrintDocument, isElectronPrint } from "../../../services/printService";
 import { resolveCalibration, withCalibration } from "../../../services/printCalibration";
 import CalibrationWizard from "../calibration/CalibrationWizard";
-import BankStatementTemplate from "../templates/BankStatementTemplate";
-import AjalStatementTemplate from "../templates/AjalStatementTemplate";
-import AjalScheduleTemplate from "../templates/AjalScheduleTemplate";
-import ChequeRegisterTemplate from "../templates/ChequeRegisterTemplate";
-import PaymentMethodsReportTemplate from "../templates/PaymentMethodsReportTemplate";
+import TemplateDocPreview, { TEMPLATE_PREVIEW_DOCS } from "./TemplateDocPreview";
 import {
   SIZES, SHEET_W, PAGE_H_MM, BLOCK_DOCS, STUDIO_SCOPES, scopeLabel,
-  SAMPLES, sampleById, TEMPLATE_MOCK, pageSizeStrFor, familyOfSize,
+  SAMPLES, sampleById, templateMockBySample, pageSizeStrFor, familyOfSize, SCOPE_PRESETS,
 } from "./studioData";
 import StudioBlockTree from "./StudioBlockTree";
 import StudioCanvas from "./StudioCanvas";
 import StudioInspector from "./StudioInspector";
 import PresetsGallery from "./PresetsGallery";
 import { applyPreset } from "../presets/presetEngine";
+
+const SCOPE_PAGES = {
+  _global: "جميع المستندات التي ترث التصميم العام",
+  pos_receipt: "فاتورة / إيصال المبيعات (رول / A4)",
+  purchase_order: "أمر الشراء للمورد",
+  sales_return: "مرتجع المبيعات",
+  quotation: "عروض الأسعار للعملاء",
+  branch_transfer: "مستندات التحويل بين الفروع",
+  purchase_return: "مرتجع المشتريات للموردين",
+  payment_receipt: "سند القبض / الصرف المالي",
+  bank_statement: "حسابات البنوك / كشف الحساب",
+  daily_treasury: "حركة الخزينة اليومية",
+  cheque_register: "سجل حركة الشيكات",
+  payment_methods_report: "تقرير حركة وسائل الدفع",
+  ajal_statement: "كشف حساب العميل الآجل",
+  ajal_schedule: "جدول أقساط العميل الآجل",
+  ajal_full_statement: "التقرير الشامل للديون الآجلة",
+  reports_generic: "التقارير العامة",
+};
 
 const DRAFT_STASH_KEY = "retailer_print_studio_drafts";
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -48,25 +64,8 @@ function writeStash(map) {
   } catch { /* quota — drafts are a convenience, not data */ }
 }
 
-// Template-doc canvas: real template component + mock data (reduced mode).
-function TemplateDocPreview({ scope, settings }) {
-  const mock = TEMPLATE_MOCK[scope] || {};
-  switch (scope) {
-    case "bank_statement":
-      return <BankStatementTemplate bank={mock.bank} transactions={mock.transactions} from={mock.from} to={mock.to} settings={settings} />;
-    case "ajal_statement":
-      return <AjalStatementTemplate debt={mock.debt} settings={settings} />;
-    case "ajal_schedule":
-      return <AjalScheduleTemplate debt={mock.debt} settings={settings} />;
-    case "cheque_register":
-      return <ChequeRegisterTemplate rows={mock.rows} settings={settings} />;
-    case "payment_methods_report":
-      return <PaymentMethodsReportTemplate rows={mock.rows} filters={mock.filters} totalIn={mock.totalIn} totalOut={mock.totalOut} settings={settings} />;
-    default:
-      return null; // daily_treasury / ajal_full_statement / reports_generic → info card in canvas
-  }
-}
-const TEMPLATE_PREVIEW_DOCS = new Set(["bank_statement", "ajal_statement", "ajal_schedule", "cheque_register", "payment_methods_report"]);
+// TemplateDocPreview + TEMPLATE_PREVIEW_DOCS now live in ./TemplateDocPreview
+// (shared with DocPresetPicker).
 
 export default function PrintStudio({ open = true, onClose, initialScope = "_global", initialSize = "" }) {
   // ── server data ────────────────────────────────────────────────────────
@@ -93,6 +92,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [calibOpen, setCalibOpen] = useState(false);
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
   const [saving, setSaving] = useState(false);
   const [past, setPast] = useState([]);   // [{scope, draft}]
   const [future, setFuture] = useState([]);
@@ -101,7 +101,10 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const stashTimer = useRef(null);
 
   const isBlockDoc = scope === "_global" || BLOCK_DOCS.has(scope);
-  const invoiceData = sampleById(sampleId);
+  // For report/template scopes, use per-sample variant so the sample switcher works.
+  const invoiceData = TEMPLATE_PREVIEW_DOCS.has(scope)
+    ? templateMockBySample(scope, sampleId)
+    : sampleById(sampleId);
 
   // ── load ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -113,7 +116,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       api.get("/api/print-settings-per-doc").then((r) => r.data?.data || {}).catch(() => ({})),
     ]).then(([app, perDoc]) => {
       if (cancelled) return;
-      const st = { ...perDoc, _global: ensureLayout(perDoc._global || {}) };
+      const st = { ...perDoc, _global: ensureLayout(perDoc._global || {}, "_global") };
       setAppSettings(app);
       setStore(st);
       const stash = readStash();
@@ -136,7 +139,16 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   }, [open]);
 
   // ── draft accessors ────────────────────────────────────────────────────
-  const draftOf = (sc) => drafts[sc] !== undefined ? drafts[sc] : (store[sc] || {});
+  const draftOf = (sc) => {
+    if (drafts[sc] !== undefined) return drafts[sc];
+    const val = store[sc];
+    if (val && val.layout) return val;
+    const isReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    if (isReport && SCOPE_PRESETS[sc] && SCOPE_PRESETS[sc].length) {
+      return applyPreset(val || {}, SCOPE_PRESETS[sc][0], sc);
+    }
+    return val || {};
+  };
   const cur = draftOf(scope);
   const globalDraft = draftOf("_global");
   const dirtyScopes = useMemo(
@@ -153,15 +165,21 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
 
   // effective layout per family (what the printer will actually use)
   const effFam = (fam) => {
-    if (scope === "_global") return (globalDraft.layout || {})[fam] || seedFamilyLayout(fam);
-    return resolveEffectiveLayout(globalDraft, cur, fam);
+    if (scope === "_global") return (globalDraft.layout || {})[fam] || seedFamilyLayout(fam, scope);
+    const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+    if (isReport) {
+      const dl = (cur.layout || {})[fam];
+      return dl ? normalizeLayout({ layout: { [fam]: dl } }).settings.layout[fam] : seedFamilyLayout(fam, scope);
+    }
+    return resolveEffectiveLayout(globalDraft, cur, fam, scope);
   };
   const renderLayout = useMemo(
     () => ({ roll: effFam("roll"), page: effFam("page") }),
-    [globalDraft, cur, scope] // eslint-disable-line react-hooks/exhaustive-deps
+    [globalDraft, cur, scope, family] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const fam = renderLayout[family];
   const ownFamily = scope === "_global" ? true : !!(cur.layout && cur.layout[family]);
+  const hasPreset = !!(merged[`preset_${family}`]) || JSON.stringify(fam) !== JSON.stringify(seedFamilyLayout(family, scope));
 
   // ── history-aware commit ───────────────────────────────────────────────
   const commitDraft = (sc, nextDraft) => {
@@ -281,12 +299,13 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setSelected(null);
   };
 
-  // ── items-table columns (canonical: perBlock.items_table.columns) ──────
-  const columns = ((fam.perBlock || {}).items_table || {}).columns
-    || (fam.columns && fam.columns.items_table)
-    || defaultColumns(family);
+  // ── items-table or report-table columns ──────
+  const columnBlockKey = selected === "report_table" ? "report_table" : "items_table";
+  const columns = ((fam.perBlock || {})[columnBlockKey] || {}).columns
+    || (fam.columns && fam.columns[columnBlockKey])
+    || (columnBlockKey === "report_table" ? defaultReportColumns(scope) : defaultColumns(family));
   const setColumns = (cols) => setFamLayout((c) => ({
-    perBlock: { ...(c.perBlock || {}), items_table: { ...((c.perBlock || {}).items_table || {}), columns: cols } },
+    perBlock: { ...(c.perBlock || {}), [columnBlockKey]: { ...((c.perBlock || {})[columnBlockKey] || {}), columns: cols } },
   }));
 
   // ── page overlays (free mm-position decorations) ───────────────────────
@@ -520,15 +539,29 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
 
   // ── presets ────────────────────────────────────────────────────────────
   const applyPresetToDraft = (preset) => {
-    const base = cur.layout ? cur : { ...cur, layout: {} };
-    commitDraft(scope, applyPreset(base, preset));
+    let next;
+    if (preset && preset.isFallback) {
+      next = { ...cur };
+      delete next[`preset_${family}`];
+      if (next.layout) {
+        const nextLayout = { ...next.layout };
+        delete nextLayout[family];
+        next.layout = nextLayout;
+      }
+    } else {
+      const base = cur.layout ? cur : { ...cur, layout: {} };
+      next = applyPreset(base, preset, scope);
+      const targetFam = preset.family || family;
+      next[`preset_${targetFam}`] = { id: preset.id, label: preset.name || preset.label || "" };
+    }
+    commitDraft(scope, next);
     setSelected(null);
-    toast.success(`طُبّق القالب: ${preset.name}`);
+    toast.success(`طُبّق القالب: ${(preset && preset.name) || ""}`);
   };
 
   // ── reset family to default ────────────────────────────────────────────
   const resetFamily = () => {
-    setFamLayout(() => clone(seedFamilyLayout(family)));
+    setFamLayout(() => clone(seedFamilyLayout(family, scope)));
     setSelected(null);
   };
 
@@ -589,13 +622,20 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setScope(sc); setSelected(null); setHovered(null); setEditingKey(null); setScopeMenuOpen(false);
     // pick a sensible size for the doc (its saved default, else keep current)
     const docSaved = (drafts[sc] || store[sc] || {}).paper_size;
-    if (docSaved && SHEET_W[docSaved]) switchSize(docSaved);
+    const targetSize = docSaved && SHEET_W[docSaved] ? docSaved : null;
+    // Report docs never print on thermal roll — auto-correct
+    const scIsDenseReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    if (targetSize) switchSize(targetSize);
+    else if (scIsDenseReport && (size === "58mm" || size === "80mm")) switchSize("A4");
   };
   const switchSize = (sz) => {
     setSize(sz);
     const f = familyOfSize(sz);
     if (f !== family) { setSelected(null); setHovered(null); setZoom(f === "roll" ? 1.1 : 0.7); }
   };
+  // For dense report docs only offer page sizes (A4/A5); roll sizes don't apply.
+  const isDenseReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+  const availableSizes = (isBlockDoc && !isDenseReport) ? [...SIZES.roll, ...SIZES.page] : SIZES.page;
 
   // ── keyboard shortcuts ─────────────────────────────────────────────────
   useEffect(() => {
@@ -651,17 +691,83 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       {/* hidden clean render for test print / PDF — exactly what the canvas shows */}
       <div ref={printRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none", width: SHEET_W[size] }}>
         {isBlockDoc
-          ? <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={canvasSettings} layout={renderLayout} />
-          : hasTemplatePreview ? <TemplateDocPreview scope={scope} settings={{ ...canvasSettings, _previewSize: size }} /> : null}
+          ? <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={canvasSettings} layout={renderLayout} scope={scope} />
+          : hasTemplatePreview ? <TemplateDocPreview scope={scope} mock={invoiceData} settings={{ ...canvasSettings, _previewSize: size }} /> : null}
       </div>
 
-      {/* ── top bar ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-normal)] bg-[var(--bg-surface)] px-3 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="whitespace-nowrap text-sm font-black">استوديو الطباعة</span>
+      {/* ── top bar (menu-bar style like Word/Photoshop) ─────────────────── */}
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-normal)] bg-[var(--bg-surface)] px-2 py-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="ml-2 whitespace-nowrap text-sm font-black">استوديو الطباعة</span>
+
+          {/* ── menu bar ─────────────────────────────────────────────── */}
+          {[
+            {
+              key: "file", label: "ملف",
+              items: [
+                { icon: Save, label: "حفظ", shortcut: "Ctrl+S", action: saveAll, disabled: !dirtyScopes.length },
+                { divider: true },
+                { icon: FileDown, label: "تصدير PDF", action: exportPdf },
+                { icon: Printer, label: "طباعة تجريبية", action: testPrint },
+                ...(family === "roll" ? [{ icon: Wrench, label: "معايرة الطابعة", action: () => setCalibOpen(true) }] : []),
+                { divider: true },
+                { icon: X, label: "إغلاق", action: async () => { if (dirtyScopes.length) await saveAll(); onClose(); } },
+              ],
+            },
+            {
+              key: "view", label: "عرض",
+              items: [
+                { icon: Columns2, label: "مقارنة المقاسات", action: () => setCompare((v) => !v), active: compare },
+                { icon: Ruler, label: "مسطرة مليمترية", action: () => setShowRuler((v) => !v), active: showRuler },
+                ...(isBlockDoc ? [{ icon: Menu, label: "إظهار النطاق", action: () => setShowBand((v) => !v), active: showBand }] : []),
+                { divider: true },
+                { icon: FlaskConical, label: "بيانات المعاينة", items: SAMPLES.map((s) => ({ label: s.label, action: () => setSampleId(s.id), active: sampleId === s.id })) },
+              ],
+            },
+
+          ].map((menu) => (
+            <div key={menu.key} className="relative">
+              <button type="button" onClick={() => setActiveMenu(activeMenu === menu.key ? null : menu.key)}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-black transition-colors ${activeMenu === menu.key ? "bg-[var(--bg-input)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"}`}>
+                {menu.label}
+                <ChevronDown size={10} />
+              </button>
+              {activeMenu === menu.key && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)} />
+                  <div className="absolute right-0 top-full z-50 mt-0.5 min-w-[170px] overflow-hidden rounded-xl border border-[var(--border-normal)] bg-[var(--bg-elevated)] py-1 shadow-elevated">
+                    {menu.items.map((item, i) => {
+                      if (item.divider) return <div key={i} className="my-1 border-t border-[var(--border-subtle)]" />;
+                      if (item.items) return (
+                        <div key={i}>
+                          <div className="px-2.5 pb-1 pt-2 text-[9px] font-black text-[var(--text-muted)]">{item.icon && <item.icon size={11} className="ml-1 inline" />}{item.label}</div>
+                          {item.items.map((sub, j) => (
+                            <button key={j} type="button" onClick={() => { setActiveMenu(null); item.action?.(); sub.action?.(); }}
+                              className={`flex w-full items-center gap-2 px-3 py-1.5 text-right text-[11px] font-bold transition-colors ${sub.active ? "text-[var(--primary)]" : "text-[var(--text-secondary)]"} hover:bg-[var(--bg-input)]`}>
+                              <span className="flex-1 truncate">{sub.label}</span>
+                              {sub.active && <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                      return (
+                        <button key={i} type="button" onClick={() => { setActiveMenu(null); item.action?.(); }} disabled={item.disabled}
+                          className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-right text-[11px] font-bold transition-colors ${item.active ? "text-[var(--primary)]" : "text-[var(--text-secondary)]"} hover:bg-[var(--bg-input)] disabled:opacity-30`}>
+                          {item.icon && <item.icon size={13} className="shrink-0" />}
+                          <span className="flex-1 truncate">{item.label}</span>
+                          {item.shortcut && <span className="text-[9px] text-[var(--text-muted)]">{item.shortcut}</span>}
+                          {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
 
           {/* scope picker */}
-          <div className="relative">
+          <div className="relative mr-2">
             <button type="button" onClick={() => setScopeMenuOpen((v) => !v)}
               className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-black ${scope === "_global" ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border-normal)] text-[var(--text-secondary)]"} hover:bg-[var(--bg-input)]`}>
               {scope === "_global" ? <Globe size={13} /> : <FileText size={13} />}
@@ -691,41 +797,22 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
             )}
           </div>
 
+          {SCOPE_PAGES[scope] && (
+            <span className="mr-1 inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[9px] font-black text-[var(--primary)] border border-[var(--primary)]/10 shrink-0 max-w-[180px] truncate" title={SCOPE_PAGES[scope]}>
+              <span className="w-1 h-1 rounded-full bg-[var(--primary)]" />
+              {SCOPE_PAGES[scope]}
+            </span>
+          )}
+
           {/* size chips */}
           <div className="flex gap-1">
-            {[...SIZES.roll, ...SIZES.page].map((sz) => (
+            {availableSizes.map((sz) => (
               <button key={sz} type="button" onClick={() => switchSize(sz)}
                 className={`rounded-md border px-2 py-1 text-[11px] font-bold ${size === sz ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
                 {sz}
               </button>
             ))}
           </div>
-
-          {/* sample data switcher */}
-          {isBlockDoc && (
-            <div className="flex items-center gap-1 rounded-lg border border-[var(--border-normal)] p-0.5" title="بيانات المعاينة">
-              <FlaskConical size={12} className="mr-1 text-[var(--text-muted)]" />
-              {SAMPLES.map((s) => (
-                <button key={s.id} type="button" onClick={() => setSampleId(s.id)}
-                  className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${sampleId === s.id ? "bg-[var(--primary)] text-white" : "text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {isBlockDoc && (
-            <>
-              <button type="button" onClick={() => setCompare((v) => !v)} title="مقارنة المقاسين جنباً إلى جنب"
-                className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${compare ? "border-[var(--primary)] bg-[var(--accent-soft)] text-[var(--primary)]" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
-                <Columns2 size={12} /> مقارنة
-              </button>
-              <button type="button" onClick={() => setShowRuler((v) => !v)} title="مسطرة مليمترية"
-                className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold ${showRuler ? "border-[var(--primary)] bg-[var(--accent-soft)] text-[var(--primary)]" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
-                <Ruler size={12} /> مسطرة
-              </button>
-            </>
-          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
@@ -733,31 +820,16 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-30"><Undo2 size={14} /></button>
           <button type="button" title="إعادة (Ctrl+Y)" disabled={!future.length} onClick={redo}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-30"><Redo2 size={14} /></button>
-          {isBlockDoc && (
-            <button type="button" onClick={() => setPresetsOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border-normal)] px-3 py-1.5 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
-              <LayoutTemplate size={13} /> القوالب الجاهزة
-            </button>
-          )}
-          {family === "roll" && (
-            <button type="button" onClick={() => setCalibOpen(true)} title="معايرة الطابعة الحرارية"
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border-normal)] px-3 py-1.5 text-[11px] font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
-              <Wrench size={13} /> معايرة
-            </button>
-          )}
-          <button type="button" onClick={exportPdf} title="حفظ معاينة PDF بدقة الطباعة"
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-normal)] px-3 py-1.5 text-[11px] font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
-            <FileDown size={13} /> PDF
+          <button type="button" onClick={() => setPresetsOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-normal)] px-3 py-1.5 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+            <LayoutTemplate size={13} /> القوالب الجاهزة
           </button>
-          <button type="button" onClick={testPrint}
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-normal)] px-3 py-1.5 text-[11px] font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
-            <Printer size={13} /> طباعة تجريبية
-          </button>
+          <div className="mx-1 h-6 w-px bg-[var(--border-subtle)]" />
           <button type="button" onClick={saveAll} disabled={saving || !dirtyScopes.length}
             className="flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3.5 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-40">
             <Save size={13} /> {saving ? "جارٍ الحفظ…" : dirtyScopes.length > 1 ? `حفظ (${dirtyScopes.length})` : "حفظ"}
           </button>
-          <button type="button" onClick={onClose} title="إغلاق"
+          <button type="button" onClick={async () => { if (dirtyScopes.length) await saveAll(); onClose(); }} title="حفظ وإغلاق"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-input)]"><X size={16} /></button>
         </div>
       </div>
@@ -790,20 +862,35 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                 </div>
               </div>
             )}
-          <StudioCanvas st={st}>
-            {isTemplateDoc && (
-              hasTemplatePreview
-                ? <TemplateDocPreview scope={scope} settings={{ ...canvasSettings, _previewSize: size }} />
-                : (
-                  <div className="w-[420px] rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] p-6 text-center">
-                    <div className="text-sm font-black">لا تتوفر معاينة مباشرة لهذا المستند</div>
-                    <div className="mt-2 text-[11px] font-bold leading-relaxed text-[var(--text-muted)]">
-                      يُطبع هذا المستند بقالب جاهز من شاشته الخاصة. الإعدادات في اللوحة الجانبية (الخط، الورق، الإظهار) تُطبَّق عليه عند الطباعة.
-                    </div>
+          <div className="relative flex-1">
+            {!hasPreset && isBlockDoc && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg-base)]/90">
+                <div className="mx-4 max-w-sm rounded-2xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] p-8 text-center shadow-xl">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-soft)] text-primary">
+                    <LayoutTemplate size={28} />
                   </div>
-                )
+                  <h3 className="text-lg font-black text-[var(--text-primary)]">لم يتم اختيار قالب بعد</h3>
+                  <p className="mt-2 text-[13px] font-bold leading-relaxed text-[var(--text-secondary)]">
+                    ابدأ باختيار قالب جاهز من المعرض — سيُملأ التصميم تلقائياً. يمكنك تعديل كل شيء بعد ذلك.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPresetsOpen(true)}
+                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-black text-white shadow-lg transition-all hover:opacity-90 active:scale-[0.97]"
+                  >
+                    <LayoutTemplate size={16} /> اختيار قالب من المعرض
+                  </button>
+                </div>
+              </div>
             )}
-          </StudioCanvas>
+            <StudioCanvas st={st}>
+              {isTemplateDoc && (
+                hasTemplatePreview
+                  ? <TemplateDocPreview scope={scope} mock={invoiceData} settings={{ ...canvasSettings, _previewSize: size }} />
+                  : null
+              )}
+            </StudioCanvas>
+          </div>
           <StudioInspector st={st} />
         </div>
       )}
@@ -817,6 +904,11 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
           merged={merged}
           currentFamilyLayout={fam}
           onApply={applyPresetToDraft}
+          isBlockDoc={isBlockDoc}
+          scope={scope}
+          renderPreview={(previewSettings) => (
+            <TemplateDocPreview scope={scope} settings={previewSettings} />
+          )}
         />
       )}
       {calibOpen && (

@@ -64,7 +64,16 @@ export default function InvoicePreviewModal({ inv, onClose, onNavigate }) {
           <div className="rounded-sm bg-slate-100 border border-slate-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
             <span className="font-black text-slate-800">فاتورة #{d.invoice_no}</span>
             <span className={`px-2 py-0.5 rounded text-[11px] font-black ${statusInfo.cls}`}>{statusInfo.label}</span>
-            <span className="text-slate-600">العميل: <strong>{d.customer_name || "عميل نقدي"}</strong></span>
+            <span className="text-slate-600">العميل: {d.customer_name ? (
+              <strong>{d.customer_name}</strong>
+            ) : (
+              <>
+                <strong className="text-emerald-700">🚶 عميل نقدي</strong>
+                {d.walk_in_phone && (
+                  <span className="text-slate-500"> — {d.walk_in_name ? `${d.walk_in_name} ` : ""}<span className="font-mono" dir="ltr">{d.walk_in_phone}</span></span>
+                )}
+              </>
+            )}</span>
             <span className="text-slate-500">{d.created_at ? formatArabicDateTime(new Date(d.created_at)) : "—"}</span>
             {d.created_by_username && <span className="text-slate-500">بواسطة: <strong>{d.created_by_username}</strong></span>}
             <span className="font-bold text-slate-700">طريقة الدفع: {PAYMENT_LABELS_PREVIEW[d.payment_type] || d.payment_type || "—"}</span>

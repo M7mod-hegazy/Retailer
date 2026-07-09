@@ -1,5 +1,6 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function tableColumns(db, table) {
   try { return new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)); }
@@ -127,6 +128,8 @@ function vatFilingSummary(startDate, endDate, opts = {}) {
     SELECT COALESCE(SUM(i.total), 0) AS v
     FROM invoices i
     WHERE ${salesWhere}
+      AND COALESCE(i.tax_enabled, 0) = 1
+      AND COALESCE(i.tax_amount, 0) > 0
   `).get(...params1)?.v || 0;
 
   const outputVatTotal = db.prepare(`
@@ -160,7 +163,7 @@ function returnsTaxEffect(startDate, endDate, opts = {}) {
   const dateClause = addDateFilter("sr.created_at", startDate, endDate, params).replace(/^ AND /, "");
   if (dateClause) where.push(dateClause);
   pushFilter(where, params, "sr.customer_id = ?", opts.customer_id);
-  return db.prepare(`
+  let sql = `
     SELECT
       sr.doc_no AS return_ref,
       DATE(sr.created_at) AS date,
@@ -176,7 +179,14 @@ function returnsTaxEffect(startDate, endDate, opts = {}) {
     WHERE ${where.join(" AND ")}
     GROUP BY sr.id
     ORDER BY sr.created_at DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 module.exports = {

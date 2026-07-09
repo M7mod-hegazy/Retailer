@@ -20,8 +20,10 @@ export async function getSyncCheck(params = {}) {
   return res.data;
 }
 
-export async function verifySyncConnection() {
-  const res = await api.get("/api/sync/verify");
+// Pass entered overrides ({ ecom_url, store_id, api_key }) to test values before saving.
+// Call with no argument to verify the already-saved config.
+export async function verifySyncConnection(overrides) {
+  const res = await api.post("/api/sync/verify", overrides || {});
   return res.data;
 }
 
@@ -35,13 +37,13 @@ export async function applySync(data) {
   return res.data;
 }
 
-export async function pullProducts(skus, fields = {}) {
-  const res = await api.post("/api/sync/pull", { skus, fields });
+export async function pullProducts(skus, fields = {}, categories = [], overrides = {}) {
+  const res = await api.post("/api/sync/pull", { skus, fields, categories, overrides });
   return res.data;
 }
 
-export async function previewPull(skus, fields = {}) {
-  const res = await api.post("/api/sync/preview-pull", { skus, fields });
+export async function previewPull(skus, fields = {}, categories = []) {
+  const res = await api.post("/api/sync/preview-pull", { skus, fields, categories });
   return res.data;
 }
 
@@ -55,8 +57,13 @@ export async function uploadSyncImage(sku, imageUrl) {
   return res.data;
 }
 
-export async function getSyncLogs(limit = 20, extra = {}) {
+export async function getSyncLogs(limit = 50, extra = {}) {
   const res = await api.get("/api/sync/logs", { params: { limit, ...extra } });
+  return res.data;
+}
+
+export async function getSyncLog(id) {
+  const res = await api.get(`/api/sync/logs/${id}`);
   return res.data;
 }
 
@@ -123,5 +130,37 @@ export async function previewRollback(id) {
 
 export async function executeRollback(id) {
   const res = await api.post(`/api/sync/snapshots/${id}/rollback`);
+  return res.data;
+}
+
+// ── Push full product catalog to website for comparison ──
+export async function pushStoreCatalog() {
+  const res = await api.post("/api/sync/push-catalog");
+  return res.data;
+}
+
+// ── Online order review queue ──
+export async function getOnlineOrders(status = "pending", limit = 50) {
+  const res = await api.get("/api/webhooks/orders", { params: { status, limit } });
+  return res.data;
+}
+
+export async function getOnlineOrder(id) {
+  const res = await api.get(`/api/webhooks/orders/${id}`);
+  return res.data;
+}
+
+export async function prepareOnlineOrder(id) {
+  const res = await api.get(`/api/webhooks/orders/${id}/prepare`);
+  return res.data;
+}
+
+export async function forwardOnlineOrder(id, invoiceId) {
+  const res = await api.post(`/api/webhooks/orders/${id}/forward`, { invoice_id: invoiceId });
+  return res.data;
+}
+
+export async function ignoreOnlineOrder(id) {
+  const res = await api.post(`/api/webhooks/orders/${id}/ignore`);
   return res.data;
 }

@@ -50,16 +50,21 @@ const alignMap = {
   left: "flex-start",
 };
 
-export default function QrBlock({ invoice = {}, settings: s, family }) {
-  if (g(s, "show_qr") === false) return null;
+export default function QrBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
+  const showQr = g(s, "show_qr") !== false;
+  if (!showQr && !editing) return null;
 
-  const size = g(s, "qr_size");
+  const size = g(s, "qr_size") || 80;
   const alignment = g(s, "qr_alignment") || "right";
   const customContent = g(s, "qr_content");
   const qrMode = g(s, "qr_mode") || "free_text";
   const companyName = g(s, "company_name");
   const taxId = g(s, "tax_id");
   const [dataUrl, setDataUrl] = useState(null);
+
+  const fgColor = props.fgColor || "#000000";
+  const bgColor = props.bgColor || "#ffffff";
+  const margin = props.margin !== undefined ? Number(props.margin) : 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -70,8 +75,8 @@ export default function QrBlock({ invoice = {}, settings: s, family }) {
         const content = buildQrContent(invoice, s);
         const url = await QRCode.default.toDataURL(content, {
           width: size,
-          margin: 1,
-          color: { dark: "#000000", light: "#ffffff" },
+          margin: margin,
+          color: { dark: fgColor, light: bgColor },
         });
         if (!cancelled) setDataUrl(url);
       } catch {
@@ -79,7 +84,7 @@ export default function QrBlock({ invoice = {}, settings: s, family }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [size, customContent, qrMode, companyName, taxId, invoice?.total, invoice?.created_at, invoice?.tax_amount, invoice?.invoice_no]);
+  }, [size, customContent, qrMode, companyName, taxId, invoice?.total, invoice?.created_at, invoice?.tax_amount, invoice?.invoice_no, fgColor, bgColor, margin]);
 
   const justifyContent = alignMap[alignment] || "flex-end";
 

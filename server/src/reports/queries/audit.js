@@ -1,10 +1,11 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function exceptionsReport(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  return db.prepare(`
+  let sql = `
     SELECT i.invoice_no, DATE(i.created_at) AS date,
       COALESCE(c.name, 'نقدي') AS customer_name,
       i.discount, i.status, i.total,
@@ -19,14 +20,21 @@ function exceptionsReport(startDate, endDate, opts = {}) {
     WHERE (i.status != 'paid' OR i.discount > i.total * 0.2)
       ${addDateFilter("i.created_at", startDate, endDate, params)}
     ORDER BY i.created_at DESC
-  `).all(...params);
+  `;
+  const allParams = [...params];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function auditLog(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { action, resource } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT al.id, al.user_id, u.full_name,
       al.action, al.resource, al.payload_json, al.created_at
     FROM audit_logs al
@@ -35,18 +43,21 @@ function auditLog(startDate, endDate, opts = {}) {
       ${action ? " AND al.action = ?" : ""}
       ${resource ? " AND al.resource = ?" : ""}
     ORDER BY al.id DESC
-  `).all(
-    ...params,
-    ...(action ? [action] : []),
-    ...(resource ? [resource] : []),
-  );
+  `;
+  const allParams = [...params, ...(action ? [action] : []), ...(resource ? [resource] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function userActivity(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { user_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT al.user_id, u.full_name,
       al.action, al.resource,
       COUNT(*) AS action_count,
@@ -57,10 +68,14 @@ function userActivity(startDate, endDate, opts = {}) {
       ${user_id ? " AND al.user_id = ?" : ""}
     GROUP BY al.user_id, al.action, al.resource, DATE(al.created_at)
     ORDER BY date DESC, action_count DESC
-  `).all(
-    ...params,
-    ...(user_id ? [user_id] : []),
-  );
+  `;
+  const allParams = [...params, ...(user_id ? [user_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 module.exports = {

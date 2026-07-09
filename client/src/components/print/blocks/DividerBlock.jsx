@@ -16,19 +16,26 @@ const PAGE_PATTERN_COLOR = "#94a3b8";
 export default function DividerBlock({ settings: s, props = {}, family }) {
   const isRoll = family === "roll";
   const accent = g(s, "accent_color");
-  const lineColor = isRoll ? "#000" : accent;
-  const defaultStyle = "solid";
-  const style = props.style || defaultStyle;
-  if (style === "solid") {
-    return <div style={{ borderTop: `1px solid ${lineColor}`, margin: "5px 0" }} />;
+  const defaultColor = isRoll ? "#000" : accent;
+  const lineColor = props.color || defaultColor;
+  const style = props.style || "solid";
+  const thickness = props.thickness != null ? Number(props.thickness) : 1;
+  const mt = props.marginTop != null ? `${props.marginTop}px` : "5px";
+  const mb = props.marginBottom != null ? `${props.marginBottom}px` : "5px";
+
+  if (["solid", "dashed", "dotted", "double"].includes(style)) {
+    const borderTopVal = style === "double" ? `${thickness + 2}px double ${lineColor}` : `${thickness}px ${style} ${lineColor}`;
+    return <div style={{ borderTop: borderTopVal, marginTop: mt, marginBottom: mb }} />;
   }
+
   const p = PATTERNS[style];
   if (p) {
+    const color = props.color || (isRoll ? "#000" : PAGE_PATTERN_COLOR);
     return (
-      <div style={{ textAlign: "center", color: isRoll ? "#000" : PAGE_PATTERN_COLOR, fontSize: "9px", letterSpacing: "4px", lineHeight: 1.2, margin: "5px 0" }}>
+      <div style={{ textAlign: "center", color, fontSize: "9px", letterSpacing: "4px", lineHeight: 1.2, marginTop: mt, marginBottom: mb }}>
         {p.text}
       </div>
     );
   }
-  return <div style={{ borderTop: `1px solid ${lineColor}`, margin: "5px 0" }} />;
+  return <div style={{ borderTop: `${thickness}px solid ${lineColor}`, marginTop: mt, marginBottom: mb }} />;
 }

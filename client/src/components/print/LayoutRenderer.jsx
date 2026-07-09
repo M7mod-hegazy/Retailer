@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useLayoutEffect, useRef } from "react";
 import { BLOCK_REGISTRY } from "./blocks/registry";
 import { DEFAULT_ORDER } from "./families/defaultOrder";
 import RollWrapper from "./families/RollWrapper";
@@ -12,9 +12,9 @@ import { g, rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/b
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
 // production print path (editing=false / no designer), so output stays clean.
-export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", editing = false, designer = null }) {
+export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", editing = false, designer = null, scope }) {
   const famLayout = (layout || settings.layout || {})[family] || {};
-  let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : DEFAULT_ORDER[family];
+  let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : (DEFAULT_ORDER[scope] || DEFAULT_ORDER[family]);
   // "increase" (رسوم/إضافة) is a newer money block. Layouts saved before it
   // existed won't list it, so surface it right after the discount line (falling
   // back to just before the grand total). Safe to force in — IncreaseBlock
@@ -125,7 +125,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
   if (family === "page") {
     return (
       <PageWrapper settings={settings} size={size}>
-        <PageZoneLayout items={items} invoice={invoice} settings={settings} />
+        <PageZoneLayout items={items} invoice={invoice} settings={settings} layout={famLayout} scope={scope} />
         {absBlocks}
         <PageOverlays overlays={famLayout.overlays} invoice={invoice} />
       </PageWrapper>
@@ -199,6 +199,57 @@ const HANDLES = [
   ["w", { top: "calc(50% - 5px)", left: -6, cursor: "ew-resize" }, { w: -1, s: 0 }],
 ];
 
+function BlockWrapper({ children, label }) {
+  const containerRef = useRef(null);
+  const [isEmpty, setIsEmpty] = useState(false);
+
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const hasText = containerRef.current.textContent.trim().length > 0;
+      const hasImages = containerRef.current.getElementsByTagName("img").length > 0;
+      const hasCanvas = containerRef.current.getElementsByTagName("canvas").length > 0;
+      const hasSvg = containerRef.current.getElementsByTagName("svg").length > 0;
+      const isActuallyEmpty = !hasText && !hasImages && !hasCanvas && !hasSvg && (rect.height === 0 || containerRef.current.innerHTML === "");
+      if (isActuallyEmpty !== isEmpty) {
+        setIsEmpty(isActuallyEmpty);
+      }
+    }
+  }, [children, isEmpty]);
+
+  return (
+    <>
+      <div ref={containerRef} style={{ display: isEmpty ? "none" : "contents" }}>
+        {children}
+      </div>
+      {isEmpty && (
+        <div
+          contentEditable={false}
+          style={{
+            padding: "10px 14px",
+            border: "1px dashed #7c3aed",
+            borderRadius: "4px",
+            background: "#f5f3ff",
+            color: "#7c3aed",
+            fontSize: "11px",
+            fontWeight: 700,
+            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            minHeight: "36px",
+            userSelect: "none"
+          }}
+        >
+          <span>[مكون فارغ: {label}]</span>
+          <span style={{ fontSize: "9px", opacity: 0.7 }}>(لا توجد بيانات للعرض حالياً)</span>
+        </div>
+      )}
+    </>
+  );
+}
+
 function wrapSelectable(node, selKey, type, label, inOrder, designer) {
   const selected = designer.selectedKey === selKey;
   const hovered = designer.hoveredKey === selKey;
@@ -218,15 +269,17 @@ function wrapSelectable(node, selKey, type, label, inOrder, designer) {
       onClick={(e) => { if (!editingText) { e.stopPropagation(); designer.onSelect(selKey); } }}
       onDoubleClick={(e) => { if (editable) { e.stopPropagation(); designer.onStartEditText && designer.onStartEditText(selKey); } }}
       onBlur={(e) => { if (editingText) designer.onCommitText && designer.onCommitText(selKey, e.currentTarget.textContent); }}
-      onMouseEnter={() => designer.onHover(selKey)}
-      onMouseLeave={() => designer.onHover(null)}
+      onPointerOver={(e) => { e.stopPropagation(); designer.onHover(selKey); }}
+      onPointerOut={(e) => { e.stopPropagation(); designer.onHover(null); }}
       style={{ position: "relative", cursor: editingText ? "text" : canMove ? "move" : "pointer", outline, outlineOffset: "1px", borderRadius: "2px", transition: "outline-color 0.1s" }}
     >
       {dropping && <div style={{ position: "absolute", insetInlineStart: 0, insetInlineEnd: 0, top: -2, height: 3, background: "#2563eb", zIndex: 28, borderRadius: 2 }} />}
       {showBox && (
         <span contentEditable={false} style={{ position: "absolute", top: "-9px", insetInlineStart: "0", zIndex: 31, background: "#7c3aed", color: "#fff", fontSize: "8px", fontWeight: 900, padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap", pointerEvents: "none" }}>{editable ? `${label} ✎` : label}</span>
       )}
-      {node}
+      <BlockWrapper label={label}>
+        {node}
+      </BlockWrapper>
       {showBox && designer.onResizeStart && HANDLES.map(([id, pos, dir]) => (
         <div key={id} contentEditable={false} title="تغيير الحجم"
           onMouseDown={(e) => e.stopPropagation()}

@@ -8,7 +8,7 @@ export const CATEGORIES = [
   { id: "treasury",      label: "الخزينة والبنوك",  icon: Landmark,    color: "#06b6d4" },
   { id: "tax",           label: "الضرائب",          icon: FileText,    color: "var(--error-DEFAULT,#ef4444)" },
   { id: "profitability", label: "الأرباح",          icon: BadgePercent, color: "#d946ef" },
-  { id: "audit",         label: "الأفراد والرقابة", icon: Shield,      color: "var(--text-secondary,#94a3b8)" },
+  { id: "individuals",   label: "الأفراد والرقابة", icon: Shield,      color: "var(--text-secondary,#94a3b8)" },
   { id: "users",         label: "المستخدمين",       icon: Users,       color: "#6366f1" },
 ];
 
@@ -116,7 +116,7 @@ export const CAT_PREVIEW_COLUMNS = {
     {k:"label",l:"البيان",t:"text"},{k:"amount",l:"المبلغ",t:"cur"},
     {k:"pct",l:"%",t:"percent"},
   ],
-  audit: [
+  individuals: [
     {k:"created_at",l:"التاريخ",t:"date"},{k:"full_name",l:"المستخدم",t:"text"},
     {k:"action",l:"العملية",t:"text"},{k:"resource",l:"المورد",t:"text"},
   ],
@@ -167,7 +167,7 @@ export const CAT_GHOST_ROWS = {
     {label:"تكلفة البضاعة",amount:"٩٠٬٠٠٠",pct:"٦٠٪"},
     {label:"إجمالي الربح",amount:"٦٠٬٠٠٠",pct:"٤٠٪"},
   ],
-  audit: [
+  individuals: [
     {created_at:"١٤:٢٢ ٠٤/٠٥",full_name:"محمد السيد",action:"تعديل سعر",resource:"items/٨٨٢"},
     {created_at:"١٦:٠٥ ٠٣/٠٥",full_name:"سارة الحسن",action:"إنشاء فاتورة",resource:"invoices/٩١٢"},
   ],
@@ -185,40 +185,7 @@ export const PREVIEW_COLUMNS = {
   suppliers:  [{k:"supplier_name",l:"المورد",t:"text"},{k:"total_due",l:"المستحق",t:"cur"},{k:"purchase_count",l:"عدد المشتريات",t:"num"},{k:"return_rate_percent",l:"% المرتجعات",t:"percent"},{k:"last_purchase_date",l:"آخر شراء",t:"date"}],
   customers:  [{k:"customer_name",l:"العميل",t:"text"},{k:"total_sales",l:"إجمالي المبيعات",t:"cur"},{k:"invoice_count",l:"عدد الفواتير",t:"num"},{k:"collection_rate",l:"% التحصيل",t:"percent"},{k:"last_invoice_date",l:"آخر فاتورة",t:"date"}],
   employees:  [{k:"employee_name",l:"الموظف",t:"text"},{k:"job_title",l:"المسمى",t:"text"},{k:"salary",l:"الراتب",t:"cur"},{k:"amount",l:"المبلغ",t:"cur"},{k:"status",l:"الحالة",t:"text"}],
-  "purchase-returns": [
-    { id: "summary", label_key: "cls_preturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "detailed", label_key: "cls_preturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
-    { id: "by-supplier", label_key: "cls_preturn_by_supplier", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-  ],
-  "sales-returns": [
-    { id: "summary", label_key: "cls_sreturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "detailed", label_key: "cls_sreturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"] },
-    { id: "by-customer", label_key: "cls_sreturn_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-  ],
-  suppliers: [
-    { id: "balance-list", label_key: "cls_supplier_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "statement", label_key: "cls_supplier_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "aging", label_key: "cls_supplier_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "purchases", label_key: "cls_supplier_purchases", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
-    { id: "returns", label_key: "cls_supplier_returns", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "reliability", label_key: "cls_supplier_reliability", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-  ],
-  customers: [
-    { id: "balance-list", label_key: "cls_customer_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "statement", label_key: "cls_customer_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "aging", label_key: "cls_customer_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "top-customers", label_key: "cls_top_customers", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "collection-efficiency", label_key: "cls_collection_efficiency", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "loyalty", label_key: "cls_customer_loyalty", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-  ],
-  employees: [
-    { id: "employee-list", label_key: "cls_emp_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
-    { id: "employee-deductions", label_key: "cls_emp_deductions", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "deduction_type", "status"] },
-    { id: "employee-bonuses", label_key: "cls_emp_bonuses", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "bonus_type", "status"] },
-    { id: "employee-advances", label_key: "cls_emp_advances", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"] },
-    { id: "employee-payroll", label_key: "cls_emp_payroll", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
-    { id: "employee-full-history", label_key: "cls_emp_full_history", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"] },
-  ],  installments: [{k:"customer_name",l:"العميل",t:"text"},{k:"total_amount",l:"إجمالي المبلغ",t:"cur"},{k:"collected",l:"المحصل",t:"cur"},{k:"outstanding",l:"المستحق",t:"cur"},{k:"status",l:"الحالة",t:"text"}],
+  installments: [{k:"customer_name",l:"العميل",t:"text"},{k:"total_amount",l:"إجمالي المبلغ",t:"cur"},{k:"collected",l:"المحصل",t:"cur"},{k:"outstanding",l:"المستحق",t:"cur"},{k:"status",l:"الحالة",t:"text"}],
   items:      [{k:"item_code",l:"كود الصنف",t:"text"},{k:"item_name",l:"الصنف",t:"text"},{k:"category_name",l:"الفئة",t:"text"},{k:"quantity",l:"الرصيد",t:"num"},{k:"total_value",l:"القيمة",t:"cur"},{k:"stock_status",l:"الحالة",t:"text"}],
   warehouses: [{k:"item_code",l:"كود الصنف",t:"text"},{k:"item_name",l:"الصنف",t:"text"},{k:"movement_type",l:"نوع الحركة",t:"text"},{k:"quantity",l:"الكمية",t:"num"},{k:"date",l:"التاريخ",t:"date"}],
   expenses:   [{k:"date",l:"التاريخ",t:"date"},{k:"category_name",l:"الفئة",t:"text"},{k:"amount",l:"المبلغ",t:"cur"},{k:"payment_type",l:"طريقة الدفع",t:"text"}],
@@ -259,40 +226,7 @@ export const GHOST_ROWS = {
     {employee_name:"أحمد السيد",job_title:"مدير مبيعات",salary:"١٥٬٠٠٠",amount:"٢٬٣٠٠",status:"نشط"},
     {employee_name:"مريم حسن",job_title:"كاشير",salary:"٨٬٠٠٠",amount:"٨٠٠",status:"نشط"},
   ],
-  "purchase-returns": [
-    { id: "summary", label_key: "cls_preturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "detailed", label_key: "cls_preturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
-    { id: "by-supplier", label_key: "cls_preturn_by_supplier", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-  ],
-  "sales-returns": [
-    { id: "summary", label_key: "cls_sreturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "detailed", label_key: "cls_sreturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"] },
-    { id: "by-customer", label_key: "cls_sreturn_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-  ],
-  suppliers: [
-    { id: "balance-list", label_key: "cls_supplier_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "statement", label_key: "cls_supplier_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "aging", label_key: "cls_supplier_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "purchases", label_key: "cls_supplier_purchases", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
-    { id: "returns", label_key: "cls_supplier_returns", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "reliability", label_key: "cls_supplier_reliability", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-  ],
-  customers: [
-    { id: "balance-list", label_key: "cls_customer_balance_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "statement", label_key: "cls_customer_statement", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "aging", label_key: "cls_customer_aging", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "top-customers", label_key: "cls_top_customers", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "collection-efficiency", label_key: "cls_collection_efficiency", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "loyalty", label_key: "cls_customer_loyalty", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-  ],
-  employees: [
-    { id: "employee-list", label_key: "cls_emp_list", availableModes: ["detailed"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
-    { id: "employee-deductions", label_key: "cls_emp_deductions", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "deduction_type", "status"] },
-    { id: "employee-bonuses", label_key: "cls_emp_bonuses", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "bonus_type", "status"] },
-    { id: "employee-advances", label_key: "cls_emp_advances", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"] },
-    { id: "employee-payroll", label_key: "cls_emp_payroll", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
-    { id: "employee-full-history", label_key: "cls_emp_full_history", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"] },
-  ],  installments: [
+  installments: [
     {customer_name:"أحمد البرقوقي",total_amount:"٣٠٬٠٠٠",collected:"١٠٬٠٠٠",outstanding:"٢٠٬٠٠٠",status:"نشط"},
     {customer_name:"شركة النور",total_amount:"٥٠٬٠٠٠",collected:"٢٥٬٠٠٠",outstanding:"٢٥٬٠٠٠",status:"نشط"},
   ],
@@ -336,11 +270,11 @@ export const GHOST_ROWS = {
 };
 
 export const COL_TYPE_STYLE = {
-  date: "text-blue-500  bg-blue-500/8  border-blue-200/50",
-  text: "text-zinc-500  bg-zinc-500/8  border-zinc-300/50",
-  num:  "text-violet-500 bg-violet-500/8 border-violet-200/50",
-  cur:  "text-emerald-600 bg-emerald-500/8 border-emerald-200/50",
-  percent: "text-amber-600 bg-amber-500/8 border-amber-200/50",
+  date: "text-info-text bg-info-bg border-info-border",
+  text: "text-text-secondary bg-bg-overlay border-border-subtle",
+  num:  "text-primary bg-primary-50 border-primary",
+  cur:  "text-success-text bg-success-bg border-success-border",
+  percent: "text-warning-text bg-warning-bg border-warning-border",
 };
 
 // ── Filter Dimensions (mirrors server registry.js filterDimensions) ──
@@ -459,7 +393,9 @@ export const FILTER_DIMENSIONS = {
     { id: "employee-advances", label_key: "cls_emp_advances", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"] },
     { id: "employee-payroll", label_key: "cls_emp_payroll", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
     { id: "employee-full-history", label_key: "cls_emp_full_history", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"] },
-  ],  installments: [
+    { id: "employee-adjustments", label_key: "cls_emp_adjustments", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
+  ],
+  installments: [
     { key: "customer_id", type: "lookup", entity: "customer", label: "العميل" },
     { key: "status", type: "select", label: "الحالة", options: [{ value: "pending", label: "قيد السداد" }, { value: "paid", label: "مدفوع" }, { value: "cancelled", label: "ملغي" }] },
   ],
@@ -489,13 +425,13 @@ export const CLASSIFICATIONS = {
   ],
   sales: [
     { id: "daily-summary", label_key: "cls_sales_daily", availableModes: ["summary"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["payment_type", "cashier_id"] },
-    { id: "detailed", label_key: "cls_sales_detailed", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"] },
+    { id: "detailed", label_key: "cls_sales_detailed", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"] },
     { id: "by-item", label_key: "cls_sales_by_item", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"] },
     { id: "by-category", label_key: "cls_sales_by_category", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "customer_id", "cashier_id", "status", "payment_type"] },
-    { id: "by-cashier", label_key: "cls_sales_by_cashier", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["cashier_id", "customer_id", "payment_type", "status"] },
+    { id: "by-cashier", label_key: "cls_sales_by_cashier", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["cashier_id", "customer_id", "payment_type", "status"] },
     { id: "by-payment", label_key: "cls_sales_by_payment", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["payment_type", "customer_id", "cashier_id", "status"] },
     { id: "heatmap", label_key: "cls_sales_heatmap", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "customer_id", "payment_type"] },
-    { id: "period-compare", label_key: "cls_sales_period_compare", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"] },
+    { id: "period-compare", label_key: "cls_sales_period_compare", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "status", "payment_type"] },
     { id: "discounts", label_key: "cls_sales_discounts", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id", "payment_type", "status"] },
     { id: "margin", label_key: "cls_sales_margin", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id", "cashier_id"] },
     { id: "tax", label_key: "cls_sales_tax", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id", "status", "payment_type", "tax_type"] },
@@ -509,12 +445,12 @@ export const CLASSIFICATIONS = {
   ],
   "purchase-returns": [
     { id: "summary", label_key: "cls_preturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
-    { id: "detailed", label_key: "cls_preturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["supplier_id"] },
+    { id: "detailed", label_key: "cls_preturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
     { id: "by-supplier", label_key: "cls_preturn_by_supplier", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["supplier_id"] },
   ],
   "sales-returns": [
     { id: "summary", label_key: "cls_sreturn_summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
-    { id: "detailed", label_key: "cls_sreturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: true, dimensions: ["customer_id"] },
+    { id: "detailed", label_key: "cls_sreturn_detailed", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
     { id: "by-customer", label_key: "cls_sreturn_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"] },
   ],
   suppliers: [
@@ -540,7 +476,11 @@ export const CLASSIFICATIONS = {
     { id: "employee-advances", label_key: "cls_emp_advances", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "status"] },
     { id: "employee-payroll", label_key: "cls_emp_payroll", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
     { id: "employee-full-history", label_key: "cls_emp_full_history", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id", "tx_type"] },
-  ],  installments: [
+    { id: "shifts", label_key: "cls_emp_shifts", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
+    { id: "user-activity", label_key: "cls_emp_user_activity", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
+    { id: "employee-adjustments", label_key: "cls_emp_adjustments", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["employee_id"] },
+  ],
+  installments: [
     { id: "plans", label_key: "cls_inst_plans", availableModes: ["detailed", "summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"] },
     { id: "collections", label_key: "cls_inst_collections", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"] },
     { id: "by-customer", label_key: "cls_inst_by_customer", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status"] },
@@ -587,10 +527,16 @@ export const CLASSIFICATIONS = {
     { id: "daily-sessions", label_key: "cls_trs_daily_sessions", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [] },
     { id: "withdrawals", label_key: "cls_trs_withdrawals", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [] },
   ],
+  cheques: [
+    { id: "cheque-listing", label_key: "cls_cheque_listing", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["bank_account_id", "cheque_status"] },
+    { id: "bank-transactions", label_key: "cls_bank_transactions", availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["bank_account_id", "date_range"] },
+    { id: "bank-summary", label_key: "cls_bank_summary", availableModes: ["summary"], supportsDates: false, hasProfit: false, supportsScope: false, dimensions: ["bank_account_id"] },
+  ],
   "profit-loader": [
-    { id: "by-item", label_key: "cls_profit_by_item", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id", "customer_id"] },
-    { id: "by-category", label_key: "cls_profit_by_category", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "customer_id"] },
+    { id: "by-item", label_key: "cls_profit_by_item", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id", "item_id"] },
+    { id: "by-category", label_key: "cls_profit_by_category", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: true, dimensions: ["category_id"] },
     { id: "health", label_key: "cls_profit_health", availableModes: ["summary"], supportsDates: false, hasProfit: true, supportsScope: false, dimensions: ["category_id"] },
+    { id: "margin-drift", label_key: "cls_profit_margin_drift", availableModes: ["detailed"], supportsDates: true, hasProfit: true, supportsScope: false, dimensions: ["category_id", "item_id"] },
   ],
   "net-profit": [
     { id: "income-statement", label_key: "cls_net_income", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: [] },
@@ -713,6 +659,14 @@ export const REPORT_DESCRIPTIONS = {
   "payment-flow-running": "الرصيد التراكمي المستمر للتدفقات النقدية حركة بحركة.",
   "cls_trs_payment_flow_running": "الرصيد التراكمي المستمر للتدفقات النقدية حركة بحركة.",
 
+  // Cheques & Banks
+  "cheque-listing": "كشف بجميع الشيكات المسجلة في النظام وتفاصيلها وحالتها.",
+  "cls_cheque_listing": "كشف بجميع الشيكات المسجلة في النظام وتفاصيلها وحالتها.",
+  "bank-transactions": "سجل جميع الحركات والمعاملات البنكية على الحسابات.",
+  "cls_bank_transactions": "سجل جميع الحركات والمعاملات البنكية على الحسابات.",
+  "bank-summary": "ملخص أرصدة الحسابات البنكية وإجمالي الإيداعات والسحوبات.",
+  "cls_bank_summary": "ملخص أرصدة الحسابات البنكية وإجمالي الإيداعات والسحوبات.",
+
   // Expenses & Revenues
   "cls_exp_summary": "ملخص إجمالي المصروفات التشغيلية والعمومية وتوزعها الإجمالي.",
   "cls_exp_detailed": "سجل تفصيلي لجميع سندات صرف المصروفات وبيانات المستفيدين.",
@@ -743,6 +697,7 @@ export const REPORT_DESCRIPTIONS = {
   "cls_emp_advances": "متابعة السلف المالية الممنوحة للموظفين وأرصدة الأقساط المتبقية.",
   "cls_emp_payroll": "كشوف مسير الرواتب المستحقة للصرف بعد إدراج الاستقطاعات والإضافات.",
   "cls_emp_full_history": "السجل المالي والسلوكي الكامل والتاريخ المالي الشامل للموظف.",
+  "cls_emp_adjustments": "سجل تسويات وحوافز الموظفين وتعديلات الراتب والإضافات والاستقطاعات.",
   "cls_inst_plans": "بيان خطط وعقود التقسيط النشطة ومتابعة حالات السداد.",
   "cls_inst_collections": "سجل أقساط التقسيط المحصلة وتواريخ تحصيلها من العملاء.",
   "cls_inst_by_customer": "عرض عقود وأقساط التمويل والتقسيط مقسمة حسب كل عميل.",

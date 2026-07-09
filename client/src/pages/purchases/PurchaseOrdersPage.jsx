@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
   Plus, Calendar, User, PackageCheck, Clock, CheckCircle2,
@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useAuthStore } from "../../stores/authStore";
 import Highlight from "../../components/ui/Highlight";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -58,6 +59,7 @@ function formatMoney(v) {
 }
 
 export default function PurchaseOrdersPage() {
+  const user = useAuthStore(s => s.user);
   usePageTour('purchase_orders');
   const navigate = useNavigate();
   const handleKeyDown = useFieldNavigation();
@@ -516,10 +518,16 @@ export default function PurchaseOrdersPage() {
         onClose={() => { setPrintPreview(false); setPrintOrder(null); }}
         docType="purchase_order"
         invoice={{
+          ...printOrder,
           invoice_no: printOrder?.doc_no || "",
           customer_name: printOrder?.supplier_name || "",
+          cashier_name: printOrder?.created_by_username || user?.name || "",
           created_at: printOrder?.created_at || new Date().toISOString(),
+          subtotal: printOrder?.subtotal || printOrder?.total || 0,
+          total: printOrder?.total || 0,
+          notes: printOrder?.notes || "",
           lines: (printOrder?.lines || []).map(l => ({
+            ...l,
             item_name: l.item_name,
             code: l.item_code || "",
             quantity: l.quantity,

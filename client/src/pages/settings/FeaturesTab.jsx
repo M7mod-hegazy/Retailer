@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   Package, Shirt, Smartphone, Scale, Wrench, UtensilsCrossed,
-  Gem, CalendarClock, ScrollText, Lock, AlertTriangle,
+  Gem, CalendarClock, ScrollText, Lock, AlertTriangle, Receipt,
   CheckCircle2, ChevronDown, ChevronUp, Info, Shield,
   Link2, XCircle, Settings2, TriangleAlert,
 } from "lucide-react";
@@ -154,6 +154,19 @@ const FEATURES = [
       "الشريط الجانبي ← صفحة «إدارة الشيكات» (تظهر فور التفعيل)",
       "ملف العميل / المورد ← تبويب «الشيكات»",
       "التقارير ← تقرير سجل الشيكات",
+    ],
+  },
+  {
+    key: "feature_tax",
+    icon: Receipt,
+    colorRole: "danger",
+    name: "الضرائب (ضريبة القيمة المضافة)",
+    desc: "تفعيل نظام الضرائب داخل النظام: إضافة ضريبة على الفواتير، تقارير ضريبة القيمة المضافة (ضريبة مبيعات/مشتريات)، وإقرار ضريبي موجز.",
+    recommendedFor: ["شركات", "تجارة إلكترونية", "جملة"],
+    affectedPages: [
+      "الإعدادات ← تبويب «الضرائب» لإعداد النسبة والنوع (داخل/خارج السعر)",
+      "فواتير البيع ← تفعيل حقل الضريبة على مستوى الفاتورة والصنف",
+      "التقارير ← تبويب «الضرائب» مع تصنيفات ضريبة القيمة المضافة",
     ],
   },
 ];

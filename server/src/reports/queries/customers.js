@@ -1,5 +1,6 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter, getCostColumn, stockCostJoin, itemsCostJoin } = require("../helpers");
+const { paginateSql } = require("../pagination");
 
 function _returnsSubquery(costMethod) {
   const { getReturnCostColumn } = require("../helpers");
@@ -22,7 +23,7 @@ function topCustomers(startDate, endDate, opts = {}) {
   const params = [];
   const { customer_id, cost_method } = opts;
   const costCol = getCostColumn(cost_method);
-  return db.prepare(`
+  let sql = `
     SELECT COALESCE(c.name, 'نقدي') AS customer_name,
       c.phone,
       COUNT(DISTINCT i.id) AS invoice_count,
@@ -50,14 +51,21 @@ function topCustomers(startDate, endDate, opts = {}) {
       ${customer_id ? " AND i.customer_id = ?" : ""}
     GROUP BY i.customer_id
     ORDER BY total_sales DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
+  `;
+  const allParams = [...params, ...(customer_id ? [customer_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function collectionEfficiency(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { customer_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT COALESCE(c.name, 'نقدي') AS customer_name,
       COUNT(DISTINCT i.id) AS invoice_count,
       COALESCE(SUM(ad.original_amount), 0) AS total_billed,
@@ -77,14 +85,21 @@ function collectionEfficiency(startDate, endDate, opts = {}) {
     GROUP BY ad.customer_id
     HAVING total_billed > 0
     ORDER BY total_billed DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
+  `;
+  const allParams = [...params, ...(customer_id ? [customer_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function customerLoyalty(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { customer_id } = opts;
-  return db.prepare(`
+  let sql = `
     SELECT COALESCE(c.name, 'نقدي') AS customer_name,
       c.phone,
       COUNT(DISTINCT i.id) AS invoice_count,
@@ -108,7 +123,14 @@ function customerLoyalty(startDate, endDate, opts = {}) {
     GROUP BY i.customer_id
     HAVING COUNT(DISTINCT i.id) > 0
     ORDER BY total_sales DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []));
+  `;
+  const allParams = [...params, ...(customer_id ? [customer_id] : [])];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 module.exports = {

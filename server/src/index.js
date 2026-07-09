@@ -9,6 +9,8 @@ const { initDb, getDb } = require("./config/database");
 const { startAutoBackupJob } = require("./jobs/autoBackup");
 const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob, startBirthdayJob } = require("./jobs/notificationJobs");
 const { startSyncScheduler } = require("./jobs/syncScheduler");
+const { startSmsDrainer } = require("./services/smsService");
+const { startReportScheduler } = require("./services/reportScheduler");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const { nowSql } = require("./utils/datetime");
 const logger = require("./config/logger");
@@ -205,6 +207,8 @@ async function startServer() {
       startOverdueDebtsJob();
       startBirthdayJob();
       startSyncScheduler();
+      startSmsDrainer(); // no-op until settings.sms_enabled + gateway URL are configured
+      startReportScheduler();
 
       return server;
     } catch (err) {

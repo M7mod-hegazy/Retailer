@@ -32,16 +32,13 @@ export const useSyncStore = create((set, get) => ({
     }),
 
   setAvailable: (available) => {
-    const fieldSelections = {};
+    const existing = get().fieldSelections || {};
+    const fieldSelections = { ...existing };
     const products = available.products || [];
     for (const p of products) {
-      fieldSelections[p.sku] = {
-        name: true,
-        price: true,
-        stock: true,
-        description: true,
-        images: true,
-      };
+      if (!fieldSelections[p.sku]) {
+        fieldSelections[p.sku] = { name: false, price: false, stock: false, images: false };
+      }
     }
     set({ available, fieldSelections });
   },
@@ -66,8 +63,8 @@ export const useSyncStore = create((set, get) => ({
       fieldSelections: {
         ...s.fieldSelections,
         [sku]: {
-          ...(s.fieldSelections[sku] || { name: true, price: true, stock: true, description: true, images: true }),
-          [field]: !(s.fieldSelections[sku]?.[field] ?? true),
+          ...(s.fieldSelections[sku] || { name: false, price: false, stock: false, images: false }),
+          [field]: !(s.fieldSelections[sku]?.[field] ?? false),
         },
       },
     })),
@@ -76,12 +73,23 @@ export const useSyncStore = create((set, get) => ({
     set((s) => ({
       fieldSelections: {
         ...s.fieldSelections,
-        [sku]: { name: value, price: value, stock: value, description: value, images: value },
+        [sku]: { name: value, price: value, stock: value, images: value },
+      },
+    })),
+
+  setField: (sku, field, value) =>
+    set((s) => ({
+      fieldSelections: {
+        ...s.fieldSelections,
+        [sku]: {
+          ...(s.fieldSelections[sku] || { name: false, price: false, stock: false, images: false }),
+          [field]: value,
+        },
       },
     })),
 
   getSelectedFields: (sku) => {
-    return get().fieldSelections[sku] || { name: true, price: true, stock: true, description: true, images: true };
+    return get().fieldSelections[sku] || { name: false, price: false, stock: false, images: false };
   },
 
   setSelectedImages: (sku, images) =>

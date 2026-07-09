@@ -2,13 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Ruler, AlignLeft, Receipt, FileText, FileBarChart2, Wrench, Download, Upload,
   Trash2, CheckCircle2, XCircle, History, ChevronDown, ChevronUp, RefreshCw,
-  Paintbrush, Maximize2, Printer as PrinterIcon, Copy,
+  Paintbrush, Maximize2, Printer as PrinterIcon, Copy, Palette, Eye,
 } from "lucide-react";
 import { CustomTextBlocksSection, getCustomBlocks, saveCustomBlocks } from "./CustomTextBlocks";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import CalibrationWizard from "../../components/print/calibration/CalibrationWizard";
 import PrintStudio from "../../components/print/studio/PrintStudio";
+import DocPreviewModal from "../../components/print/studio/DocPreviewModal";
+import { familyOfSize } from "../../components/print/studio/studioData";
 import {
   listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap,
   getPrintJobLog, clearPrintJobLog,
@@ -17,7 +19,7 @@ import { resolveCalibration, exportDeviceProfile, importDeviceProfile } from "..
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 // This panel is a thin HUB: device concerns (printers, calibration, job log,
-// device profile) + per-doc print behavior (paper default, mode, copies).
+// device profile) + per-doc print behavior (paper default, mode, preset).
 // ALL design editing lives in the Print Studio — one control center, opened
 // from here at the right scope. The old duplicated previews/deep controls
 // were removed (they drifted from real print output and confused users).
@@ -33,28 +35,27 @@ const DEFAULTS = { receipt_width: "80mm" };
 const get = (s, k) => s[k] ?? DEFAULTS[k];
 
 const DOC_TYPES = [
-  { key: "pos_receipt",           label: "إيصال نقطة البيع" },
-  { key: "sales_invoice",         label: "فاتورة مبيعات" },
-  { key: "purchase_order",        label: "أمر شراء" },
-  { key: "sales_return",          label: "مرتجع مبيعات" },
-  { key: "purchase_return",       label: "مرتجع مشتريات" },
-  { key: "quotation",             label: "عرض سعر" },
-  { key: "branch_transfer",       label: "تحويل فرع" },
-  { key: "bank_statement",        label: "كشف بنكي" },
-  { key: "ajal_statement",        label: "كشف آجل" },
-  { key: "ajal_schedule",         label: "جدول أقساط" },
-  { key: "ajal_full_statement",   label: "كشف حساب كامل" },
-  { key: "cheque_register",       label: "سجل شيكات" },
-  { key: "payment_receipt",       label: "إيصال دفع" },
-  { key: "daily_treasury",        label: "تقرير الخزينة" },
-  { key: "payment_methods_report",label: "تقرير وسائل الدفع" },
-  { key: "reports_generic",       label: "قوالب تقارير (عام)" },
+  { key: "pos_receipt",           label: "فاتورة / إيصال المبيعات", badge: "المبيعات (رول / A4 مكتبية)",      hint: "يُطبع تلقائياً فور النقر على 'دفع وحفظ الفاتورة' (F12) في شاشة نقطة البيع (الكاشير)، وعند طباعة أي فاتورة مبيعات محفوظة من سجل المبيعات." },
+  { key: "purchase_order",        label: "أمر شراء",              badge: "سند طلب مشتريات للموردين",         hint: "يُطبع عبر زر 'طباعة' داخل شاشة 'أوامر الشراء' (Purchases -> Orders) لإرساله بالبريد أو الواتساب للمورد لتوفير البضائع." },
+  { key: "sales_return",          label: "مرتجع مبيعات",          badge: "رول / ورق A4 (مرتجع عميل)",         hint: "يُطبع تلقائياً أو يدوياً عند النقر على 'طباعة المرتجع' بعد إتمام الفاتورة الاسترجاعية في شاشة 'مرتجع المبيعات'." },
+  { key: "purchase_return",       label: "مرتجع مشتريات",         badge: "سند مرتجع بضائع للمورد",            hint: "يُطبع من خلال زر 'طباعة السند' داخل شاشة 'مرتجع المشتريات' لتسليمه للمندوب أو المورد مع البضائع المرجعة." },
+  { key: "quotation",             label: "عرض سعر",               badge: "سند عرض تسعير للعملاء",             hint: "يُطبع بالضغط على زر 'طباعة العرض' في شاشة 'عروض الأسعار' (Sales -> Quotations) لتقديمه للعميل للموافقة على الأسعار." },
+  { key: "branch_transfer",       label: "تحويل فرع",             badge: "سند نقل مخزني بين الفروع",          hint: "يُطبع عبر زر 'طباعة إذن التحويل' في شاشة 'حركات المخزون -> تحويلات الفروع' لمرافقة البضائع المنقولة مع السائق." },
+  { key: "bank_statement",        label: "كشف بنكي",              badge: "تقرير مالي (حساب بنك)",             hint: "يُطبع بالنقر على زر 'طباعة الكشف' في شاشة 'الحسابات المالية -> كشوف البنوك' بعد تحديد البنك وفترة الحركة." },
+  { key: "ajal_statement",        label: "كشف آجل",               badge: "كشف مديونية عميل محدد",             hint: "يُطبع بالضغط على زر 'طباعة كشف الحساب' من الملف الشخصي للعميل في شاشة 'العملاء والمندوبين -> حسابات العملاء الآجلين'." },
+  { key: "ajal_schedule",          label: "جدول أقساط",            badge: "تواريخ وجداول الأقساط",              hint: "يُطبع بالضغط على زر 'جدول الأقساط' في نافذة تفاصيل الدين لشاشة 'المبيعات الآجلة والأقساط' لتسليم العميل قائمة التواريخ." },
+  { key: "ajal_full_statement",   label: "كشف حساب كامل",         badge: "سجل الديون لجميع العملاء",           hint: "يُطبع بالضغط على زر 'تصدير وطباعة' في شاشة 'التقارير -> تقرير الديون والأرصدة الآجلة الشامل' لمتابعة كافة التحصيلات المستحقة." },
+  { key: "cheque_register",       label: "سجل شيكات",             badge: "تقرير شيكات صادرة وواردة",          hint: "يُطبع بالضغط على زر 'طباعة السجل' في شاشة 'شؤون الشيكات والأوراق المالية' لمراجعة الشيكات المستحقة وتواريخ التحصيل البنكي." },
+  { key: "payment_receipt",       label: "إيصال دفع",             badge: "سند مالي (قبض وصرف)",               hint: "يُطبع فور حفظ مستند دفع أو قبض في شاشة 'السندات المالية -> سندات الصرف والقبض' لتسليم العميل أو المورد وصلاً ماليًا." },
+  { key: "daily_treasury",        label: "تقرير الخزينة",         badge: "تقرير جرد الصناديق والخزائن",        hint: "يُطبع بالضغط على 'طباعة تقرير الإغلاق' في شاشة 'الخزائن والصناديق -> حركة الخزينة اليومية' لتسليم الإدارة جرد الإيرادات والمصاريف." },
+  { key: "payment_methods_report",label: "تقرير وسائل الدفع",     badge: "تحليل المقبوضات حسب الوسيلة",       hint: "يُطبع بالضغط على زر 'طباعة تقرير المدفوعات' من شاشة 'التقارير -> مبيعات وسائل الدفع' لمطابقة مبالغ الكاش والشبكة والتحويل البنكي." },
+  { key: "owner_statement",       label: "لوحة صاحب المحل",       badge: "كشف الإقفال المالي الشهري",          hint: "يُطبع بالضغط على زر 'طباعة الصفحة' في شاشة 'لوحة صاحب المحل' ويشمل المؤشرات المالية الأساسية والتدفقات النقدية للفترة المحددة." },
+  { key: "reports_generic",       label: "قوالب تقارير (عام)",    badge: "قالب عام لتقارير النظام",            hint: "يتحكم في التصميم الموحد والخط وحجم الهوامش لكافة تقارير النظام الأخرى الصادرة من 'مركز التقارير وقوائم المخزون وجرد المستودعات'." },
 ];
 
 // Valid paper sizes per doc type + system default (user can override)
 export const DOC_PAPER_CONFIG = {
-  pos_receipt:            { sizes: ["58mm","80mm","A5"],          defaultSize: "80mm" },
-  sales_invoice:          { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "A4"   },
+  pos_receipt:            { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
   sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   purchase_return:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
@@ -65,9 +66,10 @@ export const DOC_PAPER_CONFIG = {
   ajal_schedule:          { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
   ajal_full_statement:    { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   cheque_register:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  payment_receipt:        { sizes: ["58mm","80mm","A5"],          defaultSize: "80mm" },
+  payment_receipt:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   daily_treasury:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   payment_methods_report: { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  owner_statement:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   reports_generic:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
 };
 
@@ -133,15 +135,23 @@ function PaperPicker({ value, onChange }) {
 
 export default function PrintingSettingsPanel({ settings, onChange }) {
   const [docSettings, setDocSettings] = useState({});
+  const [expandedDocs, setExpandedDocs] = useState([]); // array of scope keys
   const [printers, setPrinters] = useState([]);
   const [sizePrinterMap, setSizePrinterMap] = useState(() => getPrinterSizeMap());
   const [calWizard, setCalWizard] = useState({ open: false, printerName: "", sizeKey: "" });
   const [calVersion, setCalVersion] = useState(0);
   const [printJobLog, setPrintJobLog] = useState(() => getPrintJobLog());
   const [logOpen, setLogOpen] = useState(false);
-  const [studio, setStudio] = useState({ open: false, scope: "_global" });
+  const [studio, setStudio] = useState({ open: false, scope: "_global", size: null });
+  const [preview, setPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
   const importFileRef = useRef(null);
-  const saveTimers = useRef({});
+
+  function toggleExpand(key) {
+    setExpandedDocs((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }
+
 
   const loadDocSettings = () => {
     api.get("/api/print-settings-per-doc")
@@ -154,28 +164,28 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     listPrinters().then(setPrinters);
   }, []);
 
-  // Per-doc row updates: optimistic local set + debounced silent PUT per doc.
   function updateDoc(docType, patch) {
     setDocSettings((prev) => {
       const next = { ...prev, [docType]: { ...(prev[docType] || {}), ...patch } };
-      clearTimeout(saveTimers.current[docType]);
-      saveTimers.current[docType] = setTimeout(async () => {
-        try {
-          await api.put(`/api/print-settings-per-doc/${docType}`, next[docType] || {});
-        } catch {
-          toast.error("خطأ في حفظ إعدادات المستند");
-        }
-      }, 700);
+      api.put(`/api/print-settings-per-doc/${docType}`, patch).catch(() => toast.error("خطأ في حفظ إعدادات المستند"));
       return next;
     });
   }
 
-  function openStudio(scope) {
-    setStudio({ open: true, scope });
+  function openStudio(scope, size) {
+    setStudio({ open: true, scope, size: size || null });
   }
   function closeStudio() {
     setStudio((prev) => ({ ...prev, open: false }));
     loadDocSettings(); // the Studio saves rows itself — re-sync the hub
+  }
+
+  // Preview what a doc prints at a specific (or effective default) size.
+  function openPreview(scope, label, size) {
+    setPreview({ open: true, scope, label, size: size || resolveDocPaperSize(scope, docSettings[scope] || {}) });
+  }
+  function closePreview() {
+    setPreview((prev) => ({ ...prev, open: false }));
   }
 
   function handleSizePrinterChange(size, printerName) {
@@ -337,55 +347,197 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
 
       {/* ── Per-document print behavior + Studio entry ── */}
       <section>
-        <SectionLabel icon={FileText} title="إعدادات المستندات" hint="حجم الورق الافتراضي وسلوك الطباعة لكل مستند — التصميم نفسه يُحرَّر من الاستوديو" />
+        <SectionLabel icon={FileText} title="إعدادات طباعة المستندات" hint="اضغط على أي مستند لعرض المقاسات واختيار القوالب والمعاينة" />
+
+        {/* Premium Instruction Box */}
+        <div className="mb-4 rounded-xl border border-[var(--primary)]/10 bg-[var(--primary)]/5 p-4 text-[12px] text-[var(--text-secondary)] leading-relaxed shadow-sm">
+          <div className="flex items-center gap-2 font-black text-[var(--text-primary)] text-sm mb-1.5">
+            <span className="text-primary text-base">💡</span>
+            <span>دليل الاستخدام والضبط السريع:</span>
+          </div>
+          <ul className="list-decimal list-inside space-y-1 text-[11px] font-bold">
+            <li>
+              <strong>انقر على أي مستند</strong> (مثل: فاتورة مبيعات، إيصال نقطة البيع) لتوسيع السطر وعرض المقاسات المتاحة له.
+            </li>
+            <li>
+              لكل مقاس ورق (مثل: A4 أو 80mm)، يمكنك تعيينه كـ <strong>"افتراضي"</strong> ليُعتمد تلقائياً عند طباعة هذا المستند.
+            </li>
+            <li>
+              بجانب كل مقاس، اضغط على زر <strong>"قالب جاهز" (مثل: بدون قالب)</strong> لتطبيق تصميم جاهز بضغطة واحدة، أو زر <strong>"الاستوديو"</strong> للتحكم الكامل.
+            </li>
+          </ul>
+        </div>
+
         <div className="overflow-hidden rounded-xl border border-[var(--border-normal)]">
           <table className="w-full text-[11px]">
             <thead className="bg-[var(--bg-input)]">
-              <tr className="font-black uppercase tracking-widest text-[var(--text-muted)]">
+              <tr className="font-black uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-normal)]">
                 <th className="px-3 py-2 text-right">المستند</th>
-                <th className="px-3 py-2 text-right">حجم الورق</th>
+                <th className="px-3 py-2 text-right">الحجم النشط حالياً</th>
                 <th className="px-3 py-2 text-right">سلوك الطباعة</th>
-                <th className="px-3 py-2 text-center">نسخ</th>
-                <th className="px-3 py-2 text-center">التصميم</th>
+                <th className="px-3 py-2 text-center w-8"></th>
               </tr>
             </thead>
             <tbody>
-              {DOC_TYPES.map(({ key, label }) => {
+              {DOC_TYPES.map(({ key, label, badge, hint }) => {
                 const cfg = DOC_PAPER_CONFIG[key] || { sizes: ["A4"], defaultSize: "A4" };
                 const doc = docSettings[key] || {};
-                const copies = Math.max(1, Number(doc.print_copies) || 1);
+                const effSize = resolveDocPaperSize(key, doc);
+                const hasOverride = !!doc.paper_size;
+                const isExpanded = expandedDocs.includes(key);
                 return (
-                  <tr key={key} className="border-t border-[var(--border-subtle)] font-bold text-[var(--text-secondary)]">
-                    <td className="px-3 py-2 text-[var(--text-primary)]">{label}</td>
-                    <td className="px-3 py-2">
-                      <select value={doc.paper_size || ""} onChange={(e) => updateDoc(key, { paper_size: e.target.value })}
-                        className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)]">
-                        <option value="">الافتراضي ({cfg.defaultSize})</option>
-                        {cfg.sizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select value={doc.print_mode || "preview"} onChange={(e) => updateDoc(key, { print_mode: e.target.value })}
-                        className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)]">
-                        {PRINT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)]">
-                        <button type="button" onClick={() => updateDoc(key, { print_copies: Math.max(1, copies - 1) })}
-                          className="px-2 py-1 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]">−</button>
-                        <span className="min-w-4 text-center text-[11px] font-black text-[var(--text-primary)]">{copies}</span>
-                        <button type="button" onClick={() => updateDoc(key, { print_copies: Math.min(5, copies + 1) })}
-                          className="px-2 py-1 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)]">+</button>
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button type="button" onClick={() => openStudio(key)}
-                        className="inline-flex items-center gap-1 rounded-md border border-[var(--border-accent)] px-2.5 py-1 text-[10px] font-black text-primary hover:bg-[var(--accent-soft)] transition-all">
-                        <Paintbrush size={11} /> الاستوديو
-                      </button>
-                    </td>
-                  </tr>
+                  <React.Fragment key={key}>
+                    {/* ── Collapsed header row ── */}
+                    <tr
+                      className={[
+                        "border-t border-[var(--border-subtle)] font-bold transition-all duration-150 cursor-pointer select-none",
+                        isExpanded
+                          ? "bg-[var(--accent-soft)] text-[var(--text-primary)]"
+                          : "text-[var(--text-secondary)] hover:bg-[var(--bg-input-hover)] hover:text-[var(--text-primary)]",
+                      ].join(" ")}
+                      title="انقر لتوسيع السطر وعرض مقاسات الورق والقوالب"
+                      onClick={() => toggleExpand(key)}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-start gap-2.5">
+                          <div className={["flex h-5 w-5 items-center justify-center rounded transition-colors mt-0.5 shrink-0", isExpanded ? "bg-primary text-white" : "bg-[var(--bg-input)] text-[var(--text-muted)]"].join(" ")}>
+                            {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={isExpanded ? "font-black text-primary text-2sm" : "font-black text-[var(--text-primary)] text-2sm"}>{label}</span>
+                              <span className="rounded bg-[var(--bg-input)] border border-[var(--border-normal)] px-1.5 py-0.5 text-[9px] font-black text-[var(--text-muted)] leading-none select-none">
+                                {badge}
+                              </span>
+                            </div>
+                            <div className="text-[10px] font-bold text-[var(--text-muted)] mt-1.5 leading-relaxed max-w-[450px]">
+                              {hint}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-2.5">
+                        {/* Single chip showing the currently effective size */}
+                        <span className={[
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black leading-none",
+                          hasOverride
+                            ? "bg-primary text-white shadow-sm"
+                            : "border border-dashed border-[var(--border-strong)] text-[var(--text-secondary)]",
+                        ].join(" ")}>
+                          {effSize}
+                          {!hasOverride && <span className="text-[8px] opacity-60">افتراضي</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={doc.print_mode || "preview"}
+                          onChange={(e) => updateDoc(key, { print_mode: e.target.value })}
+                          className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] cursor-pointer"
+                        >
+                          {PRINT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className="text-[10px] font-black text-[var(--text-muted)] bg-[var(--bg-input)] rounded px-1.5 py-0.5">
+                          {cfg.sizes.length} خيارات
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* ── Expanded: one card per available size ── */}
+                    {isExpanded && (
+                      <tr className="border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
+                        <td colSpan={4} className="px-4 py-4">
+                          <div className="flex flex-wrap gap-3">
+                            {cfg.sizes.map((sz) => {
+                              const isEffective = effSize === sz;
+                              const isUserOverride = doc.paper_size === sz;
+                              const isSysDefault = sz === cfg.defaultSize && !doc.paper_size;
+                              const preset = doc[`preset_${familyOfSize(sz)}`];
+                              return (
+                                <div
+                                  key={sz}
+                                  className={[
+                                    "flex flex-col gap-3 rounded-xl border p-3.5 min-w-[170px] flex-1 transition-all relative overflow-hidden",
+                                    isEffective
+                                      ? "border-primary bg-[var(--accent-soft)] shadow-md ring-1 ring-primary/20 scale-[1.01]"
+                                      : "border-[var(--border-normal)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-sm",
+                                  ].join(" ")}
+                                >
+                                  {/* Size header + default toggle */}
+                                  <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5">
+                                    <span className={["text-lg font-black tracking-wide", isEffective ? "text-primary" : "text-[var(--text-primary)]"].join(" ")}>
+                                      {sz}
+                                    </span>
+                                    {isEffective ? (
+                                      <div className="flex items-center gap-1">
+                                        <span className="inline-flex items-center gap-1 rounded bg-[var(--success-bg)] border border-[var(--success-border)] px-1.5 py-0.5 text-[9px] font-black text-[var(--success-text)] shadow-sm">
+                                          ✔ المقاس الافتراضي
+                                        </span>
+                                        {isUserOverride && (
+                                          <button
+                                            type="button"
+                                            title="إلغاء التخصيص والعودة لافتراضي النظام"
+                                            onClick={() => updateDoc(key, { paper_size: "" })}
+                                            className="flex h-5 w-5 items-center justify-center rounded border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[9px] text-[var(--text-muted)] hover:bg-danger-bg hover:text-danger-text hover:border-danger-border transition-all"
+                                          >
+                                            ✕
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateDoc(key, { paper_size: sz })}
+                                        className="rounded border border-dashed border-[var(--border-strong)] bg-transparent px-2 py-0.5 text-[9px] font-black text-[var(--text-muted)] hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+                                      >
+                                        تعيين كافتراضي
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Preset for this size — read-only display. All design changes go through the Studio. */}
+                                  <div className="text-[9px] font-bold text-[var(--text-muted)] leading-none -mb-1 mt-1">
+                                    القالب المطبق:
+                                  </div>
+                                  <div className="flex items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-input)] px-2.5 py-1.5">
+                                    <Palette size={12} className="shrink-0 text-[var(--text-muted)]" />
+                                    <span className="truncate text-[10px] font-bold text-[var(--text-primary)]">
+                                      {preset?.label || "—"}
+                                    </span>
+                                    {!preset && (
+                                      <span className="text-[9px] text-[var(--text-muted)] mr-auto">لا يوجد — استخدم الاستوديو لاختيار قالب</span>
+                                    )}
+                                  </div>
+
+                                  {/* Preview + Studio for this size */}
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => openPreview(key, label, sz)}
+                                      title={`معاينة كما يُطبع بمقاس ${sz}`}
+                                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-input)] py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-accent)] hover:text-primary transition-all"
+                                    >
+                                      <Eye size={11} /> معاينة
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openStudio(key, sz)}
+                                      title={`فتح الاستوديو بمقاس ${sz}`}
+                                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
+                                    >
+                                      <Paintbrush size={11} /> الاستوديو
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -491,9 +643,25 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           open={studio.open}
           onClose={closeStudio}
           initialScope={studio.scope}
-          initialSize={studio.scope === "_global"
-            ? get(s, "receipt_width")
-            : resolveDocPaperSize(studio.scope, docSettings[studio.scope] || {})}
+          initialSize={
+            studio.size
+            || (studio.scope === "_global"
+              ? get(s, "receipt_width")
+              : resolveDocPaperSize(studio.scope, docSettings[studio.scope] || {}))
+          }
+        />
+      )}
+
+      {preview.open && (
+        <DocPreviewModal
+          open={preview.open}
+          scope={preview.scope}
+          size={preview.size}
+          label={preview.label}
+          appSettings={settings}
+          globalSettings={docSettings._global || {}}
+          docSettings={docSettings[preview.scope] || {}}
+          onClose={closePreview}
         />
       )}
     </div>

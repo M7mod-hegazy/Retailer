@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
+import { invoiceCustomerText } from "../pos/WalkInCustomer";
 
 const REASONS_SALES = [
   { value: "changed_mind", label: "غيّر رأيه" },
@@ -72,7 +73,7 @@ function DocPreview({ doc, isSales, onClose, onSelect }) {
             {isSales ? (doc.invoice_no || `#${doc.id}`) : `PUR-${String(doc.id).padStart(5,"0")}`}
           </span>
           <span className="text-[11px] text-slate-400 font-bold">
-            {isSales ? (doc.customer_name || "عميل نقدي") : (doc.supplier_name || "—")}
+            {isSales ? invoiceCustomerText(doc) : (doc.supplier_name || "—")}
             {" · "}{fmtDate(doc.created_at)}
           </span>
         </div>
@@ -563,7 +564,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                         </span>
                         <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
                           <User className="h-3 w-3 shrink-0" />
-                          {isSales ? (doc.customer_name || "عميل نقدي") : (doc.supplier_name || "—")}
+                          {isSales ? invoiceCustomerText(doc) : (doc.supplier_name || "—")}
                           <span className="mx-0.5">·</span>
                           <Clock className="h-3 w-3 shrink-0" />
                           {fmtDate(doc.created_at)}
@@ -611,7 +612,7 @@ export default function QuickReturnModal({ mode = "sales", open, onClose, onSucc
                 <User className={`h-4 w-4 shrink-0 ${isSales ? "text-blue-500" : "text-amber-500"}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-800 truncate">
-                    {isSales ? (selectedDoc.customer_name || "عميل نقدي") : (selectedDoc.supplier_name || `مورد #${selectedDoc.supplier_id}`)}
+                    {isSales ? invoiceCustomerText(selectedDoc) : (selectedDoc.supplier_name || `مورد #${selectedDoc.supplier_id}`)}
                   </p>
                   <p className="text-[11px] text-slate-400 font-bold flex items-center gap-1">
                     <Calendar className="h-3 w-3" />

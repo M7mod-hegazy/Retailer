@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { UploadCloud, Eraser, HardDrive, Clock, Folder, Loader2, Save, History, Info } from "lucide-react";
+import { UploadCloud, Eraser, HardDrive, Clock, Folder, Loader2, Save, History, Info, BarChart3 } from "lucide-react";
 import { getHint, getPlaceholder } from "../../utils/fieldMeta";
 import api from "../../services/api";
 import { usePermission } from "../../hooks/usePermission";
@@ -72,6 +72,7 @@ export default function BackupSettingsTab() {
     last_auto_backup_at: null,
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [backupSummary, setBackupSummary] = useState(null);
 
   useEffect(() => {
     api
@@ -79,6 +80,33 @@ export default function BackupSettingsTab() {
       .then((res) => res.data?.data && setSettings((s) => ({ ...s, ...res.data.data })))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    api
+      .get("/api/backup/list")
+      .then((res) => {
+        const tree = res.data?.data;
+        if (!tree?.years) { setBackupSummary(null); return; }
+        let totalSnapshots = 0;
+        let totalSize = 0;
+        let totalDays = 0;
+        const triggerTypes = new Set();
+        for (const y of tree.years) {
+          for (const m of y.months) {
+            for (const d of m.days) {
+              totalDays += 1;
+              for (const snap of d.snapshots) {
+                totalSnapshots += 1;
+                totalSize += snap.sizeBytes || 0;
+                if (snap.triggerType) triggerTypes.add(snap.triggerType);
+              }
+            }
+          }
+        }
+        setBackupSummary({ totalSnapshots, totalSize, totalDays, triggerGroups: triggerTypes.size });
+      })
+      .catch(() => setBackupSummary(null));
+  }, [refreshKey]);
 
   const refreshList = () => setRefreshKey((k) => k + 1);
 
@@ -203,6 +231,18 @@ export default function BackupSettingsTab() {
               <span className="mt-1 block text-slate-400">آخر نسخة تلقائية: {formatDateTime(settings.last_auto_backup_at)}</span>
             )}
           </p>
+          {backupSummary && backupSummary.totalSnapshots > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-sm border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-[11px] font-bold text-slate-600">
+              <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
+              <span>{backupSummary.totalSnapshots} مستند</span>
+              <span className="text-slate-300">·</span>
+              <span>{formatBytes(backupSummary.totalSize)} حجم</span>
+              <span className="text-slate-300">·</span>
+              <span>{backupSummary.totalDays} مجموعات</span>
+              <span className="text-slate-300">·</span>
+              <span>{backupSummary.triggerGroups} نسخة</span>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-3">
             <label className="flex items-center justify-between rounded-sm border border-slate-200 px-3 py-2 group">
               <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">

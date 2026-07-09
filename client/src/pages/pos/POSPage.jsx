@@ -318,6 +318,10 @@ export default function POSPage() {
   // Optional WhatsApp number for anonymous sales → auto-captured as a lead on sale completion
   const [waLeadPhone, setWaLeadPhone]                   = useState("");
   const [waLeadName, setWaLeadName]                     = useState("");
+  // Walk-in "committed" state: the cashier confirmed this anonymous sale belongs
+  // to a walk-in contact → the customer search is replaced by a walk-in chip
+  // until it is removed (prevents mixing walk-in capture with a real customer).
+  const [walkInSet, setWalkInSet]                       = useState(false);
   const [quickAddOpen, setQuickAddOpen]                 = useState(false);
   const [customerInfoOpen, setCustomerInfoOpen]         = useState(false);
   const [supervisorOverrideOpen, setSupervisorOverrideOpen] = useState(false);
@@ -541,6 +545,7 @@ export default function POSPage() {
   // Edit context — persisted in state so it survives history.replaceState
   const [amendContext, setAmendContext] = useState(null); // { edit_invoice_id, prefill }
   const [quotationContext, setQuotationContext] = useState(null); // { from_quotation_id, prefill }
+  const [onlineOrderContext, setOnlineOrderContext] = useState(null); // { from_online_order_id, prefill }
 
   const isDirty = lines.length > 0 || !!customer;
   const { blocker } = useUnsavedChangesGuard(isDirty);
@@ -611,11 +616,50 @@ export default function POSPage() {
     window.history.replaceState({}, document.title);
   }, [location.state]);
 
+  // Pre-fill cart when navigated from an online-order forward flow
+  useEffect(() => {
+    const oState = location.state;
+    if (!oState?.from_online_order_id || !oState?.prefill) return;
+    const { prefill } = oState;
+    clear();
+    setOnlineOrderContext(oState);
+    (prefill.lines || []).forEach((l) => addLine({
+      id: l.item_id,
+      name: l.item_name,
+      code: l.code || "",
+      quantity: l.quantity,
+      unit_price: l.unit_price,
+      line_discount: l.discount || 0,
+      warehouse_id: l.warehouse_id || null,
+    }));
+    window.history.replaceState({}, document.title);
+  }, [location.state]);
+
+  useEffect(() => {
+    if (!onlineOrderContext?.prefill?.customer) return;
+    const cust = onlineOrderContext.prefill.customer;
+    if (cust.customer_id) {
+      const full = customers.find((c) => c.id === cust.customer_id);
+      setCustomer(full || { id: cust.customer_id, name: cust.customer_name });
+    }
+    setCustomerQuery(cust.customer_name || "");
+  }, [onlineOrderContext, customers]);
+
   // Set customer AFTER amendContext is stored — runs in a separate effect cycle,
   // after clear() has fully settled, reliably overriding the customer sync effect.
   useEffect(() => {
-    if (!amendContext?.prefill?.customer_id) return;
+    if (!amendContext?.prefill) return;
     const { prefill } = amendContext;
+    if (!prefill.customer_id) {
+      // Anonymous invoice — restore its walk-in contact so the cashier sees
+      // exactly who the original sale belonged to.
+      if (prefill.walk_in_phone) {
+        setWaLeadPhone(prefill.walk_in_phone);
+        setWaLeadName(prefill.walk_in_name || "");
+        setWalkInSet(true);
+      }
+      return;
+    }
     // Prefer the full customer object (with opening_balance) from the loaded list;
     // fall back to bare id+name if the list hasn't arrived yet.
     const full = customers.find((c) => c.id === prefill.customer_id);
@@ -1257,6 +1301,7 @@ export default function POSPage() {
     setCustomerLookupOpen(false);
     setWaLeadPhone("");
     setWaLeadName("");
+    setWalkInSet(false);
   }
 
   function handleVariantPick(child) {
@@ -1561,6 +1606,8 @@ export default function POSPage() {
         const receiptSnap = {
           invoice_no: savedNo, date: new Date(), lines: [...lines],
           customer: customer ? { ...customer } : null, totals: { ...totals, taxAmount: taxCalc.taxAmount, total: taxCalc.total },
+          walk_in_phone: !customer?.id && waLeadPhone.trim() ? waLeadPhone.trim() : null,
+          walk_in_name: !customer?.id && waLeadPhone.trim() ? (waLeadName.trim() || null) : null,
           discount, increase, promotionDiscount: 0, appliedPromotions: [],
           seller: employees.find((emp) => String(emp.id) === String(sellerId)) || null,
           paymentType, amountReceived: Number(amountReceived || 0),
@@ -1578,7 +1625,8 @@ export default function POSPage() {
           invoiceNumber: savedNo,
           total: formatMoney(totals.total),
           payments: receiptSnap.payments,
-          customerName: customer?.name || null,
+          customerName: customer?.name
+            || (waLeadPhone.trim() ? `🚶 عميل نقدي — ${waLeadName.trim() || waLeadPhone.trim()}` : null),
           customerNewBalance: customer?.id ? Number(customer.balance || 0) : null,
           discount: Number(discount || 0),
           increase: Number(increase || 0),
@@ -1620,6 +1668,8 @@ export default function POSPage() {
       const receiptSnap = {
         invoice_no: savedInvoiceNo, date: new Date(), lines: [...lines],
         customer: customer ? { ...customer } : null, totals: { ...totals, taxAmount: taxCalc.taxAmount, total: taxCalc.total },
+        walk_in_phone: !customer?.id && waLeadPhone.trim() ? waLeadPhone.trim() : null,
+        walk_in_name: !customer?.id && waLeadPhone.trim() ? (waLeadName.trim() || null) : null,
         discount, increase, promotionDiscount, appliedPromotions: [...(appliedPromotions || [])],
         seller: employees.find((emp) => String(emp.id) === String(sellerId)) || null,
         paymentType, amountReceived: Number(amountReceived || 0),
@@ -1645,7 +1695,8 @@ export default function POSPage() {
         invoiceNumber: savedInvoiceNo,
         total: formatMoney(totals.total),
         payments: receiptSnap.payments,
-        customerName: customer?.name || null,
+        customerName: customer?.name
+          || (waLeadPhone.trim() ? `🚶 عميل نقدي — ${waLeadName.trim() || waLeadPhone.trim()}` : null),
         customerNewBalance,
         discount: Number(discount || 0),
         increase: Number(increase || 0),
@@ -1666,6 +1717,13 @@ export default function POSPage() {
         const sold = soldLines.filter(l => l.item_id === item.id).reduce((s, l) => s + Number(l.quantity || 0), 0);
         return sold ? { ...item, stock_quantity: Math.max(0, Number(item.stock_quantity || 0) - sold) } : item;
       }));
+      // If this sale came from an online order, mark it forwarded and link the invoice.
+      if (onlineOrderContext?.from_online_order_id) {
+        const newInvoiceId = _savedInvoiceData?.id || response.data?.data?.id || null;
+        api.post(`/api/webhooks/orders/${onlineOrderContext.from_online_order_id}/forward`, { invoice_id: newInvoiceId }).catch(() => {});
+        toast.success(`تم تحويل الطلب إلى فاتورة ${savedInvoiceNo}`, { duration: 5000 });
+      }
+      setOnlineOrderContext(null);
       setAmendContext(null);
       setQuotationContext(null);
       resetActivation();
@@ -1934,6 +1992,8 @@ export default function POSPage() {
     activeMultiPayments, setActiveMultiPayments,
     multiModalOpen, setMultiModalOpen,
     waLeadPhone, setWaLeadPhone,
+    waLeadName, setWaLeadName,
+    walkInSet, setWalkInSet,
     lastSavedInvoice, setLastSavedInvoice,
     detailedItemResults, detailedCategories,
     getItemImage, handleGridItemClick,

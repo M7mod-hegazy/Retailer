@@ -32,6 +32,16 @@ function adjustStock({ item_id, warehouse_id, quantityDelta, movement_type, refe
     ).run(item_id, warehouse_id, movement_type, quantityDelta, beforeQty, afterQty, reference_type, reference_id, notes, user_id);
   });
   tx();
+
+  // Queue a POS→store stock push for store-linked items (best-effort; never throws).
+  try {
+    const linked = db.prepare("SELECT ecom_id FROM items WHERE id = ?").get(item_id);
+    if (linked && linked.ecom_id) {
+      const total = db.prepare("SELECT COALESCE(SUM(quantity), 0) AS q FROM stock_levels WHERE item_id = ?").get(item_id);
+      const { recordSyncChange } = require("./syncChangeService");
+      recordSyncChange(db, { entity_type: "item", entity_id: item_id, field_name: "stock", old_value: null, new_value: total.q });
+    }
+  } catch { /* stock sync bookkeeping must never break a stock movement */ }
 }
 
 function deductBatches(db, item_id, warehouse_id, quantity) {

@@ -255,37 +255,86 @@ function resolveContactName(rawPhone) {
 }
 
 // ─── Outbox drainer ───────────────────────────────────────────────────────
+const { markRecipient, isRecipientPaused } = require("../../server/src/services/campaignProgress");
+
 let drainerTimer = null;
-let getDb = null;
+let draining = false;
+let outboxCols = null;
+
+// Default DB provider: the server's database module. Previously getDb was only
+// set via the Electron IPC path (getWA()), so REST-only sessions had no DB —
+// no message history and a dead outbox drainer.
+let getDb = () => {
+  try { return require("../../server/src/config/database").getDb(); } catch (_) { return null; }
+};
 
 function setDbProvider(fn) { getDb = fn; }
 
+function getOutboxCols(db) {
+  if (!outboxCols) {
+    try { outboxCols = db.prepare("PRAGMA table_info(wa_outbox)").all().map(c => c.name); }
+    catch (_) { outboxCols = []; }
+  }
+  return outboxCols;
+}
+
 function startOutboxDrainer() {
   if (drainerTimer) return;
+  // Recover rows stuck in 'sending' after a crash/restart mid-throttle.
+  // Channel-scoped so a reconnect never resets an SMS row mid-send.
+  try {
+    const db = getDb?.();
+    if (db) {
+      if (getOutboxCols(db).includes("channel")) {
+        db.prepare("UPDATE wa_outbox SET status='pending' WHERE status='sending' AND (channel IS NULL OR channel='whatsapp')").run();
+      } else {
+        db.prepare("UPDATE wa_outbox SET status='pending' WHERE status='sending'").run();
+      }
+    }
+  } catch (_) {}
   drainerTimer = setInterval(drainNext, 5000);
 }
 
 async function drainNext() {
-  if (waStatus !== "connected" || !getDb) return;
+  // The throttle sleep below (8–20s) outlives the 5s interval — without this
+  // guard, overlapping ticks pick up the same pending row and send duplicates.
+  if (draining) return;
+  if (waStatus !== "connected") return;
   const today = new Date().toISOString().slice(0, 10);
   if (today !== dailyResetDate) { dailySentCount = 0; dailyResetDate = today; }
 
+  draining = true;
+  let claimed = null;
   try {
-    const db = getDb();
-    const row = db.prepare(`
+    const db = getDb?.();
+    if (!db) return;
+    const cols = getOutboxCols(db);
+    const hasChannel = cols.includes("channel");
+    const hasLink = cols.includes("campaign_recipient_id");
+    const channelFilter = hasChannel ? "AND (channel IS NULL OR channel = 'whatsapp')" : "";
+    const candidates = db.prepare(`
       SELECT * FROM wa_outbox
       WHERE status = 'pending'
         AND (scheduled_at IS NULL OR scheduled_at <= datetime('now'))
-      ORDER BY id ASC LIMIT 1
-    `).get();
+        ${channelFilter}
+      ORDER BY id ASC LIMIT 10
+    `).all();
+    const row = candidates.find(r => !(hasLink && r.campaign_recipient_id && isRecipientPaused(db, r.campaign_recipient_id)));
     if (!row) return;
 
     const isMarketing = ["birthday", "broadcast"].includes(row.kind);
     if (isMarketing && dailySentCount >= DAILY_MARKETING_CAP) return;
 
+    // Claim atomically so no other tick (or future worker) can double-send it.
+    const res = db.prepare("UPDATE wa_outbox SET status='sending' WHERE id=? AND status='pending'").run(row.id);
+    if (res.changes !== 1) return;
+    claimed = row;
+
     const jid = normalizePhone(row.recipient_phone);
     if (!jid) {
       db.prepare("UPDATE wa_outbox SET status='failed', error='invalid phone' WHERE id=?").run(row.id);
+      if (hasLink) markRecipient(db, row.campaign_recipient_id, "skipped");
+      claimed = null;
       return;
     }
 
@@ -301,19 +350,21 @@ async function drainNext() {
     }
 
     db.prepare("UPDATE wa_outbox SET status='sent', sent_at=datetime('now'), attempts=attempts+1 WHERE id=?").run(row.id);
+    if (hasLink) markRecipient(db, row.campaign_recipient_id, "sent");
     if (isMarketing) dailySentCount++;
+    claimed = null;
   } catch (err) {
     try {
-      const db = getDb();
-      const row = db.prepare("SELECT * FROM wa_outbox WHERE status='pending' ORDER BY id ASC LIMIT 1").get();
-      if (row) {
-        const attempts = (row.attempts || 0) + 1;
+      if (claimed) {
+        const db = getDb();
+        const attempts = (claimed.attempts || 0) + 1;
         const status = attempts >= 3 ? "failed" : "pending";
         db.prepare("UPDATE wa_outbox SET status=?, attempts=?, error=? WHERE id=?")
-          .run(status, attempts, String(err.message).slice(0, 200), row.id);
+          .run(status, attempts, String(err.message).slice(0, 200), claimed.id);
+        if (status === "failed") markRecipient(db, claimed.campaign_recipient_id, "skipped");
       }
     } catch (_) {}
-  }
+  } finally { draining = false; }
 }
 
 // ─── Inbound opt-out listener (legacy, kept for the Express route) ────────
@@ -340,4 +391,18 @@ function listenForOptOut(db) {
   });
 }
 
-module.exports = { connect, disconnect, sendText, sendImage, normalizePhone, onStatusChange, setDbProvider, listenForOptOut, resolveContactName, getStatus: () => ({ status: waStatus, qr: qrCode, phone: waStatus === "connected" && sock ? sock.user?.id?.split(":")[0]?.replace(/[^0-9]/g, "") : null }) };
+// ─── Auto-reconnect on boot ───────────────────────────────────────────────
+// A saved Baileys session survives restarts, but nothing re-opened it — the UI
+// showed "غير متصل" after every reload/restart until the user clicked connect
+// (which then linked instantly). Restore the session automatically instead.
+function hasSavedSession() {
+  try { return fs.existsSync(path.join(getAuthDir(), "creds.json")); } catch (_) { return false; }
+}
+
+setTimeout(() => {
+  if (hasSavedSession() && waStatus === "disconnected") {
+    connect().catch(() => {});
+  }
+}, 3000); // let the app/db finish booting first
+
+module.exports = { connect, disconnect, sendText, sendImage, normalizePhone, onStatusChange, setDbProvider, listenForOptOut, resolveContactName, hasSavedSession, getStatus: () => ({ status: waStatus, qr: qrCode, phone: waStatus === "connected" && sock ? sock.user?.id?.split(":")[0]?.replace(/[^0-9]/g, "") : null }) };

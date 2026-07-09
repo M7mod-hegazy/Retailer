@@ -1,8 +1,9 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
-const { requirePagePermission } = require("../middleware/permission");
+const { requirePagePermission, requireAnyPagePermission } = require("../middleware/permission");
 const { nowSql } = require("../utils/datetime");
+const { sendSms, getSmsConfig } = require("../services/smsService");
 
 // Load the WhatsApp engine — works in Electron and plain Node
 let engine = null;
@@ -13,21 +14,36 @@ router.use(authRequired);
 
 // ── Engine control via REST (works in browser + Electron) ─────────────────────
 
-router.get("/engine-status", requirePagePermission("settings", "view"), (_req, res) => {
+// The engine is driven from both the settings page and the WhatsApp CRM page —
+// either permission is enough (a CRM-only user used to get a 403 here and the
+// CRM page wrongly showed "غير متاح").
+router.get("/engine-status", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (_req, res) => {
   if (!engine) return res.json({ success: true, data: { status: "unavailable" } });
   res.json({ success: true, data: engine.getStatus() });
 });
 
-router.post("/engine-connect", requirePagePermission("settings", "edit"), async (_req, res) => {
+router.post("/engine-connect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (_req, res) => {
   if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
   try { await engine.connect(); res.json({ success: true }); }
   catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.post("/engine-disconnect", requirePagePermission("settings", "edit"), async (_req, res) => {
+router.post("/engine-disconnect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (_req, res) => {
   if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
   try { await engine.disconnect(); res.json({ success: true }); }
   catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// SMS gateway test-send (uses the saved settings; fails fast with the gateway error)
+router.post("/sms-test", requirePagePermission("settings", "edit"), async (req, res) => {
+  try {
+    const config = getSmsConfig(getDb());
+    if (!config) return res.status(400).json({ success: false, message: "خدمة SMS غير مفعّلة أو رابط البوابة غير مضبوط" });
+    const normalized = normalizePhone(req.body?.phone);
+    if (!normalized) return res.status(400).json({ success: false, message: "invalid phone" });
+    await sendSms(config, normalized, req.body?.text || "رسالة تجريبية من نظام المتجر");
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 function normalizePhone(raw) {

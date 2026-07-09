@@ -1,13 +1,15 @@
 const { getDb } = require("../../config/database");
 const { addDateFilter, getCostColumn, getReturnCostColumn, addPaymentTypeFilter, stockCostJoin, itemsCostJoin } = require("../helpers");
 const { getItemsBelowMargin } = require("../../services/waccService");
+const { paginateSql } = require("../pagination");
 
 function dailySales(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
-  const { customer_id, category_id, item_id } = opts;
-  if (customer_id || category_id || item_id || opts.cashier_id || opts.status || opts.payment_type) return _detailSalesQuery(startDate, endDate, opts);
+  const { customer_id, category_id, item_id, cashier_id, status, payment_type } = opts;
   const costCol = getCostColumn(opts.cost_method);
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(i.id) AS invoice_count,
@@ -48,13 +50,23 @@ function dailySales(startDate, endDate, opts = {}) {
       WHERE sr.status = 'active'
       GROUP BY sr.invoice_id
     ) ret ON ret.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.status != 'cancelled' ${dateFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
+      ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
+      ${status ? " AND i.status = ?" : ""}
+      ${ptFilter}
       ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : ""}
     GROUP BY DATE(i.created_at)
     ORDER BY date DESC
-  `).all(...params, ...(customer_id ? [customer_id] : []), ...(category_id ? [category_id] : []), ...(item_id ? [item_id] : []));
+  `).all(
+    ...params,
+    ...(customer_id ? [customer_id] : []),
+    ...(cashier_id ? [cashier_id] : []),
+    ...(status ? [status] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+  );
 }
 
 function detailedSales(startDate, endDate, opts = {}) {
@@ -62,7 +74,7 @@ function detailedSales(startDate, endDate, opts = {}) {
   const params = [];
   const { q, status, payment_type, customer_id, category_id, item_id } = opts;
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
-  return db.prepare(`
+  let sql = `
     SELECT i.invoice_no,
       DATE(i.created_at) AS date,
       COALESCE(c.name, 'نقدي') AS customer_name,
@@ -92,14 +104,21 @@ function detailedSales(startDate, endDate, opts = {}) {
       ${q ? " AND (i.invoice_no LIKE ? OR COALESCE(c.name,'') LIKE ?)" : ""}
     GROUP BY i.id
     ORDER BY i.created_at DESC
-  `).all(
+  `;
+  const allParams = [
     ...params,
     ...(status ? [status] : []),
     ...(customer_id ? [customer_id] : []),
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
     ...(q ? [`%${q}%`, `%${q}%`] : []),
-  );
+  ];
+  if (opts.page || opts.pageSize) {
+    const p = paginateSql(sql, opts);
+    sql = p.sql;
+    allParams.push(...p.params);
+  }
+  return db.prepare(sql).all(...allParams);
 }
 
 function _detailSalesQuery(startDate, endDate, opts = {}) {
@@ -190,10 +209,11 @@ function salesByItem(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const returnParams = [];
-  const { category_id, item_id } = opts;
-  if (opts.customer_id || opts.cashier_id || opts.status || opts.payment_type || category_id || item_id) return _detailItemSalesQuery(startDate, endDate, opts);
+  const { category_id, item_id, customer_id, cashier_id, status, payment_type } = opts;
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
     SELECT COALESCE(it.code, 'ITEM-' || it.id) AS item_code,
       it.name AS item_name,
@@ -237,22 +257,35 @@ function salesByItem(startDate, endDate, opts = {}) {
       WHERE 1=1 ${returnDateFilter}
       GROUP BY srl.item_id
     ) ret ON ret.item_id = il.item_id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.status != 'cancelled' ${dateFilter}
+      ${customer_id ? " AND i.customer_id = ?" : ""}
+      ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
+      ${status ? " AND i.status = ?" : ""}
+      ${ptFilter}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
     GROUP BY it.id
     ORDER BY revenue DESC
-  `).all(...returnParams, ...params, ...(category_id ? [category_id] : []), ...(item_id ? [item_id] : []));
+  `).all(
+    ...returnParams,
+    ...params,
+    ...(customer_id ? [customer_id] : []),
+    ...(cashier_id ? [cashier_id] : []),
+    ...(status ? [status] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+  );
 }
 
 function salesByCategory(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const returnParams = [];
-  const { category_id } = opts;
-  if (opts.customer_id || opts.cashier_id || opts.status || opts.payment_type || opts.item_id) return _detailItemSalesQuery(startDate, endDate, opts);
+  const { category_id, customer_id, cashier_id, status, payment_type, item_id } = opts;
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
     SELECT COALESCE(c.name, 'غير مصنف') AS category_name,
       COUNT(DISTINCT it.id) AS item_count,
@@ -292,21 +325,35 @@ function salesByCategory(startDate, endDate, opts = {}) {
       WHERE 1=1 ${returnDateFilter}
       GROUP BY it.category_id
     ) ret ON COALESCE(ret.category_id, -1) = COALESCE(c.id, -1)
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.status != 'cancelled' ${dateFilter}
+      ${customer_id ? " AND i.customer_id = ?" : ""}
+      ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
+      ${status ? " AND i.status = ?" : ""}
+      ${ptFilter}
+      ${item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : ""}
       ${category_id ? " AND c.id = ?" : ""}
     GROUP BY c.id
     ORDER BY revenue DESC
-  `).all(...returnParams, ...params, ...(category_id ? [category_id] : []));
+  `).all(
+    ...returnParams,
+    ...params,
+    ...(customer_id ? [customer_id] : []),
+    ...(cashier_id ? [cashier_id] : []),
+    ...(status ? [status] : []),
+    ...(item_id ? [item_id] : []),
+    ...(category_id ? [category_id] : []),
+  );
 }
 
 function salesByCashier(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const returnParams = [];
-  const { cashier_id } = opts;
-  if (cashier_id || opts.customer_id || opts.status || opts.payment_type || opts.category_id || opts.item_id) return _detailSalesQuery(startDate, endDate, opts);
+  const { cashier_id, customer_id, status, payment_type, category_id, item_id } = opts;
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
+  const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
     SELECT COALESCE(u.full_name, u.username, 'غير معروف') AS cashier,
       COUNT(CASE WHEN i.status != 'cancelled' THEN 1 END) AS invoice_count,
@@ -360,26 +407,44 @@ function salesByCashier(startDate, endDate, opts = {}) {
       WHERE sr.status = 'active' ${returnDateFilter}
       GROUP BY sr.invoice_id
     ) ret ON ret.invoice_id = i.id
-    WHERE 1=1 ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE 1=1 ${dateFilter}
+      ${customer_id ? " AND i.customer_id = ?" : ""}
+      ${status ? " AND i.status = ?" : ""}
+      ${ptFilter}
+      ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
+      ${item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : ""}
       ${cashier_id ? " AND u.id = ?" : ""}
     GROUP BY u.id
     ORDER BY total_sales DESC
-  `).all(...returnParams, ...params, ...(cashier_id ? [cashier_id] : []));
+  `).all(
+    ...returnParams,
+    ...params,
+    ...(customer_id ? [customer_id] : []),
+    ...(status ? [status] : []),
+    ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
+    ...(cashier_id ? [cashier_id] : []),
+  );
 }
 
 function salesByPayment(startDate, endDate, opts = {}) {
   const db = getDb();
-  const { customer_id, category_id } = opts;
-  if (customer_id || opts.cashier_id || opts.status || category_id || opts.item_id) return _detailSalesQuery(startDate, endDate, opts);
+  const { customer_id, category_id, cashier_id, status, item_id } = opts;
 
   const scopeClause = (params) => [
     addDateFilter("i.created_at", startDate, endDate, params),
     customer_id ? " AND i.customer_id = ?" : "",
+    cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : "",
+    status ? " AND i.status = ?" : "",
     category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : "",
+    item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : "",
   ].join("");
   const scopeArgs = [
     ...(customer_id ? [customer_id] : []),
+    ...(cashier_id ? [cashier_id] : []),
+    ...(status ? [status] : []),
     ...(category_id ? [category_id] : []),
+    ...(item_id ? [item_id] : []),
   ];
 
   const paramsA = [];
@@ -471,7 +536,7 @@ function salesHeatmap(startDate, endDate, opts = {}) {
 function periodComparison(startDate, endDate, opts = {}) {
   const db = getDb();
   if (!opts.period2_start || !opts.period2_end) {
-    return [];
+    return { rows: [], summary: { error: true, message: "يتطلب تحديد فترة المقارنة (تاريخ بدء ونهاية الفترة الثانية)" } };
   }
   const { customer_id, category_id } = opts;
   const scopeVals = [];
@@ -533,8 +598,8 @@ function grossNetSales(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { customer_id, category_id, item_id } = opts;
-  if (customer_id || category_id || item_id) return _detailSalesQuery(startDate, endDate, opts);
   const costCol = getCostColumn(opts.cost_method);
+  const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(i.id) AS invoice_count,
@@ -571,7 +636,7 @@ function grossNetSales(startDate, endDate, opts = {}) {
       WHERE sr.status = 'active'
       GROUP BY sr.invoice_id
     ) ret ON ret.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE i.status != 'cancelled' ${dateFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : ""}
@@ -805,7 +870,7 @@ function marginByCategory(startDate, endDate, opts = {}) {
 }
 
 function marginHealth(startDate, endDate, opts = {}) {
-  return getItemsBelowMargin();
+  return getItemsBelowMargin(null, { ...opts, startDate, endDate });
 }
 
 function shiftHistory(startDate, endDate, opts = {}) {
