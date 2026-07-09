@@ -19,6 +19,8 @@ import DeleteImpactModal from "../../components/ui/DeleteImpactModal";
 import { formatNumber } from "../../utils/currency";
 import AccountExportModal from "./AccountExportModal";
 import InstallmentsTab from "../../components/accounts/InstallmentsTab";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import AccountStatementTemplate from "../../components/print/templates/AccountStatementTemplate";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -1023,6 +1025,9 @@ export default function CustomerAccountsPage() {
   const [showExport, setShowExport] = useState(false);
   const [reportMenuOpen, setReportMenuOpen] = useState(false);
   const [reportExporting, setReportExporting] = useState(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printAllData, setPrintAllData] = useState(null);
+  const [printAllLoading, setPrintAllLoading] = useState(false);
 
   // Forms
   const [payForm, setPayForm] = useState({ amount: "", method_id: "", notes: "", schedule_id: "" });
@@ -1129,8 +1134,19 @@ export default function CustomerAccountsPage() {
     if (!selected?.id) return;
     setReportMenuOpen(false);
     if (format === "print") {
-      const query = new URLSearchParams({ customer_id: String(selected.id) });
-      window.open(`/reports/source/customers/statement/detailed?${query.toString()}`, "_blank", "noopener,noreferrer");
+      setPrintAllLoading(true);
+      try {
+        const res = await reportsApi.fetchSourceReport("customers", "statement", "detailed", {
+          customer_id: selected.id,
+          page: 1,
+          pageSize: 5000,
+        });
+        setPrintAllData(res);
+        setPrintOpen(true);
+      } catch {
+        toast.error("فشل تحميل كشف الحساب");
+      }
+      setPrintAllLoading(false);
       return;
     }
 
@@ -2237,6 +2253,30 @@ export default function CustomerAccountsPage() {
         confirming={deleteState?.confirming}
         onConfirm={performDeleteCustomer}
         onCancel={() => setDeleteState(null)}
+      />
+
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
+        open={printOpen}
+        onClose={() => { setPrintOpen(false); setPrintAllData(null); }}
+        docType="account_statement"
+        totalRows={printAllData?.total || 0}
+        renderContent={(renderProps) => {
+          const { currentPage, onPageCount, ...settings } = renderProps;
+          return (
+            <AccountStatementTemplate
+              statement={{
+                rows: printAllData?.data || [],
+                summary: printAllData?.summary || {},
+                partyType: "customer",
+                period: { from: "", to: "" },
+              }}
+              settings={settings}
+              currentPage={currentPage}
+              onPageCount={onPageCount}
+            />
+          );
+        }}
       />
     </div>
   );

@@ -38,6 +38,9 @@ import {
   ChequeRegisterMetricsBlock, PaymentMethodsReportMetricsBlock, PaymentMethodsByMethodBlock,
   ReportTableBlock, AjalPartyBlock
 } from "./ReportBlocks";
+import {
+  AccountStatementPartyBlock, AccountStatementLedgerBlock, AccountStatementSummaryBlock
+} from "./AccountStatementBlocks";
 
 const ALL = ["roll", "page"];
 
@@ -89,5 +92,10 @@ export const BLOCK_REGISTRY = {
   payment_methods_by_method:      { component: PaymentMethodsByMethodBlock,      label: "ملخص وسائل الدفع الكلي", group: "body", families: ["page"] },
   report_table:                   { component: ReportTableBlock,                   label: "جدول بيانات التقرير",  group: "body", families: ["page"] },
   ajal_party:                     { component: AjalPartyBlock,                     label: "بيانات العميل الآجل",  group: "dochead", families: ["page"] },
+
+  // Account statement blocks
+  account_statement_party:         { component: AccountStatementPartyBlock,         label: "بيانات الطرف (كشف حساب)", group: "dochead", families: ["page"] },
+  account_statement_ledger:        { component: AccountStatementLedgerBlock,        label: "جدول حركات كشف الحساب",   group: "body",   families: ["page"] },
+  account_statement_summary:       { component: AccountStatementSummaryBlock,       label: "ملخص كشف الحساب (الإجمالي)", group: "totals", families: ["page"] },
 };
 

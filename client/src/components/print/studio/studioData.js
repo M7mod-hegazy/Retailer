@@ -25,6 +25,7 @@ export const BLOCK_DOCS = new Set([
   "quotation", "branch_transfer", "purchase_return", "payment_receipt",
   "bank_statement", "ajal_statement", "ajal_schedule", "ajal_full_statement",
   "cheque_register", "payment_methods_report", "daily_treasury", "reports_generic",
+  "account_statement",
 ]);
 
 // Scope catalog shown in the Studio switcher. `_global` is the shared design
@@ -46,6 +47,7 @@ export const STUDIO_SCOPES = [
   { key: "daily_treasury",         label: "تقرير الخزينة",         group: "تقارير" },
   { key: "payment_methods_report", label: "تقرير وسائل الدفع",     group: "تقارير" },
   { key: "reports_generic",        label: "إعدادات طباعة التقارير", group: "تقارير" },
+  { key: "account_statement",      label: "كشف حساب (عميل / مورد)", group: "تقارير" },
 ];
 
 export function scopeLabel(key) {
@@ -1287,6 +1289,159 @@ export const SCOPE_PRESETS = {
         }
       }
     }
+  ],
+  account_statement: [
+    {
+      id: "account_classic",
+      label: "كشف حساب كلاسيكي رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "grid",
+            headerBg: "#1e40af",
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "الوصف", visible: true, align: "right", width: "44%" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "account_modern",
+      label: "كشف حساب عصري (Zebra)",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#0f172a",
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
+              { key: "running_balance", label: "الرصيد الجاري", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "الوصف", visible: true, align: "right", width: "44%" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "account_minimal",
+      label: "كشف حساب مبسط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "simple"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "none",
+            zebra: false,
+            headerVariant: "light",
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "5%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "15%" },
+              { key: "amount", label: "المبلغ", visible: true, align: "center", width: "20%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "60%" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "account_centered",
+      label: "كشف حساب متمركز أنيق",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "signature_lines"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "grid",
+            headerBg: "#059669",
+            zebra: true,
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "تاريخ الحركة", visible: true, align: "center", width: "14%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "تفاصيل المعاملة", visible: true, align: "right", width: "44%" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "account_boxed",
+      label: "كشف حساب شبكي (Executive)",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "lines",
+            zebra: true,
+            headerBg: "#6d28d9",
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "البيان والوصف", visible: true, align: "right", width: "44%" },
+            ]
+          }
+        }
+      }
+    },
+    {
+      id: "account_sidebar",
+      label: "كشف حساب جانبي (Sidebar)",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      layout: {
+        order: ["account_statement_ledger", "account_statement_summary"],
+        perBlock: {
+          account_statement_ledger: {
+            tableBorder: "none",
+            zebra: true,
+            headerVariant: "light",
+            columns: [
+              { key: "index", label: "م", visible: true, align: "center", width: "5%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "15%" },
+              { key: "amount", label: "المبلغ ج.م", visible: true, align: "center", width: "20%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "60%" },
+            ]
+          }
+        }
+      }
+    },
   ]
 };
 
@@ -1361,12 +1516,22 @@ Object.keys(SCOPE_PRESETS).forEach((scope) => {
   extraThemes.forEach((theme) => {
     const clonedLayout = JSON.parse(JSON.stringify(base.layout));
     
-    if (clonedLayout.perBlock && clonedLayout.perBlock.report_table) {
-      const tableConfig = clonedLayout.perBlock.report_table;
+    const tableBlockKey = clonedLayout.perBlock?.report_table
+      ? "report_table"
+      : clonedLayout.perBlock?.account_statement_ledger
+      ? "account_statement_ledger"
+      : null;
+    if (tableBlockKey) {
+      const tableConfig = clonedLayout.perBlock[tableBlockKey];
       tableConfig.tableBorder = theme.table.tableBorder;
       tableConfig.zebra = theme.table.zebra;
       tableConfig.headerBg = theme.flat.accent_color;
       tableConfig.headerColor = "#ffffff";
+    }
+    if (clonedLayout.perBlock?.account_statement_summary) {
+      const summaryConfig = clonedLayout.perBlock.account_statement_summary;
+      summaryConfig.tableBorder = theme.table.tableBorder;
+      summaryConfig.zebra = theme.table.zebra;
     }
 
     SCOPE_PRESETS[scope].push({
@@ -1513,6 +1678,61 @@ export const TEMPLATE_MOCK = {
     ],
     totals: { label: "إجمالي قيمة المخزون", value: "3,250.00" },
   },
+  account_statement: {
+    partyType: "customer",
+    summary: {
+      party_name: "محمد أحمد عبدالله",
+      party_code: "CUST-001",
+      opening_balance: 5000,
+      closing_balance: 8500,
+      total_debit: 12000,
+      total_credit: 8500,
+    },
+    period: { from: "2026-06-01", to: "2026-06-30" },
+    rows: [
+      {
+        type: "invoice", ref_no: "INV-001", date: now(), datetime: now(),
+        description: "فاتورة مبيعات نقدية", debit: 3000, credit: 0,
+        running_balance: 8000, doc_discount: 0, doc_increase: 0, doc_total: 3000,
+        affects_balance: true,
+        items: [
+          { _is_item: true, item_name: "منتج تجريبي أ", item_code: "K-001", quantity: 2, unit_price: 1000, line_total: 2000 },
+          { _is_item: true, item_name: "منتج تجريبي ب", item_code: "K-002", quantity: 1, unit_price: 1000, line_total: 1000 },
+        ],
+      },
+      {
+        type: "payment", ref_no: "PAY-001", date: now(), datetime: now(),
+        description: "دفعة من العميل", debit: 0, credit: 2000,
+        running_balance: 6000, doc_discount: 0, doc_increase: 0, doc_total: 2000,
+        affects_balance: true, items: [],
+      },
+      {
+        type: "purchase", ref_no: "PUR-001", date: now(), datetime: now(),
+        description: "فاتورة مشتريات", debit: 4500, credit: 0,
+        running_balance: 10500, doc_discount: 500, doc_increase: 200, doc_total: 4200,
+        affects_balance: true,
+        items: [
+          { _is_item: true, item_name: "بضاعة مشتراة", item_code: "K-010", quantity: 5, unit_price: 800, line_total: 4000 },
+        ],
+      },
+      {
+        type: "sales_return", ref_no: "SR-001", date: now(), datetime: now(),
+        description: "مرتجع مبيعات", debit: 0, credit: 2000,
+        running_balance: 8500, doc_discount: 0, doc_increase: 0, doc_total: 2000,
+        affects_balance: true,
+        items: [
+          { _is_item: true, item_name: "منتج تجريبي أ (مرتجع)", item_code: "K-001", quantity: 1, unit_price: 1000, line_total: 1000 },
+          { _is_item: true, item_name: "منتج تجريبي ج (مرتجع)", item_code: "K-003", quantity: 1, unit_price: 1000, line_total: 1000 },
+        ],
+      },
+      {
+        type: "adjustment", ref_no: "ADJ-001", date: now(), datetime: now(),
+        description: "تسوية رصيد", debit: 500, credit: 0,
+        running_balance: 9000, doc_discount: 0, doc_increase: 0, doc_total: 500,
+        affects_balance: true, items: [],
+      },
+    ],
+  },
 };
 
 // ── per-sample variants for report scopes ────────────────────────────────────
@@ -1590,6 +1810,10 @@ export function templateMockBySample(scope, sampleId = "normal") {
         ["K-003", "منتج تجريبي ثالث واسمه اطول من اللازم اصلاً",    "لتر",   "30", "15.50",  "465.00"],
         ["K-004", "اسم منتج تجريبي رابع طويل جداً ليختبر العرض هنا", "قطعة",  "5",  "230.00", "1,150.00"],
       ],
+    },
+    account_statement: {
+      ...base,
+      summary: { ...base.summary, party_name: "محمد أحمد بن عبدالله بن علي السعيد التميمي" },
     },
   };
 
@@ -1680,6 +1904,30 @@ export function templateMockBySample(scope, sampleId = "normal") {
         (10 + i * 5).toFixed(2),
         ((10 + i * 5) * (Math.floor(Math.random() * 50) + 1)).toFixed(2),
       ]),
+    },
+    account_statement: {
+      ...base,
+      rows: Array.from({ length: 25 }, (_, i) => {
+        const types = ["invoice", "payment", "purchase", "sales_return"];
+        const type = types[i % types.length];
+        const isDebit = type === "invoice" || type === "purchase";
+        const amt = (i + 1) * 500 + 100;
+        return {
+          type, ref_no: `DOC-${String(i + 1).padStart(3, "0")}`,
+          date: now(), datetime: now(),
+          description: `معاملة ${i + 1} — ${type === "invoice" ? "فاتورة مبيعات" : type === "payment" ? "دفعة" : type === "purchase" ? "فاتورة مشتريات" : "مرتجع"}`,
+          debit: isDebit ? amt : 0,
+          credit: !isDebit ? amt : 0,
+          running_balance: 5000 + (i + 1) * (isDebit ? amt : -amt),
+          doc_discount: i % 3 === 0 ? 100 : 0,
+          doc_increase: i % 5 === 0 ? 50 : 0,
+          doc_total: amt,
+          affects_balance: true,
+          items: i % 2 === 0 ? [
+            { _is_item: true, item_name: `منتج تجريبي ${i + 1}`, item_code: `K-${String(i + 1).padStart(3, "0")}`, quantity: 2, unit_price: amt / 2, line_total: amt },
+          ] : [],
+        };
+      }),
     },
   };
 
