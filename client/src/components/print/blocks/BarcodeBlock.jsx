@@ -7,7 +7,7 @@ import { code128Bars } from "../../../utils/code128";
 // the human-readable number underneath.
 export default function BarcodeBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showBarcode = g(s, "show_barcode_line") === true;
-  if (!showBarcode && !editing) return null;
+  if (!showBarcode) return null;
   const number = resolveDocNo(invoice) || (editing ? "1234567890" : "");
   if (!number) return null;
 

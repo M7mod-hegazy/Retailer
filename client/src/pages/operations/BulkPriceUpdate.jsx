@@ -153,9 +153,8 @@ export default function BulkPriceUpdatePage() {
   // ── Selection ──
   const [selected, setSelected] = useState(new Set());
 
-  // ── Inline price overrides: { [itemId]: string }, override per-field: { [itemId]: fieldKey } ──
+  // ── Inline price overrides: { [itemId]: { [fieldKey]: rawValue } } ──
   const [inlineOverrides, setInlineOverrides] = useState({});
-  const [overrideFields, setOverrideFields] = useState({});
   const [activePriceEdit, setActivePriceEdit] = useState(null); // { itemId, field }
 
   // ── Adjustment controls ──
@@ -195,7 +194,8 @@ export default function BulkPriceUpdatePage() {
     if (selected.size === 0) { toast.error("اختر صنفاً واحداً على الأقل"); return; }
     const v = parseFloat(adjValue);
     const hasFormula = v && !isNaN(v) && v !== 0;
-    if (!hasFormula && ![...selected].some(id => inlineOverrides[id] !== undefined)) {
+    const hasAnyOverride = [...selected].some(id => inlineOverrides[id] !== undefined);
+    if (!hasFormula && !hasAnyOverride) {
       toast.error("أدخل قيمة تعديل أو استخدم التعديل اليدوي");
       return;
     }
@@ -203,32 +203,34 @@ export default function BulkPriceUpdatePage() {
     for (const id of [...selected]) {
       const item = items.find((it) => it.id === id);
       if (!item) continue;
-      const raw = inlineOverrides[id];
-      if (raw !== undefined) {
-        const parsed = parsePriceInput(raw);
-        if (!parsed) continue;
-        const effectiveField = overrideFields[id] || fieldKey;
-        const currentPrice = parseFloat(item[effectiveField]) || 0;
-        let newPrice;
-        if (parsed.type === 'absolute') {
-          newPrice = Math.max(0, Math.round(parsed.value * 100) / 100);
-        } else {
-          newPrice = applyAdjustment(currentPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
-        }
-        if (newPrice === null || newPrice === currentPrice) continue;
-        const apiField = FIELD_KEY_TO_API_VALUE[effectiveField] || priceField;
-        const existing = batchItems.find(bi => bi.itemId === id && bi.field === apiField);
-        if (existing) {
-          setBatchItems(prev => prev.map(bi => bi.id === existing.id
-            ? { ...bi, oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice, source: 'يدوي' }
-            : bi));
-        } else {
-          newEntries.push({
-            id: ++batchIdCounter.current, itemId: id, name: item.name, code: item.code || '',
-            field: apiField, fieldLabel: fieldLabelOf(apiField),
-            oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice,
-            source: 'يدوي', direction, adjType, adjValue: Math.abs(v),
-          });
+      const itemOverrides = inlineOverrides[id];
+      const hasOverrides = itemOverrides && Object.keys(itemOverrides).length > 0;
+      if (hasOverrides) {
+        for (const [overrideFieldKey, raw] of Object.entries(itemOverrides)) {
+          const parsed = parsePriceInput(raw);
+          if (!parsed) continue;
+          const currentPrice = parseFloat(item[overrideFieldKey]) || 0;
+          let newPrice;
+          if (parsed.type === 'absolute') {
+            newPrice = Math.max(0, Math.round(parsed.value * 100) / 100);
+          } else {
+            newPrice = applyAdjustment(currentPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
+          }
+          if (newPrice === null || newPrice === currentPrice) continue;
+          const apiField = FIELD_KEY_TO_API_VALUE[overrideFieldKey] || priceField;
+          const existing = batchItems.find(bi => bi.itemId === id && bi.field === apiField);
+          if (existing) {
+            setBatchItems(prev => prev.map(bi => bi.id === existing.id
+              ? { ...bi, oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice, source: 'يدوي' }
+              : bi));
+          } else {
+            newEntries.push({
+              id: ++batchIdCounter.current, itemId: id, name: item.name, code: item.code || '',
+              field: apiField, fieldLabel: fieldLabelOf(apiField),
+              oldPrice: currentPrice, newPrice, diff: newPrice - currentPrice,
+              source: 'يدوي', direction, adjType, adjValue: Math.abs(v),
+            });
+          }
         }
         continue;
       }
@@ -258,7 +260,6 @@ export default function BulkPriceUpdatePage() {
     }
     setSelected(new Set());
     setInlineOverrides({});
-    setOverrideFields({});
     setAdjValue("");
   }
 
@@ -299,7 +300,6 @@ export default function BulkPriceUpdatePage() {
       if (opId) setLastOpId(opId);
       setSelected(new Set());
       setInlineOverrides({});
-      setOverrideFields({});
       setBatchItems([]);
       setBatchReason("");
       fetchItems();
@@ -436,14 +436,13 @@ export default function BulkPriceUpdatePage() {
     else setSelected((prev) => { const s = new Set(prev); allPageIds.forEach((id) => s.add(id)); return s; });
   }
   function selectAllFiltered() { setSelected(new Set(allFilteredIds)); }
-  function clearSelection() { setSelected(new Set()); setInlineOverrides({}); setOverrideFields({}); }
+  function clearSelection() { setSelected(new Set()); setInlineOverrides({}); }
   function toggleRow(id) {
     setSelected((prev) => {
       const s = new Set(prev);
       if (s.has(id)) {
         s.delete(id);
         setInlineOverrides((o) => { const n = { ...o }; delete n[id]; return n; });
-        setOverrideFields((o) => { const n = { ...o }; delete n[id]; return n; });
       } else {
         s.add(id);
       }
@@ -468,8 +467,10 @@ export default function BulkPriceUpdatePage() {
     if (isNaN(val) || val < 0) { toast.error('أدخل رقماً صحيحاً للسعر'); return; }
     const newVal = Math.round(val * 100) / 100;
     setSelected((prev) => { const s = new Set(prev); s.add(itemId); return s; });
-    setInlineOverrides((o) => ({ ...o, [itemId]: String(newVal) }));
-    setOverrideFields((o) => ({ ...o, [itemId]: fieldKey }));
+    setInlineOverrides((o) => ({
+      ...o,
+      [itemId]: { ...(o[itemId] || {}), [fieldKey]: String(newVal) }
+    }));
     setActivePriceEdit(null);
   }
 
@@ -478,32 +479,38 @@ export default function BulkPriceUpdatePage() {
     setActivePriceEdit(null);
   }
 
-  function clearOverride(e, itemId) {
+  function clearOverride(e, itemId, fieldKey) {
     e.stopPropagation();
-    setInlineOverrides((o) => { const n = { ...o }; delete n[itemId]; return n; });
-    setOverrideFields((o) => { const n = { ...o }; delete n[itemId]; return n; });
+    setInlineOverrides((o) => {
+      const itemOverrides = o[itemId];
+      if (!itemOverrides) return o;
+      const { [fieldKey]: _, ...rest } = itemOverrides;
+      if (Object.keys(rest).length === 0) {
+        const n = { ...o }; delete n[itemId]; return n;
+      }
+      return { ...o, [itemId]: rest };
+    });
   }
 
-  // Compute effective new price for an item (respects per-field overrides)
-  function effectiveOverrideField(item) {
-    return overrideFields[item.id] || fieldKey;
-  }
-  function currentPriceFor(item) {
-    const f = effectiveOverrideField(item);
-    return parseFloat(item[f]) || 0;
-  }
+  // Compute effective new price for an item (bulk formula only)
   function effectiveNewPrice(item) {
-    if (inlineOverrides[item.id] !== undefined) {
-      const parsed = parsePriceInput(inlineOverrides[item.id]);
+    const currentPrice = parseFloat(item[fieldKey]) || 0;
+    return applyAdjustment(currentPrice, direction, adjType, adjValue);
+  }
+
+  function effectiveNewPriceForField(item, fk) {
+    const override = inlineOverrides[item.id]?.[fk];
+    if (override !== undefined) {
+      const parsed = parsePriceInput(override);
       if (!parsed) return null;
-      const f = effectiveOverrideField(item);
-      const currentPrice = parseFloat(item[f]) || 0;
+      const currentPrice = parseFloat(item[fk]) || 0;
       if (parsed.type === 'absolute') {
         return Math.max(0, Math.round(parsed.value * 100) / 100);
       }
       return applyAdjustment(currentPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
     }
-    const currentPrice = parseFloat(item[fieldKey]) || 0;
+    if (fk !== fieldKey) return null;
+    const currentPrice = parseFloat(item[fk]) || 0;
     return applyAdjustment(currentPrice, direction, adjType, adjValue);
   }
 
@@ -518,15 +525,43 @@ export default function BulkPriceUpdatePage() {
     }
     if (selected.size === 0) { toast.error("اختر صنفاً واحداً على الأقل"); return; }
 
-    // Build preview: compute old → new for every selected item
-    const preview = [...selected].map((id) => {
+    // Build preview: compute old → new for every selected item (per-field for overrides)
+    const preview = [...selected].flatMap((id) => {
       const item = items.find((it) => it.id === id);
-      if (!item) return null;
-      const priceFieldUsed = overrideFields[id] || fieldKey;
-      const oldPrice = parseFloat(item[priceFieldUsed]) || 0;
+      if (!item) return [];
+      const itemOverrides = inlineOverrides[id];
+      const hasOverrides = itemOverrides && Object.keys(itemOverrides).length > 0;
+      if (hasOverrides) {
+        return Object.entries(itemOverrides).map(([fk, raw]) => {
+          const parsed = parsePriceInput(raw);
+          if (!parsed) return null;
+          const oldPrice = parseFloat(item[fk]) || 0;
+          let newPrice;
+          if (parsed.type === 'absolute') {
+            newPrice = Math.max(0, Math.round(parsed.value * 100) / 100);
+          } else {
+            newPrice = applyAdjustment(oldPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
+          }
+          if (newPrice === null) return null;
+          return {
+            id: item.id,
+            name: item.name,
+            code: item.code || "",
+            category: item.category_name || "",
+            oldPrice,
+            newPrice,
+            diff: newPrice - oldPrice,
+            isOverride: true,
+            field: fk,
+            fieldLabel: fieldLabelByKey(fk),
+          };
+        }).filter(Boolean);
+      }
+      if (!hasBulkFormula) return [];
+      const oldPrice = parseFloat(item[fieldKey]) || 0;
       const newPrice = effectiveNewPrice(item);
-      if (newPrice === null) return null;
-      return {
+      if (newPrice === null) return [];
+      return [{
         id: item.id,
         name: item.name,
         code: item.code || "",
@@ -534,9 +569,11 @@ export default function BulkPriceUpdatePage() {
         oldPrice,
         newPrice,
         diff: newPrice - oldPrice,
-        isOverride: inlineOverrides[id] !== undefined,
-      };
-    }).filter(Boolean);
+        isOverride: false,
+        field: fieldKey,
+        fieldLabel: fieldLabelByKey(fieldKey),
+      }];
+    });
 
     setPreviewItems(preview);
     setPendingSubmit(true);
@@ -569,33 +606,42 @@ export default function BulkPriceUpdatePage() {
         lastOpIdResult = r.data.operation_id;
       }
 
-      // Inline override items — compute effective new price from smart parsing
+      // Inline override items — send one API call per field per item
       for (const id of overrideIds) {
         const item = items.find((it) => it.id === id);
         if (!item) continue;
-        const pf = overrideFields[id] || fieldKey;
-        const currentPrice = parseFloat(item[pf]) || 0;
-        const newPrice = effectiveNewPrice(item);
-        if (newPrice === null || newPrice === currentPrice) continue;
-        const diff = newPrice - currentPrice;
-        const overrideApiField = FIELD_KEY_TO_API_VALUE[pf] || priceField;
-        const r = await api.post("/api/items/bulk-price-update", {
-          item_ids: [id],
-          adjustment_type: "fixed",
-          adjustment_value: Math.abs(diff),
-          direction: diff >= 0 ? "up" : "down",
-          price_field: overrideApiField,
-          reason: reason || "تعديل يدوي مباشر",
-        });
-        totalChanges += r.data.changes || 0;
-        if (!lastOpIdResult) lastOpIdResult = r.data.operation_id;
+        const itemOverrides = inlineOverrides[id];
+        if (!itemOverrides) continue;
+        for (const [fk, raw] of Object.entries(itemOverrides)) {
+          const parsed = parsePriceInput(raw);
+          if (!parsed) continue;
+          const currentPrice = parseFloat(item[fk]) || 0;
+          let newPrice;
+          if (parsed.type === 'absolute') {
+            newPrice = Math.max(0, Math.round(parsed.value * 100) / 100);
+          } else {
+            newPrice = applyAdjustment(currentPrice, parsed.direction, parsed.adjustment_type, parsed.adjustment_value);
+          }
+          if (newPrice === null || newPrice === currentPrice) continue;
+          const diff = newPrice - currentPrice;
+          const overrideApiField = FIELD_KEY_TO_API_VALUE[fk] || priceField;
+          const r = await api.post("/api/items/bulk-price-update", {
+            item_ids: [id],
+            adjustment_type: "fixed",
+            adjustment_value: Math.abs(diff),
+            direction: diff >= 0 ? "up" : "down",
+            price_field: overrideApiField,
+            reason: reason || "تعديل يدوي مباشر",
+          });
+          totalChanges += r.data.changes || 0;
+          if (!lastOpIdResult) lastOpIdResult = r.data.operation_id;
+        }
       }
 
-      toast.success(`تم تحديث ${totalChanges} صنف بنجاح`);
+      toast.success(`تم تحديث ${totalChanges} سعر بنجاح`);
       if (lastOpIdResult) setLastOpId(lastOpIdResult);
       setSelected(new Set());
       setInlineOverrides({});
-      setOverrideFields({});
       setAdjValue("");
       setReason("");
       fetchItems();
@@ -946,15 +992,21 @@ export default function BulkPriceUpdatePage() {
                     <tr><td colSpan={8} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
                   ) : pageItems.map((item) => {
                     const isSelected = selected.has(item.id);
-                    const effectiveDiffField = overrideFields[item.id] || fieldKey;
+                    const itemOverrides = inlineOverrides[item.id];
+                    const overrideFieldKeys = itemOverrides ? Object.keys(itemOverrides) : [];
+                    const hasSingleOverride = overrideFieldKeys.length === 1;
+                    const effectiveDiffField = hasSingleOverride ? overrideFieldKeys[0] : fieldKey;
                     const currentPrice = parseFloat(item[effectiveDiffField]) || 0;
-                    const newPrice = effectiveNewPrice(item);
+                    const newPrice = hasSingleOverride ? effectiveNewPriceForField(item, overrideFieldKeys[0]) : effectiveNewPrice(item);
                     const diff = newPrice !== null ? newPrice - currentPrice : null;
+                    const purchaseNewPrice = effectiveNewPriceForField(item, 'purchase_price');
+                    const saleNewPrice = effectiveNewPriceForField(item, 'sale_price');
+                    const wholesaleNewPrice = effectiveNewPriceForField(item, 'wholesale_price');
                     const isUp = diff !== null && diff > 0;
                     const isDown = diff !== null && diff < 0;
-                    const overrideOnPurchase = overrideFields[item.id] === 'purchase_price' && inlineOverrides[item.id] !== undefined;
-                    const overrideOnSale = overrideFields[item.id] === 'sale_price' && inlineOverrides[item.id] !== undefined;
-                    const overrideOnWholesale = overrideFields[item.id] === 'wholesale_price' && inlineOverrides[item.id] !== undefined;
+                    const overrideOnPurchase = inlineOverrides[item.id]?.purchase_price !== undefined;
+                    const overrideOnSale = inlineOverrides[item.id]?.sale_price !== undefined;
+                    const overrideOnWholesale = inlineOverrides[item.id]?.wholesale_price !== undefined;
                     const hasAnyOverride = overrideOnPurchase || overrideOnSale || overrideOnWholesale;
 
                     return (
@@ -1001,11 +1053,11 @@ export default function BulkPriceUpdatePage() {
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الشراء — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'purchase_price')}
                                                                 className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
-                                {newPrice?.toFixed(2) || Number(item.purchase_price || 0).toFixed(2)}
+                                {purchaseNewPrice?.toFixed(2) || Number(item.purchase_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.purchase_price || 0).toFixed(2)}</span>
-                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id, 'purchase_price'); }}
                                 title="إعادة ضبط"
                                 className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
                                 <RotateCcw className="h-3 w-3" />
@@ -1043,11 +1095,11 @@ export default function BulkPriceUpdatePage() {
                             <span className="flex items-center gap-1.5 group/cell" title="سعر المستهلك — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'sale_price')}
                                 className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
-                                {newPrice?.toFixed(2) || Number(item.sale_price || 0).toFixed(2)}
+                                {saleNewPrice?.toFixed(2) || Number(item.sale_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.sale_price || 0).toFixed(2)}</span>
-                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id, 'sale_price'); }}
                                 title="إعادة ضبط"
                                 className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
                                 <RotateCcw className="h-3 w-3" />
@@ -1085,11 +1137,11 @@ export default function BulkPriceUpdatePage() {
                             <span className="flex items-center gap-1.5 group/cell" title="سعر الجملة — تم التعديل يدوياً">
                               <span onClick={(e) => startPriceEdit(e, item.id, 'wholesale_price')}
                                 className="number-fmt-primary text-violet-700 cursor-pointer hover:text-sky-600 transition-colors">
-                                {newPrice?.toFixed(2) || Number(item.wholesale_price || 0).toFixed(2)}
+                                {wholesaleNewPrice?.toFixed(2) || Number(item.wholesale_price || 0).toFixed(2)}
                               </span>
                               <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded shrink-0">يدوي</span>
                               <span className="text-[10px] text-slate-300 line-through hidden sm:inline">{Number(item.wholesale_price || 0).toFixed(2)}</span>
-                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id); }}
+                              <button onClick={(e) => { e.stopPropagation(); clearOverride(e, item.id, 'wholesale_price'); }}
                                 title="إعادة ضبط"
                                 className="opacity-0 group-hover/cell:opacity-100 flex h-5 w-5 items-center justify-center rounded text-slate-300 hover:text-rose-500 transition-colors">
                                 <RotateCcw className="h-3 w-3" />
@@ -1450,7 +1502,7 @@ export default function BulkPriceUpdatePage() {
               <div>
                 <h2 className="text-[16px] font-black text-slate-900">معاينة التغييرات قبل التطبيق</h2>
                 <p className="text-2sm font-bold text-slate-400 mt-0.5">
-                  {previewItems.length} صنف · حقل: {fieldLabelOf(priceField)}
+                  {previewItems.length} تغيير · {new Set(previewItems.map(p => p.id)).size} صنف
                 </p>
               </div>
               <button onClick={() => setPendingSubmit(false)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-400">
@@ -1495,6 +1547,7 @@ export default function BulkPriceUpdatePage() {
                 <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-2 font-black text-slate-500 text-right">الصنف</th>
+                    <th className="px-4 py-2 font-black text-slate-500 w-[70px]">الحقل</th>
                     <th className="px-4 py-2 font-black text-slate-500 w-[100px]">القيمة الحالية</th>
                     <th className="px-4 py-2 font-black text-slate-500 w-[100px]">القيمة الجديدة</th>
                     <th className="px-4 py-2 font-black text-slate-500 w-[90px] text-left">الفرق</th>
@@ -1502,12 +1555,13 @@ export default function BulkPriceUpdatePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {previewItems.map((it) => (
-                    <tr key={it.id} className="hover:bg-slate-50/50">
+                    <tr key={`${it.id}-${it.field}`} className="hover:bg-slate-50/50">
                       <td className="px-4 py-2">
                         <p className="font-black text-slate-800">{it.name}</p>
                         {it.code && <p className="number-fmt text-[11px] text-slate-400">{it.code}</p>}
                         {it.isOverride && <span className="text-[9px] font-black bg-violet-100 text-violet-700 px-1 rounded">مخصص</span>}
                       </td>
+                      <td className="px-4 py-2 font-bold text-slate-600">{it.fieldLabel}</td>
                       <td className="px-4 py-2 number-fmt-primary text-slate-500 text-right">{it.oldPrice.toFixed(2)}</td>
                       <td className="px-4 py-2 number-fmt-primary text-slate-900 text-right">{it.newPrice.toFixed(2)}</td>
                       <td className="px-4 py-2 text-left">

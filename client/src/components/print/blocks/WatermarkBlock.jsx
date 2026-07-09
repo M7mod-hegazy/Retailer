@@ -7,7 +7,7 @@ import { g } from "./blockUtils";
 export default function WatermarkBlock({ settings: s, props = {}, family, editing }) {
   if (family !== "page") return null;
   const showWatermark = g(s, "show_watermark") === true;
-  if (!showWatermark && !editing) return null;
+  if (!showWatermark) return null;
   const text = props.text != null ? props.text : (g(s, "watermark_text") || (editing ? "نسخة" : ""));
   if (!text || !String(text).trim()) return null;
   const angle = props.angle != null ? props.angle : -30;

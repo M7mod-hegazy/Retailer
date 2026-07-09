@@ -10,7 +10,7 @@ const DEFAULT_LABELS_3 = ["توقيع البائع", "توقيع المستلم"
 export default function SignatureLinesBlock({ settings: s, props = {}, family, editing }) {
   if (family !== "page") return null;
   const showSignatures = g(s, "show_signature_lines") === true;
-  if (!showSignatures && !editing) return null;
+  if (!showSignatures) return null;
 
   const count = props.count === 3 ? 3 : 2;
   const labels = Array.isArray(props.labels) && props.labels.length

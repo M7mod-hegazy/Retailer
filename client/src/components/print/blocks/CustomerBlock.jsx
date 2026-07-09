@@ -4,7 +4,7 @@ import { g } from "./blockUtils";
 // props.label renames the caption (empty string keeps just the name).
 export default function CustomerBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showCustomer = g(s, "show_customer_name") !== false;
-  if (!showCustomer && !editing) return null;
+  if (!showCustomer) return null;
   // Anonymous sale with a captured walk-in contact → print it as the customer.
   const isWalkIn = !invoice.customer_name && Boolean(invoice.walk_in_phone);
   // Realistic mock: a full Arabic name as would appear in a retail invoice

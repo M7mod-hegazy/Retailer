@@ -6,6 +6,7 @@ const DOC_TYPES = [
   "ajal_full_statement", "cheque_register", "payment_receipt", "daily_treasury",
   "payment_methods_report", "reports_generic", "owner_statement",
   "kitchen_ticket",
+  "account_statement",
 ];
 
 

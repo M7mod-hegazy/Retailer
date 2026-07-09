@@ -4,7 +4,7 @@ import { g } from "./blockUtils";
 // props.label renames the caption (empty string keeps just the name).
 export default function CashierBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showCashier = g(s, "show_cashier_name") !== false;
-  if (!showCashier && !editing) return null;
+  if (!showCashier) return null;
   // Realistic mock: a typical cashier name for a retail POS
   const name = invoice.cashier_name || invoice.cashier || "";
   if (!name && props.hideIfEmpty === true && !editing) return null;

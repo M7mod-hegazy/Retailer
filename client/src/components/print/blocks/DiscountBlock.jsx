@@ -3,7 +3,7 @@ import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 // props.label renames the line (empty string hides the caption).
 export default function DiscountBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
-  if (g(s, "show_discount_line") === false && !editing) return null;
+  if (g(s, "show_discount_line") === false) return null;
   const { totalDiscount } = computeTotals(invoice, s);
   // In editing mode with no real discount, show a realistic mock: 25 SAR off
   const displayDiscount = totalDiscount > 0 ? totalDiscount : (editing ? 25 : 0);

@@ -56,7 +56,7 @@ function SummaryLine({ label, value, strong, tone }) {
   }[tone] || (strong ? "#334155" : "#64748b");
   return (
     <tr style={{ background: bgColor }}>
-      <td colSpan={4} style={{ padding: "3px 6px", fontSize: "10px", border: "1px solid #e2e8f0", textAlign: "left", fontWeight: strong ? 900 : 700, color: toneText }}>{label}</td>
+      <td colSpan={3} style={{ padding: "3px 6px", fontSize: "10px", border: "1px solid #e2e8f0", textAlign: "left", fontWeight: strong ? 900 : 700, color: toneText }}>{label}</td>
       <td style={{ padding: "3px 6px", fontSize: "11px", textAlign: "center", border: "1px solid #e2e8f0", fontVariantNumeric: "tabular-nums", fontWeight: strong ? 900 : 700, color: toneText, direction: "ltr" }}>{value}</td>
     </tr>
   );
@@ -116,7 +116,7 @@ function StatementSummaryRows({ cols, accent, printFont, currency, totalDebit, t
       </tr>
       <tr style={{ background: accent, color: "#fff" }}>
         <td colSpan={cols.length - 1} style={{ padding: "4px 12px", fontSize: "11px", fontWeight: 700, border: `1px solid ${accent}`, textAlign: "left", opacity: 0.8 }}>
-          <span>رصيد الحركة</span>
+                  <span>الحركة</span>
         </td>
         <td style={{ padding: "4px 12px", fontSize: "13px", fontWeight: 900, border: `1px solid ${accent}`, textAlign: "center", fontVariantNumeric: "tabular-nums", direction: "ltr", color: closingNeg ? "#fca5a5" : "#fff" }}>
           {fmt(closing)} {currency}
@@ -266,7 +266,7 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
         if (noImpact) {
           return (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2, gap: "2px" }}>
-              <span style={{ fontSize: "9px", fontWeight: 900, color: "#92400e", whiteSpace: "nowrap" }}>= بدون تغيير</span>
+                <span style={{ fontSize: "9px", fontWeight: 900, color: "#92400e", whiteSpace: "nowrap" }}>بدون تغيير</span>
               <span style={{ fontSize: "11px", fontVariantNumeric: "tabular-nums", color: "#94a3b8", direction: "ltr" }}>{fmt(group.running_balance)}</span>
             </div>
           );
@@ -283,9 +283,9 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
             <span style={{ fontSize: smallFont, fontWeight: 900, padding: "1px 8px", borderRadius: "4px", border: "1px solid", opacity: noImpact ? 0.7 : 1, background: accentLight, color: accent, borderColor: accent + "40" }}>{meta.label}</span>
             <span style={{ fontWeight: 700, wordBreak: "break-word", color: noImpact ? "#737373" : "#334155" }}>{desc}</span>
             {noImpact && (
-              <span style={{ fontSize: smallFont, fontWeight: 900, padding: "1px 6px", borderRadius: "4px", border: "1px solid #f59e0b", background: "#fef3c7", color: "#92400e", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }} /> لم يؤثر على الرصيد
-              </span>
+                <span style={{ fontSize: smallFont, fontWeight: 900, padding: "1px 6px", borderRadius: "4px", border: "1px solid #f59e0b", background: "#fef3c7", color: "#92400e", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f59e0b" }} /> بدون تأثير
+                </span>
             )}
           </div>
         );
@@ -297,23 +297,17 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
     }
   }
 
-  /* Render the opening balance row — each column shows
-     content appropriate to its key */
   function renderOpeningCell(colKey) {
     switch (colKey) {
       case "index": return "—";
-      case "date": return null; // will use colSpan
-      case "debit": return null;
-      case "credit": return null;
+      case "date": return "—";
+      case "debit": return "—";
+      case "credit": return <BalanceCell value={opening} bold accent={accent} />;
       case "running_balance": return <BalanceCell value={opening} bold accent={accent} />;
-      case "description": return <span style={{ fontWeight: 700, color: "#57534e" }}>الرصيد المرحّل من الفترات السابقة</span>;
+      case "description": return <span style={{ fontWeight: 700, color: "#57534e" }}>رصيد سابق</span>;
       case "amount": return <BalanceCell value={opening} bold accent={accent} />;
       default: return "—";
     }
-  }
-
-  function isOpeningMerged(colKey) {
-    return colKey === "date" || colKey === "debit" || colKey === "credit";
   }
 
   return (
@@ -338,24 +332,11 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
         <tbody>
           {/* Opening balance row */}
           <tr style={{ background: "#fffbeb" }}>
-            {cols.map((c, ci) => {
-              if (isOpeningMerged(c.key)) {
-                if (ci === 0) {
-                  const mergedCount = cols.filter((_, i) => isOpeningMerged(cols[i].key)).length;
-                  return (
-                    <td key={c.key} colSpan={mergedCount} style={{ ...cellStyleBase, textAlign: "center", fontWeight: 700, color: "#92400e" }}>
-                      رصيد أول المدة
-                    </td>
-                  );
-                }
-                return null; // skip — handled by colSpan on first merged col
-              }
-              return (
-                <td key={c.key} style={{ ...cellStyleBase, textAlign: c.align || "center" }}>
-                  {renderOpeningCell(c.key)}
-                </td>
-              );
-            })}
+            {cols.map((c) => (
+              <td key={c.key} style={{ ...cellStyleBase, textAlign: c.align || "center" }}>
+                {renderOpeningCell(c.key)}
+              </td>
+            ))}
           </tr>
 
           {/* Transaction rows */}
@@ -373,9 +354,9 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
             const cashPortion = docTotal != null ? Math.max(0, docTotal - ledgerAmt) : 0;
             const hasFinancials = group.items.length > 0 && (discount > 0.005 || increase > 0.005 || cashPortion > 0.005);
             const onAccountLabel = group.type === "sales_return" || group.type === "purchase_return"
-              ? "دائن على الحساب" : "محمّل على الحساب (آجل)";
+              ? "دائن" : "آجل";
             const cashLabel = group.type === "sales_return" || group.type === "purchase_return"
-              ? "مسترد نقداً" : "مسدّد نقداً عند الإنشاء";
+              ? "مردود نقدي" : "نقداً";
 
             return (
               <React.Fragment key={`${group.type}-${group.ref_no || idx}-${idx}`}>
@@ -426,14 +407,14 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
                           {(group.items.length > 1 || hasFinancials) && (
                             <SummaryLine label="إجمالي الأصناف" value={fmt(itemsTotal)} />
                           )}
-                          {discount > 0.005 && <SummaryLine label="خصم عام على المستند" value={`(${fmt(discount)})`} tone="rose" />}
-                          {increase > 0.005 && <SummaryLine label="إضافة / مصاريف على المستند" value={`+${fmt(increase)}`} tone="blue" />}
+                          {discount > 0.005 && <SummaryLine label="خصم عام" value={`(${fmt(discount)})`} tone="rose" />}
+                          {increase > 0.005 && <SummaryLine label="مصاريف" value={`+${fmt(increase)}`} tone="blue" />}
                           {hasFinancials && docTotal != null && (
-                            <SummaryLine label="صافي المستند" value={fmt(docTotal)} strong />
+                            <SummaryLine label="الصافي" value={fmt(docTotal)} strong />
                           )}
                           {cashPortion > 0.005 && <SummaryLine label={cashLabel} value={fmt(cashPortion)} tone="zinc" />}
                           {noImpact ? (
-                            <SummaryLine label="الأثر على رصيد الحساب" value="بدون تغيير" strong tone="amber" />
+                            <SummaryLine label="تأثير على الرصيد" value="بدون تغيير" strong tone="amber" />
                           ) : hasFinancials ? (
                             <SummaryLine label={onAccountLabel} value={fmt(ledgerAmt)} strong tone={group.type === "sales_return" || group.type === "purchase_return" ? "emerald" : "rose"} />
                           ) : null}

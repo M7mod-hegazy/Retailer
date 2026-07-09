@@ -4,17 +4,83 @@
 export const PX_PER_MM = 3.7795;
 export const SIZES = { roll: ["58mm", "80mm"], page: ["A5", "A4"] };
 export const SHEET_W = { "58mm": "58mm", "80mm": "80mm", A5: "148mm", A4: "210mm" };
+export const SHEET_W_LANDSCAPE = { A5: "210mm", A4: "297mm" };
 export const PAGE_H_MM = { A4: 297, A5: 210 };
+export const PAGE_W_MM = { A4: 210, A5: 148 };
+export const PAGE_W_LANDSCAPE_MM = { A5: 210 };
+export const PAGE_H_LANDSCAPE_MM = { A5: 148 };
 
 export function familyOfSize(size) {
   return size === "58mm" || size === "80mm" ? "roll" : "page";
 }
 
-export function pageSizeStrFor(size) {
-  return size === "58mm" ? "58mm auto"
-    : size === "80mm" ? "80mm auto"
-    : size === "A5" ? "148mm 210mm"
-    : "210mm 297mm";
+export function pageDimensions(size, orientation = "portrait") {
+  if (size === "58mm" || size === "80mm") {
+    const w = parseFloat(size);
+    return { wMm: w, hMm: 0 };
+  }
+  if (orientation === "landscape") {
+    return { wMm: PAGE_W_LANDSCAPE_MM[size] || PAGE_W_MM[size], hMm: PAGE_H_LANDSCAPE_MM[size] || PAGE_H_MM[size] };
+  }
+  return { wMm: PAGE_W_MM[size], hMm: PAGE_H_MM[size] };
+}
+
+export function pageWidthStr(size, orientation = "portrait") {
+  if (size === "58mm" || size === "80mm") return size;
+  if (orientation === "landscape") return SHEET_W_LANDSCAPE[size] || SHEET_W[size];
+  return SHEET_W[size];
+}
+
+export function pageHeightStr(size, orientation = "portrait") {
+  if (size === "58mm" || size === "80mm") return "auto";
+  const d = pageDimensions(size, orientation);
+  return `${d.hMm}mm`;
+}
+
+export function pageSizeStrFor(size, orientation = "portrait") {
+  if (size === "58mm" || size === "80mm") {
+    return `${parseFloat(size)}mm auto`;
+  }
+  const d = pageDimensions(size, orientation);
+  return `${d.wMm}mm ${d.hMm}mm`;
+}
+
+/**
+ * Find natural page breaks by snapping to block boundaries instead of cutting
+ * through blocks. Scans [data-block-key] elements and places breaks at the
+ * nearest block boundary within a snap range (30mm) above the theoretical
+ * page-height cut. Returns break positions in mm from content top.
+ */
+export function findNaturalBreaks(containerEl, pageHmm, pxPerMm = PX_PER_MM) {
+  if (!containerEl || !pageHmm || pageHmm <= 0) return [];
+  const blocks = containerEl.querySelectorAll("[data-block-key]");
+  if (!blocks.length) return [];
+  const blockBottoms = [];
+  blocks.forEach((b) => {
+    const top = b.offsetTop;
+    const h = b.offsetHeight;
+    if (h > 4 && top >= 0) blockBottoms.push(top + h);
+  });
+  if (!blockBottoms.length) return [];
+  blockBottoms.sort((a, b) => a - b);
+  const totalPx = blockBottoms[blockBottoms.length - 1];
+  const pagePx = pageHmm * pxPerMm;
+  const SNAP_PX = 30 * pxPerMm;
+  const breaksMm = [];
+  let cursorPx = pagePx;
+  while (cursorPx < totalPx) {
+    let bestPx = null;
+    for (const btm of blockBottoms) {
+      const diff = cursorPx - btm;
+      if (diff >= 0 && diff <= SNAP_PX) {
+        if (bestPx === null || (cursorPx - btm) < (cursorPx - bestPx)) bestPx = btm;
+      }
+    }
+    const actualPx = bestPx !== null ? bestPx : cursorPx;
+    breaksMm.push(Math.round((actualPx / pxPerMm) * 10) / 10);
+    cursorPx = actualPx + pagePx;
+  }
+  return breaksMm;
 }
 
 // Doc types that render through the block library (LayoutRenderer) and are
@@ -1357,10 +1423,12 @@ export const SCOPE_PRESETS = {
           account_statement_ledger: {
             tableBorder: "none", zebra: true, headerVariant: "light",
             columns: [
-              { key: "index", label: "م", visible: true, align: "center", width: "5%" },
-              { key: "date", label: "التاريخ", visible: true, align: "center", width: "18%" },
-              { key: "amount", label: "المبلغ", visible: true, align: "center", width: "18%" },
-              { key: "description", label: "البيان", visible: true, align: "right", width: "59%" },
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "44%" },
             ]
           }
         }
@@ -1403,11 +1471,12 @@ export const SCOPE_PRESETS = {
           account_statement_ledger: {
             tableBorder: "none", zebra: false, headerVariant: "light",
             columns: [
-              { key: "date", label: "التاريخ", visible: true, align: "center", width: "18%" },
-              { key: "debit", label: "مدين", visible: true, align: "center", width: "16%" },
-              { key: "credit", label: "دائن", visible: true, align: "center", width: "16%" },
-              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "16%" },
-              { key: "description", label: "البيان", visible: true, align: "right", width: "34%" },
+              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "16%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "14%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "14%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "38%" },
             ]
           }
         }
@@ -1440,106 +1509,7 @@ export const SCOPE_PRESETS = {
   ]
 };
 
-const extraThemes = [
-  {
-    idSuffix: "executive_navy",
-    label: "الهيئة الإدارية - أزرق داكن (Executive)",
-    flat: { accent_color: "#1e3a8a", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
-    table: { tableBorder: "grid", zebra: true }
-  },
-  {
-    idSuffix: "compact_crimson",
-    label: "سجل مالي متراص - قرمزي",
-    flat: { accent_color: "#dc2626", print_font: "Tajawal", item_font_size: 9, header_style: "minimal", page_layout_type: "standard" },
-    table: { tableBorder: "lines", zebra: false }
-  },
-  {
-    idSuffix: "split_teal",
-    label: "كشف الأجنحة الجانبي - تركواز (Sidebar)",
-    flat: { accent_color: "#0d9488", print_font: "Cairo", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
-    table: { tableBorder: "none", zebra: true }
-  },
-  {
-    idSuffix: "imperial_gold",
-    label: "سند مالي إمبراطوري - ذهبي",
-    flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
-    table: { tableBorder: "grid", zebra: false }
-  },
-  {
-    idSuffix: "brutalist_charcoal",
-    label: "التقرير الصناعي الحاد - فحم (Executive)",
-    flat: { accent_color: "#374151", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "executive" },
-    table: { tableBorder: "grid", zebra: true }
-  },
-  {
-    idSuffix: "exec_summary_emerald",
-    label: "ملخص تنفيذي موجز - زمردي",
-    flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "boxed", page_layout_type: "standard" },
-    table: { tableBorder: "none", zebra: true }
-  },
-  {
-    idSuffix: "duotone_purple",
-    label: "بيان مالي مزدوج - بنفسجي (Sidebar)",
-    flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "sidebar" },
-    table: { tableBorder: "lines", zebra: false }
-  },
-  {
-    idSuffix: "classic_maroon",
-    label: "سجل الأوراق الكلاسيكي - عناب",
-    flat: { accent_color: "#9f1239", print_font: "Tajawal", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
-    table: { tableBorder: "grid", zebra: true }
-  },
-  {
-    idSuffix: "advanced_cyan",
-    label: "تقرير تحليلات متطور - سماوي (Executive)",
-    flat: { accent_color: "#0891b2", print_font: "Cairo", item_font_size: 11, header_style: "centered", page_layout_type: "executive" },
-    table: { tableBorder: "lines", zebra: true }
-  },
-  {
-    idSuffix: "ultramin_slate",
-    label: "تقرير الحد الأدنى العصري - رمادي (Sidebar)",
-    flat: { accent_color: "#475569", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "sidebar" },
-    table: { tableBorder: "none", zebra: false }
-  }
-];
 
-// Dynamically generate the remaining 10 presets for each report type in SCOPE_PRESETS
-Object.keys(SCOPE_PRESETS).forEach((scope) => {
-  const base = SCOPE_PRESETS[scope][0];
-  if (!base) return;
-
-  extraThemes.forEach((theme) => {
-    const clonedLayout = JSON.parse(JSON.stringify(base.layout));
-    
-    const tableBlockKey = clonedLayout.perBlock?.report_table
-      ? "report_table"
-      : clonedLayout.perBlock?.account_statement_ledger
-      ? "account_statement_ledger"
-      : null;
-    if (tableBlockKey) {
-      const tableConfig = clonedLayout.perBlock[tableBlockKey];
-      tableConfig.tableBorder = theme.table.tableBorder;
-      tableConfig.zebra = theme.table.zebra;
-      tableConfig.headerBg = theme.flat.accent_color;
-      tableConfig.headerColor = "#ffffff";
-    }
-    if (clonedLayout.perBlock?.account_statement_summary) {
-      const summaryConfig = clonedLayout.perBlock.account_statement_summary;
-      summaryConfig.tableBorder = theme.table.tableBorder;
-      summaryConfig.zebra = theme.table.zebra;
-    }
-
-    SCOPE_PRESETS[scope].push({
-      id: `${scope}_${theme.idSuffix}`,
-      label: theme.label,
-      family: "page",
-      isTemplate: true,
-      tags: ["dynamic", theme.idSuffix.split("_")[0]],
-      flat: theme.flat,
-      layout: clonedLayout
-    });
-  });
-});
 
 const now = () => new Date().toISOString();
 
@@ -1678,75 +1648,60 @@ export const TEMPLATE_MOCK = {
     summary: {
       party_name: "محمد أحمد عبدالله",
       party_code: "CUST-001",
-      opening_balance: 5000,
-      closing_balance: 7000,
-      total_debit: 10500,
-      total_credit: 8500,
+      opening_balance: 1950,
+      closing_balance: 6360,
+      total_debit: 8010,
+      total_credit: 3600,
     },
-    period: { from: "2026-06-01", to: "2026-06-30" },
+    period: { from: "2026-06-01", to: "2026-07-09" },
     rows: [
       {
-        type: "invoice", ref_no: "INV-001", date: now(), datetime: now(),
+        type: "sales_return", ref_no: "SRT-20260705-012", date: "2026-07-05", datetime: "2026-07-05T14:25:00.000Z",
+        description: "مرتجع مبيعات رقم SRT-20260705-012", debit: 0, credit: 400,
+        running_balance: 1550, doc_discount: 20, doc_increase: 0, doc_total: 400,
+        affects_balance: true, _has_items: true,
+      },
+      { _is_item: true, item_name: "قايم بجناح سوبر ماركت 2 متر ابيض ع · 22.1", item_code: "K-010", quantity: 2, unit_price: 210, line_total: 420 },
+      {
+        type: "sales_return", ref_no: "SRT-20260705-016", date: "2026-07-05", datetime: "2026-07-05T14:51:00.000Z",
+        description: "مرتجع مبيعات رقم SRT-20260705-016", debit: 0, credit: 100,
+        running_balance: 1350, doc_discount: 10, doc_increase: 0, doc_total: 200,
+        affects_balance: true, _has_items: true,
+      },
+      { _is_item: true, item_name: "قايم بجناح سوبر ماركت 2 متر ابيض ع · 22.1", item_code: "K-010", quantity: 1, unit_price: 210, line_total: 210 },
+      {
+        type: "invoice", ref_no: "INV-20260705-001", date: "2026-07-05", datetime: "2026-07-05T15:10:00.000Z",
         description: "فاتورة مبيعات نقدية — مستلزمات مكتبية", debit: 3000, credit: 0,
-        running_balance: 8000, doc_discount: 0, doc_increase: 0, doc_total: 3000,
+        running_balance: 4350, doc_discount: 0, doc_increase: 0, doc_total: 3000,
+        affects_balance: true, _has_items: true,
+      },
+      { _is_item: true, item_name: "طابعة ليزر HP LaserJet Pro M404", item_code: "K-001", quantity: 2, unit_price: 1250, line_total: 2500 },
+      { _is_item: true, item_name: "كرتون ورق تصوير A4 70 جرام — 5000 ورقة", item_code: "K-002", quantity: 5, unit_price: 100, line_total: 500 },
+      {
+        type: "payment", ref_no: "PAY-20260706-001", date: "2026-07-06", datetime: "2026-07-06T10:30:00.000Z",
+        description: "دفعة محصلة عبر التحويل البنكي", debit: 0, credit: 1000,
+        running_balance: 3350, doc_discount: null, doc_increase: null, doc_total: null,
         affects_balance: true,
-        items: [
-          { _is_item: true, item_name: "طابعة ليزر HP", item_code: "K-001", quantity: 2, unit_price: 1000, line_total: 2000 },
-          { _is_item: true, item_name: "كرتون ورق A4", item_code: "K-002", quantity: 1, unit_price: 1000, line_total: 1000 },
-        ],
       },
       {
-        type: "payment", ref_no: "PAY-001", date: now(), datetime: now(),
-        description: "دفعة عبر التحويل البنكي", debit: 0, credit: 2000,
-        running_balance: 6000, doc_discount: 0, doc_increase: 0, doc_total: 2000,
-        affects_balance: true, items: [],
+        type: "invoice", ref_no: "INV-20260707-002", date: "2026-07-07", datetime: "2026-07-07T09:45:00.000Z",
+        description: "فاتورة مبيعات آجلة — تجهيزات وأثاث مكتبي", debit: 4760, credit: 0,
+        running_balance: 8110, doc_discount: 240, doc_increase: 0, doc_total: 5000,
+        affects_balance: true, _has_items: true,
+      },
+      { _is_item: true, item_name: "رفوف تخزين معدنية 5 أرفف مطلي كروم", item_code: "K-020", quantity: 3, unit_price: 1200, line_total: 3600 },
+      { _is_item: true, item_name: "طاولة اجتماعات خشبية كبيرة 6 مقاعد", item_code: "K-021", quantity: 1, unit_price: 1400, line_total: 1400 },
+      {
+        type: "adjustment", ref_no: "ADJ-20260708-001", date: "2026-07-08", datetime: "2026-07-08T08:00:00.000Z",
+        description: "تسوية رصيد — فرق سعر صرف العملة", debit: 250, credit: 0,
+        running_balance: 8360, doc_discount: null, doc_increase: null, doc_total: null,
+        affects_balance: false,
       },
       {
-        type: "purchase", ref_no: "PUR-001", date: now(), datetime: now(),
-        description: "فاتورة مشتريات — مواد خام", debit: 4500, credit: 0,
-        running_balance: 10500, doc_discount: 500, doc_increase: 200, doc_total: 4200,
+        type: "payment", ref_no: "PAY-20260709-002", date: "2026-07-09", datetime: "2026-07-09T11:15:00.000Z",
+        description: "دفعة نقدية — تحصيل مستحقات عميل", debit: 0, credit: 2000,
+        running_balance: 6360, doc_discount: null, doc_increase: null, doc_total: null,
         affects_balance: true,
-        items: [
-          { _is_item: true, item_name: "مادة خام بلاستيكية", item_code: "K-010", quantity: 5, unit_price: 800, line_total: 4000 },
-        ],
-      },
-      {
-        type: "sales_return", ref_no: "SR-001", date: now(), datetime: now(),
-        description: "مرتجع مبيعات — تلف في الشحنة", debit: 0, credit: 2000,
-        running_balance: 8500, doc_discount: 0, doc_increase: 0, doc_total: 2000,
-        affects_balance: true,
-        items: [
-          { _is_item: true, item_name: "طابعة ليزر HP (مرتجع)", item_code: "K-001", quantity: 1, unit_price: 1000, line_total: 1000 },
-          { _is_item: true, item_name: "ماوس لاسلكي (مرتجع)", item_code: "K-003", quantity: 1, unit_price: 1000, line_total: 1000 },
-        ],
-      },
-      {
-        type: "adjustment", ref_no: "ADJ-001", date: now(), datetime: now(),
-        description: "تسوية رصيد — فرق سعر صرف", debit: 500, credit: 0,
-        running_balance: 9000, doc_discount: 0, doc_increase: 0, doc_total: 500,
-        affects_balance: true, items: [],
-      },
-      {
-        type: "purchase_return", ref_no: "PR-001", date: now(), datetime: now(),
-        description: "مرتجع مشتريات — مواد تالفة", debit: 0, credit: 1500,
-        running_balance: 7500, doc_discount: 0, doc_increase: 0, doc_total: 1500,
-        affects_balance: true, items: [],
-      },
-      {
-        type: "invoice", ref_no: "INV-002", date: now(), datetime: now(),
-        description: "فاتورة مبيعات آجلة — أثاث مكتبي", debit: 2500, credit: 0,
-        running_balance: 10000, doc_discount: 100, doc_increase: 0, doc_total: 2400,
-        affects_balance: true,
-        items: [
-          { _is_item: true, item_name: "كرسي مكتب دوار", item_code: "K-020", quantity: 3, unit_price: 700, line_total: 2100 },
-          { _is_item: true, item_name: "طاولة اجتماعات صغيرة", item_code: "K-021", quantity: 1, unit_price: 400, line_total: 400 },
-        ],
-      },
-      {
-        type: "payment", ref_no: "PAY-002", date: now(), datetime: now(),
-        description: "دفعة نقدية — تحصيل سابق", debit: 0, credit: 3000,
-        running_balance: 7000, doc_discount: 0, doc_increase: 0, doc_total: 3000,
-        affects_balance: true, items: [],
       },
     ],
   },
@@ -1830,26 +1785,47 @@ export function templateMockBySample(scope, sampleId = "normal") {
     },
     account_statement: {
       ...base,
-      summary: { ...base.summary, party_name: "محمد أحمد بن عبدالله بن علي السعيد التميمي", party_code: "CUST-00-001-2026" },
-      rows: base.rows.map((r, i) => ({
-        ...r,
-        description: i === 0 ? "فاتورة مبيعات نقدية — مستلزمات مكتبية متنوعة (طابعات وورق وأدوات كتابة)"
-          : i === 1 ? "دفعة عبر التحويل البنكي من البنك الأهلي المصري فرع الإسكندرية"
-          : i === 2 ? "فاتورة مشتريات — مواد خام بلاستيكية ومواد تعبئة وتغليف للتوريد للفرع الرئيسي"
-          : i === 3 ? "مرتجع مبيعات — تلف في الشحنة بسبب سوء التخزين أثناء النقل من المستودع العام"
-          : i === 4 ? "تسوية رصيد — فرق سعر صرف العملة الأجنبية للفترة المحاسبية السابقة"
-          : i === 5 ? "مرتجع مشتريات — مواد تالفة غير مطابقة للمواصفات القياسية المتفق عليها"
-          : i === 6 ? "فاتورة مبيعات آجلة — أثاث مكتبي وتجهيزات قسم الإدارة العليا للشركة"
-          : i === 7 ? "دفعة نقدية — تحصيل مستحقات سابقة من عميل مشاريع الإنشاءات والمقاولات"
-          : r.description,
-        items: r.items.map((it) => ({
-          ...it,
-          item_name: i === 0 ? "طابعة ليزر HP LaserJet Pro M404 متعددة الوظائف"
-            : i === 2 ? "مادة خام بلاستيكية من نوع HDPE عالي الكثافة لتغليف المنتجات"
-            : i === 6 ? "كرسي مكتب دوار قابل للتعديل بارتفاع ٥ مستويات مع مسند ظهر"
-            : it.item_name,
-        })),
-      })),
+      summary: {
+        ...base.summary,
+        party_name: "محمد أحمد بن عبدالله بن علي السعيد التميمي",
+        party_code: "CUST-00-001-2026",
+      },
+      rows: base.rows.map((r, i) => {
+        if (r._is_item) {
+          const names = [
+            "قايم بجناح سوبر ماركت 2 متر ابيض ع · 22.1 (مقاوم للصدأ والصدأ)",
+            "قايم بجناح سوبر ماركت 2 متر ابيض ع بلوطي داكن مطفي",
+            "طابعة ليزر HP LaserJet Pro M404 متعددة الوظائف طباعة ونسخ ومسح",
+            "كرتون ورق تصوير A4 70 جرام أبيض فاخر — 5000 ورقة للكرتون",
+            "رفوف تخزين معدنية قابلة للتعديل 5 أرفف مطلي كروم ضد الصدأ",
+            "طاولة اجتماعات خشبية كبيرة 6 مقاعد مع قاعدة معدنية متينة",
+          ];
+          const idx = r._item_index != null ? r._item_index % names.length : 0;
+          return { ...r, item_name: names[idx % names.length] };
+        }
+        const longDescs = [
+          "مرتجع مبيعات رقم SRT-20260705-012 — تلف في الشحنة بسبب سوء التخزين أثناء النقل من المستودع العام",
+          "مرتجع مبيعات رقم SRT-20260705-016 — منتج غير مطابق للمواصفات القياسية المتفق عليها مع العميل",
+          "فاتورة مبيعات نقدية — مستلزمات مكتبية متنوعة (طابعات وكراتين ورق وأدوات كتابية)",
+          "دفعة محصلة عبر التحويل البنكي من البنك الأهلي المصري فرع الإسكندرية",
+          "فاتورة مبيعات آجلة — أثاث مكتبي وتجهيزات قسم الإدارة العليا للشركة (رفوف وطاولات)",
+          "تسوية رصيد — فرق سعر صرف العملة الأجنبية للفترة المحاسبية السابقة بقيمة ٢٥٠ ج",
+          "دفعة نقدية — تحصيل مستحقات سابقة من عميل مشاريع الإنشاءات والمقاولات العامة",
+        ];
+        return {
+          ...r,
+          description: longDescs[i] || r.description,
+          _has_items: r._has_items || (r.items && r.items.length > 0),
+        };
+      }).flatMap((r) => {
+        if (r.items && r.items.length > 0) {
+          const items = r.items;
+          delete r.items;
+          r._has_items = true;
+          return [r, ...items.map((it, idx) => ({ ...it, _item_index: idx }))];
+        }
+        return [r];
+      }),
     },
   };
 
@@ -1946,38 +1922,59 @@ export function templateMockBySample(scope, sampleId = "normal") {
       rows: (() => {
         const types = ["invoice", "payment", "purchase", "sales_return", "adjustment"];
         const itemsPool = [
-          { name: "منتج تجريبي أ — طابعة ليزر", code: "K-001" },
-          { name: "منتج تجريبي ب — ماوس لاسلكي", code: "K-002" },
-          { name: "منتج تجريبي ج — كيبورد ميكانيكي", code: "K-003" },
-          { name: "منتج تجريبي د — شاشة ٢٤ بوصة", code: "K-004" },
-          { name: "منتج تجريبي ه — كاميرا مراقبة", code: "K-005" },
-          { name: "منتج تجريبي و — ماسح ضوئي", code: "K-006" },
+          { name: "طابعة ليزر HP LaserJet Pro", code: "K-001" },
+          { name: "ماوس لاسلكي Logitech", code: "K-002" },
+          { name: "كيبورد ميكانيكي RGB", code: "K-003" },
+          { name: "شاشة ٢٤ بوصة LED", code: "K-004" },
+          { name: "كاميرا مراقبة Hikvision", code: "K-005" },
+          { name: "ماسح ضوئي HP ScanJet", code: "K-006" },
         ];
-        let rb = 5000;
-        return Array.from({ length: 30 }, (_, i) => {
+        let rb = 1950;
+        const result = [];
+        for (let i = 0; i < 30; i++) {
           const type = types[i % types.length];
           const isDebit = type === "invoice" || type === "purchase" || type === "adjustment";
           const amt = (i + 1) * 350 + 200;
           rb += isDebit ? amt : -amt;
           const typeLabel = type === "invoice" ? "فاتورة مبيعات" : type === "payment" ? "دفعة" : type === "purchase" ? "فاتورة مشتريات" : type === "sales_return" ? "مرتجع مبيعات" : "تسوية";
           const hasItems = i % 2 === 0 && (type === "invoice" || type === "purchase" || type === "sales_return");
-          return {
+          const doc_total = hasItems ? amt : (type === "payment" || type === "sales_return" ? amt : amt);
+          const discount = i % 3 === 0 && isDebit ? 100 : 0;
+          const increase = i % 5 === 0 && isDebit ? 50 : 0;
+          const netOfDiscount = doc_total - discount + increase;
+          const ledgerAmt = isDebit ? netOfDiscount : (type === "sales_return" ? Math.min(amt, netOfDiscount) : 0);
+          const creditAmt = (!isDebit && type !== "sales_return") ? amt : (type === "sales_return" ? (doc_total - ledgerAmt) : 0);
+          result.push({
             type, ref_no: i < 20 ? `DOC-${String(i + 1).padStart(3, "0")}` : `INV-2026-${String(i + 1).padStart(4, "0")}`,
             date: now(), datetime: now(),
             description: `معاملة رقم ${i + 1} — ${typeLabel} ${i < 10 ? "(الفترة الأولى)" : i < 20 ? "(الفترة الثانية)" : "(الفترة الثالثة)"}`,
-            debit: isDebit ? amt : 0,
-            credit: !isDebit ? amt : 0,
+            debit: isDebit ? netOfDiscount : 0,
+            credit: !isDebit ? amt : (type === "sales_return" ? (doc_total - ledgerAmt) : 0),
             running_balance: rb,
-            doc_discount: i % 3 === 0 && isDebit ? 100 : 0,
-            doc_increase: i % 5 === 0 && isDebit ? 50 : 0,
-            doc_total: amt,
+            doc_discount: hasItems && discount > 0 ? discount : null,
+            doc_increase: hasItems && increase > 0 ? increase : null,
+            doc_total: hasItems ? doc_total : null,
             affects_balance: i !== 7 && i !== 19,
-            items: hasItems ? [
-              { _is_item: true, item_name: itemsPool[i % itemsPool.length].name, item_code: itemsPool[i % itemsPool.length].code, quantity: (i % 5) + 1, unit_price: amt / ((i % 5) + 1), line_total: amt },
-              ...(i % 3 === 0 ? [{ _is_item: true, item_name: itemsPool[(i + 1) % itemsPool.length].name, item_code: itemsPool[(i + 1) % itemsPool.length].code, quantity: 2, unit_price: amt / 4, line_total: amt / 2 }] : []),
-            ] : [],
-          };
-        });
+            _has_items: hasItems,
+          });
+          if (hasItems) {
+            const itemCount = (i % 3) + 1;
+            const itemPrice = amt / itemCount;
+            result.push({
+              _is_item: true, item_name: itemsPool[i % itemsPool.length].name,
+              item_code: itemsPool[i % itemsPool.length].code,
+              quantity: itemCount, unit_price: Math.round(itemPrice * 100) / 100, line_total: amt,
+            });
+            if (i % 3 === 0) {
+              result.push({
+                _is_item: true, item_name: itemsPool[(i + 1) % itemsPool.length].name,
+                item_code: itemsPool[(i + 1) % itemsPool.length].code,
+                quantity: 2, unit_price: amt / 4, line_total: amt / 2,
+              });
+            }
+          }
+        }
+        return result;
       })(),
     },
   };

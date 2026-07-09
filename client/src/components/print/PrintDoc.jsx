@@ -15,6 +15,6 @@ export function PrintThermalDoc({ invoice = {}, settings = {}, scope }) {
  * Thin shim over the shared block library (LayoutRenderer, page family + zones).
  * Respects all settings toggles, custom text blocks, fonts, colors.
  */
-export function PrintA4Doc({ invoice = {}, settings = {}, size = "A4", scope }) {
-  return <LayoutRenderer family="page" invoice={invoice} settings={settings} layout={settings.layout || null} size={size} scope={scope} />;
+export function PrintA4Doc({ invoice = {}, settings = {}, size = "A4", orientation = "portrait", scope }) {
+  return <LayoutRenderer family="page" invoice={invoice} settings={settings} layout={settings.layout || null} size={size} orientation={orientation} scope={scope} />;
 }

@@ -51,6 +51,7 @@ const DOC_TYPES = [
   { key: "payment_methods_report",label: "تقرير وسائل الدفع",     badge: "تحليل المقبوضات حسب الوسيلة",       hint: "يُطبع بالضغط على زر 'طباعة تقرير المدفوعات' من شاشة 'التقارير -> مبيعات وسائل الدفع' لمطابقة مبالغ الكاش والشبكة والتحويل البنكي." },
   { key: "owner_statement",       label: "لوحة صاحب المحل",       badge: "كشف الإقفال المالي الشهري",          hint: "يُطبع بالضغط على زر 'طباعة الصفحة' في شاشة 'لوحة صاحب المحل' ويشمل المؤشرات المالية الأساسية والتدفقات النقدية للفترة المحددة." },
   { key: "reports_generic",       label: "قوالب تقارير (عام)",    badge: "قالب عام لتقارير النظام",            hint: "يتحكم في التصميم الموحد والخط وحجم الهوامش لكافة تقارير النظام الأخرى الصادرة من 'مركز التقارير وقوائم المخزون وجرد المستودعات'." },
+  { key: "account_statement",     label: "كشف حساب (عميل/مورد)",  badge: "كشف حركات عميل أو مورد",             hint: "يُطبع عبر زر 'طباعة كشف الحساب' في شاشات حسابات العملاء والموردين عند تحديد عميل/مورد والضغط على طباعة/تصدير → طباعة. يدعم التصميم الكامل عبر الاستوديو." },
 ];
 
 // Valid paper sizes per doc type + system default (user can override)
@@ -71,6 +72,7 @@ export const DOC_PAPER_CONFIG = {
   payment_methods_report: { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   owner_statement:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   reports_generic:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  account_statement:      { sizes: ["A5","A4"],                   defaultSize: "A4"   },
 };
 
 // Resolve the effective paper size for a docType given saved per-doc settings

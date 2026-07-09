@@ -337,11 +337,19 @@ export default function ReportPrintTemplate({
             </div>
           )}
         </div>
-        <AccountStatementLedger
-          rows={statement.rows}
-          summary={statement.summary}
-          partyType={statement.partyType}
-        />
+        {(() => {
+          const stmtLedgerCols = settings?.layout?.page?.perBlock?.account_statement_ledger?.columns;
+          return (
+            <AccountStatementLedger
+              rows={statement.rows}
+              summary={statement.summary}
+              partyType={statement.partyType}
+              period={statement.period}
+              settings={settings}
+              columns={stmtLedgerCols}
+            />
+          );
+        })()}
         <style>{`@media print { .rpt-page-outer { width: auto; } tr { break-inside: avoid; } }`}</style>
       </div>
     );

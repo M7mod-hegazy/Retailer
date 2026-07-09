@@ -3,7 +3,7 @@ import { g } from "./blockUtils";
 
 // props.label renames the caption; props.showTime=false prints the date only.
 export default function DocDateBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
-  if (g(s, "show_invoice_date") === false && !editing) return null;
+  if (g(s, "show_invoice_date") === false) return null;
   // Always falls back to current date/time — perfect for editing preview
   const d = invoice.created_at ? new Date(invoice.created_at) : new Date();
   

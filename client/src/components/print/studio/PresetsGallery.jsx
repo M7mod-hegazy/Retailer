@@ -131,7 +131,11 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
   const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
   const invoice = useMemo(() => {
     if (isReport && TEMPLATE_MOCK[scope]) {
-      return TEMPLATE_MOCK[scope];
+      const raw = TEMPLATE_MOCK[scope];
+      if (scope === "account_statement") {
+        return { ...raw, statement_rows: raw.rows || [], statement_summary: raw.summary || {} };
+      }
+      return raw;
     }
     return sampleById("normal");
   }, [isReport, scope]);

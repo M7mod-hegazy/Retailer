@@ -4,7 +4,7 @@ import { resolveImageUrl } from "../../../utils/resolveImageUrl";
 
 export default function LogoBlock({ settings: s, props = {}, family, editing }) {
   const showLogo = g(s, "show_logo") !== false;
-  if (!showLogo && !editing) return null;
+  if (!showLogo) return null;
 
   const align = props.align || s.logo_alignment || "center";
   const maxHeight = props.maxHeight || s.logo_max_height || 48;

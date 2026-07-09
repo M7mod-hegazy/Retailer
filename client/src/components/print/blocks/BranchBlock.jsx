@@ -3,7 +3,7 @@ import { g } from "./blockUtils";
 
 export default function BranchBlock({ settings: s, props = {}, family, editing }) {
   const showBranch = g(s, "show_branch") !== false;
-  if (!showBranch && !editing) return null;
+  if (!showBranch) return null;
   // Realistic mock: main branch name with city
   const name = props.label !== undefined && props.label !== "" ? props.label : (s.branch_name || (editing ? "الفرع الرئيسي — الرياض" : ""));
   if (!name) return null;

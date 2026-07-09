@@ -40,9 +40,12 @@ export function setPrinterSizeMap(map) {
  */
 export function sizeKeyForPageSize(pageSizeStr) {
   if (!pageSizeStr) return "A4";
-  if (/^148mm/.test(pageSizeStr)) return "A5";
-  if (/^210mm/.test(pageSizeStr)) return "A4";
-  const roll = /^(\d+(?:\.\d+)?)mm\s+auto/.exec(pageSizeStr);
+  // Exact match so landscape A5 ("210mm 148mm") doesn't collide with A4 portrait
+  if (/^148mm\s+210mm$/.test(pageSizeStr)) return "A5";
+  if (/^210mm\s+148mm$/.test(pageSizeStr)) return "A5";
+  if (/^210mm\s+297mm$/.test(pageSizeStr)) return "A4";
+  if (/^297mm\s+210mm$/.test(pageSizeStr)) return "A4";
+  const roll = /^(\d+(?:\.\d+)?)mm\s+auto$/.exec(pageSizeStr);
   if (roll) return `${roll[1]}mm`;
   return "A4";
 }

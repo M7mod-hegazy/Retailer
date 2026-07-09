@@ -3,7 +3,7 @@ import { g } from "./blockUtils";
 
 // props.label renames the caption (empty string hides it).
 export default function NotesBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
-  if (g(s, "show_notes") === false && !editing) return null;
+  if (g(s, "show_notes") === false) return null;
   let notes = (props.text != null && props.text !== "")
     ? props.text
     : (editing

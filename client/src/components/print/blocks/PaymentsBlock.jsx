@@ -10,7 +10,7 @@ const fmtDate = (d) => {
 
 export default function PaymentsBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showPayment = g(s, "show_payment_details") !== false;
-  if (!showPayment && !editing) return null;
+  if (!showPayment) return null;
 
   let payments = invoice.payments || [];
   let plan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan : [];

@@ -12,7 +12,7 @@ import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintStudio from "./studio/PrintStudio";
 import { resolveEffectiveLayout } from "./layout/layoutModel";
-import { SCOPE_PRESETS } from "./studio/studioData";
+import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr } from "./studio/studioData";
 import { applyPreset } from "./presets/presetEngine";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
@@ -46,6 +46,7 @@ export default function PrintPreviewModal({
     onClose, getState: () => ({ invoice, settings: globalSettings, operationLabel, docType, reportColumns, totalRows }), actions: { confirmPrint: () => onConfirmPrint?.(), saveOnly: () => onSaveOnly?.(), exportAllColumns: () => onExportAllColumns?.() },
   });
   const [template, setTemplate] = useState(null);
+  const [orientation, setOrientation] = useState("portrait");
   const [viewZoom, setViewZoom] = useState(0.55);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [docSettings, setDocSettings] = useState({});
@@ -256,6 +257,7 @@ export default function PrintPreviewModal({
 
   const switchTemplate = (t) => {
     setTemplate(t);
+    if (t !== "A5") setOrientation("portrait");
     setViewZoom(t === "A4" ? 0.55 : t === "A5" ? 0.72 : 1);
     setPan({ x: 0, y: 0 });
     setPrintPage(1);
@@ -304,16 +306,12 @@ export default function PrintPreviewModal({
     }
     if (activeTemplate === "58mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "58mm" }} scope={docType} />;
     if (activeTemplate === "80mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "80mm" }} scope={docType} />;
-    if (activeTemplate === "A5")   return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A5" scope={docType} />;
+    if (activeTemplate === "A5")   return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A5" orientation={orientation} scope={docType} />;
     return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A4" scope={docType} />;
   };
 
   const handlePrint = () => {
-    const pageSizeStr =
-      activeTemplate === "58mm" ? "58mm auto"
-        : activeTemplate === "80mm" ? "80mm auto"
-        : activeTemplate === "A5" ? "148mm 210mm"
-        : "210mm 297mm";
+    const pageSizeStr = printPageSizeStr(activeTemplate, orientation);
 
     // After printing, run save callback if provided (creation mode)
     const afterPrint = onConfirmPrint
@@ -448,8 +446,7 @@ export default function PrintPreviewModal({
                   style={{
                     width: activeTemplate === "58mm" ? "58mm"
                          : activeTemplate === "80mm" ? "80mm"
-                         : activeTemplate === "A5"   ? "148mm"
-                         : "210mm",
+                         : pageWidthStr(activeTemplate, orientation),
                   }}
                 >
                   {renderDoc()}
@@ -556,6 +553,20 @@ export default function PrintPreviewModal({
                   })}
                 </div>
               </div>
+
+              {/* Orientation toggle — A5 only */}
+              {activeTemplate === "A5" && (
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => setOrientation("portrait")}
+                    className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-all ${orientation === "portrait" ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
+                    طولي
+                  </button>
+                  <button type="button" onClick={() => setOrientation("landscape")}
+                    className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-all ${orientation === "landscape" ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
+                    عرضي
+                  </button>
+                </div>
+              )}
 
               {/* Design lives in ONE place — the Studio. The modal only prints. */}
               {docType && (

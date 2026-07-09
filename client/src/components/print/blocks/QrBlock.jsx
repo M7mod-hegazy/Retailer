@@ -52,7 +52,7 @@ const alignMap = {
 
 export default function QrBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showQr = g(s, "show_qr") !== false;
-  if (!showQr && !editing) return null;
+  if (!showQr) return null;
 
   const size = g(s, "qr_size") || 80;
   const alignment = g(s, "qr_alignment") || "right";

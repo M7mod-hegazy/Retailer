@@ -11,12 +11,14 @@ import PaymentMethodsReportTemplate from "../templates/PaymentMethodsReportTempl
 import DailyTreasuryTemplate from "../templates/DailyTreasuryTemplate";
 import AjalFullStatementTemplate from "../templates/AjalFullStatementTemplate";
 import GenericReportTemplate from "../templates/GenericReportTemplate";
+import AccountStatementTemplate from "../templates/AccountStatementTemplate";
 import { TEMPLATE_MOCK } from "./studioData";
 
 // Docs that print via a dedicated template component (not the block library).
 export const TEMPLATE_PREVIEW_DOCS = new Set([
   "bank_statement", "ajal_statement", "ajal_schedule", "cheque_register",
   "payment_methods_report", "daily_treasury", "ajal_full_statement", "reports_generic",
+  "account_statement",
 ]);
 
 // `mock` defaults to TEMPLATE_MOCK[scope] so call-sites without it still work.
@@ -39,6 +41,8 @@ export default function TemplateDocPreview({ scope, settings, mock: mockProp }) 
       return <AjalFullStatementTemplate data={mock} settings={settings} />;
     case "reports_generic":
       return <GenericReportTemplate data={mock} settings={settings} />;
+    case "account_statement":
+      return <AccountStatementTemplate statement={mock} settings={settings} />;
     default:
       return null;
   }

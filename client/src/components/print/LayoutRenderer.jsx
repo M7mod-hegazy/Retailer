@@ -12,7 +12,7 @@ import { g, rollSafeColor, rollClampFontPx, ROLL_MIN_TABLE_PX } from "./blocks/b
 // `designer` (optional) turns on in-canvas affordances: per-block selection,
 // hover highlight, label badge, and drag-to-reorder. It is ignored for the
 // production print path (editing=false / no designer), so output stays clean.
-export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", editing = false, designer = null, scope }) {
+export default function LayoutRenderer({ family = "roll", invoice = {}, settings = {}, layout = null, size = "A4", orientation = "portrait", editing = false, designer = null, scope }) {
   const famLayout = (layout || settings.layout || {})[family] || {};
   let order = Array.isArray(famLayout.order) && famLayout.order.length ? famLayout.order : (DEFAULT_ORDER[scope] || DEFAULT_ORDER[family]);
   // "increase" (رسوم/إضافة) is a newer money block. Layouts saved before it
@@ -75,7 +75,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
       items.push({
         type, group: entry.group,
         node: (
-          <div key={`rel-${selKey}-${key}`} style={{ transform: `translate(${rel.dxMm || 0}mm, ${rel.dyMm || 0}mm)` }}>
+          <div key={`rel-${selKey}-${key}`} data-block-key={selKey} style={{ transform: `translate(${rel.dxMm || 0}mm, ${rel.dyMm || 0}mm)` }}>
             {node}
           </div>
         ),
@@ -88,7 +88,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     const abs = ov.abs && ov.abs.xMm != null && ov.abs.yMm != null ? ov.abs : null;
     if (abs) {
       absBlocks.push(
-        <div key={`abs-${selKey}-${key}`} data-abs-block={selKey} dir="rtl" style={{
+        <div key={`abs-${selKey}-${key}`} data-block-key={selKey} data-abs-block={selKey} dir="rtl" style={{
           position: "absolute",
           left: `${abs.xMm}mm`,
           top: `${abs.yMm}mm`,
@@ -112,7 +112,11 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
       }
       return;
     }
-    items.push({ type, group: entry.group, node: <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment> });
+    items.push({
+      type, group: entry.group,
+      node: designer ? <React.Fragment key={`f-${selKey}-${key}`}>{node}</React.Fragment>
+        : <div key={`f-${selKey}-${key}`} data-block-key={selKey} style={{display:"contents"}}>{node}</div>,
+    });
   };
 
   // Inserts anchored to "__top__" render before everything (top of document).
@@ -124,7 +128,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
 
   if (family === "page") {
     return (
-      <PageWrapper settings={settings} size={size}>
+      <PageWrapper settings={settings} size={size} orientation={orientation}>
         <PageZoneLayout items={items} invoice={invoice} settings={settings} layout={famLayout} scope={scope} />
         {absBlocks}
         <PageOverlays overlays={famLayout.overlays} invoice={invoice} />
@@ -211,42 +215,14 @@ function BlockWrapper({ children, label }) {
       const hasCanvas = containerRef.current.getElementsByTagName("canvas").length > 0;
       const hasSvg = containerRef.current.getElementsByTagName("svg").length > 0;
       const isActuallyEmpty = !hasText && !hasImages && !hasCanvas && !hasSvg && (rect.height === 0 || containerRef.current.innerHTML === "");
-      if (isActuallyEmpty !== isEmpty) {
-        setIsEmpty(isActuallyEmpty);
-      }
+      if (isActuallyEmpty !== isEmpty) setIsEmpty(isActuallyEmpty);
     }
   }, [children, isEmpty]);
 
   return (
-    <>
-      <div ref={containerRef} style={{ display: isEmpty ? "none" : "contents" }}>
-        {children}
-      </div>
-      {isEmpty && (
-        <div
-          contentEditable={false}
-          style={{
-            padding: "10px 14px",
-            border: "1px dashed #7c3aed",
-            borderRadius: "4px",
-            background: "#f5f3ff",
-            color: "#7c3aed",
-            fontSize: "11px",
-            fontWeight: 700,
-            textAlign: "center",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            minHeight: "36px",
-            userSelect: "none"
-          }}
-        >
-          <span>[مكون فارغ: {label}]</span>
-          <span style={{ fontSize: "9px", opacity: 0.7 }}>(لا توجد بيانات للعرض حالياً)</span>
-        </div>
-      )}
-    </>
+    <div ref={containerRef} style={{ display: isEmpty ? "none" : "contents" }}>
+      {children}
+    </div>
   );
 }
 
@@ -262,6 +238,7 @@ function wrapSelectable(node, selKey, type, label, inOrder, designer) {
   const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(e); };
   return (
     <div
+      data-block-key={selKey}
       data-designer-key={selKey}
       contentEditable={editingText}
       suppressContentEditableWarning

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState, useMemo } from "react";
 import {
   Bold, Italic, AlignRight, AlignCenter, AlignLeft, Eye, EyeOff, Trash2,
   Move, Pencil, Copy,
@@ -6,13 +6,11 @@ import {
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import { rollPrintWidthMm, rollBandLeftMm } from "../blocks/blockUtils";
-import { SIZES, SHEET_W, PAGE_H_MM, PX_PER_MM } from "./studioData";
+import { SIZES, SHEET_W, PX_PER_MM, pageDimensions, pageWidthStr, pageHeightStr, findNaturalBreaks } from "./studioData";
 
 const NO_TYPOGRAPHY = new Set(["logo", "qr", "image", "divider", "spacer", "barcode"]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// Floating quick toolbar: appears while an element is selected, right above
-// the canvas — the most-used actions without leaving the mouse.
 function FloatingToolbar({ st }) {
   const { selected, fam } = st;
   const selInsert = (fam.inserted || []).find((b) => b.id === selected);
@@ -63,31 +61,82 @@ function FloatingToolbar({ st }) {
   );
 }
 
-// Center canvas: true-scale sheet centered on BOTH axes, zoom, mm rulers,
-// printable-band guides (roll), fit meter (page), size compare, and a drag
-// layer for free-position page overlays.
 export default function StudioCanvas({ st, children }) {
   const sheetRef = useRef(null);
+  const containerRef = useRef(null);
+  const measureRef = useRef(null);
   const [contentMm, setContentMm] = useState(0);
-  const [dragGhost, setDragGhost] = useState(null); // {id, dxMm, dyMm}
-  const { family, size, zoom } = st;
+  const [dragGhost, setDragGhost] = useState(null);
+  const [pageViewMode, setPageViewMode] = useState("stacked");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [smartBreaksMm, setSmartBreaksMm] = useState([]);
+  const { family, size, zoom, orientation } = st;
 
+  const [panMode, setPanMode] = useState(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const wasDrag = useRef(false);
+  const panRef = useRef({ active: false, startX: 0, startY: 0, px: 0, py: 0 });
+
+  const onBgPointerDown = (e) => {
+    if (st.compare || children) return;
+    const paper = e.target.closest("[data-paper]");
+    if (!panMode && paper) return;
+    const c = containerRef.current;
+    panRef.current = { active: true, startX: e.clientX, startY: e.clientY, px: pan.x, py: pan.y };
+    wasDrag.current = false;
+    c.setPointerCapture(e.pointerId);
+    c.style.cursor = "grabbing";
+  };
+  const onBgPointerMove = (e) => {
+    if (!panRef.current.active) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) wasDrag.current = true;
+    setPan({ x: panRef.current.px + dx, y: panRef.current.py + dy });
+  };
+  const onBgPointerUp = (e) => {
+    panRef.current.active = false;
+    e.currentTarget.style.cursor = panMode ? "grab" : "";
+  };
+
+  const dims = pageDimensions(size, orientation);
+  const pageH = dims.hMm;
+  const sheetW = pageWidthStr(size, orientation);
+
+  // Measure content height and calculate smart breaks
   useLayoutEffect(() => {
-    if (sheetRef.current) setContentMm(sheetRef.current.offsetHeight / PX_PER_MM);
-  }, [st.renderLayout, st.canvasSettings, family, size, st.sampleId, st.compare]);
+    const el = measureRef.current;
+    if (el) setContentMm(el.scrollHeight / PX_PER_MM);
+    if (family === "page" && el && pageH > 0) {
+      requestAnimationFrame(() => {
+        const breaks = findNaturalBreaks(el, pageH, PX_PER_MM);
+        setSmartBreaksMm(breaks);
+      });
+    } else {
+      setSmartBreaksMm([]);
+    }
+  }, [st.renderLayout, st.canvasSettings, family, size, orientation, st.sampleId, st.compare, st.fam, pageH]);
 
-  const pageH = PAGE_H_MM[size];
-  const fillRatio = pageH && contentMm ? contentMm / pageH : 0;
-  const pages = Math.max(1, Math.ceil(fillRatio - 0.005));
-  const fitTone = fillRatio <= 0.92 ? "ok" : fillRatio <= 1.0 ? "warn" : "over";
+  // Total pages based on smart breaks
+  const smartPages = smartBreaksMm.length + 1;
+  const theoryPages = pageH && contentMm ? Math.max(1, Math.ceil(contentMm / pageH - 0.005)) : 1;
+  const pages = smartPages > 1 ? smartPages : theoryPages;
+  const fillRatio = combined
 
-  // Printable-band guides (roll): only meaningful once the printer has been
-  // calibrated — on an uncalibrated setup the guides just look like a defect.
   const paperMm = parseFloat(size) || 80;
   const isCalibrated = !!(st.calibration && st.calibration.printAreaWidthMm > 0);
   const bandW = family === "roll" ? rollPrintWidthMm(st.canvasSettings) : 0;
   const bandL = family === "roll" ? rollBandLeftMm(st.canvasSettings) : 0;
   const bandClipped = family === "roll" && isCalibrated && st.showBand && bandW < paperMm - 1;
+
+  // Build page break points: [break0, break1, ...] in mm from content top
+  const pageBreaksMm = useMemo(() => {
+    if (family !== "page" || pages <= 1) return [];
+    if (smartBreaksMm.length) return smartBreaksMm;
+    const b = [];
+    for (let i = 1; i < pages; i++) b.push(i * pageH);
+    return b;
+  }, [family, pages, pageH, smartBreaksMm]);
 
   const startOverlayDrag = (o, e) => {
     e.preventDefault(); e.stopPropagation();
@@ -114,7 +163,6 @@ export default function StudioCanvas({ st, children }) {
     window.addEventListener("pointerup", up);
   };
 
-  // drag layer for page overlays (rendered above the sheet content)
   const overlayLayer = st.isBlockDoc && family === "page" && st.overlays.length > 0 && (
     <div style={{ position: "absolute", inset: 0, zIndex: 40, pointerEvents: "none" }}>
       {st.overlays.map((o) => {
@@ -142,88 +190,308 @@ export default function StudioCanvas({ st, children }) {
     </div>
   );
 
-  return (
-    <div className="relative flex-1 min-h-0 bg-[var(--bg-base)]">
-      <div className="h-full w-full overflow-auto p-6" onClick={() => st.setSelected(null)}>
-        {children ? (
-          // template-doc mode: centered real template (or info card)
-          <div className="flex min-h-full w-full">
-            <div className="m-auto" style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: SHEET_W[size], background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
-                {children}
+  const handleContainerClick = (e) => {
+    if (wasDrag.current) { wasDrag.current = false; return; }
+    st.setSelected(null);
+  };
+
+  // Determine page height for each page: smart break height or exact page height
+  const pageHeightFor = (pageIdx) => {
+    if (pageBreaksMm.length === 0) return pageHeightStr(size, orientation);
+    if (pageIdx < pageBreaksMm.length) {
+      return `${pageBreaksMm[pageIdx]}mm`;
+    }
+    return "auto";
+  };
+
+  const contentOffsetFor = (pageIdx) => {
+    if (pageIdx === 0) return 0;
+    const prevBreaks = pageBreaksMm.slice(0, pageIdx);
+    return prevBreaks.reduce((a, b) => a + b, 0);
+  };
+  const marginTopFor = (pageIdx) => {
+    return `-${contentOffsetFor(pageIdx)}mm`;
+  };
+
+  const renderPages = () => {
+    if (family !== "page") {
+      return (
+        <div ref={sheetRef} data-paper
+          style={{ position: "relative", width: sheetW, background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+          <div ref={measureRef}>
+            <LayoutRenderer family={family} size={size} orientation={orientation} invoice={st.invoiceData}
+              settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
+          </div>
+          {overlayLayer}
+        </div>
+      );
+    }
+
+    const contentNode = (
+      <div ref={(el) => { if (pageIdx === undefined || pageIdx === 0) measureRef.current = el; }}>
+        <LayoutRenderer family={family} size={size} orientation={orientation} invoice={st.invoiceData}
+          settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
+      </div>
+    );
+
+    if (pages <= 1) {
+      return (
+        <div ref={sheetRef} data-paper
+          style={{ position: "relative", width: sheetW, minHeight: pageHeightStr(size, orientation), background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+          {contentNode}
+          {overlayLayer}
+        </div>
+      );
+    }
+
+    // Stacked view
+    if (pageViewMode === "stacked") {
+      const pageArr = Array.from({ length: pages });
+      return (
+        <div ref={sheetRef} data-paper style={{ width: sheetW }}>
+          {pageArr.map((_, i) => {
+            const ph = pageHeightFor(i);
+            const mt = marginTopFor(i);
+            return (
+              <div key={i} style={{
+                height: ph,
+                overflow: "hidden",
+                background: "#fff",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                marginBottom: i < pages - 1 ? "6mm" : 0,
+                position: "relative",
+                borderRadius: "1mm",
+              }}>
+                {pages > 1 && (
+                  <div style={{
+                    position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+                    zIndex: 25, pointerEvents: "none",
+                    fontSize: "7px", fontWeight: 700, color: "#94a3b8",
+                    background: "#fff", padding: "0 4px", borderRadius: "0 0 2px 2px",
+                    borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0",
+                  }}>
+                    {i + 1} / {pages}
+                  </div>
+                )}
+                <div style={{ marginTop: mt }}>
+                  {i === 0 ? contentNode : (
+                    <LayoutRenderer family={family} size={size} orientation={orientation} invoice={st.invoiceData}
+                      settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Single page mode
+    if (pageViewMode === "page") {
+      const i = Math.min(currentPage, pages - 1);
+      const ph = pageHeightFor(i);
+      const mt = marginTopFor(i);
+      return (
+        <div ref={sheetRef} data-paper style={{ width: sheetW }}>
+          <div style={{
+            height: ph,
+            overflow: "hidden",
+            background: "#fff",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            position: "relative",
+            borderRadius: "1mm",
+          }}>
+            {pages > 1 && (
+              <div style={{
+                position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+                zIndex: 25, pointerEvents: "none",
+                fontSize: "7px", fontWeight: 700, color: "#94a3b8",
+                background: "#fff", padding: "0 4px", borderRadius: "0 0 2px 2px",
+                borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0",
+              }}>
+                {i + 1} / {pages}
+              </div>
+            )}
+            <div style={{ marginTop: mt }}>
+              {contentNode}
             </div>
           </div>
-        ) : st.compare ? (
-          <div className="flex min-h-full w-full">
-            <div className="m-auto flex items-start justify-center gap-8" onClick={(e) => e.stopPropagation()}>
-              {SIZES[family].map((sz) => (
-                <div key={sz} className="flex flex-col items-center gap-1">
-                  <span className="text-[11px] font-black text-[var(--text-muted)]">{sz}</span>
-                  <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
-                    <LayoutRenderer family={family} size={sz} invoice={st.invoiceData}
-                      settings={{ ...st.canvasSettings, receipt_width: family === "roll" ? sz : st.canvasSettings.receipt_width }}
-                      layout={st.renderLayout} scope={st.scope} />
+          {pages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: "4mm", marginTop: "3mm" }}>
+              <button type="button" disabled={i === 0} onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                style={{ padding: "2mm 6mm", fontSize: "10px", fontWeight: 700, background: i === 0 ? "#e2e8f0" : "var(--primary)", color: i === 0 ? "#94a3b8" : "#fff", border: "none", borderRadius: "4px", cursor: i === 0 ? "default" : "pointer" }}>
+                السابق
+              </button>
+              <button type="button" disabled={i === pages - 1} onClick={() => setCurrentPage((p) => Math.min(pages - 1, p + 1))}
+                style={{ padding: "2mm 6mm", fontSize: "10px", fontWeight: 700, background: i === pages - 1 ? "#e2e8f0" : "var(--primary)", color: i === pages - 1 ? "#94a3b8" : "#fff", border: "none", borderRadius: "4px", cursor: i === pages - 1 ? "default" : "pointer" }}>
+                التالي
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Grid mode
+    if (pageViewMode === "grid") {
+      const cols = 2;
+      const rows = Math.ceil(pages / cols);
+      const pageArr = Array.from({ length: pages });
+      return (
+        <div ref={sheetRef} data-paper style={{ width: `calc(${sheetW} * ${cols} + 4mm)` }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${sheetW})`, gap: "4mm" }}>
+            {pageArr.map((_, i) => {
+              const ph = pageHeightFor(i);
+              const mt = marginTopFor(i);
+              return (
+                <div key={i} style={{
+                  height: ph,
+                  overflow: "hidden",
+                  background: "#fff",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                  position: "relative",
+                  borderRadius: "1mm",
+                }}>
+                  {pages > 1 && (
+                    <div style={{
+                      position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+                      zIndex: 25, pointerEvents: "none",
+                      fontSize: "7px", fontWeight: 700, color: "#94a3b8",
+                      background: "#fff", padding: "0 4px", borderRadius: "0 0 2px 2px",
+                      borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0",
+                    }}>
+                      {i + 1} / {pages}
+                    </div>
+                  )}
+                  <div style={{ marginTop: mt }}>
+                    {contentNode}
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        ) : (
-          // m-auto inside a min-h-full flex row centers the sheet on BOTH axes
-          // while staying scroll-safe when the sheet outgrows the viewport.
-          <div className="flex min-h-full w-full">
-            <div ref={(el) => { sheetRef.current = el; if (st.sheetElRef) st.sheetElRef.current = el; }} className="m-auto"
-              style={{ position: "relative", width: SHEET_W[size], transform: `scale(${zoom})`, transformOrigin: "center center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
-              onClick={(e) => e.stopPropagation()}>
-              {st.showRuler && <MmRulers size={size} contentMm={contentMm} pageH={pageH} />}
-              {/* printable-band guides: what the thermal head can physically reach */}
-              {bandClipped && (
-                <>
-                  <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
-                  <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
-                  <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: `${bandL}mm`, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
-                  <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, right: 0, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
-                </>
-              )}
-              {/* magnetic center guide while free-dragging */}
-              {st.dragSnap?.centerX && (
-                <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
-              )}
-              <LayoutRenderer family={family} size={size} invoice={st.invoiceData}
-                settings={st.canvasSettings} layout={st.renderLayout} editing designer={st.designer} scope={st.scope} />
-              {overlayLayer}
+        </div>
+      );
+    }
+
+    // Fallback stacked
+    return null;
+  };
+
+  return (
+    <div className="relative flex-1 min-h-0 bg-[var(--bg-base)] select-none">
+      {(children || st.compare) ? (
+        <div className="h-full w-full overflow-auto p-6">
+          {children ? (
+            <div className="flex min-h-full w-full">
+              <div className="m-auto" style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ width: sheetW, background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+                  {children}
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="flex min-h-full w-full">
+              <div className="m-auto flex items-start justify-center gap-8" onClick={(e) => e.stopPropagation()}>
+                {SIZES[family].map((sz) => (
+                  <div key={sz} className="flex flex-col items-center gap-1">
+                    <span className="text-[11px] font-black text-[var(--text-muted)]">{sz}</span>
+                    <div style={{ width: SHEET_W[sz], transform: `scale(${family === "roll" ? 0.9 : 0.42})`, transformOrigin: "top center", background: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+                      <LayoutRenderer family={family} size={sz} orientation={orientation} invoice={st.invoiceData}
+                        settings={{ ...st.canvasSettings, receipt_width: family === "roll" ? sz : st.canvasSettings.receipt_width }}
+                        layout={st.renderLayout} scope={st.scope} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div ref={containerRef}
+          className="h-full w-full overflow-auto"
+          onPointerDown={panMode ? onBgPointerDown : undefined}
+          onPointerMove={panMode ? onBgPointerMove : undefined}
+          onPointerUp={panMode ? onBgPointerUp : undefined}
+          onPointerCancel={panMode ? onBgPointerUp : undefined}
+          onClick={panMode ? handleContainerClick : (e) => { if (!e.target.closest("[data-paper]")) st.setSelected(null); }}
+          style={{ cursor: panMode ? "grab" : undefined }}
+        >
+          <div className="flex min-h-full w-full p-6">
+            <div ref={(el) => { if (st.sheetElRef) st.sheetElRef.current = el; }}
+              className="m-auto"
+              style={{ position: "relative", width: sheetW, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center center", pointerEvents: panMode ? "none" : undefined }}
+            onClick={(e) => e.stopPropagation()}>
+            {st.showRuler && <MmRulers size={size} orientation={orientation} contentMm={contentMm} pageH={pageH} />}
+            {bandClipped && (
+              <>
+                <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
+                <div title="حد منطقة الطباعة الفعلية" style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, width: 0, borderLeft: "1.5px dashed rgba(220,38,38,0.55)", zIndex: 26, pointerEvents: "none" }} />
+                <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: `${bandL}mm`, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
+                <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bandL + bandW}mm`, right: 0, background: "rgba(220,38,38,0.06)", zIndex: 25, pointerEvents: "none" }} />
+              </>
+            )}
+            {st.dragSnap?.centerX && (
+              <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
+            )}
+            {renderPages()}
           </div>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* floating quick toolbar for the selected element */}
-        {!children && !st.compare && <FloatingToolbar st={st} />}
+      {!children && !st.compare && <FloatingToolbar st={st} />}
 
-        {/* fit / overflow meter (page family) */}
-        {!children && family === "page" && !st.compare && pageH > 0 && (
-          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 shadow">
+      {/* Page controls top-right */}
+      {!children && family === "page" && !st.compare && pageH > 0 && (
+        <div style={{ pointerEvents: "auto" }}
+          className="absolute top-3 right-3 flex items-center gap-2 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] px-2.5 py-1.5 shadow">
+          <div className="flex items-center gap-2">
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--bg-input)]">
-              <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%`, background: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }} className="h-full rounded-full" />
+              <div style={{ width: `${Math.min(100, Math.round(fillRatio * 100))}%` }} className="h-full rounded-full" />
             </div>
-            <span className="text-[9px] font-black" style={{ color: fitTone === "ok" ? "var(--success-text)" : fitTone === "warn" ? "var(--warning-text)" : "var(--danger)" }}>
+            <span className="text-[9px] font-black text-[var(--text-secondary)]">
               {Math.round(fillRatio * 100)}% · {pages} {pages > 1 ? "صفحات" : "صفحة"}
             </span>
           </div>
-        )}
+          {pages > 1 && (
+            <>
+              <span style={{ width: 1, height: 16, background: "var(--border-subtle)" }} />
+              {["stacked", "page", "grid"].map((mode) => (
+                <button key={mode} type="button" onClick={(e) => { e.stopPropagation(); setPageViewMode(mode); }}
+                  className={`rounded px-1.5 py-0.5 text-[9px] font-black transition-colors ${pageViewMode === mode ? "bg-primary text-white" : "text-text-secondary hover:bg-bg-input"}`}>
+                  {mode === "stacked" ? "عمودي" : mode === "page" ? "فردي" : "شبكي"}
+                </button>
+              ))}
+            </>
+          )}
+          {size === "A5" && (
+            <>
+              <span style={{ width: 1, height: 16, background: "var(--border-subtle)" }} />
+              <button type="button" onClick={(e) => { e.stopPropagation(); st.setOrientation((o) => o === "portrait" ? "landscape" : "portrait"); }}
+                className={`rounded px-1.5 py-0.5 text-[9px] font-black transition-colors ${orientation === "landscape" ? "bg-primary text-white" : "text-text-secondary hover:bg-bg-input"}`}>
+                {orientation === "portrait" ? "عرضي" : "طولي"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
-        {/* band info chip (roll, calibrated only) */}
-        {!children && family === "roll" && isCalibrated && (
-          <button type="button" onClick={(e) => { e.stopPropagation(); st.setShowBand((v) => !v); }}
-            title="إظهار/إخفاء حدود منطقة الطباعة الفعلية"
-            className={`absolute top-3 left-3 rounded-lg border px-2.5 py-1.5 text-[9px] font-black shadow transition-colors ${st.showBand ? "border-[var(--border-normal)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]" : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-70"}`}>
-            منطقة الطباعة: {bandW}مم من {paperMm}مم {st.showBand ? "◉" : "◎"}
-          </button>
-        )}
-      </div>
+      {!children && family === "roll" && isCalibrated && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); st.setShowBand((v) => !v); }}
+          title="إظهار/إخفاء حدود منطقة الطباعة الفعلية"
+          className={`absolute top-3 right-3 rounded-lg border px-2.5 py-1.5 text-[9px] font-black shadow transition-colors ${st.showBand ? "border-[var(--border-normal)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]" : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-70"}`}>
+          منطقة الطباعة: {bandW}مم من {paperMm}مم {st.showBand ? "◉" : "◎"}
+        </button>
+      )}
 
-      {/* zoom control — fixed position outside scroll container */}
-      <div className="absolute top-3 left-3 z-50 flex items-center overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow">
+      <div className="absolute top-3 left-3 z-50 flex items-center gap-0.5 overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow">
+        <button type="button" onClick={(e) => { e.stopPropagation(); setPanMode((v) => !v); }}
+          className={`px-2.5 py-1.5 text-sm font-black transition-colors ${panMode ? "bg-primary text-white" : "text-text-secondary hover:bg-bg-input"}`}
+          title={panMode ? "الخروج من يد التصفح" : "يد التصفح — حرك اللوحة بحرية"}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v1"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2a5 5 0 0 1-5-5 3 3 0 0 1 1.5-2.6L4 16"/></svg>
+        </button>
+        <span className="h-4 w-px bg-border-subtle" />
         <button type="button" onClick={(e) => { e.stopPropagation(); st.setZoom((z) => Math.min(4, Math.round((z + 0.1) * 10) / 10)); }}
           className="px-2.5 py-1.5 text-sm font-black text-[var(--text-primary)] hover:bg-[var(--bg-input)]">+</button>
         <span className="min-w-[42px] px-1 text-center text-[11px] font-black text-[var(--text-secondary)]">{Math.round(zoom * 100)}%</span>
@@ -234,9 +502,9 @@ export default function StudioCanvas({ st, children }) {
   );
 }
 
-// mm rulers on the top/inline-start edges of the sheet.
-function MmRulers({ size, contentMm, pageH }) {
-  const widthMm = parseFloat(SHEET_W[size]) || 80;
+function MmRulers({ size, orientation, contentMm, pageH }) {
+  const dims = pageDimensions(size, orientation);
+  const widthMm = dims.wMm;
   const heightMm = pageH || Math.max(contentMm || 0, 80);
   const wpx = widthMm * PX_PER_MM, hpx = heightMm * PX_PER_MM;
   const ticks = (lenMm, axis) => {

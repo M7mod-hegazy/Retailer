@@ -3,7 +3,8 @@ import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 // props.label renames the line; props.showRate=false hides "(15%)".
 export default function TaxBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
-  if (g(s, "show_tax") === false && !editing) return null;
+  if (String(g(s, "tax_enabled") ?? "0") !== "1") return null;
+  if (g(s, "show_tax") === false) return null;
   // computeTotals is snapshot-aware: stored tax_amount is authoritative (0 = no tax line),
   // settings-derived tax only applies to ad-hoc preview objects without a stored total.
   const { taxAmount, taxRate } = computeTotals(invoice, s);

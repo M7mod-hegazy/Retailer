@@ -20,6 +20,7 @@ import TemplateDocPreview, { TEMPLATE_PREVIEW_DOCS } from "./TemplateDocPreview"
 import {
   SIZES, SHEET_W, PAGE_H_MM, BLOCK_DOCS, STUDIO_SCOPES, scopeLabel,
   SAMPLES, sampleById, templateMockBySample, pageSizeStrFor, familyOfSize, SCOPE_PRESETS,
+  pageWidthStr,
 } from "./studioData";
 import StudioBlockTree from "./StudioBlockTree";
 import StudioCanvas from "./StudioCanvas";
@@ -85,6 +86,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [dragOverKey, setDragOverKey] = useState(null);
   const [resizing, setResizing] = useState(false);
   const [zoom, setZoom] = useState(family === "roll" ? 1.1 : 0.7);
+  const [orientation, setOrientation] = useState("portrait");
   const [sampleId, setSampleId] = useState("normal");
   const [compare, setCompare] = useState(false);
   const [showRuler, setShowRuler] = useState(false);
@@ -102,9 +104,16 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
 
   const isBlockDoc = scope === "_global" || BLOCK_DOCS.has(scope);
   // For report/template scopes, use per-sample variant so the sample switcher works.
-  const invoiceData = TEMPLATE_PREVIEW_DOCS.has(scope)
+  const rawInvoice = TEMPLATE_PREVIEW_DOCS.has(scope)
     ? templateMockBySample(scope, sampleId)
     : sampleById(sampleId);
+  // account_statement blocks expect statement_rows / statement_summary keys.
+  // The normal path (AccountStatementTemplate) transforms them, but the
+  // Studio bypasses that wrapper for BLOCK_DOC scopes and passes raw data
+  // directly to LayoutRenderer. Add aliases so mock data renders in the canvas.
+  const invoiceData = scope === "account_statement" && rawInvoice
+    ? { ...rawInvoice, statement_rows: rawInvoice.rows || [], statement_summary: rawInvoice.summary || {} }
+    : rawInvoice;
 
   // ── load ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -353,7 +362,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const sheet = sheetElRef.current;
     if (!sheet) return null;
     const rect = sheet.getBoundingClientRect();
-    const sheetWmm = parseFloat(SHEET_W[size]) || 210;
+    const sheetWmm = parseFloat(pageWidthStr(size, orientation)) || 210;
     return { rect, sheetWmm, mmPerPx: sheetWmm / rect.width };
   };
   const half = (v) => Math.round(v * 2) / 2;
@@ -566,7 +575,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   };
 
   // ── calibration / printer info for this size ───────────────────────────
-  const pageSizeStr = pageSizeStrFor(size);
+  const pageSizeStr = pageSizeStrFor(size, orientation);
   const printerName = getPrinterForPageSize(pageSizeStr);
   const calibration = family === "roll" ? resolveCalibration(printerName, size) : null;
   // canvas renders with calibration applied so the band preview is truthful
@@ -632,6 +641,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setSize(sz);
     const f = familyOfSize(sz);
     if (f !== family) { setSelected(null); setHovered(null); setZoom(f === "roll" ? 1.1 : 0.7); }
+    if (sz !== "A5") setOrientation("portrait");
   };
   // For dense report docs only offer page sizes (A4/A5); roll sizes don't apply.
   const isDenseReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
@@ -676,7 +686,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     duplicateSelected, deleteSelected, selected, setSelected, hovered, setHovered,
     setFlat, setFamLayout, unlinkFamily, ownFamily, isBlockDoc,
     overlays, addOverlay, setOverlay, removeOverlay,
-    invoiceData, canvasSettings, renderLayout, designer,
+    invoiceData, canvasSettings, renderLayout, designer, orientation, setOrientation,
     zoom, setZoom, showRuler, compare, sampleId, showBand, setShowBand,
     calibration, printerName, openCalibration: () => setCalibOpen(true),
     resetFamily, applyPresetToDraft, sheetElRef, setPinMode, resetPosition, dragSnap,
@@ -689,9 +699,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   return createPortal((
     <div dir="rtl" className="fixed inset-0 z-[9999] flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
       {/* hidden clean render for test print / PDF — exactly what the canvas shows */}
-      <div ref={printRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none", width: SHEET_W[size] }}>
+      <div ref={printRef} style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none", width: pageWidthStr(size, orientation) }}>
         {isBlockDoc
-          ? <LayoutRenderer family={family} size={size} invoice={invoiceData} settings={canvasSettings} layout={renderLayout} scope={scope} />
+          ? <LayoutRenderer family={family} size={size} orientation={orientation} invoice={invoiceData} settings={canvasSettings} layout={renderLayout} scope={scope} />
           : hasTemplatePreview ? <TemplateDocPreview scope={scope} mock={invoiceData} settings={{ ...canvasSettings, _previewSize: size }} /> : null}
       </div>
 

@@ -6,7 +6,7 @@ const DEFAULT_TEXT = "شكراً لتعاملكم معنا — نرحب بزيا
 
 export default function FooterTextBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showFooter = g(s, "show_footer") !== false;
-  if (!showFooter && !editing) return null;
+  if (!showFooter) return null;
   const rawText = props.text != null && props.text !== ""
     ? props.text
     : (editing ? DEFAULT_TEXT : (g(s, "receipt_footer") || DEFAULTS.receipt_footer));

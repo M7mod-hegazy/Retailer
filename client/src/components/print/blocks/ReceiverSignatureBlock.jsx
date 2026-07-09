@@ -26,7 +26,7 @@ import { g } from "./blockUtils";
  */
 export default function ReceiverSignatureBlock({ settings: s, props = {}, family, editing }) {
   const show = g(s, "show_receiver_signature");
-  if (!show && !editing) return null;
+  if (!show) return null;
 
   const isRoll = family !== "page";
 

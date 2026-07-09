@@ -25,8 +25,8 @@ export default function AddressBlock({ settings: s, family, editing }) {
 
   const rows = mockAddrs.map((addr, i) => {
     const phone = mockPhones[i];
-    const dispAddr = (showAddress || editing) && addr;
-    const dispPhone = (showPhone || editing) && phone;
+    const dispAddr = showAddress && addr;
+    const dispPhone = showPhone && phone;
     if (!dispAddr && !dispPhone) return null;
     return (
       <div key={i} style={{ display: "flex", gap: "8px", justifyContent: flex, ...(i > 0 ? sepStyle : {}) }}>

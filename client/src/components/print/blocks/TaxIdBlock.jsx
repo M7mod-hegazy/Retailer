@@ -4,7 +4,7 @@ import { g } from "./blockUtils";
 // props.label renames the caption (empty string keeps just the number).
 export default function TaxIdBlock({ settings: s, props = {}, editing }) {
   const showTaxId = g(s, "show_tax_id") !== false;
-  if (!showTaxId && !editing) return null;
+  if (!showTaxId) return null;
   // Realistic Saudi 15-digit VAT registration number format
   const taxId = s.tax_id || (editing ? "310012345600003" : "");
   if (!taxId) return null;
