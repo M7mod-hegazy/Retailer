@@ -1292,18 +1292,17 @@ export const SCOPE_PRESETS = {
   ],
   account_statement: [
     {
-      id: "account_classic",
-      label: "كشف حساب كلاسيكي رسمي",
+      id: "account_standard",
+      label: "قياسي — مطابق لشاشة التقرير",
       family: "page",
       isTemplate: true,
-      tags: ["classic", "formal"],
-      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      tags: ["standard", "default", "on-screen"],
+      flat: { accent_color: "#1e40af", print_font: "Tajawal", body_font_size: 11, item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
         order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "grid",
-            headerBg: "#1e40af",
+            tableBorder: "lines", zebra: true, headerVariant: "dark",
             columns: [
               { key: "index", label: "م", visible: true, align: "center", width: "4%" },
               { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
@@ -1317,75 +1316,74 @@ export const SCOPE_PRESETS = {
       }
     },
     {
-      id: "account_modern",
-      label: "كشف حساب عصري (Zebra)",
+      id: "account_ledger_book",
+      label: "دفتر الأستاذ — ورق مسطر دافئ",
       family: "page",
       isTemplate: true,
-      tags: ["modern", "simple"],
-      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      tags: ["classic", "warm", "ledger"],
+      flat: { accent_color: "#92400e", print_font: "Cairo", body_font_size: 11, item_font_size: 11, header_style: "boxed", page_layout_type: "letterhead" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text"],
+        order: ["watermark", "logo", "company_name", "tax_id", "account_statement_party", "account_statement_ledger", "account_statement_summary", "signature_lines"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "lines",
-            zebra: true,
-            headerBg: "#0f172a",
+            tableBorder: "lines", lineColor: "#d6d3d1", lineWidth: 2,
+            zebra: true, headerVariant: "light", headerBg: "#fef3c7",
             columns: [
               { key: "index", label: "م", visible: true, align: "center", width: "4%" },
               { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
               { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
               { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
-              { key: "running_balance", label: "الرصيد الجاري", visible: true, align: "center", width: "14%" },
-              { key: "description", label: "الوصف", visible: true, align: "right", width: "44%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "44%" },
             ]
+          },
+          account_statement_summary: {
+            tableBorder: "lines", lineColor: "#d6d3d1", lineWidth: 2,
+            accentColor: "#92400e",
           }
         }
       }
     },
     {
-      id: "account_minimal",
-      label: "كشف حساب مبسط",
+      id: "account_quick",
+      label: "سريع — نظرة عامة مكثفة",
       family: "page",
       isTemplate: true,
-      tags: ["minimal", "simple"],
-      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      tags: ["compact", "minimal", "quick"],
+      flat: { accent_color: "#0369a1", print_font: "Tajawal", body_font_size: 10, item_font_size: 9, header_style: "band", page_layout_type: "minimal-top" },
       layout: {
         order: ["doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "none",
-            zebra: false,
-            headerVariant: "light",
+            tableBorder: "none", zebra: true, headerVariant: "light",
             columns: [
               { key: "index", label: "م", visible: true, align: "center", width: "5%" },
-              { key: "date", label: "التاريخ", visible: true, align: "center", width: "15%" },
-              { key: "amount", label: "المبلغ", visible: true, align: "center", width: "20%" },
-              { key: "description", label: "البيان", visible: true, align: "right", width: "60%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "18%" },
+              { key: "amount", label: "المبلغ", visible: true, align: "center", width: "18%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "59%" },
             ]
           }
         }
       }
     },
     {
-      id: "account_centered",
-      label: "كشف حساب متمركز أنيق",
+      id: "account_executive",
+      label: "تنفيذي — تقرير رسمي معتمد",
       family: "page",
       isTemplate: true,
-      tags: ["elegant", "modern"],
-      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      tags: ["elegant", "formal", "executive"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", body_font_size: 11, item_font_size: 11, header_style: "centered", page_layout_type: "executive" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "signature_lines"],
+        order: ["watermark", "logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "notes", "footer_text", "signature_lines"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "grid",
-            headerBg: "#059669",
-            zebra: true,
+            tableBorder: "grid", zebra: false, headerVariant: "dark", headerBg: "#6d28d9",
             columns: [
               { key: "index", label: "م", visible: true, align: "center", width: "4%" },
               { key: "date", label: "تاريخ الحركة", visible: true, align: "center", width: "14%" },
               { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
               { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
-              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
+              { key: "running_balance", label: "الرصيد التراكمي", visible: true, align: "center", width: "14%" },
               { key: "description", label: "تفاصيل المعاملة", visible: true, align: "right", width: "44%" },
             ]
           }
@@ -1393,50 +1391,47 @@ export const SCOPE_PRESETS = {
       }
     },
     {
-      id: "account_boxed",
-      label: "كشف حساب شبكي (Executive)",
+      id: "account_sidebar",
+      label: "شريط جانبي — عرض حديث منفصل",
       family: "page",
       isTemplate: true,
-      tags: ["elegant", "classic"],
-      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      tags: ["sidebar", "modern", "whitespace"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", body_font_size: 11, item_font_size: 10, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "lines",
-            zebra: true,
-            headerBg: "#6d28d9",
+            tableBorder: "none", zebra: false, headerVariant: "light",
             columns: [
-              { key: "index", label: "م", visible: true, align: "center", width: "4%" },
-              { key: "date", label: "التاريخ", visible: true, align: "center", width: "14%" },
-              { key: "debit", label: "مدين", visible: true, align: "center", width: "12%" },
-              { key: "credit", label: "دائن", visible: true, align: "center", width: "12%" },
-              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "14%" },
-              { key: "description", label: "البيان والوصف", visible: true, align: "right", width: "44%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "18%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "16%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "16%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "16%" },
+              { key: "description", label: "البيان", visible: true, align: "right", width: "34%" },
             ]
           }
         }
       }
     },
     {
-      id: "account_sidebar",
-      label: "كشف حساب جانبي (Sidebar)",
+      id: "account_card",
+      label: "بطاقة — تصميم كروتي مدمج",
       family: "page",
       isTemplate: true,
-      tags: ["minimal", "whitespace"],
-      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
+      tags: ["card", "compact", "colorful"],
+      flat: { accent_color: "#be123c", print_font: "Tajawal", body_font_size: 11, item_font_size: 10, header_style: "band", page_layout_type: "split-header" },
       layout: {
-        order: ["account_statement_ledger", "account_statement_summary"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
         perBlock: {
           account_statement_ledger: {
-            tableBorder: "none",
-            zebra: true,
-            headerVariant: "light",
+            tableBorder: "grid", zebra: true, headerVariant: "dark", headerBg: "#be123c",
             columns: [
               { key: "index", label: "م", visible: true, align: "center", width: "5%" },
-              { key: "date", label: "التاريخ", visible: true, align: "center", width: "15%" },
-              { key: "amount", label: "المبلغ ج.م", visible: true, align: "center", width: "20%" },
-              { key: "description", label: "البيان", visible: true, align: "right", width: "60%" },
+              { key: "date", label: "التاريخ", visible: true, align: "center", width: "16%" },
+              { key: "debit", label: "مدين", visible: true, align: "center", width: "14%" },
+              { key: "credit", label: "دائن", visible: true, align: "center", width: "14%" },
+              { key: "running_balance", label: "الرصيد", visible: true, align: "center", width: "16%" },
+              { key: "description", label: "الوصف", visible: true, align: "right", width: "35%" },
             ]
           }
         }
@@ -1684,51 +1679,73 @@ export const TEMPLATE_MOCK = {
       party_name: "محمد أحمد عبدالله",
       party_code: "CUST-001",
       opening_balance: 5000,
-      closing_balance: 8500,
-      total_debit: 12000,
+      closing_balance: 7000,
+      total_debit: 10500,
       total_credit: 8500,
     },
     period: { from: "2026-06-01", to: "2026-06-30" },
     rows: [
       {
         type: "invoice", ref_no: "INV-001", date: now(), datetime: now(),
-        description: "فاتورة مبيعات نقدية", debit: 3000, credit: 0,
+        description: "فاتورة مبيعات نقدية — مستلزمات مكتبية", debit: 3000, credit: 0,
         running_balance: 8000, doc_discount: 0, doc_increase: 0, doc_total: 3000,
         affects_balance: true,
         items: [
-          { _is_item: true, item_name: "منتج تجريبي أ", item_code: "K-001", quantity: 2, unit_price: 1000, line_total: 2000 },
-          { _is_item: true, item_name: "منتج تجريبي ب", item_code: "K-002", quantity: 1, unit_price: 1000, line_total: 1000 },
+          { _is_item: true, item_name: "طابعة ليزر HP", item_code: "K-001", quantity: 2, unit_price: 1000, line_total: 2000 },
+          { _is_item: true, item_name: "كرتون ورق A4", item_code: "K-002", quantity: 1, unit_price: 1000, line_total: 1000 },
         ],
       },
       {
         type: "payment", ref_no: "PAY-001", date: now(), datetime: now(),
-        description: "دفعة من العميل", debit: 0, credit: 2000,
+        description: "دفعة عبر التحويل البنكي", debit: 0, credit: 2000,
         running_balance: 6000, doc_discount: 0, doc_increase: 0, doc_total: 2000,
         affects_balance: true, items: [],
       },
       {
         type: "purchase", ref_no: "PUR-001", date: now(), datetime: now(),
-        description: "فاتورة مشتريات", debit: 4500, credit: 0,
+        description: "فاتورة مشتريات — مواد خام", debit: 4500, credit: 0,
         running_balance: 10500, doc_discount: 500, doc_increase: 200, doc_total: 4200,
         affects_balance: true,
         items: [
-          { _is_item: true, item_name: "بضاعة مشتراة", item_code: "K-010", quantity: 5, unit_price: 800, line_total: 4000 },
+          { _is_item: true, item_name: "مادة خام بلاستيكية", item_code: "K-010", quantity: 5, unit_price: 800, line_total: 4000 },
         ],
       },
       {
         type: "sales_return", ref_no: "SR-001", date: now(), datetime: now(),
-        description: "مرتجع مبيعات", debit: 0, credit: 2000,
+        description: "مرتجع مبيعات — تلف في الشحنة", debit: 0, credit: 2000,
         running_balance: 8500, doc_discount: 0, doc_increase: 0, doc_total: 2000,
         affects_balance: true,
         items: [
-          { _is_item: true, item_name: "منتج تجريبي أ (مرتجع)", item_code: "K-001", quantity: 1, unit_price: 1000, line_total: 1000 },
-          { _is_item: true, item_name: "منتج تجريبي ج (مرتجع)", item_code: "K-003", quantity: 1, unit_price: 1000, line_total: 1000 },
+          { _is_item: true, item_name: "طابعة ليزر HP (مرتجع)", item_code: "K-001", quantity: 1, unit_price: 1000, line_total: 1000 },
+          { _is_item: true, item_name: "ماوس لاسلكي (مرتجع)", item_code: "K-003", quantity: 1, unit_price: 1000, line_total: 1000 },
         ],
       },
       {
         type: "adjustment", ref_no: "ADJ-001", date: now(), datetime: now(),
-        description: "تسوية رصيد", debit: 500, credit: 0,
+        description: "تسوية رصيد — فرق سعر صرف", debit: 500, credit: 0,
         running_balance: 9000, doc_discount: 0, doc_increase: 0, doc_total: 500,
+        affects_balance: true, items: [],
+      },
+      {
+        type: "purchase_return", ref_no: "PR-001", date: now(), datetime: now(),
+        description: "مرتجع مشتريات — مواد تالفة", debit: 0, credit: 1500,
+        running_balance: 7500, doc_discount: 0, doc_increase: 0, doc_total: 1500,
+        affects_balance: true, items: [],
+      },
+      {
+        type: "invoice", ref_no: "INV-002", date: now(), datetime: now(),
+        description: "فاتورة مبيعات آجلة — أثاث مكتبي", debit: 2500, credit: 0,
+        running_balance: 10000, doc_discount: 100, doc_increase: 0, doc_total: 2400,
+        affects_balance: true,
+        items: [
+          { _is_item: true, item_name: "كرسي مكتب دوار", item_code: "K-020", quantity: 3, unit_price: 700, line_total: 2100 },
+          { _is_item: true, item_name: "طاولة اجتماعات صغيرة", item_code: "K-021", quantity: 1, unit_price: 400, line_total: 400 },
+        ],
+      },
+      {
+        type: "payment", ref_no: "PAY-002", date: now(), datetime: now(),
+        description: "دفعة نقدية — تحصيل سابق", debit: 0, credit: 3000,
+        running_balance: 7000, doc_discount: 0, doc_increase: 0, doc_total: 3000,
         affects_balance: true, items: [],
       },
     ],
@@ -1813,7 +1830,26 @@ export function templateMockBySample(scope, sampleId = "normal") {
     },
     account_statement: {
       ...base,
-      summary: { ...base.summary, party_name: "محمد أحمد بن عبدالله بن علي السعيد التميمي" },
+      summary: { ...base.summary, party_name: "محمد أحمد بن عبدالله بن علي السعيد التميمي", party_code: "CUST-00-001-2026" },
+      rows: base.rows.map((r, i) => ({
+        ...r,
+        description: i === 0 ? "فاتورة مبيعات نقدية — مستلزمات مكتبية متنوعة (طابعات وورق وأدوات كتابة)"
+          : i === 1 ? "دفعة عبر التحويل البنكي من البنك الأهلي المصري فرع الإسكندرية"
+          : i === 2 ? "فاتورة مشتريات — مواد خام بلاستيكية ومواد تعبئة وتغليف للتوريد للفرع الرئيسي"
+          : i === 3 ? "مرتجع مبيعات — تلف في الشحنة بسبب سوء التخزين أثناء النقل من المستودع العام"
+          : i === 4 ? "تسوية رصيد — فرق سعر صرف العملة الأجنبية للفترة المحاسبية السابقة"
+          : i === 5 ? "مرتجع مشتريات — مواد تالفة غير مطابقة للمواصفات القياسية المتفق عليها"
+          : i === 6 ? "فاتورة مبيعات آجلة — أثاث مكتبي وتجهيزات قسم الإدارة العليا للشركة"
+          : i === 7 ? "دفعة نقدية — تحصيل مستحقات سابقة من عميل مشاريع الإنشاءات والمقاولات"
+          : r.description,
+        items: r.items.map((it) => ({
+          ...it,
+          item_name: i === 0 ? "طابعة ليزر HP LaserJet Pro M404 متعددة الوظائف"
+            : i === 2 ? "مادة خام بلاستيكية من نوع HDPE عالي الكثافة لتغليف المنتجات"
+            : i === 6 ? "كرسي مكتب دوار قابل للتعديل بارتفاع ٥ مستويات مع مسند ظهر"
+            : it.item_name,
+        })),
+      })),
     },
   };
 
@@ -1907,27 +1943,42 @@ export function templateMockBySample(scope, sampleId = "normal") {
     },
     account_statement: {
       ...base,
-      rows: Array.from({ length: 25 }, (_, i) => {
-        const types = ["invoice", "payment", "purchase", "sales_return"];
-        const type = types[i % types.length];
-        const isDebit = type === "invoice" || type === "purchase";
-        const amt = (i + 1) * 500 + 100;
-        return {
-          type, ref_no: `DOC-${String(i + 1).padStart(3, "0")}`,
-          date: now(), datetime: now(),
-          description: `معاملة ${i + 1} — ${type === "invoice" ? "فاتورة مبيعات" : type === "payment" ? "دفعة" : type === "purchase" ? "فاتورة مشتريات" : "مرتجع"}`,
-          debit: isDebit ? amt : 0,
-          credit: !isDebit ? amt : 0,
-          running_balance: 5000 + (i + 1) * (isDebit ? amt : -amt),
-          doc_discount: i % 3 === 0 ? 100 : 0,
-          doc_increase: i % 5 === 0 ? 50 : 0,
-          doc_total: amt,
-          affects_balance: true,
-          items: i % 2 === 0 ? [
-            { _is_item: true, item_name: `منتج تجريبي ${i + 1}`, item_code: `K-${String(i + 1).padStart(3, "0")}`, quantity: 2, unit_price: amt / 2, line_total: amt },
-          ] : [],
-        };
-      }),
+      rows: (() => {
+        const types = ["invoice", "payment", "purchase", "sales_return", "adjustment"];
+        const itemsPool = [
+          { name: "منتج تجريبي أ — طابعة ليزر", code: "K-001" },
+          { name: "منتج تجريبي ب — ماوس لاسلكي", code: "K-002" },
+          { name: "منتج تجريبي ج — كيبورد ميكانيكي", code: "K-003" },
+          { name: "منتج تجريبي د — شاشة ٢٤ بوصة", code: "K-004" },
+          { name: "منتج تجريبي ه — كاميرا مراقبة", code: "K-005" },
+          { name: "منتج تجريبي و — ماسح ضوئي", code: "K-006" },
+        ];
+        let rb = 5000;
+        return Array.from({ length: 30 }, (_, i) => {
+          const type = types[i % types.length];
+          const isDebit = type === "invoice" || type === "purchase" || type === "adjustment";
+          const amt = (i + 1) * 350 + 200;
+          rb += isDebit ? amt : -amt;
+          const typeLabel = type === "invoice" ? "فاتورة مبيعات" : type === "payment" ? "دفعة" : type === "purchase" ? "فاتورة مشتريات" : type === "sales_return" ? "مرتجع مبيعات" : "تسوية";
+          const hasItems = i % 2 === 0 && (type === "invoice" || type === "purchase" || type === "sales_return");
+          return {
+            type, ref_no: i < 20 ? `DOC-${String(i + 1).padStart(3, "0")}` : `INV-2026-${String(i + 1).padStart(4, "0")}`,
+            date: now(), datetime: now(),
+            description: `معاملة رقم ${i + 1} — ${typeLabel} ${i < 10 ? "(الفترة الأولى)" : i < 20 ? "(الفترة الثانية)" : "(الفترة الثالثة)"}`,
+            debit: isDebit ? amt : 0,
+            credit: !isDebit ? amt : 0,
+            running_balance: rb,
+            doc_discount: i % 3 === 0 && isDebit ? 100 : 0,
+            doc_increase: i % 5 === 0 && isDebit ? 50 : 0,
+            doc_total: amt,
+            affects_balance: i !== 7 && i !== 19,
+            items: hasItems ? [
+              { _is_item: true, item_name: itemsPool[i % itemsPool.length].name, item_code: itemsPool[i % itemsPool.length].code, quantity: (i % 5) + 1, unit_price: amt / ((i % 5) + 1), line_total: amt },
+              ...(i % 3 === 0 ? [{ _is_item: true, item_name: itemsPool[(i + 1) % itemsPool.length].name, item_code: itemsPool[(i + 1) % itemsPool.length].code, quantity: 2, unit_price: amt / 4, line_total: amt / 2 }] : []),
+            ] : [],
+          };
+        });
+      })(),
     },
   };
 
