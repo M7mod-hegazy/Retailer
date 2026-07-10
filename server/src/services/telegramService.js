@@ -32,13 +32,19 @@ function getTelegramConfig(db) {
     const row = db
       .prepare(
         `SELECT telegram_enabled, telegram_bot_token, telegram_chat_id, telegram_api_base,
-                telegram_notify_new_invoice, telegram_notify_daily_close, telegram_notify_important_actions
+                telegram_notify_new_invoice, telegram_notify_daily_close, telegram_notify_important_actions,
+                telegram_notify_large_amounts, telegram_notify_returns_voids,
+                telegram_notify_purchases_payments, telegram_notify_low_stock, telegram_notify_system
          FROM settings WHERE id = 1`
       )
       .get();
     if (!row || !row.telegram_enabled || !row.telegram_bot_token || !row.telegram_chat_id) {
       return null;
     }
+    // Granular columns (migration 176) may not exist yet on un-migrated DBs —
+    // fall back to the bundled "important actions" toggle for each of them.
+    const bundled = Boolean(row.telegram_notify_important_actions);
+    const granular = (col) => (row[col] === undefined || row[col] === null ? bundled : Boolean(row[col]));
     return {
       enabled: Boolean(row.telegram_enabled),
       botToken: row.telegram_bot_token,
@@ -46,7 +52,12 @@ function getTelegramConfig(db) {
       apiBase: row.telegram_api_base || "https://api.telegram.org",
       notifyNewInvoice: Boolean(row.telegram_notify_new_invoice),
       notifyDailyClose: Boolean(row.telegram_notify_daily_close),
-      notifyImportantActions: Boolean(row.telegram_notify_important_actions),
+      notifyImportantActions: bundled,
+      notifyLargeAmounts: granular("telegram_notify_large_amounts"),
+      notifyReturnsVoids: granular("telegram_notify_returns_voids"),
+      notifyPurchasesPayments: granular("telegram_notify_purchases_payments"),
+      notifyLowStock: granular("telegram_notify_low_stock"),
+      notifySystem: granular("telegram_notify_system"),
     };
   } catch (err) {
     // Migration not applied yet or schema mismatch.
@@ -56,16 +67,106 @@ function getTelegramConfig(db) {
 
 function isEventEnabled(config, eventType) {
   if (!config || !config.enabled) return false;
-  if (eventType === EVENT_TYPES.NEW_INVOICE) return config.notifyNewInvoice;
-  if (eventType === EVENT_TYPES.DAILY_CLOSE) return config.notifyDailyClose;
-  if (eventType === EVENT_TYPES.SHIFT_CLOSE) return config.notifyDailyClose; // grouped with daily close
-  // All other events fall under "important actions".
-  return config.notifyImportantActions;
+  switch (eventType) {
+    case EVENT_TYPES.NEW_INVOICE: return config.notifyNewInvoice;
+    case EVENT_TYPES.DAILY_CLOSE:
+    case EVENT_TYPES.SHIFT_CLOSE: return config.notifyDailyClose; // grouped with daily close
+    case EVENT_TYPES.LARGE_INVOICE:
+    case EVENT_TYPES.LARGE_DISCOUNT: return config.notifyLargeAmounts;
+    case EVENT_TYPES.SALES_RETURN:
+    case EVENT_TYPES.INVOICE_VOIDED: return config.notifyReturnsVoids;
+    case EVENT_TYPES.PURCHASE_CREATED:
+    case EVENT_TYPES.CUSTOMER_PAYMENT: return config.notifyPurchasesPayments;
+    case EVENT_TYPES.LOW_STOCK: return config.notifyLowStock;
+    case EVENT_TYPES.BACKUP_RESULT:
+    case EVENT_TYPES.FAILED_LOGIN: return config.notifySystem;
+    case EVENT_TYPES.TEST: return true;
+    default: return config.notifyImportantActions;
+  }
 }
 
 function formatMoney(amount, currencySymbol = "ج") {
   const value = Number(amount || 0);
   return `${value.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+}
+
+// Maps each event type to the message_templates category an owner can
+// customize (see migration 177). TEST has no category — it's not meaningful
+// to template a one-off connectivity check.
+const EVENT_CATEGORY = {
+  [EVENT_TYPES.NEW_INVOICE]: "telegram_new_invoice",
+  [EVENT_TYPES.DAILY_CLOSE]: "telegram_daily_close",
+  [EVENT_TYPES.SHIFT_CLOSE]: "telegram_shift_close",
+  [EVENT_TYPES.LARGE_INVOICE]: "telegram_large_invoice",
+  [EVENT_TYPES.LARGE_DISCOUNT]: "telegram_large_discount",
+  [EVENT_TYPES.SALES_RETURN]: "telegram_sales_return",
+  [EVENT_TYPES.INVOICE_VOIDED]: "telegram_invoice_voided",
+  [EVENT_TYPES.PURCHASE_CREATED]: "telegram_purchase_created",
+  [EVENT_TYPES.CUSTOMER_PAYMENT]: "telegram_customer_payment",
+  [EVENT_TYPES.LOW_STOCK]: "telegram_low_stock",
+  [EVENT_TYPES.BACKUP_RESULT]: "telegram_backup_result",
+  [EVENT_TYPES.FAILED_LOGIN]: "telegram_failed_login",
+};
+
+function buildTemplateVars(eventType, data, currency) {
+  switch (eventType) {
+    case EVENT_TYPES.NEW_INVOICE:
+      return {
+        invoice_no: data.invoiceNo || data.id, customer_name: data.customerName || "غير محدد",
+        total: formatMoney(data.total, currency), payment_type: data.paymentType || "غير محدد",
+        created_at: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.DAILY_CLOSE:
+      return {
+        date: data.date, opening_balance: formatMoney(data.openingBalance, currency),
+        cash_sales: formatMoney(data.cashSales, currency), credit_sales: formatMoney(data.creditSales, currency),
+        expected_cash: formatMoney(data.expectedCash, currency), actual_cash: formatMoney(data.actualCash, currency),
+        discrepancy: formatMoney(data.discrepancy, currency), invoices_count: data.invoicesCount || 0,
+      };
+    case EVENT_TYPES.SHIFT_CLOSE:
+      return {
+        shift_id: data.shiftId, opening_cash: formatMoney(data.openingCash, currency),
+        expected_cash: formatMoney(data.expectedCash, currency), closing_cash: formatMoney(data.closingCash, currency),
+        discrepancy: formatMoney(data.discrepancy, currency), invoices_count: data.invoicesCount || 0,
+      };
+    case EVENT_TYPES.LARGE_INVOICE:
+      return { invoice_no: data.invoiceNo || data.id, customer_name: data.customerName || "غير محدد", total: formatMoney(data.total, currency) };
+    case EVENT_TYPES.LARGE_DISCOUNT:
+      return { invoice_no: data.invoiceNo || data.id, discount_percent: data.discountPercent };
+    case EVENT_TYPES.SALES_RETURN:
+      return { original_invoice_id: data.originalInvoiceId, total: formatMoney(data.total, currency) };
+    case EVENT_TYPES.INVOICE_VOIDED:
+      return { invoice_no: data.invoiceNo || data.id, reason: data.reason || "غير محدد", user_name: data.userName || "غير محدد" };
+    case EVENT_TYPES.PURCHASE_CREATED:
+      return {
+        kind_label: data.kind === "receipt" ? "فاتورة شراء" : "أمر شراء", reference: data.reference || data.id,
+        supplier_name: data.supplierName || "غير محدد", total: formatMoney(data.total, currency),
+      };
+    case EVENT_TYPES.CUSTOMER_PAYMENT:
+      return { customer_name: data.customerName || "غير محدد", amount: formatMoney(data.amount, currency), method: data.method || "غير محدد" };
+    case EVENT_TYPES.LOW_STOCK:
+      return {
+        product_name: data.productName || data.sku || "غير محدد", current_quantity: data.currentQuantity,
+        min_quantity: data.summary ? "" : data.minQuantity,
+      };
+    case EVENT_TYPES.BACKUP_RESULT:
+      return {
+        success_text: data.success ? "✅ نسخة احتياطية ناجحة" : "❌ فشل النسخ الاحتياطي",
+        reason: data.reason || "غير محدد", file_path: data.filePath || "—",
+        error: data.error ? `الخطأ: \`${data.error}\`` : "",
+      };
+    case EVENT_TYPES.FAILED_LOGIN:
+      return { username: data.username || "غير محدد", time: formatDateTime(data.time), ip: data.ip || "غير معروف" };
+    default:
+      return {};
+  }
+}
+
+function renderTemplate(body, vars) {
+  return Object.entries(vars).reduce(
+    (acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), val ?? ""),
+    body
+  );
 }
 
 function formatDateTime(dt) {
@@ -75,10 +176,23 @@ function formatDateTime(dt) {
   return d.toLocaleString("ar-EG");
 }
 
-function buildMessage(eventType, data = {}) {
+function buildMessage(eventType, data = {}, db = null) {
   const currency = data.currencySymbol || "ج";
   const branch = data.branch || "";
   const header = branch ? `🏪 *${branch}*\n` : "";
+
+  // Prefer the owner's saved template (message_templates, kept in sync with
+  // the active message_template_variants row) over the hardcoded default —
+  // falls through on any DB issue (un-migrated DB, no row yet).
+  const category = EVENT_CATEGORY[eventType];
+  if (category && db) {
+    try {
+      const row = db.prepare("SELECT body FROM message_templates WHERE kind=?").get(category);
+      if (row?.body) {
+        return header + renderTemplate(row.body, buildTemplateVars(eventType, data, currency));
+      }
+    } catch (_) { /* fall through to hardcoded default below */ }
+  }
 
   switch (eventType) {
     case EVENT_TYPES.TEST:
@@ -216,6 +330,40 @@ async function sendTelegramMessage(config, text) {
   return response.json();
 }
 
+// Reads the bot's recent updates and pulls the chat id out of the last message,
+// so owners don't have to open the getUpdates URL in a browser and read raw
+// JSON to find their chat_id.
+async function detectChatId(botToken, apiBase = "https://api.telegram.org") {
+  const token = encodeURIComponent(botToken);
+  const url = `${apiBase.replace(/\/$/, "")}/bot${token}/getUpdates?limit=5`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "unknown error");
+    throw new Error(`Telegram API ${response.status}: ${errorText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  const updates = Array.isArray(data.result) ? data.result : [];
+  const last = [...updates].reverse().find((u) => u.message?.chat || u.channel_post?.chat || u.my_chat_member?.chat);
+  const chat = last?.message?.chat || last?.channel_post?.chat || last?.my_chat_member?.chat;
+  if (!chat) return null;
+  const name = [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.title || chat.username || null;
+  return { chatId: String(chat.id), chatName: name, chatType: chat.type };
+}
+
+// Reads the bot's own profile (getMe) — used to derive the bot username for
+// the connect deep-link/QR so the owner doesn't have to type it manually.
+async function getBotInfo(botToken, apiBase = "https://api.telegram.org") {
+  const token = encodeURIComponent(botToken);
+  const url = `${apiBase.replace(/\/$/, "")}/bot${token}/getMe`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "unknown error");
+    throw new Error(`Telegram API ${response.status}: ${errorText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return data?.result || null; // { id, is_bot, first_name, username, ... }
+}
+
 function enqueueNotification(db, eventType, text, payload = {}) {
   try {
     db.prepare(
@@ -250,7 +398,7 @@ async function notifyOwner(eventType, data = {}, dbArg) {
   const config = getTelegramConfig(db);
   if (!config || !isEventEnabled(config, eventType)) return;
 
-  const text = buildMessage(eventType, data);
+  const text = buildMessage(eventType, data, db);
   try {
     await sendTelegramMessage(config, text);
   } catch (err) {
@@ -318,6 +466,8 @@ module.exports = {
   isEventEnabled,
   buildMessage,
   sendTelegramMessage,
+  detectChatId,
+  getBotInfo,
   notifyOwner,
   enqueueNotification,
   processQueue,

@@ -12,6 +12,7 @@ const { startSyncScheduler } = require("./jobs/syncScheduler");
 const { startSmsDrainer } = require("./services/smsService");
 const { startReportScheduler } = require("./services/reportScheduler");
 const { startTelegramRetryJob } = require("./services/telegramService");
+const { startTelegramDigestJob } = require("./jobs/telegramDigestJob");
 const { ensureSystemOwnerAccount } = require("./services/systemOwner.service");
 const { nowSql } = require("./utils/datetime");
 const logger = require("./config/logger");
@@ -210,6 +211,7 @@ async function startServer() {
       startSyncScheduler();
       startSmsDrainer(); // no-op until settings.sms_enabled + gateway URL are configured
       startTelegramRetryJob(); // no-op until Telegram is configured
+      startTelegramDigestJob(); // weekly/monthly/yearly digests, catch-up on launch
       startReportScheduler();
 
       return server;

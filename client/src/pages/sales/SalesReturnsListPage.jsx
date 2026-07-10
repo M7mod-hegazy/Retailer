@@ -11,6 +11,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
+import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
 
 const REASON_MAP = {
   defective: "عيب في المنتج",
@@ -186,7 +187,7 @@ function PreviewModal({ returnId, onClose }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="border border-zinc-100 rounded-2xl p-4 bg-white flex flex-col gap-2.5">
                       <span className="text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1">بيانات العميل والمرتجع</span>
-                      <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">العميل</span><span className="font-black text-zinc-800">{data.customer_name || "—"}</span></div>
+                      <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">العميل</span><span className="font-black text-zinc-800">{invoiceCustomerText(data)}</span></div>
                       <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">بواسطة</span><span className="font-black text-zinc-700">{data.created_by_username || "—"}</span></div>
                       {data.reason && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">سبب الإرجاع</span><span className="font-black text-zinc-700">{REASON_MAP[data.reason] || data.reason}</span></div>}
                       {data.notes && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">ملاحظات</span><span className="font-black text-zinc-500 text-left max-w-[55%] text-right">{data.notes}</span></div>}
@@ -309,7 +310,7 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
           <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
             {row.customer_id
               ? <Link to={`/definitions/customers/${row.customer_id}`} className="text-zinc-600 hover:text-emerald-600 hover:underline truncate">{row.customer_name || `عميل #${row.customer_id}`}</Link>
-              : <span>{row.customer_name || "—"}</span>
+              : <span>{invoiceCustomerText(row)}</span>
             }
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
             <span className="text-zinc-500">{row.created_by_username || "—"}</span>
@@ -720,7 +721,7 @@ export default function SalesReturnsListPage() {
                     <tr key={r.line_id || i} className="border-b border-zinc-100 hover:bg-emerald-50/10 transition-colors">
                       <td className="px-5 py-4 font-mono font-black text-zinc-700">{r.doc_no || "—"}</td>
                       <td className="px-5 py-4 text-zinc-500 font-mono text-[11px] whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                      <td className="px-5 py-4 font-bold text-zinc-700">{r.customer_name || "—"}</td>
+                      <td className="px-5 py-4 font-bold text-zinc-700">{invoiceCustomerText(r)}</td>
                       <td className="px-5 py-4 text-center font-mono text-[11px] font-black text-zinc-400">{r.item_code || r.barcode || "—"}</td>
                       <td className="px-5 py-4 font-bold text-zinc-800">{r.item_name || "—"}</td>
                       <td className="px-5 py-4 text-center number-fmt text-zinc-700">{r.quantity}</td>

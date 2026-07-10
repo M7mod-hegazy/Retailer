@@ -12,6 +12,7 @@ import CategorySearchField from "../../components/ui/CategorySearchField";
 import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
+import WalkInCustomerInput from "../../components/pos/WalkInCustomerInput";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -28,6 +29,7 @@ import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
 import Modal from "../../components/ui/Modal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import AddCustomerModal from "../../components/modals/AddCustomerModal";
 import CustomerInfoModal from "../../components/modals/CustomerInfoModal";
 import SalesReturnTodayModal from "../../components/sales/SalesReturnTodayModal";
@@ -221,6 +223,10 @@ export default function SalesReturnFormPage() {
   const [ajalDebt, setAjalDebt] = useState(0);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerLookupOpen, setCustomerLookupOpen] = useState(false);
+  // Walk-in customer (lightweight name/phone) — mutually exclusive with a real customer.
+  const [waPhone, setWaPhone] = useState("");
+  const [waName, setWaName] = useState("");
+  const [walkInSet, setWalkInSet] = useState(false);
 
   const [refundMethod, setRefundMethod] = useState("cash_back");
   const [splitCashAmount, setSplitCashAmount] = useState("");
@@ -273,6 +279,7 @@ export default function SalesReturnFormPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
+  const [waSendOpen, setWaSendOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
   const [returnNotes, setReturnNotes] = useState("");
@@ -469,6 +476,7 @@ export default function SalesReturnFormPage() {
       setHeaderIncrease(Number(sr.increase || 0));
       setAdjustmentTouched(true); // saved values — do not auto-recompute over the user's data
       if (sr.customer_id) { const name = sr.customer_name || String(sr.customer_id); setCustomer({ id: sr.customer_id, name }); setCustomerQuery(name); }
+      else if (sr.walk_in_phone) { setWaPhone(sr.walk_in_phone); setWaName(sr.walk_in_name || ""); setWalkInSet(true); }
       setMode(sr.invoice_id ? "invoice" : "direct");
     }).catch(() => {});
   }, [isEditMode, editReturnId]);
@@ -775,6 +783,7 @@ export default function SalesReturnFormPage() {
   function resetToIdle() {
     setMode(null); setCart([]); setInvoiceLines([]); setLoadedInvoice(null);
     setCustomer(null); setCustomerLockedFromInvoice(false); setReason("other"); setReasonOther("");
+    setWaPhone(""); setWaName(""); setWalkInSet(false);
     setItemQuery(""); setItemResults([]); setItemOffset(0); setItemHasMore(false); setStagingItem(null); setStagingQty("1");
     setStagingPrice(""); setStagingPurchasePrice(""); setListCategoryFilter(null); setListCategoryQuery(""); setInvoicePickerOpen(false); resetActivation();
     setHeaderDiscount(0); setHeaderIncrease(0); setAdjustmentTouched(false); setSupervisorOverride(false);
@@ -805,6 +814,11 @@ export default function SalesReturnFormPage() {
       setCustomer({ id: inv.customer_id, name });
       setCustomerQuery(name);
       setCustomerLockedFromInvoice(true);
+    } else if (inv.walk_in_phone) {
+      // Inherit the source invoice's walk-in contact onto the return.
+      setWaPhone(inv.walk_in_phone);
+      setWaName(inv.walk_in_name || "");
+      setWalkInSet(true);
     }
   }
 
@@ -844,6 +858,8 @@ export default function SalesReturnFormPage() {
     }
     const payload = {
       doc_no: docNo || undefined, customer_id: customer?.id || null,
+      walk_in_name: !customer?.id && walkInSet && waPhone.trim() ? (waName.trim() || null) : null,
+      walk_in_phone: !customer?.id && walkInSet && waPhone.trim() ? waPhone.trim() : null,
       refund_method: refundMethod, treasury_id: null,
       cash_amount: refundMethod === "split" ? Math.max(0, Number(splitCashAmount) || 0) : undefined,
       reason: reason === "other" ? (reasonOther || "other") : reason, lines,
@@ -1100,6 +1116,7 @@ export default function SalesReturnFormPage() {
                   </button>
                 )}
               </div>
+              {!walkInSet && (
               <div className="relative">
                 <input
                   type="text"
@@ -1120,6 +1137,18 @@ export default function SalesReturnFormPage() {
                   />
                 )}
               </div>
+              )}
+              {/* Walk-in customer create UI (direct returns, or from-invoice when the invoice had no customer) */}
+              {!customer?.id && !isLocked && !customerLockedFromInvoice && (
+                <WalkInCustomerInput
+                  phone={waPhone} name={waName}
+                  onPhoneChange={setWaPhone} onNameChange={setWaName}
+                  committed={walkInSet}
+                  onCommit={() => setWalkInSet(true)}
+                  onEdit={() => setWalkInSet(false)}
+                  onRemove={() => { setWaPhone(""); setWaName(""); setWalkInSet(false); }}
+                />
+              )}
               {customerLockedFromInvoice && !isLocked && <p className="text-[11px] text-slate-400 font-medium">العميل محدد من الفاتورة الأصلية</p>}
               {customer?.id && (
                 <button onClick={() => setCustomerInfoOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-blue-500 hover:text-blue-700 transition-colors">
@@ -2010,6 +2039,8 @@ export default function SalesReturnFormPage() {
           invoice_no: docNo,
           created_at: invoiceCreatedAt || new Date().toISOString(),
           customer_name: customer?.name,
+          walk_in_name: !customer?.id && walkInSet ? (waName || null) : null,
+          walk_in_phone: !customer?.id && walkInSet ? (waPhone || null) : null,
           cashier_name: user?.name || "",
           discount: Number(headerDiscount) || 0,
           increase: Number(headerIncrease) || 0,
@@ -2031,7 +2062,24 @@ export default function SalesReturnFormPage() {
         onSaveOnly={() => handleSave()}
         saveOnlyLabel="حفظ بدون طباعة"
         isSaving={isSaving}
+        onSendWhatsApp={() => setWaSendOpen(true)}
       />
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          kind="return_receipt"
+          invoice={{
+            invoice_no: docNo,
+            customer_id: customer?.id,
+            customer_name: customer?.name,
+            customer_phone: customer?.phone || (!customer?.id && walkInSet ? waPhone : undefined),
+            walk_in_name: !customer?.id && walkInSet ? (waName || null) : null,
+            walk_in_phone: !customer?.id && walkInSet ? (waPhone || null) : null,
+            total: refundTotal || total || 0,
+          }}
+        />
+      )}
       <AddCustomerModal open={customerCreateOpen} onClose={() => setCustomerCreateOpen(false)} onCreated={c => { setCustomers(prev => [c, ...prev]); setCustomer({ id: c.id, name: c.name }); }} />
       <CustomerInfoModal open={customerInfoOpen} customerId={customer?.id} onClose={() => setCustomerInfoOpen(false)} onUpdated={(u) => { setCustomers(prev => prev.map(c => c.id === u.id ? u : c)); setCustomer({ id: u.id, name: u.name }); }} />
       <UnsavedChangesModal

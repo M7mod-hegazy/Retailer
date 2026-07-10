@@ -10,6 +10,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { REFUND_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
+import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
 
 function fmt(n) {
   return formatNumber(n, { decimals: 2 });
@@ -194,7 +195,7 @@ export default function SalesReturnDetailPage() {
           <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">العميل</span>
-              <span className="text-sm font-black text-slate-800">{doc.customer_name || "—"}</span>
+              <span className="text-sm font-black text-slate-800">{invoiceCustomerText(doc)}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>

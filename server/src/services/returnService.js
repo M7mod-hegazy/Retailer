@@ -243,14 +243,21 @@ function createReturn(invoiceId, payload) {
     }
 
     const docNo = generateDocNumber('sales_return');
+    // From-invoice return inherits the source invoice's walk-in contact; the
+    // payload can override (e.g. the invoice had no customer and the cashier
+    // adds a name/phone at return time).
+    const wName = payload.walk_in_name || invoice.walk_in_name || null;
+    const wPhone = payload.walk_in_phone || invoice.walk_in_phone || null;
     const result = db
       .prepare(
-        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, reason, refund_method, cash_amount, credit_amount, payments, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, walk_in_name, walk_in_phone, total, discount, increase, reason, refund_method, cash_amount, credit_amount, payments, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
       )
       .run(
         docNo,
         invoiceId,
         invoice.customer_id || null,
+        wName,
+        wPhone,
         finalTotal,
         discount,
         increase,
@@ -357,7 +364,7 @@ function createReturn(invoiceId, payload) {
 function createGeneralReturn(payload) {
   const db = getDb();
   return db.transaction(() => {
-    const { lines, customer_id, refund_method, notes, reason, user_id, treasury_id } = payload;
+    const { lines, customer_id, refund_method, notes, reason, user_id, treasury_id, walk_in_name, walk_in_phone } = payload;
     if (!lines || !lines.length) { const e = new Error("يجب إضافة أصناف"); e.status = 400; throw e; }
 
     const docNo = generateDocNumber('sales_return');
@@ -392,8 +399,8 @@ function createGeneralReturn(payload) {
     }
 
     const ret = db.prepare(
-      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, total, discount, increase, refund_method, cash_amount, credit_amount, payments, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)"
-    ).run(docNo, customer_id || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, genPaymentsJson, reason || 'other', notes || null, user_id || null, nowSql(), taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
+      "INSERT INTO sales_returns (doc_no, invoice_id, customer_id, walk_in_name, walk_in_phone, total, discount, increase, refund_method, cash_amount, credit_amount, payments, reason, notes, status, created_by, created_at, tax_enabled, tax_rate, tax_amount, tax_type) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)"
+    ).run(docNo, customer_id || null, walk_in_name || null, walk_in_phone || null, finalTotal, discount, increase, genRefundMethod, genCashAmt, genCreditAmt, genPaymentsJson, reason || 'other', notes || null, user_id || null, nowSql(), taxResult.tax_enabled, taxResult.tax_rate, taxResult.tax_amount, taxResult.tax_type);
 
     const returnId = ret.lastInsertRowid;
 
@@ -780,9 +787,11 @@ function editSalesReturn(returnId, payload, userId) {
     }
 
     // 6. Update header — preserve doc_no and created_at
+    const edWalkInName = payload.walk_in_name !== undefined ? payload.walk_in_name : sr.walk_in_name;
+    const edWalkInPhone = payload.walk_in_phone !== undefined ? payload.walk_in_phone : sr.walk_in_phone;
     db.prepare(
-      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, payments = ?, warehouse_id = ?, customer_id = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = ? WHERE id = ?"
-    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, newPaymentsJson, payload.warehouse_id || sr.warehouse_id, newCustomerId, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, nowSql(), returnId);
+      "UPDATE sales_returns SET total = ?, discount = ?, increase = ?, refund_method = ?, cash_amount = ?, credit_amount = ?, payments = ?, warehouse_id = ?, customer_id = ?, walk_in_name = ?, walk_in_phone = ?, reason = ?, notes = ?, treasury_id = ?, tax_enabled = ?, tax_rate = ?, tax_amount = ?, tax_type = ?, updated_at = ? WHERE id = ?"
+    ).run(finalAdjTotal, newDiscount, newIncrease, newRefundMethod, newCashAmt, newCreditAmt, newPaymentsJson, payload.warehouse_id || sr.warehouse_id, newCustomerId, edWalkInName || null, edWalkInPhone || null, payload.reason || sr.reason, payload.notes || sr.notes, newTreasuryId || null, newTaxFields.tax_enabled, newTaxFields.tax_rate, newTaxFields.tax_amount, newTaxFields.tax_type, nowSql(), returnId);
 
     // 7. Recalculate linked invoice status
     if (sr.invoice_id) {
