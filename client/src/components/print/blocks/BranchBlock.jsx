@@ -59,9 +59,27 @@ export default function BranchBlock({ settings: s, props = {}, family, editing }
       );
     }
 
+    if (variant === "boxed") {
+      return (
+        <div style={{ border: `1px solid ${accent}30`, background: `${accent}03`, borderRadius: "6px", padding: "6px 10px", fontSize: "11px", color: "#334155" }}>
+          <div style={{ fontWeight: 700 }}>{name}</div>
+          {renderExtra()}
+        </div>
+      );
+    }
+
     return (
       <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
         <div>{name}</div>
+        {renderExtra()}
+      </div>
+    );
+  }
+
+  if (variant === "boxed") {
+    return (
+      <div style={{ border: "1px solid #000", padding: "4px 8px", margin: "2px 0", fontSize: "10px" }}>
+        <div style={{ fontWeight: 800 }}>{name}</div>
         {renderExtra()}
       </div>
     );

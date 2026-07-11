@@ -110,6 +110,38 @@ export default function CompanyNameBlock({ settings: s, props = {}, family, edit
       );
     }
 
+    /* ── boxed: bordered frame ── */
+    if (variant === "boxed") {
+      const pad = isRoll ? "4px 6px" : "8px 16px";
+      return (
+        <div style={{
+          textAlign: "center",
+          border: isRoll ? "2px solid #000" : `2px solid ${accentColor}`,
+          borderRadius: isRoll ? "0" : "8px",
+          padding: pad,
+          marginBottom: "6px",
+          ...(isRoll ? {} : { background: `${accentColor}05` }),
+        }}>
+          <div style={{ fontSize: size, fontWeight: 900, letterSpacing: "1px", color: isRoll ? "#000" : accentColor }}>{name}</div>
+        </div>
+      );
+    }
+
+    /* ── minimal: tiny plain text ── */
+    if (variant === "minimal") {
+      return (
+        <div style={{
+          textAlign: isRoll ? "center" : "right",
+          marginBottom: "4px",
+          fontSize: `${Math.max(10, Number(g(s, "header_font_size")) - 5 || 11)}px`,
+          fontWeight: 700,
+          color: isRoll ? "#000" : accentColor,
+        }}>
+          {name}
+        </div>
+      );
+    }
+
     /* ── roll standard ── */
     if (isRoll) {
       const underline = props.underline !== false;

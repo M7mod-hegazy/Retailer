@@ -22,6 +22,7 @@ export const TAG_LABELS = {
   retail: "تجزئة", warranty: "ضمان", restaurant: "مطعم", kiosk: "كشك",
   promo: "عروض", luxury: "فاخر", station: "محطة",
   warm: "دافئ",
+  eta: "ضريبة إلكترونية ETA", egypt: "مصر", mono: "أحادي اللون",
 };
 const tagLabel = (t) => TAG_LABELS[t] || t;
 

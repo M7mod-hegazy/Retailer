@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp, ArrowRight, Sparkles } from "lucide-react";
+import { Bell, Search, LayoutGrid, Coins, ChevronLeft, LogOut, HelpCircle, TrendingUp, ArrowRight, Bot } from "lucide-react";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useQuitOrLogoutStore } from "../../stores/quitOrLogoutStore";
@@ -392,7 +392,7 @@ export default function Topbar() {
             title="المساعد والدعم"
             className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm transition-all"
           >
-            <Sparkles strokeWidth={2} className="h-4.5 w-4.5" />
+            <Bot strokeWidth={2} className="h-4.5 w-4.5" />
           </button>
 
           <div className="relative" ref={bellRef}>

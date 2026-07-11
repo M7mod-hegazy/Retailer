@@ -49,6 +49,58 @@ export default function OrderNumberBlock({ invoice = {}, settings: s, props = {}
     );
   }
 
+  if (variant === "huge") {
+    return (
+      <div {...daily} style={{ textAlign: "center", margin: family === "page" ? "6mm 0" : "4mm 0" }}>
+        {label ? (
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "#000", marginBottom: "4px" }}>{label}</div>
+        ) : null}
+        <div
+          dir="ltr"
+          style={{ fontSize: `${fontSize * 1.5}px`, fontWeight: 900, color: "#000", lineHeight: 1, fontFamily: "monospace" }}
+        >
+          {number}
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "inline") {
+    return (
+      <div {...daily} style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", margin: "2px 0" }}>
+        {label ? <span style={{ fontWeight: 700 }}>{label}:</span> : <span />}
+        <span dir="ltr" style={{ fontFamily: "monospace", fontWeight: 900 }}>{number}</span>
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <div {...daily} style={{ textAlign: "center", margin: "2px 0" }}>
+        {label ? <span style={{ fontSize: "9px", fontWeight: 700 }}>{label} </span> : null}
+        <span dir="ltr" style={{ fontSize: "14px", fontFamily: "monospace", fontWeight: 900 }}>{number}</span>
+      </div>
+    );
+  }
+
+  if (variant === "boxed") {
+    return (
+      <div {...daily} style={{ textAlign: "center", margin: family === "page" ? "4mm 0" : "3mm 0" }}>
+        <div style={{ display: "inline-block", border: "2px solid #000", padding: "8px 20px" }}>
+          {label ? (
+            <div style={{ fontSize: "10px", fontWeight: 800, color: "#000", marginBottom: "2px" }}>{label}</div>
+          ) : null}
+          <div
+            dir="ltr"
+            style={{ fontSize: `${fontSize}px`, fontWeight: 900, color: "#000", lineHeight: 1.1, fontFamily: "monospace" }}
+          >
+            {number}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div {...daily} style={{ textAlign: "center", margin: family === "page" ? "4mm 0" : "3mm 0" }}>
       {label ? (

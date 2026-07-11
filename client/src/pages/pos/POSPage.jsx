@@ -1692,16 +1692,18 @@ export default function POSPage() {
             ? Number(multiCredit) || 0
             : 0;
       const customerNewBalance = customer?.id ? Number(customer.balance || 0) + outstandingAdded : null;
-      setSaveSuccess({
-        invoiceNumber: savedInvoiceNo,
-        total: formatMoney(totals.total),
-        payments: receiptSnap.payments,
-        customerName: customer?.name
-          || (waLeadPhone.trim() ? `🚶 عميل نقدي — ${waLeadName.trim() || waLeadPhone.trim()}` : null),
-        customerNewBalance,
-        discount: Number(discount || 0),
-        increase: Number(increase || 0),
-      });
+      if (!printAfter && !opts?.whatsappAfter) {
+        setSaveSuccess({
+          invoiceNumber: savedInvoiceNo,
+          total: formatMoney(totals.total),
+          payments: receiptSnap.payments,
+          customerName: customer?.name
+            || (waLeadPhone.trim() ? `🚶 عميل نقدي — ${waLeadName.trim() || waLeadPhone.trim()}` : null),
+          customerNewBalance,
+          discount: Number(discount || 0),
+          increase: Number(increase || 0),
+        });
+      }
       // Update local stock so next invoice sees current quantities without a reload
       const soldLines = lines;
       setStockLevels(prev => {
@@ -1733,7 +1735,11 @@ export default function POSPage() {
       if (convertedQuotationNo) {
         toast.success(`تم تأكيد البيع وتحويل ${convertedQuotationNo} إلى فاتورة ${savedInvoiceNo}`, { duration: 5000 });
       }
-      if (printAfter) setPrintPreview(true);
+      if (printAfter) {
+        setPrintPreview(true);
+      } else if (opts?.whatsappAfter) {
+        setWaSendOpen(true);
+      }
 
       // Kitchen ticket: print menu items for restaurant orders
       if (restaurantEnabled && printAfter) {
@@ -1910,6 +1916,7 @@ export default function POSPage() {
     profitModalOpen, setProfitModalOpen,
     profitDisplayMode, setProfitDisplayMode,
     printPreview, setPrintPreview,
+    waSendOpen, setWaSendOpen,
     galleryOpen, setGalleryOpen, galleryZoom, setGalleryZoom,
     galleryImages, galleryIdx, setGalleryIdx,
     supervisorOverrideOpen, setSupervisorOverrideOpen,

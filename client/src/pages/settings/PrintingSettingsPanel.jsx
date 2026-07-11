@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Ruler, AlignLeft, Receipt, FileText, FileBarChart2, Wrench, Download, Upload,
   Trash2, CheckCircle2, XCircle, History, ChevronDown, ChevronUp, RefreshCw,
@@ -10,12 +10,16 @@ import toast from "react-hot-toast";
 import CalibrationWizard from "../../components/print/calibration/CalibrationWizard";
 import PrintStudio from "../../components/print/studio/PrintStudio";
 import DocPreviewModal from "../../components/print/studio/DocPreviewModal";
-import { familyOfSize } from "../../components/print/studio/studioData";
+import DocClassificationPreview from "../../components/print/studio/DocClassificationPreview";
+import DocPreviewGallery, { MiniPreview } from "../../components/print/studio/DocPreviewGallery";
+import { familyOfSize, pageWidthStr, pageHeightStr, pageDimensions, PX_PER_MM, sampleById, templateMockBySample } from "../../components/print/studio/studioData";
 import {
   listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap,
   getPrintJobLog, clearPrintJobLog,
 } from "../../services/printService";
 import { resolveCalibration, exportDeviceProfile, importDeviceProfile } from "../../services/printCalibration";
+import LayoutRenderer from "../../components/print/LayoutRenderer";
+import { resolveEffectiveLayout, seedFamilyLayout } from "../../components/print/layout/layoutModel";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 // This panel is a thin HUB: device concerns (printers, calibration, job log,
@@ -135,6 +139,42 @@ function PaperPicker({ value, onChange }) {
 
 // ─── Main hub ───────────────────────────────────────────────────────────────────
 
+const stripLayout = ({ layout, ...rest } = {}) => rest;
+
+const BLOCK_DOC_SCOPES = new Set([
+  "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
+  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+]);
+
+/** Match Studio's effFam() exactly — raw layout, no normalizeLayout. */
+function getRawLayout(scopeSettings, globalSettings, fam, scope) {
+  const isReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+  // Respect per-family inherit flags (inherit_global_roll / inherit_global_page)
+  const familyKey = fam ? `inherit_global_${fam}` : null;
+  const docInherit = familyKey ? (scopeSettings?.[familyKey] ?? scopeSettings?.inherit_global) : scopeSettings?.inherit_global;
+  const inherit = docInherit !== undefined ? docInherit : !isReport;
+  if (scope === "_global" || inherit) {
+    return (globalSettings?.layout || {})[fam] || seedFamilyLayout(fam, scope);
+  }
+  return (scopeSettings?.layout || {})[fam] || seedFamilyLayout(fam, scope);
+}
+
+/** Compute merged flat settings matching what the Studio passes to LayoutRenderer.
+ *  appSettings → _global flat → per-doc flat (respecting per-family inherit). */
+function mergeRendererSettings(appSettings, docSettings, scope, family) {
+  const globalDoc = docSettings._global || {};
+  const doc = docSettings[scope] || {};
+  const isReportScope = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+  // Per-family inherit: check inherit_global_roll / inherit_global_page, fallback to legacy inherit_global
+  const familyKey = family ? `inherit_global_${family}` : null;
+  const docInherit = familyKey ? (doc[familyKey] ?? doc.inherit_global) : doc.inherit_global;
+  const inheritGlobal = docInherit !== undefined ? docInherit : !isReportScope;
+  if (scope === "_global" || inheritGlobal) {
+    return { ...appSettings, ...stripLayout(globalDoc) };
+  }
+  return { ...appSettings, ...stripLayout(doc) };
+}
+
 export default function PrintingSettingsPanel({ settings, onChange }) {
   const [docSettings, setDocSettings] = useState({});
   const [expandedDocs, setExpandedDocs] = useState([]); // array of scope keys
@@ -146,6 +186,8 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [logOpen, setLogOpen] = useState(false);
   const [studio, setStudio] = useState({ open: false, scope: "_global", size: null });
   const [preview, setPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [fullPreview, setFullPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
   const importFileRef = useRef(null);
 
   function toggleExpand(key) {
@@ -457,11 +499,12 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                               const isUserOverride = doc.paper_size === sz;
                               const isSysDefault = sz === cfg.defaultSize && !doc.paper_size;
                               const preset = doc[`preset_${familyOfSize(sz)}`];
+                              const hasLayout = !!(doc && doc.layout);
                               return (
                                 <div
                                   key={sz}
                                   className={[
-                                    "flex flex-col gap-3 rounded-xl border p-3.5 min-w-[170px] flex-1 transition-all relative overflow-hidden",
+                                    "flex flex-col gap-3 rounded-xl border p-4 min-w-[220px] max-h-[380px] flex-1 transition-all relative overflow-hidden",
                                     isEffective
                                       ? "border-primary bg-[var(--accent-soft)] shadow-md ring-1 ring-primary/20 scale-[1.01]"
                                       : "border-[var(--border-normal)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-sm",
@@ -513,25 +556,59 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                     )}
                                   </div>
 
-                                  {/* Preview + Studio for this size */}
-                                  <div className="flex gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => openPreview(key, label, sz)}
-                                      title={`معاينة كما يُطبع بمقاس ${sz}`}
-                                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-normal)] bg-[var(--bg-input)] py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-accent)] hover:text-primary transition-all"
-                                    >
-                                      <Eye size={11} /> معاينة
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openStudio(key, sz)}
-                                      title={`فتح الاستوديو بمقاس ${sz}`}
-                                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
-                                    >
-                                      <Paintbrush size={11} /> الاستوديو
-                                    </button>
-                                  </div>
+                                  {/* Mini preview — click to go fullscreen */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setFullPreview({ open: true, scope: key, size: sz, label })}
+                                    className="w-full cursor-pointer rounded-lg overflow-hidden border border-[var(--border-normal)] hover:border-primary hover:shadow-md transition-all group relative"
+                                    title={`معاينة ${label} بمقاس ${sz}`}
+                                  >
+                                    <MiniPreview
+                                      scope={key}
+                                      scopeSettings={{ ...doc, paper_size: sz }}
+                                      globalSettings={docSettings._global || {}}
+                                      rendererSettings={{ ...mergeRendererSettings(settings, docSettings, key, familyOfSize(sz)), paper_size: sz }}
+                                      width={180}
+                                      height={240}
+                                    />
+                                    {/* Inheritance indicator — per-family */}
+                                    {(() => {
+                                      const szFamily = familyOfSize(sz);
+                                      const szInheritKey = `inherit_global_${szFamily}`;
+                                      const szInherit = doc[szInheritKey] ?? doc.inherit_global;
+                                      const szIsInheriting = szInherit !== undefined ? szInherit : key !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(key);
+                                      if (szIsInheriting && key !== "_global") return (
+                                        <span className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded-full bg-[var(--primary)]/15 border border-[var(--primary)]/25 px-1.5 py-0.5 text-[7px] font-black text-[var(--primary)] backdrop-blur-sm">
+                                          <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 3v18"/><path d="M3 12h18"/></svg>
+                                          يرث من العام
+                                        </span>
+                                      );
+                                      if (!szIsInheriting && key !== "_global") return (
+                                        <span className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded-full bg-[var(--success-bg)] border border-[var(--success-border)] px-1.5 py-0.5 text-[7px] font-black text-[var(--success-text)] backdrop-blur-sm">
+                                          تصميم خاص
+                                        </span>
+                                      );
+                                      return null;
+                                    })()}
+                                    {/* Saved badge */}
+                                    {hasLayout && (
+                                      <span className="absolute top-1.5 left-1.5 z-10 h-2 w-2 rounded-full bg-[var(--success-text)] shadow-sm" title="تصميم محفوظ" />
+                                    )}
+                                    <div className="flex items-center justify-center gap-1 py-1 bg-[var(--bg-surface)] border-t border-[var(--border-subtle)] group-hover:bg-primary/5 transition-colors">
+                                      <Eye size={10} className="text-[var(--text-muted)] group-hover:text-primary" />
+                                      <span className="text-[9px] font-black text-[var(--text-muted)] group-hover:text-primary">عرض كامل</span>
+                                    </div>
+                                  </button>
+
+                                  {/* Studio button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => openStudio(key, sz)}
+                                    title={`فتح الاستوديو بمقاس ${sz}`}
+                                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
+                                  >
+                                    <Paintbrush size={11} /> الاستوديو
+                                  </button>
                                 </div>
                               );
                             })}
@@ -549,6 +626,26 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           <Copy size={11} />
           "طباعة فورية" تُرسل المستند مباشرة للطابعة المعيَّنة أعلاه بدون نافذة معاينة. التغييرات تُحفظ تلقائياً.
         </div>
+      </section>
+
+      {/* ── Classification Preview ── */}
+      <section>
+        <div className="flex items-center justify-between mb-2">
+          <SectionLabel
+            icon={FileText}
+            title="تصنيفات المستندات"
+            hint="دليل شامل لكل مستند ومكان استخدامه في النظام"
+          />
+          <button
+            type="button"
+            onClick={() => setGalleryOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] px-3 py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
+          >
+            <Maximize2 size={12} />
+            معرض المعاينات
+          </button>
+        </div>
+        <DocClassificationPreview docSettings={docSettings} />
       </section>
 
       {/* ── System default paper (fallback when a doc has no override) ── */}
@@ -666,6 +763,164 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           onClose={closePreview}
         />
       )}
+
+      {galleryOpen && (
+        <DocPreviewGallery
+          open={galleryOpen}
+          onClose={() => setGalleryOpen(false)}
+          docSettings={docSettings}
+          appSettings={settings}
+        />
+      )}
+
+      {/* Fullscreen preview for individual doc+size */}
+      {fullPreview.open && fullPreview.scope && (
+        <FullscreenDocPreview
+          scope={fullPreview.scope}
+          size={fullPreview.size}
+          label={fullPreview.label}
+          docSettings={docSettings}
+          appSettings={settings}
+          onClose={() => setFullPreview({ open: false, scope: null, size: "A4", label: "" })}
+          onOpenStudio={(scope, sz) => {
+            setFullPreview({ open: false, scope: null, size: "A4", label: "" });
+            openStudio(scope, sz);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, onClose, onOpenStudio }) {
+  const settings = docSettings[scope] || {};
+  const globalSettings = docSettings._global || {};
+  // Compute effective size first so we can pass its family to mergeRendererSettings
+  const effectiveSize = size || settings.paper_size || "A4";
+  const fam = familyOfSize(effectiveSize);
+  const rendererSettings = useMemo(
+    () => ({ ...mergeRendererSettings(appSettings, docSettings, scope, fam), paper_size: effectiveSize }),
+    [appSettings, docSettings, scope, fam, effectiveSize]
+  );
+  const orientation = rendererSettings.orientation || settings.orientation || "portrait";
+  const mockData = useMemo(
+    () => templateMockBySample(scope, "normal") || sampleById("normal"),
+    [scope]
+  );
+  const layout = useMemo(
+    () => getRawLayout(settings, globalSettings, fam, scope),
+    [settings, globalSettings, fam, scope]
+  );
+
+  const paperRef = useRef(null);
+  const containerRef = useRef(null);
+  const [contentH, setContentH] = useState(0);
+  const [scale, setScale] = useState(1);
+
+  // Use known paper width (scrollWidth is unreliable for mm units)
+  const dims = pageDimensions(effectiveSize, orientation);
+  const contentW = dims.wMm * PX_PER_MM;
+
+  useEffect(() => {
+    const el = paperRef.current;
+    const container = containerRef.current?.closest('[data-scroll-area]');
+    if (!el || !container) return;
+    const raf = requestAnimationFrame(() => {
+      const h = el.scrollHeight;
+      if (h <= 0 || contentW <= 0) return;
+      setContentH(h);
+      const availH = container.clientHeight - 12;
+      const availW = container.clientWidth - 12;
+      if (availH <= 0 || availW <= 0) return;
+      const z = Math.min(availW / contentW, availH / h, 1);
+      setScale(Math.round(z * 100) / 100);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [layout, effectiveSize, orientation, scope, contentW]);
+
+  const scaledW = Math.round(contentW * scale);
+  const scaledH = Math.round(contentH * scale);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md" dir="rtl" onClick={onClose}>
+      <div className="relative w-full max-w-5xl h-[92vh] bg-[var(--bg-base)] rounded-2xl shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[var(--border-normal)] bg-[var(--bg-surface)] px-6 py-3">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose}
+              className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-[10px] font-bold">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              رجوع
+            </button>
+            <span className="text-border-subtle">|</span>
+            <div>
+              <div className="text-sm font-black text-[var(--text-primary)]">{label}</div>
+              <div className="text-[9px] font-bold text-[var(--text-muted)]">{effectiveSize}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[9px] font-black">{effectiveSize}</span>
+            {(() => {
+              const inheritKey = `inherit_global_${fam}`;
+              const val = settings[inheritKey] ?? settings.inherit_global;
+              const isInheriting = val !== undefined ? val : scope !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(scope);
+              if (isInheriting && scope !== "_global") return (
+                <span className="flex items-center gap-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2 py-0.5 text-[9px] font-black text-[var(--primary)]">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 3v18"/><path d="M3 12h18"/></svg>
+                  يرث من التصميم العام
+                </span>
+              );
+              if (!isInheriting && scope !== "_global") return (
+                <span className="flex items-center gap-1 rounded-full bg-[var(--success-bg)] border border-[var(--success-border)] px-2 py-0.5 text-[9px] font-black text-[var(--success-text)]">
+                  تصميم خاص
+                </span>
+              );
+              return null;
+            })()}
+            {settings.layout ? (
+              <span className="rounded-full bg-success-bg text-success-text border border-success-border px-2 py-0.5 text-[9px] font-black">✔ محفوظ</span>
+            ) : (
+              <span className="rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] px-2 py-0.5 text-[9px] font-black">افتراضي</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onOpenStudio?.(scope, effectiveSize)}
+              className="flex items-center gap-1 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] px-2.5 py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
+            >
+              <Paintbrush size={11} /> الاستوديو
+            </button>
+            <button type="button" onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-danger-bg hover:text-danger-text hover:border-danger-border transition-all">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div data-scroll-area className="flex-1 overflow-auto flex items-center justify-center p-6 bg-[var(--bg-base)]">
+          <div ref={containerRef} style={{ width: scaledW || "auto", height: scaledH || "auto", overflow: "hidden" }}>
+            <div
+              ref={paperRef}
+              style={{
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+                width: pageWidthStr(effectiveSize, orientation),
+                minHeight: pageHeightStr(effectiveSize, orientation) === "auto" ? "200mm" : pageHeightStr(effectiveSize, orientation),
+                background: "#fff",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+                borderRadius: "2px",
+              }}
+            >
+              <LayoutRenderer
+                family={fam}
+                size={effectiveSize}
+                orientation={orientation}
+                invoice={mockData}
+                settings={rendererSettings}
+                layout={{ [fam]: layout }}
+                scope={scope}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

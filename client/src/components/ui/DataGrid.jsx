@@ -169,6 +169,7 @@ export default function DataGrid({
                 resizableKey={c.id}
                 sortConfig={currentSort}
                 onSort={c.sortable ? toggleSort : null}
+                helpText={c.desc}
                 className={c.headerClass || "text-center"}
               />
             ))}
@@ -235,6 +236,7 @@ export default function DataGrid({
                 resizableKey={c.id}
                 sortConfig={currentSort}
                 onSort={c.sortable ? toggleSort : null}
+                helpText={c.desc}
                 className={c.headerClass || "text-center"}
               />
             ))}

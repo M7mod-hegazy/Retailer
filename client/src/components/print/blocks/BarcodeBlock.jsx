@@ -53,9 +53,112 @@ export default function BarcodeBlock({ invoice = {}, settings: s, props = {}, fa
   const textAlign = align;
   const showText = variant !== "compact" && props.showText !== false;
   const textFontSize = props.textFontSize || 10;
+  const isFramed = variant === "framed";
+
+  if (variant === "framed") {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: alignSelf,
+        width: "100%",
+        margin: family === "page" ? "3mm 0" : "2mm 0",
+        border: family === "page" ? "1px solid #cbd5e1" : "1px solid #000",
+        borderRadius: family === "page" ? "4px" : "0px",
+        padding: "3mm",
+      }}>
+        {type === "QR" ? (
+          qrUrl ? (
+            <img src={qrUrl} alt="QR Barcode" style={{ width: `${heightMm * 3}px`, height: `${heightMm * 3}px`, display: "block" }} />
+          ) : (
+            <div style={{ width: `${heightMm * 3}px`, height: `${heightMm * 3}px`, background: "#eee" }} />
+          )
+        ) : bars ? (
+          <svg
+            role="img"
+            aria-label={`barcode ${number}`}
+            viewBox={`0 0 ${totalModules} 40`}
+            preserveAspectRatio="none"
+            style={{
+              width: family === "page" ? "60mm" : "90%",
+              height: `${heightMm}mm`,
+              display: "block",
+              background: "#fff",
+            }}
+          >
+            <rect x={0} y={0} width={totalModules} height={40} fill="#fff" />
+            {bars.map((b, i) => (
+              <rect key={i} x={b.x} y={0} width={b.width} height={40} fill="#000" />
+            ))}
+          </svg>
+        ) : null}
+        {showText && (
+          <div
+            dir="ltr"
+            style={{
+              fontSize: `${textFontSize}px`,
+              fontFamily: "monospace",
+              fontWeight: 700,
+              color: "#000",
+              letterSpacing: "1px",
+              marginTop: "1mm",
+              width: "100%",
+              textAlign: textAlign,
+            }}
+          >
+            {number}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (variant === "minimal") {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: alignSelf,
+        width: "100%",
+        margin: family === "page" ? "2mm 0" : "1mm 0",
+      }}>
+        {type === "QR" ? (
+          qrUrl ? (
+            <img src={qrUrl} alt="QR Barcode" style={{ width: `${heightMm * 2.5}px`, height: `${heightMm * 2.5}px`, display: "block" }} />
+          ) : (
+            <div style={{ width: `${heightMm * 2.5}px`, height: `${heightMm * 2.5}px`, background: "#eee" }} />
+          )
+        ) : bars ? (
+          <svg
+            role="img"
+            aria-label={`barcode ${number}`}
+            viewBox={`0 0 ${totalModules} 40`}
+            preserveAspectRatio="none"
+            style={{
+              width: family === "page" ? "50mm" : "80%",
+              height: `${Math.max(6, heightMm - 2)}mm`,
+              display: "block",
+              background: "#fff",
+            }}
+          >
+            <rect x={0} y={0} width={totalModules} height={40} fill="#fff" />
+            {bars.map((b, i) => (
+              <rect key={i} x={b.x} y={0} width={b.width} height={40} fill="#000" />
+            ))}
+          </svg>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: alignSelf, width: "100%", margin: family === "page" ? "3mm 0" : "2mm 0" }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: alignSelf,
+      width: "100%",
+      margin: family === "page" ? "3mm 0" : "2mm 0",
+    }}>
       {type === "QR" ? (
         qrUrl ? (
           <img src={qrUrl} alt="QR Barcode" style={{ width: `${heightMm * 3}px`, height: `${heightMm * 3}px`, display: "block" }} />

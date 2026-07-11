@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, LayoutTemplate, Percent } from "lucide-react";
+import { Search, Star, Play, Settings2, Filter, Trash2, CalendarDays, Clock, LayoutTemplate, Percent, X } from "lucide-react";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
 import { useReportsConfig, fmtDate, getReportDescription } from "../../hooks/useReportsConfig";
 import { RSelect, RDate, DatePresets, ScopeSelector, ColumnPreviewStrip, ColumnToggleList, ClassificationSelector, DataModeToggle, DimensionFilter } from "./reportsCenterParts";
@@ -35,119 +35,14 @@ const SOURCE_CAT_MAP = {
   tax: "tax",
 };
 
-const CLS_ARABIC = {
-  "cls_sales_daily": "الملخص اليومي",
-  "cls_sales_detailed": "المبيعات التفصيلية",
-  "cls_sales_by_item": "حسب الصنف",
-  "cls_sales_by_category": "حسب الفئة",
-  "cls_sales_by_cashier": "حسب الكاشير",
-  "cls_sales_by_payment": "حسب طريقة الدفع",
-  "cls_sales_heatmap": "خريطة حرارة",
-  "cls_sales_period_compare": "مقارنة فترتين",
-  "cls_sales_discounts": "تحليل الخصومات",
-  "cls_sales_margin": "هوامش الربح",
-  "cls_sales_tax": "تحليل الضرائب",
-  "cls_purchases_summary": "ملخص المشتريات",
-  "cls_purchases_detailed": "المشتريات التفصيلية",
-  "cls_purchases_by_supplier": "حسب المورد",
-  "cls_purchases_by_item": "حسب الصنف",
-  "cls_purchases_supplier_pricing": "تسعير الموردين",
-  "cls_preturn_summary": "ملخص المرتجعات",
-  "cls_preturn_detailed": "مرتجعات تفصيلية",
-  "cls_preturn_by_supplier": "حسب المورد",
-  "cls_sreturn_summary": "ملخص المرتجعات",
-  "cls_sreturn_detailed": "مرتجعات تفصيلية",
-  "cls_sreturn_by_customer": "حسب العميل",
-  "cls_supplier_balance_list": "قائمة أرصدة الموردين",
-  "cls_supplier_statement": "كشف حساب المورد",
-  "cls_supplier_aging": "تقادم ذمم الموردين",
-  "cls_supplier_purchases": "سجل المشتريات",
-  "cls_supplier_returns": "سجل المرتجعات",
-  "cls_supplier_reliability": "موثوقية الموردين",
-  "cls_customer_balance_list": "قائمة أرصدة العملاء",
-  "cls_customer_statement": "كشف حساب العميل",
-  "cls_customer_aging": "تقادم ذمم العملاء",
-  "cls_top_customers": "أفضل العملاء",
-  "cls_collection_efficiency": "كفاءة التحصيل",
-  "cls_customer_loyalty": "ولاء العملاء",
-  "cls_emp_list": "قائمة الموظفين",
-  "cls_emp_deductions": "خصومات الموظفين",
-  "cls_emp_bonuses": "مكافآت الموظفين",
-  "cls_emp_advances": "سلف الموظفين",
-  "cls_emp_payroll": "كشوف الرواتب",
-  "cls_emp_full_history": "السجل الكامل للموظف",
-  "cls_emp_adjustments": "تسويات الموظفين",
-  "cls_inst_plans": "خطط التقسيط",
-  "cls_inst_collections": "تحصيلات",
-  "cls_inst_by_customer": "حسب العميل",
-  "cls_inst_delinquent": "المتأخرات",
-  "cls_item_stock_levels": "مستويات المخزون",
-  "cls_item_valuation": "تقييم المخزون",
-  "cls_item_count_sheet": "ورقة جرد",
-  "cls_item_reorder": "إعادة الطلب",
-  "cls_item_expiry": "انتهاء الصلاحية",
-  "cls_item_slow_moving": "الراكد",
-  "cls_item_aging": "تقادم المخزون",
-  "cls_item_dead_stock": "مخزون ميت",
-  "cls_wh_movements": "حركات المخازن",
-  "cls_wh_transfers": "تحويلات",
-  "cls_wh_per_warehouse": "حسب المخزن",
-  "cls_exp_summary": "ملخص المصروفات",
-  "cls_exp_detailed": "مصروفات تفصيلية",
-  "cls_exp_by_category": "حسب الفئة",
-  "cls_exp_by_payment": "حسب طريقة الدفع",
-  "cls_rev_summary": "ملخص الإيرادات",
-  "cls_rev_detailed": "إيرادات تفصيلية",
-  "cls_rev_by_category": "حسب الفئة",
-  "cls_rev_by_payment": "حسب طريقة الدفع",
-  "cls_trs_cash_flow": "التدفق النقدي",
-  "cls_trs_balances": "الأرصدة",
-  "cls_trs_reconciliation": "التسويات",
-  "cls_trs_daily_sessions": "الجلسات اليومية",
-  "cls_trs_withdrawals": "السحوبات",
-  "cls_trs_payment_flow_summary": "ملخص تدفقات وسائل الدفع",
-  "cls_trs_payment_flow_ledger": "سجل التدفقات التفصيلي",
-  "cls_trs_payment_flow_by_doc_type": "حسب نوع المستند",
-  "cls_trs_payment_flow_by_direction": "حسب الاتجاه",
-  "cls_trs_payment_flow_running": "الرصيد التراكمي",
-  "direction": "الاتجاه",
-  "doc_type": "نوع المستند",
-  "party_type": "نوع الطرف",
-  "amount_min": "أقل مبلغ",
-  "amount_max": "أكبر مبلغ",
-  "cls_profit_by_item": "الربح حسب الصنف",
-  "cls_profit_by_category": "الربح حسب الفئة",
-  "cls_profit_health": "صحة الأرباح",
-  "cls_net_income": "قائمة الدخل",
-  "cls_net_by_category": "صافي الربح حسب الفئة",
-  "cls_net_by_customer": "صافي الربح حسب العميل",
-  "cls_net_by_period": "صافي الربح حسب الفترة",
-  "cls_owner_statement": "لوحة صاحب المحل",
-  "bank-transactions": "الحركات البنكية",
-  "bank-summary": "ملخص البنوك",
-  "balance": "الرصيد",
-  "status": "الحالة",
-  "paid": "مدفوع",
-  "unpaid": "غير مدفوع",
-  "cancelled": "ملغي",
-  "cash": "نقداً",
-  "card": "بطاقة",
-  "credit": "آجل",
-  "wallet": "محفظة",
-  // Tax classification labels
-  "cls_tax_vat": "ضريبة القيمة المضافة",
-  "cls_tax_output_vat": "ضريبة المبيعات (خرج)",
-  "cls_tax_input_vat": "ضريبة المشتريات (دخل)",
-  "cls_tax_vat_filing": "ملخص إقرار الضريبة",
-  "cls_tax_returns_effect": "أثر المرتجعات على الضريبة",
-};
-
+// All labels come from the server registry/config (single source of truth);
+// the raw label_key survives only as a last-resort fallback.
 function clsLabel(cls) {
-  return CLS_ARABIC[cls.label_key] || cls.label_key;
+  return cls.label || cls.label_key;
 }
 
 function clsOptionLabel(opt) {
-  return CLS_ARABIC[opt.label_key] || opt.label_key;
+  return opt.label || opt.label_key;
 }
 
 function previewKeyForSource(sourceId) {
@@ -400,6 +295,39 @@ export default function ReportsCenter() {
 
         {/* Grid */}
         <div data-help="main-table" className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-thin scrollbar-thumb-zinc-300">
+          {/* Recents + saved views: one-click re-run */}
+          {(store.recents.length > 0 || store.presets.length > 0) && (
+            <div className="max-w-4xl mx-auto w-full pt-4 pb-1 space-y-2">
+              {store.presets.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-black text-text-muted shrink-0">عروض محفوظة:</span>
+                  {store.presets.slice(0, 8).map((p) => (
+                    <span key={p.id} className="inline-flex items-center gap-1 rounded-full border border-warning-border bg-warning-bg pl-1 pr-2.5 py-1">
+                      <button onClick={() => navigate(p.key)} className="text-[11px] font-bold text-warning-text hover:underline">{p.name}</button>
+                      <button onClick={() => store.deletePreset(p.id)} className="text-warning-text/60 hover:text-warning-text" title="حذف"><X size={11} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {store.recents.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-black text-text-muted shrink-0 flex items-center gap-1"><Clock size={11} /> الأخيرة:</span>
+                  {store.recents.slice(0, 6).map((r) => {
+                    const [src, cls, mode] = String(r.key).split(".");
+                    const srcDef = (config?.sources || []).find((x) => x.id === src);
+                    const clsDef2 = (classificationsBySource[src] || []).find((c) => c.id === cls);
+                    if (!srcDef || !clsDef2) return null;
+                    return (
+                      <button key={r.key} onClick={() => navigate(`/reports/source/${src}/${cls}/${mode || "detailed"}`)}
+                        className="rounded-full border border-border bg-bg-surface px-2.5 py-1 text-[11px] font-bold text-text-secondary hover:border-primary hover:text-primary transition-colors">
+                        {srcDef.label} — {clsDef2.label || clsDef2.label_key}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           <div data-help="report-categories" className="max-w-4xl mx-auto w-full">
             {filtered.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center text-center">
@@ -436,7 +364,7 @@ export default function ReportsCenter() {
                             <SourceIcon size={20} strokeWidth={2.5} />
                           </div>
                           <div>
-                            <div className="text-[11px] font-black uppercase tracking-widest mb-1 text-text-muted">{cat.label} · {source.id}</div>
+                            <div className="text-[11px] font-black uppercase tracking-widest mb-1 text-text-muted">{cat.label}</div>
                             <h3 className={`text-[15px] font-black leading-tight transition-colors ${sel ? "text-primary" : "text-text-primary group-hover:text-primary"}`}>
                               {source.label}
                             </h3>
@@ -453,7 +381,7 @@ export default function ReportsCenter() {
 
                       <div className="mb-4 space-y-1.5">
                         <p className="text-xs font-medium text-text-secondary line-clamp-2 leading-relaxed">
-                          {getReportDescription(source.id, classification || clsDef?.label_key)}
+                          {clsDef?.desc || getReportDescription(classification)}
                         </p>
                         <div className="flex items-center gap-2 text-[11px] font-bold text-text-muted">
                           <span>{classifications.length} تصنيفات</span>
@@ -598,7 +526,7 @@ export default function ReportsCenter() {
                   </div>
                   {dimensions.map((dim) => (
                     <DimensionFilter key={dim.key} dimension={dim} value={workspaceFilters[dim.key]}
-                      onChange={(key, val) => handleWorkspaceFilter(key, val)} formatLabel={(x) => CLS_ARABIC[x] || x}
+                      onChange={(key, val) => handleWorkspaceFilter(key, val)} formatLabel={(x) => x}
                     />
                   ))}
                   {selectedClsDef?.hasProfit && (
@@ -633,7 +561,7 @@ export default function ReportsCenter() {
               {selectedClsDef?.multiSelectFilters?.map((msf) => (
                 <div key={msf.key} className="space-y-3">
                   <h3 className="text-2sm font-black text-text-primary flex items-center gap-2">
-                    <span className="h-5 w-1 rounded-full bg-primary"></span> {CLS_ARABIC[msf.label_key] || msf.label_key}
+                    <span className="h-5 w-1 rounded-full bg-primary"></span> {msf.label || msf.label_key}
                   </h3>
                   <div className="rounded-2xl border border-border-normal bg-bg-base/50 p-3 space-y-2">
                     {msf.options.map((opt) => (

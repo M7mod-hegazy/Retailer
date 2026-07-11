@@ -91,7 +91,7 @@ const BranchTransferFormPage = lazy(() => import("./pages/operations/BranchTrans
 const QuotationFormPage = lazy(() => import("./pages/operations/QuotationFormPage"));
 const ReportsCenterPage = lazy(() => import("./pages/reports/ReportsCenter"));
 const ExpiryReportPage = lazy(() => import("./pages/reports/ExpiryReportPage"));
-const ReportWorkspacePage = lazy(() => import("./pages/reports/ReportWorkspacePage"));
+const LegacyReportRedirect = lazy(() => import("./pages/reports/LegacyReportRedirect"));
 const SourceWorkspacePage = lazy(() => import("./pages/reports/SourceWorkspacePage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const WhatsAppCrmPage = lazy(() => import("./pages/whatsapp/WhatsAppCrmPage"));
@@ -509,7 +509,7 @@ export default function App() {
                     <Route path="reports/source/:sourceKey/:classificationId/:dataMode" element={<PermissionRoute page="reports"><SourceWorkspacePage /></PermissionRoute>} />
                     <Route path="reports/owner-statement" element={<PermissionRoute page="reports"><OwnerStatementPage /></PermissionRoute>} />
                     <Route path="reports/expiry-report" element={<PermissionRoute page="reports"><FeatureRoute featureKey="feature_expiry"><ExpiryReportPage /></FeatureRoute></PermissionRoute>} />
-                    <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><ReportWorkspacePage /></PermissionRoute>} />
+                    <Route path="reports/:reportSlug" element={<PermissionRoute page="reports"><LegacyReportRedirect /></PermissionRoute>} />
                     <Route path="settings" element={<PermissionRoute page="settings"><SettingsPage /></PermissionRoute>} />
                     <Route path="whatsapp-crm" element={<PermissionRoute page="whatsapp_crm"><WhatsAppCrmPage /></PermissionRoute>} />
                     <Route path="notifications" element={<PermissionRoute page="notifications"><NotificationsPage /></PermissionRoute>} />

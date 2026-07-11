@@ -129,7 +129,7 @@ function StatementSummaryRows({ cols, accent, printFont, currency, totalDebit, t
 /* ──────────────────────────────────────────────
    1. ACCOUNT STATEMENT PARTY INFO BLOCK
    ────────────────────────────────────────────── */
-export function AccountStatementPartyBlock({ invoice = {}, settings }) {
+export function AccountStatementPartyBlock({ invoice = {}, settings, props = {} }) {
   const summary = invoice.statement_summary || {};
   const partyType = invoice.partyType || "customer";
   const period = invoice.period || {};
@@ -139,13 +139,36 @@ export function AccountStatementPartyBlock({ invoice = {}, settings }) {
   const partyLabel = partyType === "customer" ? "العميل" : "المورد";
   const codeLabel = partyType === "customer" ? "كود العميل" : "كود المورد";
   const accentBg = accent + "0d";
+  const partyName = summary.party_name || summary.supplier_name || summary.customer_name || "—";
+
+  if (props.variant === "boxed-accent") {
+    return (
+      <div style={{ fontFamily: printFont, marginBottom: 0 }}>
+        <div style={{ background: "#fff", borderRight: `4px solid ${accent}`, boxShadow: "inset 0 0 0 1px #e2e8f0", padding: "8px 12px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>{partyLabel}</span>
+            <span style={{ fontSize: "14px", fontWeight: 900, color: "#0f172a" }}>{partyName}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>{codeLabel}</span>
+            <span style={{ fontSize: "12px", fontWeight: 800, color: accent }}>{summary.party_code || "—"}</span>
+          </div>
+        </div>
+        {(period.from || period.to) && (
+          <div style={{ background: accentBg, border: `1px solid ${accent}20`, padding: "5px 12px", textAlign: "center", fontSize: bodyFontSize, fontWeight: 700, color: accent }}>
+            عن الفترة من {period.from || "البداية"} إلى {period.to || "الآن"}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: printFont, marginBottom: 0 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px", background: "#e2e8f0", border: "1px solid #e2e8f0", borderRadius: "6px", overflow: "hidden" }}>
         <div style={{ background: accent, color: "#fff", padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, opacity: 0.8 }}>{partyLabel}</span>
-          <span style={{ fontSize: "14px", fontWeight: 900 }}>{summary.party_name || summary.supplier_name || summary.customer_name || "—"}</span>
+          <span style={{ fontSize: "14px", fontWeight: 900 }}>{partyName}</span>
         </div>
         <div style={{ background: "#f1f5f9", padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>{codeLabel}</span>
@@ -210,6 +233,8 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
     ? { borderBottom: `${lw}px solid ${lineColor}` }
     : {};
   const zebra = props.zebra !== false;
+  const variant = props.variant || "standard";
+  const zebraBandColor = variant === "banded" ? `${accent}0d` : "#f8fafc";
 
   const headBg = headerVariant === "dark" ? (props.headerBg || accent) : "#f8fafc";
   const headColor = headerVariant === "dark" ? "#fff" : "#475569";
@@ -342,7 +367,7 @@ export function AccountStatementLedgerBlock({ invoice = {}, settings, props = {}
           {/* Transaction rows */}
           {groups.map((group, idx) => {
             const noImpact = group.affects_balance === false;
-            const zebraBg = zebra && idx % 2 === 1 ? "#f8fafc" : "#fff";
+            const zebraBg = zebra && idx % 2 === 1 ? zebraBandColor : "#fff";
             const rowBg = noImpact ? "#fffbeb" : zebraBg;
             const ribbonBorder = noImpact ? `3px solid #f59e0b` : "3px solid transparent";
 
@@ -478,8 +503,13 @@ export function AccountStatementSummaryBlock({ invoice = {}, settings, props = {
     ? { borderBottom: `${lw}px solid ${lineColor}` }
     : {};
 
+  const boxedStrip = props.variant === "boxed-strip";
+
   return (
-    <div style={{ fontFamily: printFont }}>
+    <div style={{
+      fontFamily: printFont,
+      ...(boxedStrip ? { border: `1.5px solid ${accent}`, borderRadius: "8px", padding: "6px", background: `${accent}05` } : {}),
+    }}>
       <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", tableLayout: "fixed" }}>
         <colgroup>
           {cols.map((c, i) => (

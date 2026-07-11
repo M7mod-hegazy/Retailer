@@ -3,7 +3,7 @@ import {
   ArrowLeft, Search, Trash2, Plus, Minus, RotateCcw, Clock,
   CheckCircle2, AlertCircle, Lock, Pencil, Printer, X, ExternalLink,
   Package, UserPlus, Calendar, Loader2, ChevronDown, Filter, Settings2,
-  AlertTriangle,
+  AlertTriangle, Send, Save,
 } from "lucide-react";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import SearchDropdown from "../../components/ui/SearchDropdown";
@@ -271,6 +271,7 @@ export default function SalesReturnFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [saveSuccess, setSaveSuccess] = useState(null);
+  const [lastSavedReturn, setLastSavedReturn] = useState(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showEditWarnModal, setShowEditWarnModal] = useState(false);
   const [showSwitchInvoiceWarning, setShowSwitchInvoiceWarning] = useState(false);
@@ -847,7 +848,7 @@ export default function SalesReturnFormPage() {
     else setInvoicePickerOpen(true);
   }
 
-  async function handleSave() {
+  async function handleSave(opts = {}) {
     const lines = mode === "direct"
       ? cart.map(l => ({ item_id: l.item_id, quantity: l.quantity, unit_price: l.unit_price, warehouse_id: l.warehouse_id || null, unit_id: l.unit_id || null, invoice_line_id: null }))
       : invoiceLines.filter(l => l.checked && l.qty_to_return > 0).map(l => ({ invoice_line_id: l.invoice_line_id, item_id: l.item_id, quantity: l.qty_to_return, unit_price: l.unit_price }));
@@ -874,6 +875,31 @@ export default function SalesReturnFormPage() {
         ...(taxRate != null ? { tax_rate: Number(taxRate) } : {}),
       } : {}),
     };
+    // Snapshot return data before states are cleared after save
+    const returnSnap = {
+      invoice_no: docNo,
+      created_at: invoiceCreatedAt || new Date().toISOString(),
+      customer_name: customer?.name,
+      customer_id: customer?.id,
+      customer_phone: customer?.phone,
+      walk_in_name: !customer?.id && walkInSet ? (waName || null) : null,
+      walk_in_phone: !customer?.id && walkInSet ? (waPhone || null) : null,
+      cashier_name: user?.name || "",
+      discount: Number(headerDiscount) || 0,
+      increase: Number(headerIncrease) || 0,
+      total: refundTotal || total || 0,
+      subtotal: subtotal || 0,
+      notes: returnNotes || "",
+      payment_type: loadedInvoice?.payment_type || refundMethod,
+      lines: (mode === "direct" ? cart : invoiceLines.filter(l => l.checked)).map(l => ({
+        ...l,
+        item_name: l.item_name,
+        quantity: mode === "direct" ? l.quantity : l.qty_to_return,
+        unit_price: l.unit_price,
+        discount_amount: 0,
+      })),
+    };
+    setLastSavedReturn(returnSnap);
     setIsSaving(true); setMessage({ text: "", type: "" });
     try {
       const savedDocNo = docNo;
@@ -892,22 +918,24 @@ export default function SalesReturnFormPage() {
       if (isEditMode) {
         await api.put(`/api/invoices/returns/${editReturnId}`, payload);
         setIsLocked(true);
-        setSaveSuccess(successData);
+        if (!opts.printAfter && !opts.whatsappAfter) setSaveSuccess(successData);
         setMessage({ text: "تم تعديل المرتجع بنجاح", type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       } else if (mode === "invoice" && loadedInvoice) {
         const res = await api.post(`/api/invoices/${loadedInvoice.id}/return`, payload);
-        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
+        if (!opts.printAfter && !opts.whatsappAfter) setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
         setCart([]); setCustomer(null);
       } else {
         const res = await api.post("/api/invoices/general-return", payload);
-        setSaveSuccess({ ...successData, returnId: res.data.data?.id });
+        if (!opts.printAfter && !opts.whatsappAfter) setSaveSuccess({ ...successData, returnId: res.data.data?.id });
         setMessage({ text: `تم تسجيل المرتجع ${savedDocNo || ""} بنجاح`, type: "success" });
         setTimeout(() => setMessage({ text: "", type: "" }), 4000);
         setCart([]); setCustomer(null);
       }
+      if (opts.printAfter) setPrintPreview(true);
+      else if (opts.whatsappAfter) setWaSendOpen(true);
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل تسجيل المرتجع", type: "error" });
     } finally { setIsSaving(false); }
@@ -1977,22 +2005,83 @@ export default function SalesReturnFormPage() {
         total={total}
       />
 
-      <Modal open={showSaveConfirmModal} onClose={() => setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع" showDetach={false}>
-        <div className="flex flex-col gap-5 animate-modal-enter">
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-black text-slate-800">هل أنت متأكد من حفظ هذا المرتجع؟</p>
-              <p className="text-2sm text-slate-600">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة إجمالية <span className="font-black text-emerald-700">{formatMoney(refundTotal)} ج.م</span> وتحديث المخزون والحسابات.</p>
+      <Modal open={showSaveConfirmModal} onClose={() => !isSaving && setShowSaveConfirmModal(false)} title="تأكيد حفظ المرتجع" showDetach={false}>
+        <div className="flex flex-col gap-6 mt-2 animate-modal-enter">
+          <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/80">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-800">تأكيد حفظ المرتجع</p>
+              <p className="text-2sm font-bold text-emerald-700 mt-0.5">سيتم {isEditMode ? "تعديل" : "تسجيل"} المرتجع بقيمة <span className="font-black text-[16px] number-fmt-primary">{formatMoney(refundTotal)}</span> ج.م وتحديث المخزون والحسابات.</p>
             </div>
           </div>
-          <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-            <button onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
-              className="flex items-center gap-2 rounded-md bg-emerald-700 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-all active:scale-[0.98]">
-              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><CheckCircle2 className="w-4 h-4" /> نعم، حفظ المرتجع</>}
+
+          {isSaving ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              <p className="text-2sm font-black text-slate-600 animate-pulse">جاري حفظ وتجهيز المرتجع...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {/* Save & Print */}
+              <button
+                type="button"
+                onClick={() => { setShowSaveConfirmModal(false); handleSave({ printAfter: true }); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-indigo-50/50 bg-indigo-50/20 hover:bg-indigo-50/60 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/10 group-hover:scale-105 transition-transform shrink-0">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">حفظ وطباعة</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">طباعة إيصال الاسترداد فوراً</span>
+                </div>
+              </button>
+
+              {/* Save & WhatsApp */}
+              <button
+                type="button"
+                onClick={() => { setShowSaveConfirmModal(false); handleSave({ whatsappAfter: true }); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-[#25D366]/20 bg-[#25D366]/5 hover:bg-[#25D366]/10 hover:border-[#25D366]/50 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-md shadow-[#25D366]/20 group-hover:scale-105 transition-transform shrink-0">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">إرسال واتساب</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">إرسال الإيصال عبر واتساب</span>
+                </div>
+              </button>
+
+              {/* Save Only */}
+              <button
+                type="button"
+                onClick={() => { setShowSaveConfirmModal(false); handleSave(); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-slate-100/50 bg-slate-50/20 hover:bg-slate-50/60 hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-600 text-white shadow-md shadow-slate-600/10 group-hover:scale-105 transition-transform shrink-0">
+                  <Save className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">حفظ فقط</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">حفظ بدون طباعة أو إرسال</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {!isSaving && (
+            <button
+              type="button"
+              onClick={() => setShowSaveConfirmModal(false)}
+              className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-white text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer"
+            >
+              تراجع وإلغاء
             </button>
-          </div>
+          )}
         </div>
       </Modal>
 
@@ -2000,7 +2089,7 @@ export default function SalesReturnFormPage() {
         <div className="flex flex-col gap-5 animate-modal-enter">
           <p className="text-sm text-slate-700">هل تريد إلغاء المرتجع الحالي؟ سيتم فقدان البيانات غير المحفوظة.</p>
           <div className="flex gap-3 justify-end">
-            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">لا، متابعة</button>
+            <button onClick={() => setShowWarningModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
             <button onClick={() => { setShowWarningModal(false); resetToIdle(); }} className="rounded-md btn-danger px-5 py-2 text-sm font-bold transition-all active:scale-[0.98]">نعم، إلغاء</button>
           </div>
         </div>
@@ -2033,9 +2122,9 @@ export default function SalesReturnFormPage() {
       <SalesReturnTodayModal open={todayReturnsOpen} onClose={() => setTodayReturnsOpen(false)} />
       <PrintPreviewModal
         open={printPreview}
-        onClose={() => setPrintPreview(false)}
+        onClose={() => { setPrintPreview(false); setLastSavedReturn(null); }}
         docType="sales_return"
-        invoice={{
+        invoice={lastSavedReturn || {
           invoice_no: docNo,
           created_at: invoiceCreatedAt || new Date().toISOString(),
           customer_name: customer?.name,
@@ -2057,7 +2146,7 @@ export default function SalesReturnFormPage() {
         }}
         settings={{}}
         operationLabel="مرتجع مبيعات"
-        onConfirmPrint={() => handleSave()}
+        onConfirmPrint={() => handleSave({ printAfter: true })}
         confirmLabel="حفظ وطباعة"
         onSaveOnly={() => handleSave()}
         saveOnlyLabel="حفظ بدون طباعة"
@@ -2067,9 +2156,22 @@ export default function SalesReturnFormPage() {
       {waSendOpen && (
         <WhatsAppSendModal
           open={waSendOpen}
-          onClose={() => setWaSendOpen(false)}
+          onClose={() => { setWaSendOpen(false); setLastSavedReturn(null); }}
           kind="return_receipt"
-          invoice={{
+          invoice={lastSavedReturn ? {
+            invoice_no: lastSavedReturn.invoice_no,
+            customer_id: lastSavedReturn.customer_id,
+            customer_name: lastSavedReturn.customer_name,
+            customer_phone: lastSavedReturn.customer_phone || lastSavedReturn.walk_in_phone,
+            walk_in_name: lastSavedReturn.walk_in_name,
+            walk_in_phone: lastSavedReturn.walk_in_phone,
+            total: lastSavedReturn.total,
+            discount: lastSavedReturn.discount,
+            lines: lastSavedReturn.lines,
+            created_by_username: lastSavedReturn.cashier_name,
+            created_at: lastSavedReturn.created_at,
+            payment_type: lastSavedReturn.payment_type,
+          } : {
             invoice_no: docNo,
             customer_id: customer?.id,
             customer_name: customer?.name,

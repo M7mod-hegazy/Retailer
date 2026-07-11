@@ -2,26 +2,19 @@ import React from "react";
 import { g } from "./blockUtils";
 
 /**
- * ReceiverSignatureBlock
+ * ReceiverSignatureBlock — 80mm thermal-optimized, all variants work on roll + page.
  *
- * Renders a compact "Receiver Signature" zone suitable for thermal roll receipts
- * (and full-page layouts). Optimised for the narrow thermal band:
- *
- *   ─────────────────────────────────
- *   استلمت البضاعة / الخدمة
- *
- *   الاسم: ________________________
- *   التاريخ: ______________________
- *   التوقيع: ______________________
- *   ─────────────────────────────────
+ * Variants:
+ *   standard — clean stacked: label → name → date → signature (best default for 80mm)
+ *   compact  — ultra-dense: label on one line, name+sig inline (58mm / tight 80mm)
+ *   boxed    — bordered card: works on both roll (simple border) and page (accent border)
+ *   split    — two-column on page, inline on roll
  *
  * props:
  *   label        — section heading (default: "استلمت البضاعة / الخدمة")
  *   showName     — show receiver name blank line (default: true)
  *   showDate     — show date blank line (default: true)
- *   showStamp    — show a "stamp" dotted square at the bottom (default: false)
  *   showId       — show national/civil ID blank line (default: false)
- *   lineWidth    — width of underlines in mm (default: "48mm" roll / "60mm" page)
  *   compact      — if true, tighten all gaps (default: false)
  */
 export default function ReceiverSignatureBlock({ settings: s, props = {}, family, editing }) {
@@ -33,75 +26,144 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
   const label    = props.label    !== undefined ? props.label    : "استلمت البضاعة / الخدمة";
   const showName = props.showName !== undefined ? props.showName : true;
   const showDate = props.showDate !== undefined ? props.showDate : true;
-  const showStamp = props.showStamp !== undefined ? props.showStamp : false;
   const showId   = props.showId   !== undefined ? props.showId   : false;
-  const compact  = props.compact  !== undefined ? props.compact  : false;
 
   const variant = props.variant || "standard";
-  const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+  const tight   = props.compact === true;
+  const borderColor = "#000";
+  const lightBorder = isRoll ? "#888" : "#94a3b8";
 
-  const defaultLineWidth = isRoll ? "48mm" : "60mm";
-  const lineWidth = props.lineWidth || defaultLineWidth;
-
-  const mt = compact ? "8px" : "14px";
-  const rowGap = compact ? "8px" : "10px";
-  const headingSize = isRoll ? "10px" : "11px";
-  const rowSize = isRoll ? "9px" : "10px";
-  const borderColor = "#334155";
-
-  const wrapStyle = {
-    marginTop: mt,
-    paddingTop: compact ? "6px" : "8px",
-    borderTop: variant === "boxed" ? "none" : `1px dashed ${borderColor}`,
-    direction: "rtl",
-    ...(editing && !show ? { opacity: 0.4, border: "1px dashed #7c3aed" } : {}),
-  };
-
-  // A single labelled blank underline row
+  /* ── helpers ── */
   const BlankLine = ({ text }) => (
     <div style={{
       display: "flex",
       alignItems: "center",
-      gap: "6px",
-      fontSize: rowSize,
+      gap: isRoll ? "4px" : "6px",
+      fontSize: isRoll ? "9px" : "10px",
       color: borderColor,
-      marginTop: rowGap,
+      marginTop: tight ? "1px" : "3px",
     }}>
       <span style={{ flexShrink: 0, fontWeight: 700 }}>{text}:</span>
       <span style={{
         flex: 1,
-        borderBottom: `1px solid ${borderColor}`,
-        display: "block",
-        minWidth: lineWidth,
-        maxWidth: lineWidth,
+        borderBottom: `1px solid ${lightBorder}`,
       }} />
     </div>
   );
 
-  if (variant === "boxed") {
+  const Heading = ({ style: extra }) => (
+    <div style={{
+      fontSize: isRoll ? (tight ? "8px" : "9px") : "10px",
+      fontWeight: 900,
+      color: borderColor,
+      textAlign: "center",
+      letterSpacing: "0.3px",
+      ...extra,
+    }}>
+      {label}
+    </div>
+  );
+
+  /* ── compact: ultra-dense for 58mm / tight 80mm ── */
+  if (variant === "compact") {
     return (
       <div style={{
-        ...wrapStyle,
-        border: family === "page" ? `1px solid ${accent}30` : "1px solid #000",
-        background: family === "page" ? `${accent}03` : "transparent",
-        borderRadius: "8px",
-        padding: "12px 14px",
+        marginTop: tight ? "2px" : "4px",
+        paddingTop: tight ? "2px" : "3px",
+        borderTop: `1px dashed ${borderColor}`,
+        direction: "rtl",
       }}>
         {label && (
           <div style={{
-            fontSize: headingSize,
+            fontSize: isRoll ? "8px" : "9px",
             fontWeight: 900,
-            color: family === "page" ? accent : borderColor,
+            color: borderColor,
             textAlign: "center",
-            letterSpacing: "0.3px",
-            marginBottom: "8px",
-            borderBottom: family === "page" ? `1px dashed ${accent}30` : "1px dashed #000",
-            paddingBottom: "4px"
+            marginBottom: "2px",
+            paddingBottom: "2px",
+            borderBottom: `1px solid ${lightBorder}`,
           }}>
             {label}
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+        {showName && (
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: isRoll ? "8px" : "9px", color: borderColor, marginTop: "2px" }}>
+            <span style={{ flexShrink: 0, fontWeight: 700 }}>الاسم</span>
+            <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+          </div>
+        )}
+        <div style={{ display: "flex", gap: isRoll ? "4px" : "8px", marginTop: "2px" }}>
+          {showDate && (
+            <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: isRoll ? "8px" : "9px", color: borderColor, flex: "1 1 auto" }}>
+              <span style={{ flexShrink: 0, fontWeight: 700 }}>التاريخ</span>
+              <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+            </div>
+          )}
+          {showId && (
+            <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: isRoll ? "8px" : "9px", color: borderColor, flex: "1 1 auto" }}>
+              <span style={{ flexShrink: 0, fontWeight: 700 }}>الهوية</span>
+              <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: isRoll ? "8px" : "9px", color: borderColor, flex: "1 1 auto" }}>
+            <span style={{ flexShrink: 0, fontWeight: 700 }}>التوقيع</span>
+            <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── boxed: bordered card — works on roll (simple border) and page (accent border) ── */
+  if (variant === "boxed") {
+    const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+    if (isRoll) {
+      return (
+        <div style={{
+          marginTop: tight ? "2px" : "4px",
+          border: `1px solid ${borderColor}`,
+          padding: tight ? "3px 4px" : "4px 6px",
+          direction: "rtl",
+        }}>
+          {label && (
+            <div style={{
+              fontSize: tight ? "8px" : "9px",
+              fontWeight: 900,
+              color: borderColor,
+              textAlign: "center",
+              marginBottom: "2px",
+              paddingBottom: "2px",
+              borderBottom: `1px dashed ${borderColor}`,
+            }}>
+              {label}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+            {showName && <BlankLine text="الاسم" />}
+            {showId   && <BlankLine text="رقم الهوية" />}
+            {showDate && <BlankLine text="التاريخ" />}
+            <BlankLine text="التوقيع" />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={{
+        marginTop: "8px",
+        border: `1px solid ${accent}40`,
+        background: `${accent}03`,
+        borderRadius: "8px",
+        padding: "10px 12px",
+        direction: "rtl",
+      }}>
+        {label && (
+          <Heading style={{
+            marginBottom: "6px",
+            borderBottom: `1px dashed ${accent}30`,
+            paddingBottom: "4px",
+          }} />
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
           {showName && <BlankLine text="الاسم" />}
           {showId   && <BlankLine text="رقم الهوية" />}
           {showDate && <BlankLine text="التاريخ" />}
@@ -111,27 +173,49 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
     );
   }
 
-  if (variant === "split" && family === "page") {
-    return (
-      <div style={wrapStyle}>
-        {label && (
-          <div style={{
-            fontSize: headingSize,
-            fontWeight: 900,
-            color: borderColor,
-            textAlign: "center",
-            letterSpacing: "0.3px",
-            marginBottom: "8px",
-          }}>
-            {label}
+  /* ── split: two-column on page, inline on roll ── */
+  if (variant === "split") {
+    if (isRoll) {
+      return (
+        <div style={{ marginTop: tight ? "2px" : "4px", paddingTop: tight ? "2px" : "3px", borderTop: `1px dashed ${borderColor}`, direction: "rtl" }}>
+          {label && <Heading style={{ marginBottom: "2px" }} />}
+          {showName && (
+            <div style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "9px", color: borderColor, marginTop: "2px" }}>
+              <span style={{ fontWeight: 700, flexShrink: 0 }}>الاسم:</span>
+              <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "4px", alignItems: "center", marginTop: "2px" }}>
+            {showDate && (
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor, flex: "1 1 auto" }}>
+                <span style={{ fontWeight: 700, flexShrink: 0 }}>التاريخ:</span>
+                <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+              </div>
+            )}
+            {showId && (
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor, flex: "1 1 auto" }}>
+                <span style={{ fontWeight: 700, flexShrink: 0 }}>الهوية:</span>
+                <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+              </div>
+            )}
           </div>
-        )}
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "9px", color: borderColor, marginTop: "2px" }}>
+            <span style={{ fontWeight: 700, flexShrink: 0 }}>التوقيع:</span>
+            <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
+          </div>
+        </div>
+      );
+    }
+    const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
+    return (
+      <div style={{ marginTop: "8px", direction: "rtl" }}>
+        {label && <Heading style={{ marginBottom: "8px" }} />}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {showName && <BlankLine text="الاسم" />}
             {showId   && <BlankLine text="رقم الهوية" />}
           </div>
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
             {showDate && <BlankLine text="التاريخ" />}
             <BlankLine text="التوقيع" />
           </div>
@@ -140,47 +224,19 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
     );
   }
 
+  /* ── standard: clean stacked with dashed separator (default) ── */
   return (
-    <div style={wrapStyle}>
-      {label && (
-        <div style={{
-          fontSize: headingSize,
-          fontWeight: 900,
-          color: borderColor,
-          textAlign: "center",
-          letterSpacing: "0.3px",
-          marginBottom: compact ? "4px" : "6px",
-        }}>
-          {label}
-        </div>
-      )}
-
+    <div style={{
+      marginTop: tight ? "2px" : "4px",
+      paddingTop: tight ? "2px" : "3px",
+      borderTop: `1px dashed ${borderColor}`,
+      direction: "rtl",
+    }}>
+      {label && <Heading style={{ marginBottom: tight ? "1px" : "3px" }} />}
       {showName && <BlankLine text="الاسم" />}
       {showId   && <BlankLine text="رقم الهوية" />}
       {showDate && <BlankLine text="التاريخ" />}
       <BlankLine text="التوقيع" />
-
-      {showStamp && (
-        <div style={{
-          marginTop: compact ? "8px" : "12px",
-          display: "flex",
-          justifyContent: "flex-start",
-          gap: "6px",
-          alignItems: "flex-end",
-        }}>
-          <div style={{
-            width: "22mm",
-            height: "22mm",
-            border: `1px dashed ${borderColor}`,
-            borderRadius: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <span style={{ fontSize: "8px", color: "#94a3b8", textAlign: "center" }}>الختم الرسمي</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

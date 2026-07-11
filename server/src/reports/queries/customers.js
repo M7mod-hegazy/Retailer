@@ -24,7 +24,7 @@ function topCustomers(startDate, endDate, opts = {}) {
   const { customer_id, cost_method } = opts;
   const costCol = getCostColumn(cost_method);
   let sql = `
-    SELECT COALESCE(c.name, 'نقدي') AS customer_name,
+    SELECT c.id AS customer_id, COALESCE(c.name, 'نقدي') AS customer_name,
       c.phone,
       COUNT(DISTINCT i.id) AS invoice_count,
       COALESCE(SUM(i.total), 0) AS total_sales,
@@ -66,7 +66,7 @@ function collectionEfficiency(startDate, endDate, opts = {}) {
   const params = [];
   const { customer_id } = opts;
   let sql = `
-    SELECT COALESCE(c.name, 'نقدي') AS customer_name,
+    SELECT c.id AS customer_id, COALESCE(c.name, 'نقدي') AS customer_name,
       COUNT(DISTINCT i.id) AS invoice_count,
       COALESCE(SUM(ad.original_amount), 0) AS total_billed,
       COALESCE(SUM(ad.paid_amount), 0) AS collected,
@@ -100,7 +100,7 @@ function customerLoyalty(startDate, endDate, opts = {}) {
   const params = [];
   const { customer_id } = opts;
   let sql = `
-    SELECT COALESCE(c.name, 'نقدي') AS customer_name,
+    SELECT c.id AS customer_id, COALESCE(c.name, 'نقدي') AS customer_name,
       c.phone,
       COUNT(DISTINCT i.id) AS invoice_count,
       COALESCE(SUM(i.total), 0) AS total_sales,

@@ -88,6 +88,51 @@ export default function NotesBlock({ invoice = {}, settings: s, props = {}, fami
     );
   }
 
+  if (variant === "inline") {
+    return (
+      <div style={{ marginTop: 3, fontSize: "10px", display: "flex", gap: "6px" }}>
+        {label && <span style={{ fontWeight: 700, color: "#64748b" }}>{label}:</span>}
+        <span style={{ whiteSpace: "pre-wrap" }}>{notes}</span>
+      </div>
+    );
+  }
+
+  if (variant === "minimal") {
+    return (
+      <div style={{ marginTop: 3, fontSize: "9px", color: "#64748b" }}>
+        {label && <span style={{ fontWeight: 700 }}>{label}: </span>}
+        <span>{notes}</span>
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <div style={{ marginTop: 3, fontSize: "9px", borderTop: "1px dashed #000", paddingTop: "2px" }}>
+        {label && <span style={{ fontWeight: 900 }}>{label}: </span>}
+        <span>{notes}</span>
+      </div>
+    );
+  }
+
+  if (variant === "centered") {
+    return (
+      <div style={{ marginTop: 3, fontSize: "9px", textAlign: "center", borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "2px 0" }}>
+        {label && <span style={{ fontWeight: 900 }}>{label}: </span>}
+        <span>{notes}</span>
+      </div>
+    );
+  }
+
+  if (variant === "boxed-centered") {
+    return (
+      <div style={{ marginTop: 3, fontSize: "9px", border: "1px solid #000", padding: "3px 4px", textAlign: "center" }}>
+        {label && <div style={{ fontWeight: 900, borderBottom: "1px dashed #000", paddingBottom: "1px", marginBottom: "1px" }}>{label}:</div>}
+        <div>{notes}</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginTop: 5, fontSize: "10px" }}>
       {label && <div style={{ fontWeight: 700 }}>{label}:</div>}

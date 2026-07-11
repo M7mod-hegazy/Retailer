@@ -16,6 +16,16 @@ function buildFreeTextContent(invoice = {}, settings = {}) {
   return JSON.stringify(data);
 }
 
+// ETA e-Receipt QR: URL pointing to the receipt on the Egyptian Tax Authority portal.
+// Format: https://invoicing.eta.gov.eg/receipts/search/{UUID}/share/{ReceiptDateTime}
+function buildEtaContent(invoice = {}, settings = {}) {
+  const uuid = invoice.eta_uuid || invoice.uuid || "";
+  const ts = invoice.created_at || "";
+  if (!uuid) return null;
+  const encodedTs = encodeURIComponent(ts);
+  return `https://invoicing.eta.gov.eg/receipts/search/${uuid}/share/${encodedTs}`;
+}
+
 // ZATCA simplified-invoice QR: TLV-encoded seller/VAT/timestamp/total/vat.
 // Returns null (never throws) when required settings are missing, so the
 // caller can fall back to the free-text QR instead of crashing the receipt.
@@ -33,7 +43,16 @@ function buildZatcaContent(invoice = {}, settings = {}) {
 // settings, a thrown error — silently falls back to free-text so a
 // misconfigured ZATCA mode never breaks receipt printing.
 function buildQrContent(invoice = {}, settings = {}) {
-  if (g(settings, "qr_mode") === "zatca") {
+  const mode = g(settings, "qr_mode");
+  if (mode === "eta") {
+    try {
+      const eta = buildEtaContent(invoice, settings);
+      if (eta) return eta;
+    } catch {
+      // fall through to free-text
+    }
+  }
+  if (mode === "zatca") {
     try {
       const zatca = buildZatcaContent(invoice, settings);
       if (zatca) return zatca;

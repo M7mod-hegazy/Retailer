@@ -58,6 +58,14 @@ export default function DocDateBlock({ invoice = {}, settings: s, props = {}, fa
       );
     }
 
+    if (variant === "ruled") {
+      return (
+        <div style={{ fontSize: "10px", color: "#334155", fontWeight: 700, textAlign: "center", borderTop: "1px solid #cbd5e1", borderBottom: "1px solid #cbd5e1", padding: "3px 0", margin: "2px 0" }}>
+          {label ? `${label}: ` : ""}{dateTime}
+        </div>
+      );
+    }
+
     return (
       <div style={{ fontSize: "10px", color: "#334155", fontWeight: 600 }}>
         {label ? `${label}: ` : ""}{dateTime}
@@ -66,6 +74,22 @@ export default function DocDateBlock({ invoice = {}, settings: s, props = {}, fa
   }
 
   const rollLabel = props.label !== undefined ? props.label : "التاريخ";
+
+  if (variant === "minimal") {
+    return (
+      <div style={{ fontSize: "9px", color: "#64748b", textAlign: "center" }}>
+        {rollLabel ? `${rollLabel}: ` : ""}{dateTime}
+      </div>
+    );
+  }
+
+  if (variant === "ruled") {
+    return (
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: 700, borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "2px 0", margin: "2px 0" }}>
+        {rollLabel ? `${rollLabel}: ` : ""}{dateTime}
+      </div>
+    );
+  }
 
   if (variant === "badge" || variant === "inline") {
     return (

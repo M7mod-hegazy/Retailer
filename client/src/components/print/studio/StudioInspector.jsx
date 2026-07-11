@@ -19,6 +19,8 @@ const BLOCK_VARIANTS = {
     { value: "underline-accent", label: "حاشية جانبية (Underline)" },
     { value: "stacked-bilingual", label: "ثنائي اللغة (Bilingual)" },
     { value: "initial-cap", label: "حرف بداية ضخم" },
+    { value: "boxed", label: "مؤطر بحدود" },
+    { value: "minimal", label: "صغير وبسيط" },
   ],
   grand_total: [
     { value: "band", label: "شريط معبّأ" },
@@ -30,22 +32,52 @@ const BLOCK_VARIANTS = {
     { value: "receipt-tape", label: "نمط إيصال (متقطع)" },
     { value: "tag", label: "شارة السعر (تاغ)" },
     { value: "split-amount", label: "مبلغ إجمالي منقسم" },
+    { value: "tafqeet-band", label: "شريط أسود + تفقيط" },
+    { value: "stacked", label: "مبلغ فوق وسطر تحت" },
+    { value: "double-line", label: "حدود مزدوجة أعلى وأسفل" },
+    { value: "reverse-band", label: "شريط معكوس (أبيض على أسود)" },
   ],
   payments: [
     { value: "standard", label: "افتراضي" },
     { value: "status-stamp", label: "ختم الحالة" },
     { value: "table-row", label: "صفوف الجدول الموزعة" },
     { value: "badge-pill", label: "كبسولات ملونة" },
+    { value: "compact", label: "مضغوط جداً" },
+    { value: "summary", label: "ملخص سطر واحد" },
+    { value: "inline", label: "مدمج بفواصل" },
+    { value: "minimal", label: "بسيط بلا حدود" },
+    { value: "dashed-box", label: "صواديف متقطعة لكل دفعة" },
+    { value: "columns", label: "جدول عمودين (الطريقة/المبلغ)" },
+    { value: "labeled-stamp", label: "ختم مدفوع مع التفاصيل" },
+    { value: "arrow", label: "سهم فاصل ←" },
   ],
   items_table: [
     { value: "standard", label: "جدول تقليدي" },
     { value: "cards", label: "كروت منفصلة (فاخر)" },
     { value: "minimalist-list", label: "قائمة مبسطة (هادئ)" },
+    { value: "ledger", label: "دفتر أستاذ (Monospace)" },
+    { value: "receipt", label: "إيصال كلاسيكي (نقاط)" },
+    { value: "ticket", label: "تذكرة طلب (مرقّم)" },
+    { value: "dashed", label: "صواديف متقطعة" },
+    { value: "boxed-items", label: "صناديق منفصلة لكل صنف" },
+    { value: "numbered", label: "نقاط مرمّزة (1. 2. 3.)" },
+    { value: "two-line", label: "سطرين لكل صنف" },
+    { value: "striped", label: "خطوط متناوبة (Striped)" },
+    { value: "receipt-wide", label: "إيصال عريض 4 أعمدة" },
+    { value: "compact", label: "مضغوط جداً" },
+    { value: "borderless", label: "بلا حدود (نقاط فقط)" },
   ],
   report_table: [
     { value: "standard", label: "جدول تقليدي" },
-    { value: "cards", label: "كروت منفصلة (فاخر)" },
-    { value: "minimalist-list", label: "قائمة مبسطة (هادئ)" },
+    { value: "cards", label: "كروت منفصلة" },
+    { value: "minimalist-list", label: "قائمة مبسطة" },
+    { value: "ledger", label: "دفتر أستاذ" },
+    { value: "bordered-cards", label: "كروت بحدود ملونة" },
+    { value: "compact-row", label: "صفوف مضغوطة" },
+    { value: "highlighted", label: "أعمدة مميزة" },
+    { value: "split-label", label: "تسمية | قيمة" },
+    { value: "numbered", label: "مرقّم تلقائي" },
+    { value: "accent-stripe", label: "شريط جانبي مميز" },
   ],
   doc_title: [
     { value: "standard", label: "عنوان عادي باللون المميز" },
@@ -58,28 +90,41 @@ const BLOCK_VARIANTS = {
     { value: "boxed", label: "صندوق بارز ملون" },
     { value: "inline", label: "رقم مدمج مبسط" },
     { value: "giant", label: "رقم ضخم أعلى المستند" },
+    { value: "minimal", label: "رقم صغير مركزي" },
   ],
   doc_date: [
     { value: "standard", label: "تاريخ عادي مع الوقت" },
     { value: "inline", label: "سطر واحد خفيف" },
     { value: "badge", label: "شارة تقويمية صغيرة" },
+    { value: "ruled", label: "بين خطين أفقيين" },
+    { value: "minimal", label: "تاريخ صغير مركزي" },
   ],
   customer: [
     { value: "standard", label: "افتراضي جانبي" },
     { value: "stacked", label: "تسمية فوق الاسم عريض" },
     { value: "boxed", label: "صندوق بيانات العميل" },
     { value: "two-column", label: "تقسيم لعمودين متقابلين" },
+    { value: "inline", label: "سطر مدمج بسيط" },
+    { value: "minimal", label: "معلومات مصغرة" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
   ],
   cashier: [
     { value: "standard", label: "افتراضي" },
     { value: "inline", label: "بسطر واحد خفيف" },
     { value: "badge", label: "شارة موظف" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
+    { value: "minimal", label: "بلا عنوان صغير" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "name-only", label: "الاسم فقط بدون عنوان" },
   ],
   logo: [
     { value: "standard", label: "شعار طبيعي" },
     { value: "circle", label: "دائري مع حدود" },
     { value: "rounded", label: "زوايا ناعمة" },
     { value: "boxed", label: "مؤطر بصندوق خفيف" },
+    { value: "framed", label: "بخطوط أفقيين أعلى وأسفل" },
+    { value: "centered-large", label: "كبير ومتمركز" },
   ],
   qr: [
     { value: "standard", label: "افتراضي" },
@@ -92,6 +137,11 @@ const BLOCK_VARIANTS = {
     { value: "boxed", label: "مربع إحاطة خفيف" },
     { value: "alert", label: "تنبيه باللون التحذيري" },
     { value: "quote", label: "مقتبس بخط جانبي سميك" },
+    { value: "inline", label: "سطر مدمج بسيط" },
+    { value: "minimal", label: "صغير وبسيط" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "boxed-centered", label: "صندوق متمركز" },
   ],
   divider: [
     { value: "solid", label: "مستمر" },
@@ -109,23 +159,34 @@ const BLOCK_VARIANTS = {
   ],
   barcode: [
     { value: "standard", label: "افتراضي بالرقم أسفله" },
-    { value: "centered", label: "متمركز بلا نص" },
+    { value: "centered", label: "متمركزي بلا نص" },
     { value: "compact", label: "مضغوط صغير" },
+    { value: "framed", label: "مؤطر بحدود" },
+    { value: "minimal", label: "بلا نص فقط الشريط" },
   ],
   order_number: [
     { value: "standard", label: "افتراضي" },
     { value: "huge", label: "رقم ضخم جداً" },
     { value: "badge", label: "شارة طلب دائرية" },
+    { value: "boxed", label: "محاط بحدود مزدوجة" },
+    { value: "inline", label: "سطر مدمج بسيط" },
+    { value: "compact", label: "رقم صغير مدمج" },
   ],
   receipt_header_text: [
     { value: "standard", label: "افتراضي" },
     { value: "boxed", label: "صندوق محاط بحدود" },
-    { value: "centered", label: "متمركز متباعد" },
+    { value: "centered", label: "متمركزي متباعد" },
+    { value: "underline-accent", label: "خط سفلي سميك" },
+    { value: "minimal", label: "صغير وبسيط" },
   ],
   footer_text: [
     { value: "standard", label: "افتراضي" },
     { value: "boxed", label: "مؤطر بحدود خفيفة" },
-    { value: "centered", label: "متمركز متباعد" },
+    { value: "centered", label: "متمركزي متباعد" },
+    { value: "minimal", label: "صغير وبسيط" },
+    { value: "bordered", label: "خط فاصل علوي" },
+    { value: "compact", label: "مضغوط صغير" },
+    { value: "framed", label: "بنجوم ★ ومزدوج" },
   ],
   signature_lines: [
     { value: "standard", label: "افتراضي سطرين متقابلين" },
@@ -136,36 +197,64 @@ const BLOCK_VARIANTS = {
     { value: "standard", label: "افتراضي" },
     { value: "badge", label: "شارة ملونة ممتلئة" },
     { value: "inline", label: "سطر واحد خفيف" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
   ],
   address: [
     { value: "standard", label: "افتراضي متسلسل" },
     { value: "inline", label: "سطر مدمج بنقاط" },
     { value: "boxed", label: "صندوق محاط بحدود" },
+    { value: "badge", label: "شارة صغيرة" },
   ],
   tax_id: [
     { value: "standard", label: "افتراضي" },
     { value: "boxed", label: "شارة رقمية مؤطرة" },
     { value: "inline", label: "نص مدمج خفيف" },
+    { value: "badge", label: "شارة دائرية ملونة" },
+    { value: "minimal", label: "رقم صغير خفيف" },
   ],
   subtotal: [
     { value: "standard", label: "افتراضي" },
     { value: "plain", label: "بين خطين متقطعين" },
     { value: "boxed", label: "صندوق مظلل ملون" },
+    { value: "badge", label: "شارة دائرية" },
+    { value: "ruled", label: "بين خطين سميكين" },
+    { value: "inline", label: "سطر صغير خفيف" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "dotted", label: "بنقاط منقطة" },
   ],
   discount: [
     { value: "standard", label: "افتراضي أحمر" },
     { value: "badge", label: "شارة خصم ممتلئة" },
     { value: "plain", label: "خط أحمر مدمج" },
+    { value: "underline-accent", label: "خط سفلي سميك أحمر" },
+    { value: "inline", label: "سطر صغير خفيف" },
+    { value: "boxed", label: "صندوق محمر" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "dotted", label: "بنقاط منقطة" },
   ],
   increase: [
     { value: "standard", label: "افتراضي أخضر" },
     { value: "plain", label: "خط رسوم مدمج" },
     { value: "boxed", label: "صندوق رسوم مظلل" },
+    { value: "badge", label: "شارة دائرية" },
+    { value: "inline", label: "سطر صغير خفيف" },
+    { value: "minimal", label: "بلا عنوان مدمج" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "dotted", label: "بنقاط منقطة" },
   ],
   tax: [
     { value: "standard", label: "افتراضي" },
     { value: "inline", label: "نص رمادي صغير" },
     { value: "plain", label: "بين خطين متقطعين" },
+    { value: "ruled", label: "بين خط سميك" },
+    { value: "boxed", label: "صندوق محاط بحدود" },
+    { value: "badge", label: "شارة دائرية" },
+    { value: "compact", label: "مضغوط بخط منقّط" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "dotted", label: "بنقاط منقطة" },
   ],
   watermark: [
     { value: "standard", label: "افتراضي (متوسط)" },
@@ -176,12 +265,14 @@ const BLOCK_VARIANTS = {
     { value: "standard", label: "افتراضي متسلسل" },
     { value: "boxed", label: "صندوق توقيع مغلق" },
     { value: "split", label: "توزيع ثنائي متقابل" },
+    { value: "compact", label: "مضغوط صغير" },
   ],
   custom_text: [
     { value: "standard", label: "نص عادي" },
     { value: "alert", label: "تنبيه تحذيري ملون" },
     { value: "badge", label: "شارة ممتلئة ملونة" },
     { value: "banner", label: "بنر عريض بخلفية ممتلئة" },
+    { value: "minimal", label: "صغير وبسيط" },
   ],
   custom_field: [
     { value: "standard", label: "افتراضي" },
@@ -193,6 +284,22 @@ const BLOCK_VARIANTS = {
     { value: "standard", label: "صورة عادية" },
     { value: "card", label: "كرت بحدود وظل" },
     { value: "banner", label: "بنر ممتد بالكامل" },
+  ],
+  bank_details: [
+    { value: "standard", label: "بطاقة محاطة بحدود" },
+    { value: "inline", label: "سطر مدمج" },
+    { value: "boxed", label: "صندوق بحدود متينة" },
+    { value: "minimal", label: "نص صغير بسيط" },
+    { value: "lined", label: "بحدود سفلية لكل سطر" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+  ],
+  doc_grid: [
+    { value: "standard", label: "جدول شبكي" },
+    { value: "compact", label: "مضغوط بسيط" },
+    { value: "borderless", label: "بلا حدود (نقاط فقط)" },
+    { value: "boxed", label: "محاط بحدود" },
+    { value: "centered", label: "متمركزي بحدود متقطعة" },
+    { value: "lined", label: "بحدود سفلية لكل سطر" },
   ],
 };
 
@@ -473,6 +580,46 @@ export default function StudioInspector({ st }) {
 
   return (
     <div className="flex w-[310px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-[var(--border-normal)] bg-[var(--bg-surface)] p-3">
+
+      {/* ── Inheritance paused banner ──────────────────────── */}
+      {st.isInheritable && st.inheritGlobal && (
+        <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--primary)]/15">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+                <path d="M12 3v18" /><path d="M3 12h18" />
+              </svg>
+            </div>
+            <span className="text-[11px] font-black text-[var(--primary)]">وضع الارث مفعّل — {st.family === "roll" ? "رول" : "صفحة"}</span>
+          </div>
+          <p className="text-[10px] font-bold text-[var(--text-muted)] leading-relaxed">
+            التصميم الحالي يُرث من <strong>التصميم العام</strong> لهذا المقاس ({st.family === "roll" ? "رول" : "صفحة"}). التغييرات المحلية محفوظة لكنها غير معتمدة حالياً.
+          </p>
+          <button
+            type="button"
+            onClick={() => st.toggleInheritGlobal?.()}
+            className="mt-2 w-full rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/10 py-1.5 text-[10px] font-black text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+          >
+            تعطيل الارث ({st.family === "roll" ? "رول" : "صفحة"}) واستعمال التصميم الخاص
+          </button>
+        </div>
+      )}
+
+      {st.isInheritable && !st.inheritGlobal && (
+        <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--success)]/15">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--success-text)]">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <span className="text-[11px] font-black text-[var(--success-text)]">تصميم خاص مفعّل — {st.family === "roll" ? "رول" : "صفحة"}</span>
+          </div>
+          <p className="text-[10px] font-bold text-[var(--text-muted)] leading-relaxed mt-1">
+            التصميم الخاص بـ <strong>{st.scope}</strong> ({st.family === "roll" ? "رول" : "صفحة"}) معتمد. يمكنك تعديله بحرية.
+          </p>
+        </div>
+      )}
 
       {/* ── نصوص المستند (ظاهرة دوماً) ──────────────────────── */}
       <Section title="نصوص المستند">
@@ -969,9 +1116,9 @@ export default function StudioInspector({ st }) {
                 {family === "page" && (
                   <Row label="طريقة العرض">
                     <select value={st.ov(tblKey).variant || "standard"} onChange={(e) => st.setOverride(tblKey, { variant: e.target.value })} className={`${inputCls} w-28`}>
-                      <option value="standard">جدول تقليدي</option>
-                      <option value="cards">كروت منفصلة (فاخر)</option>
-                      <option value="minimalist-list">قائمة مبسطة (هادئ)</option>
+                      {(BLOCK_VARIANTS[tblKey] || []).map((v) => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
                     </select>
                   </Row>
                 )}
@@ -1179,6 +1326,7 @@ export default function StudioInspector({ st }) {
                 <select value={merged.qr_mode || "free_text"} onChange={(e) => st.setFlat("qr_mode", e.target.value)} className={`${inputCls} w-36`}>
                   <option value="free_text">نص حر</option>
                   <option value="zatca">فاتورة إلكترونية ZATCA</option>
+                  <option value="eta">إيصال ضريبي ETA</option>
                 </select>
               </Row>
               {(merged.qr_mode || "free_text") === "free_text" && (
@@ -1190,6 +1338,11 @@ export default function StudioInspector({ st }) {
               {merged.qr_mode === "zatca" && (
                 <div className="mt-1 rounded-lg bg-[var(--info-bg)] p-2 text-[9px] font-bold leading-relaxed text-[var(--info-text)]">
                   يُولَّد الرمز تلقائياً من اسم الشركة والرقم الضريبي وبيانات الفاتورة وفق مواصفة ZATCA.
+                </div>
+              )}
+              {merged.qr_mode === "eta" && (
+                <div className="mt-1 rounded-lg bg-[var(--info-bg)] p-2 text-[9px] font-bold leading-relaxed text-[var(--info-text)]">
+                  {"يُولَّد رابط التحقق تلقائياً من UUID الإيصال وتاريخ الإصدار على منصة الضريبة الإلكترونية المصرية ETA."}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 mt-1.5">
@@ -1333,11 +1486,9 @@ export default function StudioInspector({ st }) {
             <Section title="اسم الشركة">
               <Row label="طريقة العرض">
                 <select value={st.ov("company_name").variant || "standard"} onChange={(e) => st.setOverride("company_name", { variant: e.target.value })} className={`${inputCls} w-32`}>
-                  <option value="standard">افتراضي</option>
-                  <option value="retro-brutalist">شريط معبأ (Brutalist)</option>
-                  <option value="underline-accent">حاشية جانبية (Underline)</option>
-                  <option value="stacked-bilingual">ثنائي اللغة (Bilingual)</option>
-                  <option value="initial-cap">حرف بداية ضخم</option>
+                  {(BLOCK_VARIANTS.company_name || []).map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
                 </select>
               </Row>
               <label className="mt-1 block space-y-1">

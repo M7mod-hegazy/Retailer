@@ -1,0 +1,10 @@
+const Database = require('better-sqlite3');
+const db = new Database('D:/code/retailer/server/data/retailer.db', { fileMustExist: true });
+const rows = db.prepare('SELECT id FROM _migrations ORDER BY id').all();
+console.log('Total:', rows.length);
+rows.slice(-3).forEach(r => console.log('last:', r.id));
+const v = db.prepare('SELECT COUNT(*) as c FROM message_template_variants').get();
+console.log('Variants:', v.c);
+const cats = db.prepare("SELECT category,label,is_active FROM message_template_variants WHERE category IN ('receipt','return_receipt','birthday','debt') ORDER BY category,id").all();
+cats.forEach(c => console.log(' ', c.category, '|', c.label, '| active:', c.is_active));
+db.close();

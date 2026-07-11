@@ -239,11 +239,37 @@ function getReturnCostColumn(costMethod) {
     "NULLIF(it.purchase_price, 0), 0)";
 }
 
+// Base status guard for sales/purchase documents. Cancelled documents are
+// excluded from every report by default, but explicitly selecting a cancelled
+// status flips the report into a cancelled-only audit view — the caller's own
+// "AND alias.status = ?" clause then does the narrowing. Without this, picking
+// "ملغي" in the status filter always returned zero rows.
+// `cancelledValues` covers documents whose enum differs: purchases void with
+// status='voided', not 'cancelled'.
+function baseStatusClause(tableAlias, status, cancelledValues = ["cancelled"]) {
+  if (status && cancelledValues.includes(status)) return "1=1";
+  return `${tableAlias}.status NOT IN (${cancelledValues.map((v) => `'${v}'`).join(", ")})`;
+}
+
 // Multi-payment filter: matches direct payment_type OR multi invoices with sub-payment
 function addPaymentTypeFilter(paymentType, tableAlias, params) {
   if (!paymentType) return "";
   params.push(paymentType, paymentType);
   return ` AND (${tableAlias}.payment_type = ? OR (${tableAlias}.payment_type = 'multi' AND EXISTS (SELECT 1 FROM payments WHERE invoice_id = ${tableAlias}.id AND method = ?)))`;
+}
+
+// Purchases variant of the multi-payment filter. Purchases store their method in
+// payment_method (NOT payment_type — filtering on it threw "no such column"),
+// and split payments live in purchase_payments → payment_methods, matched by the
+// method's category. Push the returned clause's two params into a DEDICATED array
+// spread at the clause's exact position — pushing into the shared date-params
+// array misaligns every later placeholder.
+function addPurchasePaymentFilter(paymentType, tableAlias, params) {
+  if (!paymentType) return "";
+  params.push(paymentType, paymentType);
+  return ` AND (${tableAlias}.payment_method = ? OR (${tableAlias}.payment_method = 'multi' AND EXISTS (` +
+    `SELECT 1 FROM purchase_payments pp JOIN payment_methods pm ON pm.id = pp.method_id ` +
+    `WHERE pp.purchase_id = ${tableAlias}.id AND pm.category = ?)))`;
 }
 
 function getCurrencyConfig() {
@@ -268,6 +294,7 @@ function formatCurrency(amount) {
 
 module.exports = {
   addDateFilter,
+  baseStatusClause,
   labelForKey,
   buildColumnsFromRows,
   getCostColumn,
@@ -276,6 +303,7 @@ module.exports = {
   stockCostJoin,
   itemsCostJoin,
   addPaymentTypeFilter,
+  addPurchasePaymentFilter,
   getCurrencyConfig,
   formatCurrency,
 };

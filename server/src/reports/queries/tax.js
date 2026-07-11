@@ -1,5 +1,5 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter } = require("../helpers");
+const { addDateFilter, baseStatusClause } = require("../helpers");
 const { paginateSql } = require("../pagination");
 
 function tableColumns(db, table) {
@@ -32,7 +32,7 @@ function statusLabel(expr) {
 }
 
 function salesTaxWhere(alias, startDate, endDate, opts, params) {
-  const where = [`${alias}.status != 'cancelled'`];
+  const where = [baseStatusClause(alias, opts.status)];
   const dateClause = addDateFilter(`${alias}.created_at`, startDate, endDate, params).replace(/^ AND /, "");
   if (dateClause) where.push(dateClause);
   pushFilter(where, params, `${alias}.customer_id = ?`, opts.customer_id);
@@ -94,7 +94,7 @@ function inputVat(startDate, endDate, opts = {}) {
   const taxTypeExpr = cols.has("tax_type") ? "COALESCE(p.tax_type, 'exclusive')" : "'exclusive'";
   const taxableExpr = cols.has("subtotal") ? "COALESCE(p.subtotal, p.total - COALESCE(p.tax_amount, 0))" : "(p.total - COALESCE(p.tax_amount, 0))";
   const params = [];
-  const where = ["p.status != 'cancelled'"];
+  const where = [baseStatusClause("p", opts.status)];
   const dateClause = addDateFilter("p.created_at", startDate, endDate, params).replace(/^ AND /, "");
   if (dateClause) where.push(dateClause);
   pushFilter(where, params, "p.supplier_id = ?", opts.supplier_id);

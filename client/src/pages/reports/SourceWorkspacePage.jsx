@@ -6,7 +6,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, BarChart3, CalendarDays, ChevronDown, FileImage, FileSpreadsheet, FileText,
-  LayoutTemplate, LayoutList, Loader2, Printer, RefreshCw, Search, SlidersHorizontal, X,
+  LayoutTemplate, LayoutList, Loader2, Printer, RefreshCw, Search, SlidersHorizontal, Star, X,
   ChevronLeft, ChevronRight, Settings2, Eye, EyeOff, ArrowUp, ArrowDown, Info
 } from "lucide-react";
 import ChartWorkspace from "../../components/reports/ChartWorkspace";
@@ -17,7 +17,7 @@ import { reportsApi } from "../../services/reports";
 import { useReportsStore, buildPrefKey } from "../../stores/reportsStore";
 import { useUiStore } from "../../stores/uiStore";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
-import ReportPrintTemplate from "./templates/ReportPrintTemplate";
+import ReportViaLayout from "../../components/print/templates/ReportViaLayout";
 import AccountStatementLedger from "./templates/AccountStatementLedger";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
@@ -25,295 +25,23 @@ import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEn
 import { fmtDate, getReportDescription, formatReportCellValue, useReportsConfig } from "../../hooks/useReportsConfig";
 import { formatNumber } from "../../utils/currency";
 
-const CLS_ARABIC = {
-  "cls_sales_daily": "الملخص اليومي",
-  "cls_sales_detailed": "المبيعات التفصيلية",
-  "cls_sales_by_item": "حسب الصنف",
-  "cls_sales_by_category": "حسب الفئة",
-  "cls_sales_by_cashier": "حسب الكاشير",
-  "cls_sales_by_payment": "حسب طريقة الدفع",
-  "cls_sales_heatmap": "خريطة حرارة",
-  "cls_sales_period_compare": "مقارنة فترتين",
-  "cls_sales_discounts": "تحليل الخصومات",
-  "cls_sales_margin": "هوامش الربح",
-  "cls_sales_tax": "تحليل الضرائب",
-  "cls_purchases_summary": "ملخص المشتريات",
-  "cls_purchases_detailed": "المشتريات التفصيلية",
-  "cls_purchases_by_supplier": "حسب المورد",
-  "cls_purchases_by_item": "حسب الصنف",
-  "cls_purchases_supplier_pricing": "تسعير الموردين",
-  "cls_preturn_summary": "ملخص المرتجعات",
-  "cls_preturn_detailed": "مرتجعات تفصيلية",
-  "cls_preturn_by_supplier": "حسب المورد",
-  "cls_sreturn_summary": "ملخص المرتجعات",
-  "cls_sreturn_detailed": "مرتجعات تفصيلية",
-  "cls_sreturn_by_customer": "حسب العميل",
-  "cls_supplier_balance_list": "قائمة أرصدة الموردين",
-  "cls_supplier_statement": "كشف حساب المورد",
-  "cls_supplier_aging": "تقادم ذمم الموردين",
-  "cls_supplier_purchases": "سجل المشتريات",
-  "cls_supplier_returns": "سجل المرتجعات",
-  "cls_supplier_reliability": "موثوقية الموردين",
-  "cls_customer_balance_list": "قائمة أرصدة العملاء",
-  "cls_customer_statement": "كشف حساب العميل",
-  "cls_customer_aging": "تقادم ذمم العملاء",
-  "cls_top_customers": "أفضل العملاء",
-  "cls_collection_efficiency": "كفاءة التحصيل",
-  "cls_customer_loyalty": "ولاء العملاء",
-  "cls_emp_list": "قائمة الموظفين",
-  "cls_emp_deductions": "خصومات الموظفين",
-  "cls_emp_bonuses": "مكافآت الموظفين",
-  "cls_emp_advances": "سلف الموظفين",
-  "cls_emp_payroll": "كشوف الرواتب",
-  "cls_emp_full_history": "السجل الكامل للموظف",
-  "cls_inst_plans": "خطط التقسيط",
-  "cls_inst_collections": "تحصيلات",
-  "cls_inst_by_customer": "حسب العميل",
-  "cls_inst_delinquent": "المتأخرات",
-  "cls_item_stock_levels": "مستويات المخزون",
-  "cls_item_valuation": "تقييم المخزون",
-  "cls_item_count_sheet": "ورقة جرد",
-  "cls_item_reorder": "إعادة الطلب",
-  "cls_item_expiry": "انتهاء الصلاحية",
-  "cls_item_slow_moving": "الراكد",
-  "cls_item_aging": "تقادم المخزون",
-  "cls_item_dead_stock": "مخزون ميت",
-  "cls_wh_movements": "حركات المخازن",
-  "cls_wh_transfers": "تحويلات",
-  "cls_wh_per_warehouse": "حسب المخزن",
-  "cls_exp_summary": "ملخص المصروفات",
-  "cls_exp_detailed": "مصروفات تفصيلية",
-  "cls_exp_by_category": "حسب الفئة",
-  "cls_exp_by_payment": "حسب طريقة الدفع",
-  "cls_rev_summary": "ملخص الإيرادات",
-  "cls_rev_detailed": "إيرادات تفصيلية",
-  "cls_rev_by_category": "حسب الفئة",
-  "cls_rev_by_payment": "حسب طريقة الدفع",
-  "cls_trs_cash_flow": "التدفق النقدي",
-  "cls_trs_balances": "الأرصدة",
-  "cls_trs_reconciliation": "التسويات",
-  "cls_trs_daily_sessions": "الجلسات اليومية",
-  "cls_trs_withdrawals": "السحوبات",
-  "cls_trs_payment_flow_summary": "ملخص تدفقات وسائل الدفع",
-  "cls_trs_payment_flow_ledger": "سجل التدفقات التفصيلي",
-  "cls_trs_payment_flow_by_doc_type": "حسب نوع المستند",
-  "cls_trs_payment_flow_by_direction": "حسب الاتجاه",
-  "cls_trs_payment_flow_running": "الرصيد التراكمي",
-  "direction": "الاتجاه",
-  "doc_type": "نوع المستند",
-  "party_type": "نوع الطرف",
-  "amount_min": "أقل مبلغ",
-  "amount_max": "أكبر مبلغ",
-  "cls_profit_by_item": "الربح حسب الصنف",
-  "cls_profit_by_category": "الربح حسب الفئة",
-  "cls_profit_health": "صحة الأرباح",
-  "cls_net_income": "قائمة الدخل",
-  "cls_net_by_category": "صافي الربح حسب الفئة",
-  "cls_net_by_customer": "صافي الربح حسب العميل",
-  "cls_net_by_period": "صافي الربح حسب الفترة",
-  "cheques": "الشيكات",
-  "bank-transactions": "الحركات البنكية",
-  "bank-summary": "ملخص البنوك",
-  "daily-summary": "الملخص اليومي",
-  "detailed": "تفصيلي",
-  "summary": "ملخص",
-  "by-item": "حسب الصنف",
-  "by-category": "حسب الفئة",
-  "by-cashier": "حسب الكاشير",
-  "by-payment": "حسب طريقة الدفع",
-  "by-supplier": "حسب المورد",
-  "by-customer": "حسب العميل",
-  "supplier-pricing": "تسعير الموردين",
-  "reliability": "موثوقية الموردين",
-  "purchases": "سجل المشتريات",
-  "returns": "سجل المرتجعات",
-  "aging": "تقادم الذمم",
-  "top-customers": "أفضل العملاء",
-  "collection-efficiency": "كفاءة التحصيل",
-  "loyalty": "ولاء العملاء",
-  "income-statement": "قائمة الدخل",
-  "by-period": "حسب الفترة",
-  "health": "صحة الأرباح",
-  "status": "الحالة",
-  "paid": "مدفوع",
-  "unpaid": "غير مدفوع",
-  "cancelled": "ملغي",
-  "cash": "نقداً",
-  "card": "بطاقة",
-  "credit": "آجل",
-  "wallet": "محفظة",
-  // Lookup/select filter label_keys (avoid raw English leaking into filter labels)
-  "supplier": "المورد",
-  "customer": "العميل",
-  "product": "الصنف",
-  "category": "الفئة",
-  "user": "المستخدم",
-  "warehouse": "المخزن",
-  "cashier": "الكاشير",
-  "role": "الصلاحية",
-  "action": "الإجراء",
-  "employee": "الموظف",
-  "deduction_type": "نوع الخصم",
-  "bonus_type": "نوع المكافأة",
-  "tx_type": "نوع الحركة",
-  "payment_type": "طريقة الدفع",
-  "movement_type": "نوع الحركة",
-  "in": "وارد",
-  "out": "صادر",
-  "transfer": "تحويل",
-  "admin": "مدير النظام",
-  "manager": "مدير",
-  "pending": "معلق",
-  "cleared": "محصّل",
-  "bounced": "مرتجع",
-  "replaced": "مستبدل",
-  // Missing classification label_keys
-  "cls_cheque_listing": "كشف الشيكات",
-  "cls_bank_transactions": "الحركات البنكية",
-  "cls_bank_summary": "ملخص البنوك",
-  "cheque-listing": "كشف الشيكات",
-  "cls_emp_shifts": "الورديات",
-  "cls_emp_user_activity": "نشاط المستخدمين",
-  "cls_emp_adjustments": "تسويات الموظفين",
-  "shifts": "الورديات",
-  "user-activity": "نشاط المستخدمين",
-  "cls_item_cost_movements": "حركات التكلفة",
-  "cls_item_cost_method_comparison": "مقارنة طرق التكلفة",
-  "cls_item_lifecycle": "دورة حياة الصنف",
-  "cls_item_inventory_turnover": "معدل دوران المخزون",
-  "cost-movements": "حركات التكلفة",
-  "cost-method-comparison": "مقارنة طرق التكلفة",
-  "item-lifecycle": "دورة حياة الصنف",
-  "inventory-turnover": "معدل دوران المخزون",
-  "cls_wh_stock_adjustment_audit": "مراجعة تسويات المخزون",
-  "stock-adjustment-audit": "مراجعة تسويات المخزون",
-  "cls_profit_margin_drift": "انحراف هامش الربح",
-  "margin-drift": "انحراف هامش الربح",
-  "cls_net_daily_owner_snapshot": "لمحة يومية للمالك",
-  "daily-owner-snapshot": "لمحة يومية للمالك",
-  "cls_owner_statement": "لوحة صاحب المحل",
-  "worksheet": "لوحة صاحب المحل",
-  "cls_sales_cashier_override_impact": "تأثير تجاوز الكاشير",
-  "cashier-override-impact": "تأثير تجاوز الكاشير",
-  // Tax classification labels
-  "cls_tax_vat": "ضريبة القيمة المضافة",
-  "cls_tax_output_vat": "ضريبة المبيعات (خرج)",
-  "cls_tax_input_vat": "ضريبة المشتريات (دخل)",
-  "cls_tax_vat_filing": "ملخص إقرار الضريبة",
-  "cls_tax_returns_effect": "أثر المرتجعات على الضريبة",
-  "cls_users_list": "قائمة المستخدمين",
-  "cls_users_performance": "أداء المستخدمين",
-  "cls_users_login_history": "سجل الدخول",
-  "user-list": "قائمة المستخدمين",
-  "performance": "أداء المستخدمين",
-  "login-history": "سجل الدخول",
-  "cls_item_expiry": "انتهاء الصلاحية",
-  "tracking": "انتهاء الصلاحية",
+// All display labels (classifications, filters, options, columns) come from the
+// server registry/config — the single source of truth. `a` survives only as an
+// identity fallback so an unmapped key degrades to itself instead of crashing.
+function a(key) { return key; }
+// The document/party cell itself is the link (styled as one); clicking opens a
+// leave-confirmation modal that names the destination before navigating.
+const LINK_CELLS = {
+  sales: new Set(["invoice_no"]),
+  purchases: new Set(["purchase_no"]),
+  customers: new Set(["customer_name"]),
+  suppliers: new Set(["supplier_name"]),
+  items: new Set(["item_name", "item_code"]),
+  "profit-loader": new Set(["item_name", "item_code"]),
 };
-
-function a(key) { return CLS_ARABIC[key] || key; }
 const ID_TO_NAME_COLUMNS = new Set(["warehouse_id", "supplier_id", "customer_id", "cashier_id", "user_id", "category_id"]);
 
-const ARABIC_COL_LABELS = {
-  id: "#", date: "التاريخ", created_at: "تاريخ الإنشاء", updated_at: "تاريخ التحديث",
-  invoice_no: "رقم الفاتورة", doc_no: "رقم المستند", reference_no: "المرجع", ref_no: "رقم المستند",
-  customer_name: "العميل", customer_id: "العميل", supplier_name: "المورد", supplier_id: "المورد",
-  item_name: "الصنف", item_code: "كود الصنف", item_id: "الصنف", barcode: "الباركود",
-  category_name: "الفئة", category_id: "الفئة",
-  warehouse_name: "المخزن", warehouse_id: "المخزن",
-  cashier: "الكاشير", cashier_id: "الكاشير", user_id: "المستخدم", full_name: "الاسم",
-  payment_type: "طريقة الدفع", payment_method: "طريقة الدفع", payment_breakdown: "تفاصيل الدفع",
-  status: "الحالة", cancel_reason: "سبب الإلغاء",
-  total: "الإجمالي", subtotal: "قبل الخصم", discount: "الخصم", increase: "الإضافة",
-  net_sales: "صافي المبيعات", gross_sales: "إجمالي المبيعات", total_sales: "إجمالي المبيعات",
-  total_cost: "التكلفة", gross_profit: "إجمالي الربح", net_profit: "صافي الربح",
-  profit_margin: "هامش الربح", avg_transaction: "متوسط الفاتورة",
-  invoice_count: "عدد الفواتير", item_count: "عدد الأصناف", quantity: "الكمية",
-  unit_price: "سعر الوحدة", cost_price: "سعر التكلفة",
-  returns_amount: "المرتجعات", total_discount: "إجمالي الخصومات",
-  amount: "المبلغ", balance: "الرصيد", opening_balance: "الرصيد الافتتاحي",
-  description: "الوصف", reason: "السبب", notes: "ملاحظات", note: "ملاحظة",
-  refund_method: "طريقة الاسترداد", settlement_type: "نوع التسوية",
-  supplier_count: "عدد الموردين", customer_count: "عدد العملاء",
-  transaction_count: "عدد الحركات", running_total: "الإجمالي التراكمي", total_amount: "إجمالي المبلغ",
-  type: "النوع", name: "الاسم", label: "التسمية",
-  from_warehouse: "من مخزن", to_warehouse: "إلى مخزن", movement_type: "نوع الحركة",
-  opening_cash: "نقد الافتتاح", closing_cash: "نقد الإغلاق", cash_variance: "فرق النقد",
-  shift_id: "الوردية", total_withdrawals: "المسحوبات",
-  due_date: "تاريخ الاستحقاق", paid_amount: "المدفوع", remaining: "المتبقي",
-  tax_rate: "نسبة الضريبة", tax_amount: "قيمة الضريبة", vat_amount: "ضريبة القيمة المضافة",
-  role: "الصلاحية", username: "اسم المستخدم", last_login: "آخر دخول",
-  action: "الإجراء", resource: "المورد",
-  debit: "مدين", credit: "دائن", running_balance: "الرصيد الجاري", line_total: "إجمالي السطر",
-  aging_0_30: "0-30 يوم", aging_31_60: "31-60 يوم", aging_61_90: "61-90 يوم", aging_90_plus: "أكثر من 90 يوم",
-  weekday_name: "اليوم", hour_slot: "الساعة",
-  stock_status: "حالة المخزون", reorder_level: "حد إعادة الطلب", current_stock: "المخزون الحالي",
-  avg_daily_sales: "متوسط المبيعات اليومية", days_of_stock: "أيام المخزون",
-  buys: "مشتريات",
-  datetime: "التاريخ والوقت",
-  doc_discount: "خصم المستند",
-  doc_id: "رقم المستند",
-  doc_increase: "إضافة المستند",
-  doc_total: "إجمالي المستند",
-  employee_id: "الموظف",
-  line_sum: "مجموع البنود",
-  net_total: "صافي الإجمالي",
-  occurred_at: "تاريخ الحدوث",
-  orig_ref: "المرجع الأصلي",
-  ref_id: "رقم المرجع",
-  source_id: "المصدر",
-  source_line_id: "رقم سطر المصدر",
-  tax_amount: "مبلغ الضريبة",
-  tax_type: "نوع الضريبة",
-  tax_type_label: "نوع الضريبة",
-  status_label: "الحالة",
-  period_label: "الفترة",
-  basis_label: "أساس الحساب",
-  method_name: "وسيلة الدفع",
-  plan_id: "رقم الخطة",
-  total_tax: "إجمالي الضريبة",
-  updated_at: "آخر تحديث",
-  v: "القيمة",
-  employee_name: "اسم الموظف",
-  job_title: "المسمى الوظيفي",
-  salary: "الراتب",
-  salary_period: "دورة الراتب",
-  working_days_per_month: "أيام العمل الشهرية",
-  daily_salary: "الراتب اليومي",
-  active_deductions_total: "إجمالي الخصومات",
-  active_bonuses_total: "إجمالي المكافآت",
-  active_advances_balance: "رصيد السلف",
-  deduction_type: "نوع الخصم",
-  deduction_type_label: "نوع الخصم",
-  bonus_type: "نوع المكافأة",
-  bonus_type_label: "نوع المكافأة",
-  recurring_label: "متكرر",
-  is_recurring: "متكرر",
-  completed_at: "تاريخ التطبيق",
-  cancelled_at: "تاريخ الإلغاء",
-  remaining_balance: "الرصيد المتبقي",
-  repaid_amount: "المبلغ المسدد",
-  base_salary: "الراتب الأساسي",
-  total_bonuses: "إجمالي المكافآت",
-  total_deductions: "إجمالي الخصومات",
-  advance_deductions: "خصم السلف",
-  net_salary: "صافي الراتب",
-  settled_at: "تاريخ الصرف",
-  settled_by: "تم الصرف بواسطة",
-  expense_id: "رقم المصروف",
-  tx_type: "نوع الحركة",
-  tx_type_label: "نوع الحركة",
-  sub_type: "النوع الفرعي",
-  adjustment_type: "نوع التسوية",
-  total_paid: "إجمالي المدفوع",
-  installment_count: "عدد الأقساط",
-  installment_amount: "قيمة القسط",
-  period_start: "بداية الفترة",
-  period_end: "نهاية الفترة",
-  created_by: "أنشئ بواسطة",
-};
-const NOTE_KEYS = new Set(["notes", "note", "description", "cancel_reason", "reason"]);
-function arColLabel(key) { return ARABIC_COL_LABELS[key] || key; }
+function arColLabel(key) { return key; }
 
 const TYPE_LABELS = {
   invoice: "فاتورة",
@@ -327,6 +55,23 @@ const TYPE_LABELS = {
 
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+// Row drill-down: an explicit, labeled button per row (never a silent whole-row
+// click) — the user sees WHERE they'd go before leaving the report.
+function resolveRowLink(sourceKey, classificationId, row) {
+  if (row._is_item) return null;
+  if (sourceKey === "sales" && row.invoice_no && row.id)
+    return { href: `/invoices/${row.id}`, label: `فتح الفاتورة ${row.invoice_no}` };
+  if (sourceKey === "purchases" && row.purchase_no && row.id)
+    return { href: `/purchases/${row.id}`, label: `فتح فاتورة الشراء ${row.purchase_no}` };
+  if (sourceKey === "customers" && classificationId !== "statement" && row.customer_id)
+    return { href: `/reports/source/customers/statement/detailed?customer_id=${row.customer_id}`, label: `كشف حساب ${row.customer_name || "العميل"}` };
+  if (sourceKey === "suppliers" && classificationId !== "statement" && row.supplier_id)
+    return { href: `/reports/source/suppliers/statement/detailed?supplier_id=${row.supplier_id}`, label: `كشف حساب ${row.supplier_name || "المورد"}` };
+  if ((sourceKey === "items" || sourceKey === "profit-loader") && row.item_id)
+    return { href: `/definitions/items/${row.item_id}`, label: `بطاقة الصنف ${row.item_name || ""}` };
+  return null;
 }
 
 const CHART_COLORS = ["#059669", "#2563EB", "#7C3AED", "#D97706", "#DC2626", "#0891B2", "#F59E0B", "#EC4899"];
@@ -344,6 +89,10 @@ const PRINT_HEADER_MM = 22;
 const PRINT_FOOTER_MM = 14;
 const PRINT_MARGIN_MM = 8;
 const PRINT_HEIGHT_MM = 297; // A4
+
+const NOTE_KEYS = new Set([
+  "notes","note","day_notes",
+]);
 
 const PRINT_TEXT_WRAP_KEYS = new Set([
   "name","item_name","customer_name","supplier_name","description","label",
@@ -427,6 +176,43 @@ const EXPORT_CONFIGS = {
   print: { label: "طباعة", icon: Printer, color: "#475569", bg: "rgba(71,85,105,0.08)" },
 };
 
+// Save current report + filters as a named view (stored in reportsStore.presets
+// as a URL; hub lists them for one-click re-run).
+function SaveViewButton({ buildUrl, defaultName }) {
+  const savePreset = useReportsStore((st) => st.savePreset);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+  const doSave = () => {
+    const n = name.trim() || defaultName;
+    savePreset(n, buildUrl(), null, null);
+    toast.success("تم حفظ العرض: " + n);
+    setName(""); setOpen(false);
+  };
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)}
+        className="h-9 px-3 rounded-lg bg-bg-surface border border-border text-text-secondary hover:bg-bg-overlay hover:text-text-primary text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm">
+        <Star size={14} className="text-warning-text" /> حفظ العرض
+      </button>
+      {open && (
+        <div className="absolute left-0 top-11 z-50 w-64 rounded-xl border border-border bg-bg-surface p-3 shadow-2xl space-y-2">
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") doSave(); }}
+            placeholder={defaultName}
+            className="w-full h-9 px-3 rounded-lg border border-border bg-bg-base text-sm text-text-primary focus:outline-none focus:border-primary" />
+          <button onClick={doSave} className="w-full h-8 rounded-lg bg-primary text-white text-sm font-bold">حفظ</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExportPill({ format, onExport }) {
   const [status, setStatus] = useState("idle");
   const cfg = EXPORT_CONFIGS[format];
@@ -452,7 +238,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
   const opts = (dynamicOptions && dynamicOptions.length > 0) ? dynamicOptions : (filter.options || []);
   if (filter.type === "lookup") {
     const entityLabel = { category: "تصنيف", product: "منتج", customer: "عميل", supplier: "مورد", user: "مستخدم", warehouse: "مخزن", payment_method: "وسيلة دفع", employee: "موظف" }[filter.entity] || filter.entity;
-    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
+    const filterLabel = filter.label || a(filter.label_key);
     return (
       <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-text-secondary">{filterLabel || entityLabel}</label>
@@ -461,7 +247,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
     );
   }
   if (filter.type === "select") {
-    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
+    const filterLabel = filter.label || a(filter.label_key);
     return (
       <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-text-secondary">{filterLabel}</label>
@@ -476,7 +262,7 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
     );
   }
   if (filter.type === "text") {
-    const filterLabel = a(filter.label_key) === 'payment_type' ? 'طريقة الدفع' : a(filter.label_key);
+    const filterLabel = filter.label || a(filter.label_key);
     return (
       <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-text-secondary">{filterLabel}</label>
@@ -564,6 +350,7 @@ export default function SourceWorkspacePage() {
   const [costMethod, setCostMethod] = useState(() => new URLSearchParams(location.search).get("cost_method") || "wacc");
   const [exportProgress, setExportProgress] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [pendingNav, setPendingNav] = useState(null); // { href, label } awaiting leave-confirmation
   const [printAllData, setPrintAllData] = useState(null);
   const [printAllLoading, setPrintAllLoading] = useState(false);
   const [measuredPrintRowsPerPage, setMeasuredPrintRowsPerPage] = useState(null);
@@ -598,7 +385,7 @@ export default function SourceWorkspacePage() {
   // Set topbar breadcrumb to show the current report name
   const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
   const clearDynamicBreadcrumb = useUiStore((s) => s.clearDynamicBreadcrumb);
-  const reportLabel = useMemo(() => a(clsDef?.label_key || classificationId), [clsDef, classificationId]);
+  const reportLabel = useMemo(() => clsDef?.label || a(clsDef?.label_key || classificationId), [clsDef, classificationId]);
   useEffect(() => {
     setDynamicBreadcrumb({ label: reportLabel, path: `/reports/source/${sourceKey}/${classificationId}/${dataMode}` });
     return () => clearDynamicBreadcrumb();
@@ -691,7 +478,7 @@ export default function SourceWorkspacePage() {
         const key = c?.key || c?.id || c;
         const label = c?.label || arColLabel(key);
         const isNote = NOTE_KEYS.has(key);
-        return { id: key, key, header: label, label, type: c?.type || "text", defaultVisible: c?.defaultVisible !== false && !isNote, printPriority: c?.printPriority, isNote };
+        return { id: key, key, header: label, label, desc: c?.desc || "", type: c?.type || "text", defaultVisible: c?.defaultVisible !== false && !isNote, printPriority: c?.printPriority, isNote };
       });
     } else {
       const sample = rows[0];
@@ -1052,10 +839,10 @@ export default function SourceWorkspacePage() {
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] font-bold tracking-widest text-text-muted uppercase mb-0.5">{sourceDef.label}</span>
-              <h1 className="text-[20px] font-bold text-text-primary tracking-tight leading-none mb-1.5">{a(clsDef?.label_key || classificationId)}</h1>
+              <h1 className="text-[20px] font-bold text-text-primary tracking-tight leading-none mb-1.5">{clsDef?.label || a(clsDef?.label_key || classificationId)}</h1>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-bg-overlay/80 border border-border/60 text-text-secondary text-xs font-medium max-w-xl transition-all duration-300">
                 <Info size={13} className="shrink-0 text-text-accent" />
-                <span>{getReportDescription(classificationId || clsDef?.label_key)}</span>
+                <span>{clsDef?.desc || getReportDescription(classificationId || clsDef?.label_key)}</span>
               </div>
             </div>
           </div>
@@ -1071,7 +858,7 @@ export default function SourceWorkspacePage() {
               className="h-9 px-4 rounded-lg border-none bg-transparent text-sm font-semibold text-text-primary focus:outline-none focus:ring-0 transition-all cursor-pointer"
             >
               {classifications.map((cls) => (
-                <option key={cls.id} value={cls.id}>{a(cls.label_key)}</option>
+                <option key={cls.id} value={cls.id}>{cls.label || a(cls.label_key)}</option>
               ))}
             </select>
             <div className="w-px h-5 bg-border hidden sm:block" />
@@ -1100,6 +887,17 @@ export default function SourceWorkspacePage() {
           </div>
           
           <div className="flex items-center gap-2">
+            <SaveViewButton
+              defaultName={`${sourceDef?.label || sourceKey} — ${reportLabel}`}
+              buildUrl={() => {
+                const sp = new URLSearchParams();
+                Object.entries(appliedParams).forEach(([k, v]) => {
+                  if (v == null || v === "" || ["page", "pageSize"].includes(k)) return;
+                  sp.set(k === "start_date" ? "from" : k === "end_date" ? "to" : k, v);
+                });
+                return `/reports/source/${sourceKey}/${classificationId}/${dataMode}?${sp.toString()}`;
+              }}
+            />
             {exportFormats.map((fmt) => <ExportPill key={fmt} format={fmt} onExport={handleExport} />)}
           </div>
         </div>
@@ -1157,8 +955,8 @@ export default function SourceWorkspacePage() {
                   ))}
                   {(clsDef?.multiSelectFilters || []).map((msf) => (
                     <div key={msf.key} className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-text-secondary">{a(msf.label_key) === 'payment_type' ? 'طريقة الدفع' : a(msf.label_key)}</label>
-                      <MultiSelectCheckboxes options={msf.options} value={filters[msf.key] || []} onChange={(v) => setFilters((prev) => ({ ...prev, [msf.key]: v }))} label={a(msf.label_key) === 'payment_type' ? 'طريقة الدفع' : a(msf.label_key)} formatLabel={a} />
+                      <label className="text-[11px] font-semibold text-text-secondary">{msf.label || a(msf.label_key)}</label>
+                      <MultiSelectCheckboxes options={msf.options} value={filters[msf.key] || []} onChange={(v) => setFilters((prev) => ({ ...prev, [msf.key]: v }))} label={msf.label || a(msf.label_key)} formatLabel={a} />
                     </div>
                   ))}
                   {clsDef?.supportsScope && (
@@ -1333,6 +1131,20 @@ export default function SourceWorkspacePage() {
                       }
                     }
                     const formatted = formatReportCellValue(c.id, TYPE_LABELS[raw] || a(raw) || raw);
+                    if (LINK_CELLS[sourceKey]?.has(c.id)) {
+                      const link = resolveRowLink(sourceKey, classificationId, row);
+                      if (link) {
+                        return (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPendingNav(link); }}
+                            title={link.label}
+                            className="max-w-full truncate text-sm font-bold text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:text-primary-600 hover:decoration-primary"
+                          >
+                            {String(formatted)}
+                          </button>
+                        );
+                      }
+                    }
                     if (colIdx === 0 && hasItemsRows) {
                       const rowId = row.id ?? idx;
                       const hasItems = row._items?.length > 0;
@@ -1355,7 +1167,7 @@ export default function SourceWorkspacePage() {
                 data={rows}
                 rowKey="id"
                 renderExpandedRow={renderItemExpandedRow}
-                rowClass={(row) => row._is_item ? "bg-bg-base/50" : ""}
+                rowClass={(row) => `${row._is_item ? "bg-bg-base/50" : ""} ${resolveRowLink(sourceKey, classificationId, row) ? "hover:bg-primary/5" : ""}`}
                 totals={columnTotals}
               />
             </motion.div>
@@ -1398,11 +1210,11 @@ export default function SourceWorkspacePage() {
           if (openingBal != null) subtitleParts.push(`الرصيد الافتتاحي: ${formatNumber(openingBal)}`);
           const computedSubtitle = subtitleParts.length ? subtitleParts.join(" | ") : undefined;
           return (
-            <ReportPrintTemplate
+            <ReportViaLayout
               rows={printAllData?.data || rows}
               columns={visibleColumns}
               noteColumns={allColumns.filter((c) => c.isNote)}
-              title={`${sourceDef?.label || ''} - ${a(clsDef?.label_key || classificationId)}`}
+              title={`${sourceDef?.label || ''} - ${clsDef?.label || a(clsDef?.label_key || classificationId)}`}
               subtitle={computedSubtitle}
               filters={filters}
               settings={s}
@@ -1427,9 +1239,25 @@ export default function SourceWorkspacePage() {
         open={pdfDialogOpen}
         onClose={() => setPdfDialogOpen(false)}
         columns={allColumns}
-        title={`${sourceDef?.label || ''} - ${a(clsDef?.label_key || classificationId)}`}
+        title={`${sourceDef?.label || ''} - ${clsDef?.label || a(clsDef?.label_key || classificationId)}`}
         onExport={handlePdfExport}
       />
+      {pendingNav && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setPendingNav(null)}>
+          <div dir="rtl" className="w-[400px] max-w-[90vw] rounded-2xl border border-border bg-bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1.5 text-[15px] font-black text-text-primary">مغادرة التقرير</h3>
+            <p className="mb-5 text-sm leading-relaxed text-text-secondary">
+              سيتم الانتقال إلى: <span className="font-bold text-text-primary">{pendingNav.label}</span>
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPendingNav(null)}
+                className="h-9 rounded-lg border border-border bg-bg-surface px-4 text-sm font-bold text-text-secondary transition-colors hover:bg-bg-overlay">إلغاء</button>
+              <button onClick={() => { const l = pendingNav; setPendingNav(null); navigate(l.href); }}
+                className="h-9 rounded-lg bg-primary px-4 text-sm font-bold text-white transition-colors hover:bg-primary-600">متابعة</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

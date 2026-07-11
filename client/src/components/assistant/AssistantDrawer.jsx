@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Send, LifeBuoy, Trash2, Loader2, Bot, ShieldCheck, ArrowLeft, ThumbsUp, ThumbsDown, Clock, ChevronLeft, ChevronRight, ListChecks, Database, GraduationCap, AlertTriangle, Download, Pin, Search, BarChart3 } from "lucide-react";
+import { X, Send, LifeBuoy, Trash2, Loader2, Bot, ShieldCheck, ArrowLeft, ThumbsUp, ThumbsDown, Clock, ChevronLeft, ChevronRight, ListChecks, Database, GraduationCap, AlertTriangle, Download, Pin, Search, BarChart3 } from "lucide-react";
 import { useAssistantStore } from "../../stores/assistantStore";
 import { useAuthStore } from "../../stores/authStore";
 import { getIntentById } from "../../help/helpIndex";
@@ -125,7 +125,7 @@ function RichCard({ entry, onNavigate, onAsk, t }) {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 200, damping: 22, mass: 0.5 }}
       className="rounded-2xl border p-3.5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
       <div className="mb-1 flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <Bot className="h-3.5 w-3.5 text-primary" />
         <span className="text-[10px] font-black text-primary">{entry.title}</span>
       </div>
       <p className="whitespace-pre-wrap text-[12px] font-semibold leading-relaxed" style={{ color: "var(--text-secondary)" }}>{entry.answer}</p>
@@ -492,7 +492,7 @@ export default function AssistantDrawer() {
   };
 
   const tabs = [
-    { id: "assistant", label: t("assistant.tabAssistant"), icon: Sparkles },
+    { id: "assistant", label: t("assistant.tabAssistant"), icon: Bot },
     { id: "queries", label: t("queries.tab") || "الاستعلامات", icon: Database },
     { id: "training", label: t("training.tab") || "التدريب", icon: GraduationCap },
     { id: "support", label: t("assistant.tabSupport"), icon: LifeBuoy },
@@ -513,7 +513,7 @@ export default function AssistantDrawer() {
               style={{ background: "var(--bg-topbar)", borderColor: "var(--border-normal)" }}>
               <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: "var(--border-normal)" }}>
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-md"><Sparkles strokeWidth={2.2} className="h-4.5 w-4.5" /></div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-md"><Bot strokeWidth={2.2} className="h-4.5 w-4.5" /></div>
                   <span className="text-sm font-black tracking-tight" style={{ color: "var(--text-primary)" }}>{t("assistant.title")}</span>
                 </div>
                 <div className="flex items-center gap-1">

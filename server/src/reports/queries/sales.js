@@ -1,15 +1,39 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, getCostColumn, getReturnCostColumn, addPaymentTypeFilter, stockCostJoin, itemsCostJoin } = require("../helpers");
+const { addDateFilter, baseStatusClause, getCostColumn, getReturnCostColumn, addPaymentTypeFilter, stockCostJoin, itemsCostJoin } = require("../helpers");
+
+// Returns in per-item/per-category reports must inherit the same invoice-level
+// filters as the sales side (customer, cashier, status, payment type) — otherwise
+// a filtered report subtracts ALL customers' returns from one customer's revenue.
+// Requires `sr` (sales_returns) and a LEFT-joined `ri` (the return's parent
+// invoice) in scope: walk-in returns have no invoice, so party/cashier fall back
+// to the return's own customer_id/created_by, and invoice-only filters (status,
+// payment type) simply exclude invoice-less returns when actively filtering.
+// Appends the parameters to `params` in the same order as the generated SQL.
+function returnInvoiceFilter(opts, params) {
+  const { customer_id, cashier_id, status, payment_type } = opts;
+  let clause = "";
+  if (customer_id) { clause += " AND COALESCE(ri.customer_id, sr.customer_id) = ?"; params.push(customer_id); }
+  if (cashier_id) { clause += " AND COALESCE(ri.user_id, (SELECT user_id FROM shifts WHERE id = ri.shift_id), sr.created_by) = ?"; params.push(cashier_id); }
+  if (status) { clause += " AND ri.status = ?"; params.push(status); }
+  clause += addPaymentTypeFilter(payment_type, "ri", params);
+  return clause;
+}
 const { getItemsBelowMargin } = require("../../services/waccService");
 const { paginateSql } = require("../pagination");
 
 function dailySales(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  const returnParams = [];
   const { customer_id, category_id, item_id, cashier_id, status, payment_type } = opts;
   const costCol = getCostColumn(opts.cost_method);
+  const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const returnInvFilter = returnInvoiceFilter(opts, returnParams);
   const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
+  // Returns are aggregated per RETURN date (not the original invoice's date) and
+  // joined per-day, so walk-in returns (no invoice) count too. The per-day value
+  // repeats on every invoice row of that day → recover with MAX, never SUM.
   return db.prepare(`
     SELECT DATE(i.created_at) AS date,
       COUNT(i.id) AS invoice_count,
@@ -20,16 +44,16 @@ function dailySales(startDate, endDate, opts = {}) {
       COALESCE(SUM(i.tax_amount), 0) AS total_tax,
       SUM(i.total) - COALESCE(SUM(i.tax_amount), 0) AS net_total,
       COALESCE(SUM(il_agg.total_cost), 0) AS total_cost,
-      COALESCE(SUM(ret.return_total), 0) AS returns_amount,
-      COALESCE(SUM(ret.return_count), 0) AS returns_count,
-      SUM(i.total) - COALESCE(SUM(ret.return_total), 0) AS net_sales,
-      SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
-        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0) AS gross_profit,
+      COALESCE(MAX(ret.return_total), 0) AS returns_amount,
+      COALESCE(MAX(ret.return_count), 0) AS returns_count,
+      SUM(i.total) - COALESCE(MAX(ret.return_total), 0) AS net_sales,
+      SUM(i.total) - COALESCE(MAX(ret.return_total), 0)
+        - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
       CASE WHEN COUNT(i.id) > 0 THEN ROUND(SUM(i.total) * 1.0 / COUNT(i.id), 2) ELSE 0 END AS avg_invoice_value,
-      CASE WHEN (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) > 0
-        THEN ROUND((SUM(i.total) - COALESCE(SUM(ret.return_total), 0)
-          - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(SUM(ret.return_cost), 0))
-          / (SUM(i.total) - COALESCE(SUM(ret.return_total), 0)) * 100, 1) ELSE 0 END AS margin_percent
+      CASE WHEN (SUM(i.total) - COALESCE(MAX(ret.return_total), 0)) > 0
+        THEN ROUND((SUM(i.total) - COALESCE(MAX(ret.return_total), 0)
+          - COALESCE(SUM(il_agg.total_cost), 0) + COALESCE(MAX(ret.return_cost), 0))
+          / (SUM(i.total) - COALESCE(MAX(ret.return_total), 0)) * 100, 1) ELSE 0 END AS margin_percent
     FROM invoices i
     LEFT JOIN (
       SELECT il.invoice_id, SUM(il.quantity * ${costCol}) AS total_cost
@@ -39,18 +63,23 @@ function dailySales(startDate, endDate, opts = {}) {
       GROUP BY il.invoice_id
     ) il_agg ON il_agg.invoice_id = i.id
     LEFT JOIN (
-      SELECT sr.invoice_id,
+      SELECT DATE(sr.created_at) AS return_day,
         SUM(sr.total) AS return_total,
-        COUNT(DISTINCT sr.id) AS return_count,
-        COALESCE(SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}), 0) AS return_cost
+        COUNT(sr.id) AS return_count,
+        COALESCE(SUM(lc.cost), 0) AS return_cost
       FROM sales_returns sr
-      JOIN sales_return_lines srl ON srl.sales_return_id = sr.id
-      LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
-      LEFT JOIN items it ON it.id = srl.item_id
-      WHERE sr.status = 'active'
-      GROUP BY sr.invoice_id
-    ) ret ON ret.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${dateFilter}
+      LEFT JOIN invoices ri ON ri.id = sr.invoice_id
+      LEFT JOIN (
+        SELECT srl.sales_return_id, SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS cost
+        FROM sales_return_lines srl
+        LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
+        LEFT JOIN items it ON it.id = srl.item_id
+        GROUP BY srl.sales_return_id
+      ) lc ON lc.sales_return_id = sr.id
+      WHERE sr.status = 'active' ${returnDateFilter} ${returnInvFilter}
+      GROUP BY DATE(sr.created_at)
+    ) ret ON ret.return_day = DATE(i.created_at)
+    WHERE ${baseStatusClause("i", status)} ${dateFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
       ${status ? " AND i.status = ?" : ""}
@@ -60,6 +89,7 @@ function dailySales(startDate, endDate, opts = {}) {
     GROUP BY DATE(i.created_at)
     ORDER BY date DESC
   `).all(
+    ...returnParams,
     ...params,
     ...(customer_id ? [customer_id] : []),
     ...(cashier_id ? [cashier_id] : []),
@@ -75,7 +105,7 @@ function detailedSales(startDate, endDate, opts = {}) {
   const { q, status, payment_type, customer_id, category_id, item_id } = opts;
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   let sql = `
-    SELECT i.invoice_no,
+    SELECT i.id, i.invoice_no,
       DATE(i.created_at) AS date,
       COALESCE(c.name, 'نقدي') AS customer_name,
       u.full_name AS cashier,
@@ -95,7 +125,7 @@ function detailedSales(startDate, endDate, opts = {}) {
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
     LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE ${baseStatusClause("i", status)} ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${status ? " AND i.status = ?" : ""}
       ${ptFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
@@ -127,7 +157,7 @@ function _detailSalesQuery(startDate, endDate, opts = {}) {
   const { customer_id, category_id, item_id, status, payment_type, cashier_id } = opts;
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
-    SELECT i.invoice_no,
+    SELECT i.id, i.invoice_no,
       DATE(i.created_at) AS date,
       COALESCE(c.name, 'نقدي') AS customer_name,
       u.full_name AS cashier,
@@ -145,7 +175,7 @@ function _detailSalesQuery(startDate, endDate, opts = {}) {
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
     LEFT JOIN invoice_lines il ON il.invoice_id = i.id
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE ${baseStatusClause("i", status)} ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${category_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 JOIN items it2 ON it2.id = il2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND i.id IN (SELECT DISTINCT il2.invoice_id FROM invoice_lines il2 WHERE il2.item_id = ?)" : ""}
@@ -187,7 +217,7 @@ function _detailItemSalesQuery(startDate, endDate, opts = {}) {
     LEFT JOIN item_categories cat ON cat.id = it.category_id
     LEFT JOIN customers c ON c.id = i.customer_id
     LEFT JOIN users u ON u.id = COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id))
-    WHERE i.status != 'cancelled' ${addDateFilter("i.created_at", startDate, endDate, params)}
+    WHERE ${baseStatusClause("i", status)} ${addDateFilter("i.created_at", startDate, endDate, params)}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
@@ -212,6 +242,7 @@ function salesByItem(startDate, endDate, opts = {}) {
   const { category_id, item_id, customer_id, cashier_id, status, payment_type } = opts;
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const returnInvFilter = returnInvoiceFilter(opts, returnParams);
   const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
@@ -251,13 +282,14 @@ function salesByItem(startDate, endDate, opts = {}) {
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      LEFT JOIN invoices ri ON ri.id = sr.invoice_id
       JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
-      WHERE 1=1 ${returnDateFilter}
+      WHERE 1=1 ${returnDateFilter} ${returnInvFilter}
       GROUP BY srl.item_id
     ) ret ON ret.item_id = il.item_id
-    WHERE i.status != 'cancelled' ${dateFilter}
+    WHERE ${baseStatusClause("i", status)} ${dateFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
       ${status ? " AND i.status = ?" : ""}
@@ -284,6 +316,7 @@ function salesByCategory(startDate, endDate, opts = {}) {
   const { category_id, customer_id, cashier_id, status, payment_type, item_id } = opts;
   const costCol = getCostColumn(opts.cost_method);
   const returnDateFilter = addDateFilter("sr.created_at", startDate, endDate, returnParams);
+  const returnInvFilter = returnInvoiceFilter(opts, returnParams);
   const dateFilter = addDateFilter("i.created_at", startDate, endDate, params);
   const ptFilter = addPaymentTypeFilter(payment_type, "i", params);
   return db.prepare(`
@@ -319,13 +352,14 @@ function salesByCategory(startDate, endDate, opts = {}) {
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'
+      LEFT JOIN invoices ri ON ri.id = sr.invoice_id
       JOIN (SELECT sales_return_id, SUM(line_total) AS line_sum FROM sales_return_lines GROUP BY sales_return_id) srsum ON srsum.sales_return_id = srl.sales_return_id
       LEFT JOIN invoice_lines ref_il ON ref_il.id = srl.invoice_line_id
       LEFT JOIN items it ON it.id = srl.item_id
-      WHERE 1=1 ${returnDateFilter}
+      WHERE 1=1 ${returnDateFilter} ${returnInvFilter}
       GROUP BY it.category_id
     ) ret ON COALESCE(ret.category_id, -1) = COALESCE(c.id, -1)
-    WHERE i.status != 'cancelled' ${dateFilter}
+    WHERE ${baseStatusClause("i", status)} ${dateFilter}
       ${customer_id ? " AND i.customer_id = ?" : ""}
       ${cashier_id ? " AND COALESCE(i.user_id, (SELECT user_id FROM shifts WHERE id = i.shift_id)) = ?" : ""}
       ${status ? " AND i.status = ?" : ""}
@@ -456,7 +490,7 @@ function salesByPayment(startDate, endDate, opts = {}) {
       COALESCE(SUM(sr.total), 0) AS returns_amount
     FROM invoices i
     LEFT JOIN sales_returns sr ON sr.invoice_id = i.id AND sr.status = 'active'
-    WHERE i.status != 'cancelled' AND i.payment_type != 'multi'
+    WHERE ${baseStatusClause("i", status)} AND i.payment_type != 'multi'
       ${scopeClause(paramsA)}
     GROUP BY i.payment_type
   `).all(...paramsA, ...scopeArgs);
@@ -471,7 +505,7 @@ function salesByPayment(startDate, endDate, opts = {}) {
     FROM invoices i
     JOIN payment_allocations pa ON pa.invoice_id = i.id
     JOIN payments p ON p.id = pa.payment_id
-    WHERE i.status != 'cancelled' AND i.payment_type = 'multi'
+    WHERE ${baseStatusClause("i", status)} AND i.payment_type = 'multi'
       ${scopeClause(paramsB)}
     GROUP BY p.method
   `).all(...paramsB, ...scopeArgs);
@@ -716,7 +750,7 @@ function cashierOverrideImpactReport(startDate, endDate, opts = {}) {
   const discountParams = [];
   const { cashier_id } = opts;
   return db.prepare(`
-    SELECT COALESCE(u.full_name, u.username, 'unknown') AS cashier,
+    SELECT COALESCE(u.full_name, u.username, 'غير معروف') AS cashier,
       u.id AS cashier_id,
       COALESCE(ov.override_count, 0) AS override_count,
       COALESCE(ov.price_downs, 0) AS price_downs,

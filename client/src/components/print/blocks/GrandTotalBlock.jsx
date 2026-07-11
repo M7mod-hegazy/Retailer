@@ -213,6 +213,60 @@ export default function GrandTotalBlock({ invoice = {}, settings: s, props = {},
   // ── roll (thermal: pure black/white only) ──
   const size = amountFs || `${Math.max(13, Number(g(s, "body_font_size")) + 1)}px`;
 
+  /* ── tafqeet-band: black band with tafqeet below ── */
+  if (variant === "tafqeet-band") {
+    return (
+      <div style={{ marginTop: "6px" }}>
+        <div style={{ background: "#000", color: "#fff", padding: "7px 5px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: size, fontWeight: 900 }}>
+            {labelNode}
+            <span style={{ fontFamily: "monospace" }}>{amount}</span>
+          </div>
+        </div>
+        <div style={{ fontSize: "8px", fontWeight: 700, textAlign: "center", marginTop: "3px", padding: "2px 0", borderTop: "1px dashed #000", borderBottom: "1px dashed #000" }}>
+          {tafqeetText}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── stacked: amount centered on top, label below, no borders ── */
+  if (variant === "stacked") {
+    return (
+      <div style={{ textAlign: "center", marginTop: "6px", padding: "4px 0" }}>
+        <div style={{ fontSize: amountFs || "20px", fontWeight: 900, fontFamily: "monospace", lineHeight: 1.1 }}>{amount}</div>
+        <div style={{ fontSize: labelFs || "9px", fontWeight: 700, marginTop: "2px" }}>{label}</div>
+      </div>
+    );
+  }
+
+  /* ── double-line: double top/bottom border ── */
+  if (variant === "double-line") {
+    return (
+      <div style={{ borderTop: "3px double #000", borderBottom: "3px double #000", padding: "5px 4px", marginTop: "6px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: size, fontWeight: 900 }}>
+          {labelNode}
+          <span style={{ fontFamily: "monospace" }}>{amount}</span>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── reverse-band: white on black inverted ── */
+  if (variant === "reverse-band") {
+    return (
+      <div style={{ marginTop: "6px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 4px", background: "#000", color: "#fff", fontSize: size, fontWeight: 900 }}>
+          <span>{label}</span>
+          <span style={{ fontFamily: "monospace" }}>{amount}</span>
+        </div>
+        <div style={{ fontSize: "8px", fontWeight: 700, textAlign: "left", paddingLeft: "2px", marginTop: "1px" }}>
+          {tafqeetText}
+        </div>
+      </div>
+    );
+  }
+
   if (variant === "stripe" || variant === "band") {
     return (
       <div style={{ background: "#000", color: "#fff", padding: "7px 5px", marginTop: "6px" }}>

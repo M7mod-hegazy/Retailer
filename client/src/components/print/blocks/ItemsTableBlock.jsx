@@ -107,6 +107,244 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const zebraBg = props.zebraBgColor || "#f8fafc";
   const textColor = props.textColor || "#000";
 
+  // Hoisted so both the page and roll branches can use it.
+  const mergedItemName = (line) => {
+    const code = codeOf(line);
+    const name = nameOf(line);
+    return code ? `${code} - ${name}` : name;
+  };
+
+  if (family === "roll") {
+    const currencySymbol = g(s, "currency_symbol");
+
+    // ── Variant: Cards (stacked block per item, dashed separators) ──
+    if (props.variant === "cards") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ borderTop: i > 0 ? "1px dashed #000" : "none", padding: "3px 0" }}>
+              <div style={{ fontWeight: 900 }}>{mergedItemName(line)}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9em" }}>
+                <span>{formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)}</span>
+                <span style={{ fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Minimalist List (borderless, one line per item) ──
+    if (props.variant === "minimalist-list") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "1px 0" }}>
+              <span>{mergedItemName(line)} ×{formatPrintDigits(s, String(line.quantity))}</span>
+              <span style={{ fontWeight: 800 }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Compact (dense single-line items, no padding) ──
+    if (props.variant === "compact") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize: "0.9em", marginBottom: "2px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: 0, lineHeight: 1.3 }}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mergedItemName(line)}</span>
+              <span style={{ fontWeight: 900, marginInlineStart: "4px", whiteSpace: "nowrap" }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Borderless (no grid lines, just separators) ──
+    if (props.variant === "borderless") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", borderBottom: "1px dotted #999" }}>
+              <span>{mergedItemName(line)} ×{formatPrintDigits(s, String(line.quantity))}</span>
+              <span style={{ fontWeight: 800 }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Receipt (classic thermal receipt: dotted dividers, qty×price per line) ──
+    if (props.variant === "receipt") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          <div style={{ borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "1px 0", marginBottom: "2px", textAlign: "center", fontWeight: 900, fontSize: "0.9em" }}>
+            ── الأصناف ──
+          </div>
+          {lines.map((line, i) => (
+            <div key={i}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0 0" }}>
+                <span style={{ fontWeight: 900 }}>{mergedItemName(line)}</span>
+                <span style={{ fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85em", color: "#475569", paddingBottom: "2px", borderBottom: "1px dotted #999" }}>
+                <span>{formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)}</span>
+                <span>{currencySymbol}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Ticket (order ticket: numbered prefix, bold amounts) ──
+    if (props.variant === "ticket") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", gap: "4px", padding: "2px 0", borderBottom: "1px solid #000" }}>
+              <span style={{ fontWeight: 900, minWidth: "18px", textAlign: "center", borderInlineEnd: "1px solid #000", paddingInlineEnd: "4px" }}>
+                {i + 1}
+              </span>
+              <span style={{ flex: 1, fontWeight: 700 }}>{mergedItemName(line)}</span>
+              <span style={{ fontWeight: 900, whiteSpace: "nowrap" }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Ledger (monospace, fixed-width columns, old-school) ──
+    if (props.variant === "ledger") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize: "0.85em", marginBottom: "4px", color: "#000", fontFamily: "monospace" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, borderBottom: "2px solid #000", paddingBottom: "2px", marginBottom: "2px" }}>
+            <span>الصنف</span>
+            <span>كمية</span>
+            <span>إجمالي</span>
+          </div>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "1px 0", background: i % 2 === 0 ? "#f1f5f9" : "transparent" }}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 700 }}>{mergedItemName(line)}</span>
+              <span style={{ width: "24px", textAlign: "center" }}>{formatPrintDigits(s, String(line.quantity))}</span>
+              <span style={{ fontWeight: 900, minWidth: "50px", textAlign: "left" }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Dashed (dashed box around each item) ──
+    if (props.variant === "dashed") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ border: "1px dashed #000", padding: "3px 4px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 900 }}>{mergedItemName(line)}</span>
+                <span style={{ fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+              <div style={{ fontSize: "0.85em", color: "#475569" }}>
+                {formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)} {currencySymbol}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Boxed Items (each item in a solid box) ──
+    if (props.variant === "boxed-items") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ border: "1px solid #000", padding: "2px 4px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 900 }}>{mergedItemName(line)}</span>
+                <span style={{ fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Numbered (bullets with dot leaders) ──
+    if (props.variant === "numbered") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "baseline", gap: "4px", padding: "1px 0" }}>
+              <span style={{ fontWeight: 900, minWidth: "14px" }}>{i + 1}.</span>
+              <span style={{ fontWeight: 700 }}>{nameOf(line)}</span>
+              <span style={{ flex: 1, borderBottom: "1px dotted #000", marginInline: "2px", minWidth: "20px" }} />
+              <span style={{ fontWeight: 900, whiteSpace: "nowrap" }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Two-line (name on line 1, qty × price → total on line 2, no borders) ──
+    if (props.variant === "two-line") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i}>
+              <div style={{ fontWeight: 900, lineHeight: 1.2 }}>{mergedItemName(line)}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9em", color: "#475569" }}>
+                <span>{formatPrintDigits(s, String(line.quantity))} × {smartFormat(priceOf(line), s)} {currencySymbol}</span>
+                <span style={{ fontWeight: 900, color: "#000" }}>{smartFormat(lineTotalOf(line), s)} {currencySymbol}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Striped (alternating background for thermal) ──
+    if (props.variant === "striped") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", fontSize, marginBottom: "4px", color: "#000" }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 4px", background: i % 2 === 0 ? "#e2e8f0" : "transparent" }}>
+              <span style={{ fontWeight: 700 }}>{mergedItemName(line)}</span>
+              <span style={{ fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Variant: Receipt-wide (wider format for 80mm: name, qty, price, total in 4 cols) ──
+    if (props.variant === "receipt-wide") {
+      return (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9em", marginBottom: "4px" }}>
+          <thead>
+            <tr style={{ borderBottom: "2px solid #000" }}>
+              <th style={{ textAlign: "right", padding: "1px 2px", fontWeight: 900 }}>الصنف</th>
+              <th style={{ textAlign: "center", padding: "1px 2px", fontWeight: 900 }}>ك</th>
+              <th style={{ textAlign: "center", padding: "1px 2px", fontWeight: 900 }}>سعر</th>
+              <th style={{ textAlign: "left", padding: "1px 2px", fontWeight: 900 }}>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line, i) => (
+              <tr key={i} style={{ borderBottom: "1px dotted #000" }}>
+                <td style={{ padding: "1px 2px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "50%" }}>{nameOf(line)}</td>
+                <td style={{ padding: "1px 2px", textAlign: "center" }}>{formatPrintDigits(s, String(line.quantity))}</td>
+                <td style={{ padding: "1px 2px", textAlign: "center" }}>{smartFormat(priceOf(line), s)}</td>
+                <td style={{ padding: "1px 2px", textAlign: "left", fontWeight: 900 }}>{smartFormat(lineTotalOf(line), s)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+  }
+
   if (family === "page") {
     // ── Variant: Cards (Boutique layout cards deck) ──
     if (props.variant === "cards") {
@@ -282,12 +520,6 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   // Roll: merge code + name into a single "الصنف" column (~50% width).
   // "SKU - product name" on one line saves horizontal space on narrow thermal paper.
   const showPrice = defaultThermalKeys(rollPaperWidthMm(s)).includes("price");
-
-  const mergedItemName = (line) => {
-    const code = codeOf(line);
-    const name = nameOf(line);
-    return code ? `${code} - ${name}` : name;
-  };
 
   // Thermal printers are 1-bit: light-gray hairlines dither to nothing on
   // paper. Roll tables rule with pure black — border MODE, thickness, density,

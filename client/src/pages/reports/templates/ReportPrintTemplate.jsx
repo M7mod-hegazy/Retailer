@@ -150,6 +150,15 @@ export default function ReportPrintTemplate({
   statement,           // when set → render the dedicated account-statement ledger
 }) {
   const stmtMode = !!statement;
+
+  // ── Settings bridge ──────────────────────────────────────────────────────────
+  // The Print Studio saves table styling in block-based format:
+  //   settings.layout.page.perBlock.report_table.{tableBorder, headerBg, headerColor, ...}
+  // But this template historically reads flat keys:
+  //   settings.table_border, settings.table_header_style, etc.
+  // Bridge: read block-based values first, fall back to flat keys for backwards compat.
+  const rtBlock = settings?.layout?.page?.perBlock?.report_table || {};
+  const pageOrder = settings?.layout?.page?.order || null;
   const accent = settings.accent_color || "#0f172a";
   const currency = settings.currency_symbol || "";
   const template = settings.template || "A4";
@@ -166,45 +175,65 @@ export default function ReportPrintTemplate({
   const footerFontSize = parseFontSize(settings.footer_font_size, 8) + "px";
   const logoMaxHeight = parseFontSize(settings.logo_max_height, 40) + "px";
   const logoAlignment = settings.logo_alignment || "center";
-  const showLogo = settings.show_logo !== false;
-  const showBranch = settings.show_branch !== false;
-  const showAddress = settings.show_address !== false;
-  const showPhone = settings.show_phone !== false;
-  const showTaxId = settings.show_tax_id !== false;
+  // When a Studio layout order is set, respect it for section visibility.
+  // If order doesn't include a block key, hide that section.
+  const hasOrder = Array.isArray(pageOrder) && pageOrder.length > 0;
+  const orderHas = (key) => !hasOrder || pageOrder.includes(key);
+  const showLogo = settings.show_logo !== false && orderHas("logo");
+  const showBranch = settings.show_branch !== false && orderHas("branch");
+  const showAddress = settings.show_address !== false && orderHas("address");
+  const showPhone = settings.show_phone !== false && orderHas("address");
+  const showTaxId = settings.show_tax_id !== false && orderHas("tax_id");
+  const showCompanyName = orderHas("company_name");
   const headerText = settings.receipt_header || "";
   const footerText = settings.receipt_footer || "";
   const customBlocks = settings.custom_text_blocks;
 
-  // ── Preset-driven table style knobs ──────────────────────────────────────────
+  // ── Preset-driven table style knobs (block-based → flat bridge) ─────────────
   // table_zebra: true → alternate row shading; false → plain white rows
-  const tableZebra = settings.table_zebra !== false;
+  const tableZebra = (rtBlock.zebra != null ? rtBlock.zebra : settings.table_zebra) !== false;
   // table_border: "grid" → full cell borders; "rows" → row-only; "none" → no borders
-  const tableBorder = settings.table_border || "rows";
+  const tableBorder = rtBlock.tableBorder || settings.table_border || "rows";
   // table_header_style: "filled" (accent bg + white text), "light" (tint), "line" (border only), "minimal" (bold text, no bg)
-  const tableHeaderStyle = settings.table_header_style || "filled";
+  // Studio uses headerVariant: "dark" → filled, "light" → light, "none" → minimal
+  const headerVariant = rtBlock.headerVariant || null;
+  const tableHeaderStyle = headerVariant
+    ? (headerVariant === "dark" ? "filled" : headerVariant === "light" ? "light" : "minimal")
+    : (settings.table_header_style || "filled");
   // table_row_pad: per-cell padding in px
-  const tableRowPad = parseFontSize(settings.table_row_pad, 3);
+  const tableRowPad = parseFontSize(rtBlock.rowPad != null ? rtBlock.rowPad : settings.table_row_pad, 3);
   // header_style for the report title block: "band" | "strip" | "classic" | "minimal"
   const headerStyle = settings.header_style || "band";
 
-  // Derived styles from the knobs
+  // Block-level overrides for table header colors (from Studio perBlock config)
+  const rtHeaderBg = rtBlock.headerBg || null;
+  const rtHeaderColor = rtBlock.headerColor || null;
+  const rtLineColor = rtBlock.lineColor || null;
+  const rtLineWidth = rtBlock.lineWidth || null;
+  const rtTextColor = rtBlock.textColor || null;
+
+  // Derived styles from the knobs — block-based overrides take priority
   const accentLight = accent + "18"; // ~10% opacity tint for light header style
-  const theadBg =
-    tableHeaderStyle === "filled"  ? accent
+  const theadBg = rtHeaderBg
+    ? rtHeaderBg
+    : tableHeaderStyle === "filled"  ? accent
     : tableHeaderStyle === "light" ? accentLight
     : "transparent";
-  const theadColor =
-    tableHeaderStyle === "filled"  ? "#fff"
+  const theadColor = rtHeaderColor
+    ? rtHeaderColor
+    : tableHeaderStyle === "filled"  ? "#fff"
     : tableHeaderStyle === "light" ? accent
     : accent;
   const theadBorderBottom =
     tableHeaderStyle === "line" || tableHeaderStyle === "minimal"
       ? `2px solid ${accent}`
       : undefined;
+  const lw = rtLineWidth ? `${rtLineWidth}px` : "1px";
+  const lc = rtLineColor || "#e2e8f0";
   const cellBorderRight =
-    tableBorder === "grid" ? `1px solid #e2e8f0` : undefined;
+    tableBorder === "grid" ? `${lw} solid ${lc}` : undefined;
   const rowBorderBottom =
-    tableBorder === "none" ? undefined : "1px solid #e2e8f0";
+    tableBorder === "none" ? undefined : `${lw} solid ${lc}`;
   const rowBorderStyle =
     tableBorder === "grid" || tableBorder === "rows" ? "solid" : "dashed";
 
@@ -273,11 +302,13 @@ export default function ReportPrintTemplate({
     </div>
   ) : null;
 
-  const companyInfoEl = (
+  const companyInfoEl = !showCompanyName && !showBranch && !showAddress && !showPhone && !showTaxId ? null : (
     <div style={{ textAlign: "center", marginBottom: "3mm" }}>
-      <div style={{ fontWeight: 900, fontSize: headerFontSize, color: accent }}>
-        {safeText(settings.company_name || "")}
-      </div>
+      {showCompanyName && (
+        <div style={{ fontWeight: 900, fontSize: headerFontSize, color: accent }}>
+          {safeText(settings.company_name || "")}
+        </div>
+      )}
       {showBranch && settings.branch_name ? (
         <div style={{ fontSize: bodyFontSize, color: "#475569", marginTop: "1mm" }}>
           {safeText(settings.branch_name)}
@@ -474,7 +505,7 @@ export default function ReportPrintTemplate({
           style={{
             flex: 1,
             minHeight: 0,
-            border: isThermal || tableBorder === "none" ? "none" : "1px solid #e2e8f0",
+            border: isThermal || tableBorder === "none" ? "none" : `${lw} solid ${lc}`,
             borderRadius: isThermal ? "0" : "4px",
             overflow: "hidden",
             display: "flex",
@@ -526,9 +557,9 @@ export default function ReportPrintTemplate({
                     style={{
                       background: idx % 2 === 0 ? zebraEven : zebraOdd,
                       borderBottom: isThermal
-                        ? "1px dashed #e2e8f0"
+                        ? `1px dashed ${lc}`
                         : rowBorderBottom
-                          ? `1px ${rowBorderStyle} #e2e8f0`
+                          ? `1px ${rowBorderStyle} ${lc}`
                           : undefined,
                     }}
                   >
@@ -556,7 +587,7 @@ export default function ReportPrintTemplate({
                           style={{
                             padding: isThermal ? "2px 3px" : `${tableRowPad}px 5px`,
                             textAlign: "center",
-                            color: "#0f172a",
+                            color: rtTextColor || "#0f172a",
                             fontFamily: isCode ? "monospace" : undefined,
                             direction: isCode ? "ltr" : undefined,
                             whiteSpace: "normal",

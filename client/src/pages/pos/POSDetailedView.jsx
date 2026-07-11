@@ -5,7 +5,7 @@ import {
   ListTodo, Loader2, Minus, PackageCheck, PauseCircle, Plus, Printer,
   Receipt, RefreshCw, RotateCcw, Search, ShieldCheck, ShoppingCart,
   Sparkles, Trash2, Pencil, User, Wallet, X, TrendingUp, ExternalLink, FileText,
-  Wand2, Settings2, Copy,
+  Wand2, Settings2, Copy, Save, Send,
 } from "lucide-react";
 import BarcodeListener from "../../components/pos/BarcodeListener";
 import PosStickyTotalBar from "../../components/pos/PosStickyTotalBar";
@@ -19,6 +19,7 @@ import PanelEdgeRail from "./parts/PanelEdgeRail";
 import InstallmentPlanner from "../../components/pos/InstallmentPlanner";
 import HeldDropdown from "./parts/HeldDropdown";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import GalleryModal from "./parts/GalleryModal";
 import POSTodayModal from "../../components/pos/POSTodayModal";
 import { InvoiceSaveSuccess } from "../../components/pos/InvoiceSaveSuccess";
@@ -64,6 +65,7 @@ export default function POSDetailedView({ vm }) {
     profitModalOpen, setProfitModalOpen,
     profitDisplayMode, setProfitDisplayMode,
     printPreview, setPrintPreview,
+    waSendOpen, setWaSendOpen,
     galleryOpen, setGalleryOpen, galleryZoom, setGalleryZoom,
     galleryImages, galleryIdx, setGalleryIdx,
     supervisorOverrideOpen, setSupervisorOverrideOpen,
@@ -1570,7 +1572,49 @@ export default function POSDetailedView({ vm }) {
         onSaveOnly={lastSavedInvoice ? undefined : () => saveInvoice(false)}
         saveOnlyLabel="حفظ فقط"
         isSaving={isSaving}
+        onSendWhatsApp={() => setWaSendOpen(true)}
       />
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          invoice={lastSavedInvoice ? {
+            id: lastSavedInvoice.id,
+            invoice_no: lastSavedInvoice.invoice_no,
+            customer_id: lastSavedInvoice.customer?.id,
+            customer_name: lastSavedInvoice.customer?.name,
+            customer_phone: lastSavedInvoice.customer?.phone,
+            walk_in_phone: lastSavedInvoice.walk_in_phone,
+            walk_in_name: lastSavedInvoice.walk_in_name,
+            total: lastSavedInvoice.totals?.total ?? lastSavedInvoice.total,
+            created_at: lastSavedInvoice.date || lastSavedInvoice.created_at,
+            payment_type: lastSavedInvoice.paymentType || lastSavedInvoice.payment_type,
+            discount: lastSavedInvoice.discount,
+            created_by_username: lastSavedInvoice.cashier || lastSavedInvoice.created_by_username,
+            lines: lastSavedInvoice.lines,
+            payments: lastSavedInvoice.payments,
+          } : {
+            invoice_no: docNo || invoiceNumber,
+            customer_id: customer?.id,
+            customer_name: customer?.name,
+            customer_phone: customer?.phone,
+            walk_in_phone: !customer?.id && waLeadPhone.trim() ? waLeadPhone.trim() : null,
+            walk_in_name: !customer?.id && waLeadPhone.trim() ? (waLeadName.trim() || null) : null,
+            total: totals.total,
+            payment_type: paymentType,
+            discount: discount || promotionDiscount,
+            lines,
+            created_by_username: user?.name,
+            created_at: invoiceCreatedAt || new Date().toISOString(),
+            payments: paymentType === "multi" ? [
+              ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+              ...(Number(multiVisa) > 0 && visaMethod ? [{ method_id: visaMethod.id, method_name: visaMethod.name, amount: Number(multiVisa) }] : []),
+              ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
+              ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
+            ] : [{ method: paymentType, amount: totals?.total || 0 }],
+          }}
+        />
+      )}
 
       {/* Set Default View Modal */}
       <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض" showDetach={false}>
@@ -1701,30 +1745,83 @@ export default function POSDetailedView({ vm }) {
       </Modal>
 
       {/* Save Confirm Modal */}
-      <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة" showDetach={false}>
-        <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-            <Receipt className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+      <Modal open={saveConfirmOpen} onClose={() => !isSaving && setSaveConfirmOpen(false)} title="تأكيد حفظ الفاتورة" showDetach={false}>
+        <div className="flex flex-col gap-6 mt-2 animate-modal-enter">
+          <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/80">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <Receipt className="h-5 w-5" />
+            </div>
             <div>
-              <p className="text-sm font-black text-emerald-800">هل أنت متأكد من حفظ الفاتورة؟</p>
-              <p className="text-2sm font-bold text-emerald-700 mt-1">سيتم حفظ الفاتورة بقيمة {formatMoney(totals.total)}</p>
+              <p className="text-sm font-black text-slate-800">تأكيد حفظ الفاتورة الحالية</p>
+              <p className="text-2sm font-bold text-emerald-700 mt-0.5">سيتم تسجيل الفاتورة بقيمة إجمالية قدرها <span className="font-black text-[16px] number-fmt-primary">{formatMoney(totals.total)}</span> ج.م</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+
+          {isSaving ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              <p className="text-2sm font-black text-slate-600 animate-pulse">جاري حفظ وتجهيز الفاتورة...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {/* Save & Print */}
+              <button
+                type="button"
+                onClick={() => { setSaveConfirmOpen(false); saveInvoice(true); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-indigo-50/50 bg-indigo-50/20 hover:bg-indigo-50/60 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/10 group-hover:scale-105 transition-transform shrink-0">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">حفظ وطباعة</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">طباعة إيصال العميل فوراً</span>
+                </div>
+              </button>
+
+              {/* Save & WhatsApp */}
+              <button
+                type="button"
+                onClick={() => { setSaveConfirmOpen(false); saveInvoice(false, { whatsappAfter: true }); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-[#25D366]/20 bg-[#25D366]/5 hover:bg-[#25D366]/10 hover:border-[#25D366]/50 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-md shadow-[#25D366]/20 group-hover:scale-105 transition-transform shrink-0">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">إرسال واتساب</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">إرسال الفاتورة عبر واتساب</span>
+                </div>
+              </button>
+
+              {/* Save Only */}
+              <button
+                type="button"
+                onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-slate-100/50 bg-slate-50/20 hover:bg-slate-50/60 hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-600 text-white shadow-md shadow-slate-600/10 group-hover:scale-105 transition-transform shrink-0">
+                  <Save className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-xs font-black text-slate-800">حفظ فقط</span>
+                  <span className="text-[9px] font-bold text-slate-400 leading-tight">حفظ بدون طباعة أو إرسال</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {!isSaving && (
             <button
-              onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
-              disabled={isSaving}
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all disabled:opacity-50 active:scale-[0.98]"
-            >
-              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد الحفظ"}
-            </button>
-            <button
+              type="button"
               onClick={() => setSaveConfirmOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-white text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer"
             >
-              تراجع
+              تراجع وإلغاء
             </button>
-          </div>
+          )}
         </div>
       </Modal>
 

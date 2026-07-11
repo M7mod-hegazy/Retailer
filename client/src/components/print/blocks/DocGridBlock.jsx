@@ -23,13 +23,14 @@ export default function DocGridBlock({ invoice = {}, settings: s, props = {}, fa
   const border = props.border || "grid";
   const zebra = props.zebra !== false;
   const isRoll = family === "roll";
-  
+  const variant = props.variant || "standard";
+
   const accent = g(s, "accent_color") || "#1e3a8a";
   const lineColor = isRoll ? "#000" : "#e2e8f0";
-  const borderStyle = border === "grid" 
-    ? `1px solid ${lineColor}` 
-    : border === "lines" 
-      ? `1px solid ${lineColor}` 
+  const borderStyle = border === "grid"
+    ? `1px solid ${lineColor}`
+    : border === "lines"
+      ? `1px solid ${lineColor}`
       : "none";
 
   const rows = [
@@ -39,6 +40,58 @@ export default function DocGridBlock({ invoice = {}, settings: s, props = {}, fa
     ...(cashier ? [{ label: "الكاشير", value: cashier }] : []),
     ...(paymentMethod ? [{ label: "طريقة الدفع", value: paymentMethod }] : []),
   ];
+
+  if (variant === "compact") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: isRoll ? "9px" : "10px", marginTop: "4px", marginBottom: "4px" }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+            <span style={{ color: isRoll ? "#000" : "#64748b", fontWeight: 700 }}>{r.label}:</span>
+            <span style={{ fontWeight: 800, fontFamily: r.ltr ? "monospace" : "inherit" }} dir={r.ltr ? "ltr" : "rtl"}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "borderless") {
+    return (
+      <div style={{ fontSize: isRoll ? "9px" : "10px", marginTop: "4px", marginBottom: "4px" }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", borderBottom: "1px dotted #999" }}>
+            <span style={{ color: isRoll ? "#000" : "#64748b", fontWeight: 700 }}>{r.label}:</span>
+            <span style={{ fontWeight: 800, fontFamily: r.ltr ? "monospace" : "inherit" }} dir={r.ltr ? "ltr" : "rtl"}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "centered") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: isRoll ? "9px" : "10px", marginTop: "4px", marginBottom: "4px", textAlign: "center", borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "3px 0" }}>
+        {rows.map((r, i) => (
+          <div key={i}>
+            <span style={{ fontWeight: 700 }}>{r.label}: </span>
+            <span style={{ fontWeight: 800, fontFamily: r.ltr ? "monospace" : "inherit" }} dir={r.ltr ? "ltr" : "rtl"}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "lined") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1px", fontSize: isRoll ? "9px" : "10px", marginTop: "4px", marginBottom: "4px" }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "1px 0", borderBottom: "1px solid #000" }}>
+            <span style={{ fontWeight: 700 }}>{r.label}:</span>
+            <span style={{ fontWeight: 800, fontFamily: r.ltr ? "monospace" : "inherit" }} dir={r.ltr ? "ltr" : "rtl"}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Group into pairs/triplets based on gridCols
   const groupedRows = [];
@@ -50,11 +103,11 @@ export default function DocGridBlock({ invoice = {}, settings: s, props = {}, fa
     width: "100%",
     borderCollapse: "collapse",
     fontSize: isRoll ? "10px" : "11px",
-    marginTop: "6px",
-    marginBottom: "6px",
+    marginTop: variant === "boxed" ? 0 : "6px",
+    marginBottom: variant === "boxed" ? 0 : "6px",
   };
 
-  return (
+  const table = (
     <table style={tableStyle}>
       <tbody>
         {groupedRows.map((rowGroup, rIdx) => (
@@ -77,7 +130,6 @@ export default function DocGridBlock({ invoice = {}, settings: s, props = {}, fa
                 </div>
               </td>
             ))}
-            {/* Pad remaining cells if row is not full */}
             {rowGroup.length < gridCols && Array.from({ length: gridCols - rowGroup.length }).map((_, i) => (
               <td key={`pad-${i}`} style={{ border: borderStyle }} />
             ))}
@@ -86,4 +138,21 @@ export default function DocGridBlock({ invoice = {}, settings: s, props = {}, fa
       </tbody>
     </table>
   );
+
+  if (variant === "boxed") {
+    return (
+      <div style={{
+        marginTop: "6px",
+        marginBottom: "6px",
+        border: `1.5px solid ${isRoll ? "#000" : accent}`,
+        borderRadius: "6px",
+        padding: "6px 8px",
+        background: isRoll ? "transparent" : `${accent}03`,
+      }}>
+        {table}
+      </div>
+    );
+  }
+
+  return table;
 }

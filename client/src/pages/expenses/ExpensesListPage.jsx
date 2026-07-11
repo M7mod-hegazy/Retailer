@@ -431,19 +431,13 @@ const SplineHeader = () => (
           <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <motion.path 
+      <path 
         d="M-100,100 C100,150 200,50 400,100 C600,150 700,80 900,120 C1000,140 1100,100 1200,100" 
         fill="none" stroke="url(#roseGradient)" strokeWidth="3"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, ease: "easeInOut" }}
       />
-      <motion.path 
+      <path 
         d="M-100,120 C150,170 250,70 450,120 C650,170 750,100 950,140 C1050,160 1150,120 1250,120" 
         fill="none" stroke="#f43f5e" strokeOpacity="0.1" strokeWidth="1"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
       />
     </svg>
     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--bg-base)]" />
@@ -603,15 +597,15 @@ export default function ExpensesListPage() {
       <div className="relative z-30 px-8 pt-12 pb-8 max-w-5xl mx-auto w-full">
         {/* Removed the massive stats header - We will integrate it into the control panel */}
         <div className="flex flex-col items-center text-center gap-4 mb-10">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 shadow-sm border border-rose-200">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 shadow-sm border border-rose-200">
             <TrendingDown className="h-6 w-6" />
-          </motion.div>
-          <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tighter">
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tighter">
             المصروفات
-          </motion.h1>
-          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
+          </h1>
+          <p className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
             دفتر تشغيلي لإدارة وتسجيل كافة النفقات والمدفوعات اليومية. استخدم نموذج الإدخال السريع أعلى القائمة لتسجيل مصروف جديد، أو الفلاتر للبحث وتحديد فترات زمنية.
-          </motion.p>
+          </p>
         </div>
 
         {/* ------------------------------------------------------------- */}
@@ -622,7 +616,7 @@ export default function ExpensesListPage() {
             {/* Ambient Glow */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500/10 to-emerald-500/10 rounded-[28px] blur-xl opacity-75 group-hover/console:opacity-100 transition duration-1000 group-hover/console:duration-200 pointer-events-none" />
             
-            <div className="relative flex flex-col rounded-[26px] bg-[var(--bg-surface)]/90 backdrop-blur-xl border border-[var(--border-normal)] shadow-[var(--shadow-elevated)] overflow-hidden">
+            <div className="relative flex flex-col rounded-[26px] bg-[var(--bg-surface)]/90 backdrop-blur-xl border border-[var(--border-normal)] shadow-[var(--shadow-elevated)] overflow-visible">
               
               {/* DECK 1: Stats & Overview */}
               <div className="px-5 pt-3 pb-2 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/50">
@@ -728,11 +722,10 @@ export default function ExpensesListPage() {
           </div>
         ) : (
           groupedRows.map(([date, dateRows]) => (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }}
+            <div 
               key={date} className="flex flex-col gap-3"
             >
-              <div className="sticky top-32 z-30 flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-black text-slate-500 font-mono tracking-widest shadow-sm">
                   {date}
                 </span>
@@ -741,8 +734,7 @@ export default function ExpensesListPage() {
               
               <div className="flex flex-col gap-2">
                 {dateRows.map(row => (
-                  <motion.div 
-                    layoutId={`row-${row.id}`}
+                  <div 
                     key={row.id} 
                     className="group relative bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
@@ -821,10 +813,10 @@ export default function ExpensesListPage() {
                         );
                       })()}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
           ))
         )}
       </main>

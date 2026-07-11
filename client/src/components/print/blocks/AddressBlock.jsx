@@ -48,6 +48,25 @@ export default function AddressBlock({ settings: s, props = {}, family, editing 
     );
   }
 
+  if (variant === "badge") {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", justifyContent: flex }}>
+        {validItems.map((item, index) => (
+          <span key={index} dir={item.type === "phone" ? "ltr" : "rtl"} style={{
+            border: isPage ? `1px solid ${accent}40` : "1px solid #000",
+            borderRadius: "10px",
+            padding: "1px 8px",
+            fontSize,
+            fontWeight: 700,
+            color: isPage ? accent : "#000",
+          }}>
+            {item.val}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   if (variant === "boxed") {
     return (
       <div style={{

@@ -27,12 +27,13 @@ export default function FooterTextBlock({ invoice = {}, settings: s, props = {},
   const blockStyle = {
     textAlign: align,
     fontSize: variant === "centered" ? `${(g(s, "footer_font_size") || 10) + 2}px` : fontSize,
-    color: variant === "boxed" ? accent : "#475569",
+    color: variant === "boxed" || variant === "underline-accent" ? accent : "#475569",
     fontWeight: variant === "centered" ? 800 : 600,
     fontStyle: "italic",
     background: bg,
     padding,
     ...(borderWidth > 0 ? { border: `${borderWidth}px ${borderStyle} ${borderColor}`, borderRadius: "6px" } : {}),
+    ...(variant === "underline-accent" ? { borderTop: `2px solid ${accent}`, paddingTop: "4px" } : {}),
   };
 
   if (family === "page") {
@@ -42,6 +43,55 @@ export default function FooterTextBlock({ invoice = {}, settings: s, props = {},
       </div>
     );
   }
+
+  if (variant === "minimal") {
+    return (
+      <div style={{ marginTop: "6px", fontSize: "9px", color: "#64748b", textAlign: align, fontStyle: "italic" }}>
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "bordered") {
+    return (
+      <div style={{ marginTop: "6px", fontSize, color: "#475569", textAlign: align, fontStyle: "italic", borderTop: "1px solid #000", paddingTop: "4px" }}>
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <div style={{ marginTop: "4px", fontSize: "9px", color: "#64748b", textAlign: align }}>
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "centered") {
+    return (
+      <div style={{ marginTop: "6px", fontSize: "10px", fontWeight: 800, color: "#000", textAlign: "center", borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "3px 0" }}>
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "boxed") {
+    return (
+      <div style={{ marginTop: "6px", fontSize: "10px", color: "#000", textAlign: align, border: "1px solid #000", padding: "3px 4px", fontStyle: "italic" }}>
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "framed") {
+    return (
+      <div style={{ marginTop: "6px", fontSize: "9px", color: "#475569", textAlign: "center", borderTop: "1px solid #000", borderBottom: "1px solid #000", padding: "3px 0", fontWeight: 700 }}>
+        ★ {text} ★
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...blockStyle, marginTop: "10px" }}>
       <div>{text}</div>

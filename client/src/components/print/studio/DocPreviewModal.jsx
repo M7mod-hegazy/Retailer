@@ -11,21 +11,43 @@ import { seedFamilyLayout, resolveEffectiveLayout } from "../layout/layoutModel"
 
 const stripLayout = ({ layout, ...rest } = {}) => rest;
 
+const BLOCK_DOC_SCOPES = new Set([
+  "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
+  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+]);
+
 export default function DocPreviewModal({
   open, scope, size, label,
   appSettings = {}, globalSettings = {}, docSettings = {}, onClose,
 }) {
   const family = familyOfSize(size);
-  const isBlockDoc = scope === "_global" || BLOCK_DOCS.has(scope);
+  const isReportScope = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+  // Per-family inherit: check inherit_global_roll / inherit_global_page, fallback to legacy inherit_global
+  const familyKey = `inherit_global_${family}`;
+  const docInherit = docSettings[familyKey] ?? docSettings.inherit_global;
+  const inheritGlobal = docInherit !== undefined ? docInherit : !isReportScope;
 
   const settings = useMemo(() => {
-    const m = { ...appSettings, ...stripLayout(globalSettings), ...stripLayout(docSettings) };
+    // Match Studio merge: respect inherit_global
+    let m;
+    if (scope === "_global" || inheritGlobal) {
+      m = { ...appSettings, ...stripLayout(globalSettings) };
+    } else {
+      m = { ...appSettings, ...stripLayout(docSettings) };
+    }
     return { ...m, receipt_width: family === "roll" ? size : m.receipt_width, _previewSize: size };
-  }, [appSettings, globalSettings, docSettings, family, size]);
+  }, [appSettings, globalSettings, docSettings, family, size, scope, inheritGlobal]);
 
-  const layout = useMemo(() => ({
-    [family]: resolveEffectiveLayout(globalSettings, docSettings, family, scope) || seedFamilyLayout(family, scope),
-  }), [globalSettings, docSettings, family, scope]);
+  const layout = useMemo(() => {
+    // Match Studio's effFam() — raw layout, preserves perBlock variants
+    const getLayout = () => {
+      if (scope === "_global" || inheritGlobal) {
+        return (globalSettings?.layout || {})[family] || seedFamilyLayout(family, scope);
+      }
+      return (docSettings?.layout || {})[family] || seedFamilyLayout(family, scope);
+    };
+    return { [family]: getLayout() };
+  }, [globalSettings, docSettings, family, scope, inheritGlobal]);
 
   const invoice = useMemo(() => sampleById("normal"), []);
 

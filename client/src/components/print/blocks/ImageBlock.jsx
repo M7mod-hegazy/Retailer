@@ -51,11 +51,20 @@ export default function ImageBlock({ props = {}, family, editing }) {
   const maxHeight = props.maxHeight != null ? props.maxHeight : (variant === "banner" ? 120 : 60);
   const justifyContent = ALIGN_MAP[props.align] || ALIGN_MAP.center;
 
-  const borderWidth = props.borderWidth != null ? Number(props.borderWidth) : (variant === "card" ? 1 : 0);
-  const borderStyle = props.borderStyle || "solid";
-  const borderColor = props.borderColor || (variant === "card" ? "#e2e8f0" : "#000");
-  const borderRadius = props.borderRadius != null ? Number(props.borderRadius) : (variant === "card" ? 8 : variant === "banner" ? 4 : 0);
-  const shadow = props.shadow || (variant === "card" ? "md" : "none");
+  const isRoll = family === "roll";
+
+  // Thermal heads can't render box-shadow (1-bit, no grayscale) — roll
+  // substitutes a double border ("card") or dashed top/bottom rules
+  // ("banner") for the elevation effect page paper gets via shadow.
+  const borderWidth = props.borderWidth != null
+    ? Number(props.borderWidth)
+    : (isRoll ? (variant === "card" ? 3 : 0) : (variant === "card" ? 1 : 0));
+  const borderStyle = props.borderStyle || (isRoll && variant === "card" ? "double" : "solid");
+  const borderColor = props.borderColor || (isRoll ? "#000" : (variant === "card" ? "#e2e8f0" : "#000"));
+  const borderRadius = props.borderRadius != null
+    ? Number(props.borderRadius)
+    : (isRoll ? 0 : (variant === "card" ? 8 : variant === "banner" ? 4 : 0));
+  const shadow = isRoll ? "none" : (props.shadow || (variant === "card" ? "md" : "none"));
   const shadowMap = {
     none: "none",
     sm: "0 1px 2px rgba(0,0,0,0.05)",
@@ -68,8 +77,9 @@ export default function ImageBlock({ props = {}, family, editing }) {
     objectFit: variant === "banner" ? "cover" : "contain",
     display: "block",
     ...(variant === "banner" ? { width: "100%" } : {}),
-    ...(variant === "card" ? { padding: "4px", background: "#fff" } : {}),
+    ...(variant === "card" && !isRoll ? { padding: "4px", background: "#fff" } : {}),
     ...(borderWidth > 0 ? { border: `${borderWidth}px ${borderStyle} ${borderColor}` } : {}),
+    ...(isRoll && variant === "banner" ? { borderTop: "1px dashed #000", borderBottom: "1px dashed #000" } : {}),
     ...(borderRadius > 0 ? { borderRadius: `${borderRadius}px` } : {}),
     boxShadow: shadowMap[shadow] || "none"
   };

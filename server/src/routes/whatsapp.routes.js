@@ -113,7 +113,7 @@ router.post("/find-or-create-customer", requirePagePermission("pos", "add"), (re
 });
 
 // Enqueue a WhatsApp message
-router.post("/enqueue", requirePagePermission("pos", "add"), (req, res) => {
+router.post("/enqueue", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), (req, res) => {
   try {
     const db = getDb();
     const { recipient_phone, customer_id, kind = "receipt", payload = {}, scheduled_at } = req.body;
@@ -144,8 +144,9 @@ router.get("/outbox", requirePagePermission("settings", "view"), (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// Message templates
-router.get("/templates", requirePagePermission("settings", "view"), (_req, res) => {
+// Message templates — readable by anyone who can send receipts, manage POS/sales returns,
+// or configure WhatsApp channels.
+router.get("/templates", requireAnyPagePermission(["settings", "whatsapp_receipt", "whatsapp_crm", "pos", "sales_returns"], "view"), (_req, res) => {
   try {
     const db = getDb();
     const rows = db.prepare("SELECT * FROM message_templates ORDER BY kind").all();

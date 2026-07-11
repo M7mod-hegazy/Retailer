@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
-  Package, ShoppingCart, Printer, History, Settings2,
+  Package, ShoppingCart, Printer, History, Settings2, MessageCircle,
 } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useUiStore } from "../../stores/uiStore";
@@ -10,6 +10,7 @@ import api from "../../services/api";
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
@@ -82,6 +83,7 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [printSettings, setPrintSettings] = useState({});
   const [printOpen, setPrintOpen] = useState(false);
+  const [waSendOpen, setWaSendOpen] = useState(false);
   const [timeline, setTimeline] = useState([]);
 
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -249,6 +251,13 @@ export default function InvoiceDetailPage() {
                 طباعة
               </DocumentActionButton>
             </PermissionGate>
+            {(invoice.customer_phone || invoice.walk_in_phone) && (
+              <PermissionGate page="whatsapp_receipt" action="send">
+                <DocumentActionButton variant="default" icon={MessageCircle} onClick={() => setWaSendOpen(true)}>
+                  واتساب
+                </DocumentActionButton>
+              </PermissionGate>
+            )}
             {!isCancelled && !isAmended && (
               <PermissionGate page="pos" action="edit">
                 <DocumentActionButton variant="edit" icon={Pencil} onClick={handleEdit}>
@@ -496,6 +505,14 @@ export default function InvoiceDetailPage() {
         settings={printSettings}
         operationLabel="فاتورة بيع"
       />
+
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          invoice={invoice}
+        />
+      )}
     </div>
   );
 }

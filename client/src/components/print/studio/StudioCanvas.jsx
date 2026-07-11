@@ -11,6 +11,12 @@ import { SIZES, SHEET_W, PX_PER_MM, pageDimensions, pageWidthStr, pageHeightStr,
 const NO_TYPOGRAPHY = new Set(["logo", "qr", "image", "divider", "spacer", "barcode"]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// Scopes that can inherit from _global. Reports have their own layouts.
+const INHERITABLE_SCOPES = new Set([
+  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
+  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+]);
+
 function FloatingToolbar({ st }) {
   const { selected, fam } = st;
   const selInsert = (fam.inserted || []).find((b) => b.id === selected);
@@ -61,11 +67,12 @@ function FloatingToolbar({ st }) {
   );
 }
 
-export default function StudioCanvas({ st, children }) {
+export default function StudioCanvas({ st, children, fitToViewRef }) {
   const sheetRef = useRef(null);
   const containerRef = useRef(null);
   const measureRef = useRef(null);
   const [contentMm, setContentMm] = useState(0);
+  const [sheetPxH, setSheetPxH] = useState(0);
   const [dragGhost, setDragGhost] = useState(null);
   const [pageViewMode, setPageViewMode] = useState("stacked");
   const [currentPage, setCurrentPage] = useState(0);
@@ -76,6 +83,38 @@ export default function StudioCanvas({ st, children }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const wasDrag = useRef(false);
   const panRef = useRef({ active: false, startX: 0, startY: 0, px: 0, py: 0 });
+
+  // Fit ALL rendered content height into the viewport — width scrolls if needed.
+  // Capped at 100% so we never zoom in beyond native; floor at 10%.
+  const fitToView = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const vh = el.clientHeight - 56; // p-6 padding + small breathing room
+    if (vh <= 0) return;
+    const dims = pageDimensions(size, orientation);
+    const pageHmm = dims.hMm || 0;
+    // Use the LARGER of measured content height and page height (covers multi-page stacks + rolls)
+    const targetMm = Math.max(contentMm || 0, pageHmm, 80);
+    const targetPxH = targetMm * PX_PER_MM;
+    if (targetPxH <= 0) return;
+    const z = clamp(vh / targetPxH, 0.10, 1);
+    st.setZoom(Math.round(z * 100) / 100);
+    setPan({ x: 0, y: 0 });
+  };
+
+  // Expose fitToView to parent via ref
+  if (fitToViewRef) fitToViewRef.current = fitToView;
+
+  // Auto-fit when scope/size/orientation/family changes.
+  // Double rAF so contentMm's measurement layout-effect has fully run first.
+  const scopeKey = st.scope;
+  useLayoutEffect(() => {
+    if (children || st.compare) return;
+    let raf1, raf2;
+    raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => fitToView()); });
+    return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey, size, orientation, family]);
 
   const onBgPointerDown = (e) => {
     if (st.compare || children) return;
@@ -117,12 +156,22 @@ export default function StudioCanvas({ st, children }) {
     }
   }, [st.renderLayout, st.canvasSettings, family, size, orientation, st.sampleId, st.compare, st.fam, pageH]);
 
-  // Total pages based on smart breaks
+  // Measure the actual unscaled sheet height (includes page gaps in stacked view)
+  // and compute unscaled sheet width — used by the wrapper to give correct layout height.
+  const sheetPxW = (pageDimensions(size, orientation).wMm || parseFloat(size) || 80) * PX_PER_MM;
+
+  // Total pages based on smart breaks — must be declared before useLayoutEffect that depends on it
   const smartPages = smartBreaksMm.length + 1;
   const theoryPages = pageH && contentMm ? Math.max(1, Math.ceil(contentMm / pageH - 0.005)) : 1;
   const pages = smartPages > 1 ? smartPages : theoryPages;
   const fillRatio = pageH && contentMm ? contentMm / pageH : 0;
   const fitTone = fillRatio <= 0.92 ? "ok" : fillRatio <= 1.0 ? "warn" : "over";
+
+  useLayoutEffect(() => {
+    const sheet = st.sheetElRef?.current;
+    if (!sheet) return;
+    setSheetPxH(sheet.scrollHeight);
+  }, [contentMm, pages, pageViewMode, sheetW, size, orientation, family, st.renderLayout, st.fam]);
 
   const paperMm = parseFloat(size) || 80;
   const isCalibrated = !!(st.calibration && st.calibration.printAreaWidthMm > 0);
@@ -421,9 +470,14 @@ export default function StudioCanvas({ st, children }) {
           style={{ cursor: panMode ? "grab" : undefined }}
         >
           <div className="flex min-h-full w-full p-6">
+            {/* Wrapper provides correct layout height (scaled), so scrollbar matches visual —			transform: scale() alone doesn't shrink the layout box. */}
+            <div className="m-auto" style={{
+              position: "relative",
+              width: `${sheetPxW * zoom}px`,
+              height: `${sheetPxH * zoom}px`,
+            }}>
             <div ref={(el) => { if (st.sheetElRef) st.sheetElRef.current = el; }}
-              className="m-auto"
-              style={{ position: "relative", width: sheetW, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center center", pointerEvents: panMode ? "none" : undefined }}
+              style={{ position: "absolute", top: 0, left: "50%", width: sheetW, transform: `translate(-50%, 0) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "top center", pointerEvents: panMode ? "none" : undefined }}
             onClick={(e) => e.stopPropagation()}>
             {st.showRuler && <MmRulers size={size} orientation={orientation} contentMm={contentMm} pageH={pageH} />}
             {bandClipped && (
@@ -438,7 +492,8 @@ export default function StudioCanvas({ st, children }) {
               <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 0, borderLeft: "1.5px dashed var(--primary, #7c3aed)", zIndex: 45, pointerEvents: "none" }} />
             )}
             {renderPages()}
-          </div>
+            </div>
+            </div> {/* end scaled wrapper */}
           </div>
         </div>
       )}
@@ -488,11 +543,62 @@ export default function StudioCanvas({ st, children }) {
         </button>
       )}
 
+      {INHERITABLE_SCOPES.has(st.scope) && (
+        <div
+          dir="rtl"
+          className={`absolute right-3 z-50 flex items-center gap-1.5 overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow ${
+            !children && family === "page" && !st.compare && pageH > 0 ? "top-16" : "top-3"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              st.toggleInheritGlobal?.();
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-black transition-all ${
+              st.inheritGlobal
+                ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                : "bg-[var(--bg-input)] text-[var(--text-secondary)]"
+            }`}
+            title={st.inheritGlobal ? `يرث من التصميم العام (${st.family === "roll" ? "رول" : "صفحة"}) — اضغط لتفعيل التصميم الخاص` : `تصميم خاص (${st.family === "roll" ? "رول" : "صفحة"}) — اضغط للارث من التصميم العام`}
+          >
+            {st.inheritGlobal ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v18" /><path d="M3 12h18" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+            {st.inheritGlobal ? `يرث من العام` : `تصميم خاص`}
+            <span className="text-[8px] opacity-60 font-normal">{st.family === "roll" ? "رول" : "صفحة"}</span>
+          </button>
+          {/* Show a dot when there are local edits hidden by inheritance */}
+          {st.inheritGlobal && st.ownFamily && (
+            <span
+              className="h-2 w-2 rounded-full bg-[var(--warning-text)]"
+              title="يوجد تعديلات محلية محفوظة لكنها غير معتمدة حالياً — تعطيل الارث لاستعمالها"
+            />
+          )}
+          <span className="px-1.5 text-[9px] font-bold text-[var(--text-muted)] select-none">
+            {st.inheritGlobal ? "يرث" : "مخصص"}
+          </span>
+        </div>
+      )}
+
       <div className="absolute top-3 left-3 z-50 flex items-center gap-0.5 overflow-hidden rounded-lg border border-[var(--border-normal)] bg-[var(--bg-elevated)] shadow">
         <button type="button" onClick={(e) => { e.stopPropagation(); setPanMode((v) => !v); }}
           className={`px-2.5 py-1.5 text-sm font-black transition-colors ${panMode ? "bg-primary text-white" : "text-text-secondary hover:bg-bg-input"}`}
           title={panMode ? "الخروج من يد التصفح" : "يد التصفح — حرك اللوحة بحرية"}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v1"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2a5 5 0 0 1-5-5 3 3 0 0 1 1.5-2.6L4 16"/></svg>
+        </button>
+        <span className="h-4 w-px bg-border-subtle" />
+        <button type="button" onClick={(e) => { e.stopPropagation(); fitToView(); }}
+          className="px-2.5 py-1.5 text-sm font-black text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"
+          title="ملاءمة العرض — زوم وتوسيط تلقائي">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
         </button>
         <span className="h-4 w-px bg-border-subtle" />
         <button type="button" onClick={(e) => { e.stopPropagation(); st.setZoom((z) => Math.min(4, Math.round((z + 0.1) * 10) / 10)); }}

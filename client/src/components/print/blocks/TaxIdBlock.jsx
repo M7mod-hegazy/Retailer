@@ -18,6 +18,21 @@ export default function TaxIdBlock({ settings: s, props = {}, family, editing })
   const alignFlexMap = { right: "flex-start", center: "center", left: "flex-end" };
   const justifyContent = alignFlexMap[align] || "flex-start";
 
+  if (variant === "minimal") {
+    return (
+      <div style={{
+        fontSize: `${Math.max(8, Number(fontSize) - 1)}px`,
+        marginTop: "2px",
+        textAlign: align,
+        color: "#64748b",
+        fontWeight: 600,
+      }}>
+        {label ? `${label}: ` : ""}
+        <span dir="ltr" style={{ fontFamily: "monospace", letterSpacing: "0.5px" }}>{taxId}</span>
+      </div>
+    );
+  }
+
   if (variant === "boxed") {
     return (
       <div style={{
@@ -59,6 +74,29 @@ export default function TaxIdBlock({ settings: s, props = {}, family, editing })
         <span dir="ltr" style={{ fontFamily: "monospace", letterSpacing: "0.5px" }}>
           {taxId}
         </span>
+      </div>
+    );
+  }
+
+  if (variant === "badge") {
+    return (
+      <div style={{ display: "flex", justifyContent, marginTop: "4px" }}>
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          background: family === "page" ? accent : "#000",
+          color: "#fff",
+          padding: "3px 10px",
+          borderRadius: "20px",
+          fontSize,
+          fontWeight: 700,
+        }}>
+          {label && <span style={{ opacity: 0.85 }}>{label}:</span>}
+          <span dir="ltr" style={{ fontFamily: "monospace", letterSpacing: "0.5px" }}>
+            {taxId}
+          </span>
+        </div>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import React from "react";
-import { g } from "./blockUtils";
+import { g, smartFormat } from "./blockUtils";
 
 // props.label renames the caption (empty string keeps just the name).
 export default function CustomerBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
@@ -28,6 +28,7 @@ export default function CustomerBlock({ invoice = {}, settings: s, props = {}, f
   const label = props.label !== undefined ? props.label : "العميل";
   const variant = props.variant || (props.layoutStyle === "stacked" ? "stacked" : "standard");
   const isStacked = variant === "stacked";
+  const isRoll = family !== "page";
   const currency = g(s, "currency_symbol") || "ر.س";
   const accent = s ? (s.accent_color || "#1e3a8a") : "#1e3a8a";
 
@@ -113,7 +114,7 @@ export default function CustomerBlock({ invoice = {}, settings: s, props = {}, f
     );
   }
 
-  if (variant === "boxed" || variant === "two-column") {
+  if (variant === "boxed") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "10px", border: "1px solid #000", padding: "4px 6px", margin: "4px 0" }}>
         <div style={{ borderBottom: "1px dashed #000", paddingBottom: "3px", marginBottom: "2px", display: "flex", justifyContent: "space-between" }}>
@@ -150,6 +151,81 @@ export default function CustomerBlock({ invoice = {}, settings: s, props = {}, f
             <span style={{ fontWeight: 800 }}>{points}</span>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (variant === "inline") {
+    if (isRoll) {
+      const parts = [name];
+      if (showPhone && phone) parts.push(phone);
+      return (
+        <div style={{ fontSize: "9px", marginTop: "2px" }}>
+          {label && <span style={{ fontWeight: 700 }}>{label}: </span>}
+          <span>{parts.join(" — ")}</span>
+        </div>
+      );
+    }
+    const parts = [name];
+    if (showPhone && phone) parts.push(`هاتف: ${phone}`);
+    if (showAddress && address) parts.push(address);
+    return (
+      <div style={{ fontSize: "10px", color: "#475569", marginTop: "4px" }}>
+        {label && <span style={{ fontWeight: 700, color: accent }}>{label}: </span>}
+        <span style={{ fontWeight: 600 }}>{parts.join(" | ")}</span>
+      </div>
+    );
+  }
+
+  if (variant === "minimal") {
+    if (isRoll) {
+      return (
+        <div style={{ fontSize: "9px", marginTop: "2px" }}>
+          <span style={{ fontWeight: 800 }}>{name}</span>
+        </div>
+      );
+    }
+    return (
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "#334155", marginTop: "4px" }}>
+        {name}
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    if (isRoll) {
+      return (
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8px", borderTop: "1px dashed #000", paddingTop: "1px", marginTop: "2px" }}>
+          <span style={{ fontWeight: 700 }}>{name}</span>
+          {showPhone && phone && <span style={{ fontFamily: "monospace" }}>{phone}</span>}
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", borderTop: "1px solid #e2e8f0", paddingTop: "4px", marginTop: "4px" }}>
+        <span style={{ fontWeight: 700, color: "#334155" }}>{name}</span>
+        {showPhone && phone && <span style={{ fontFamily: "monospace" }}>{phone}</span>}
+      </div>
+    );
+  }
+
+  if (variant === "two-column") {
+    const pairs = [
+      [label || "العميل", name],
+      showPhone && phone ? ["الهاتف", phone] : null,
+      showAddress && address ? ["العنوان", address] : null,
+      showTaxId && taxId ? ["الرقم الضريبي", taxId] : null,
+      showBalance && balance !== undefined ? ["الرصيد", `${currency} ${smartFormat(balance, s)}`] : null,
+      showPoints && points !== undefined ? ["النقاط", String(points)] : null,
+    ].filter(Boolean);
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 10px", fontSize: "10px" }}>
+        {pairs.map(([k, v]) => (
+          <span key={k}>
+            <span style={{ fontWeight: 700 }}>{k}: </span>
+            <span>{v}</span>
+          </span>
+        ))}
       </div>
     );
   }

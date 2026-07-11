@@ -11,6 +11,7 @@ export default function SortTh({
   resizableKey,
   sortConfig,
   onSort,
+  helpText,
 }) {
   const mw = minWidth || 40;
   const justify = className.includes("hdr-center") ? "justify-center" : "justify-between";
@@ -19,6 +20,7 @@ export default function SortTh({
       className={`relative select-none border-l border-slate-200/80 px-2 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap transition-colors ${className} ${sortKey && onSort ? "cursor-pointer hover:bg-slate-100" : ""}`}
       style={{ width, minWidth: mw, maxWidth: width }}
       onClick={() => onSort && sortKey && onSort(sortKey)}
+      title={helpText || undefined}
     >
       <div className={`flex items-center ${justify} overflow-hidden`}>
         <span className="truncate">{label}</span>

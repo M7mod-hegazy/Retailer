@@ -585,7 +585,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between rounded-[10px] border border-border bg-bg-surface px-3 py-2.5 text-2sm font-bold text-text-primary outline-none transition-all hover:border-primary focus:border-primary shadow-sm"
       >
-        <span className="truncate">{selected ? fmt(selected.label_key) : "اختر تصنيف..."}</span>
+        <span className="truncate">{selected ? (selected.label || fmt(selected.label_key)) : "اختر تصنيف..."}</span>
         <ChevronDown size={14} className={`text-text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       <AnimatePresence>
@@ -607,7 +607,7 @@ export function ClassificationSelector({ classifications, value, onChange, forma
                     value === cls.id ? "bg-primary-50 text-text-accent" : "text-text-secondary hover:bg-bg-overlay hover:text-text-primary"
                   }`}
                 >
-                  <span>{fmt(cls.label_key)}</span>
+                  <span>{cls.label || fmt(cls.label_key)}</span>
                   <div className="flex items-center gap-1.5">
                     {cls.availableModes.includes("summary") && <span className="text-[9px] text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">ملخص</span>}
                     {cls.availableModes.includes("detailed") && <span className="text-[9px] text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">تفصيلي</span>}
@@ -699,7 +699,7 @@ export function MultiSelectCheckboxes({ options, value = [], onChange, label, fo
                     >
                       {checked && <Check size={10} className="text-white" strokeWidth={3} />}
                     </div>
-                    <span className="text-2sm font-bold text-text-secondary">{fmt(opt.label_key)}</span>
+                    <span className="text-2sm font-bold text-text-secondary">{opt.label || fmt(opt.label_key)}</span>
                   </label>
                 );
               })}

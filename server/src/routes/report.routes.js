@@ -4,7 +4,7 @@ const { getDb } = require("../config/database");
 const { listRows, listRowsBySource } = require("../reports/index");
 const { REPORT_REGISTRY, getSource, getSourceClassifications } = require("../reports/registry");
 const { buildColumnsFromRows } = require("../reports/helpers");
-const { getReportColumns, getReportTitle, getReportDescription, normalizeStructuredReport } = require("../reports/columns");
+const { getReportColumns, getReportTitle, getReportDescription, normalizeStructuredReport, computeReportTotals, VALUE_TRANSLATIONS } = require("../reports/columns");
 const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
@@ -43,60 +43,30 @@ function buildOpts(query = {}) {
   };
 }
 
+// SQL is the authority for id filters. This layer only:
+// 1. applies free-text `q` across row values (for queries without SQL search), and
+// 2. re-asserts an id filter when the row carries that EXACT id column
+//    (harmless when SQL already filtered; a safety net when it didn't).
+// It must never fall back to name columns — comparing category_name/cashier
+// against an id used to wipe correctly-filtered aggregate reports to zero rows.
+const POST_FILTER_ID_KEYS = ["category_id", "item_id", "customer_id", "supplier_id", "cashier_id"];
 function applyRowFilters(rows, opts = {}) {
-  const { q, category_id, item_id, customer_id, supplier_id, cashier_id } = opts;
-  const needle = String(q || "").trim().toLowerCase();
-  if (!needle && !category_id && !item_id && !customer_id && !supplier_id && !cashier_id) return rows;
+  const needle = String(opts.q || "").trim().toLowerCase();
+  const idFilters = POST_FILTER_ID_KEYS.filter((key) => opts[key]);
+  if (!needle && !idFilters.length) return rows;
   return rows.filter((row) => {
-    let match = true;
     if (needle) {
-      match = Object.entries(row).some(([key, value]) => {
+      const hit = Object.entries(row).some(([key, value]) => {
         if (key.startsWith("_") || value == null || typeof value === "object") return false;
         return String(value).toLowerCase().includes(needle);
       });
+      if (!hit) return false;
     }
-    if (category_id) {
-      const rowCat = row.category_id ?? row.category_name ?? row.category;
-      if (rowCat !== undefined && rowCat !== null) {
-        match = match && String(rowCat) === String(category_id);
-      }
+    for (const key of idFilters) {
+      if (row[key] !== undefined && row[key] !== null && String(row[key]) !== String(opts[key])) return false;
     }
-    if (item_id) {
-      if (row.item_id !== undefined) {
-        match = match && String(row.item_id) === String(item_id);
-      } else if (row.id !== undefined && row.item_code !== undefined) {
-        match = match && (String(row.id) === String(item_id) || String(row.item_code) === String(item_id));
-      }
-    }
-    if (customer_id && row.customer_id !== undefined) {
-      match = match && String(row.customer_id) === String(customer_id);
-    }
-    if (supplier_id && row.supplier_id !== undefined) {
-      match = match && String(row.supplier_id) === String(supplier_id);
-    }
-    if (cashier_id) {
-      const rowCashier = row.cashier_id ?? row.cashier;
-      if (rowCashier !== undefined && rowCashier !== null) {
-        match = match && String(rowCashier) === String(cashier_id);
-      }
-    }
-    return match;
+    return true;
   });
-}
-
-function computeTotals(rows, columns) {
-  const totals = {};
-  if (!rows.length || !columns.length) return totals;
-  columns.forEach((col) => {
-    if (col.type === "money" || col.type === "number" || col.type === "percent") {
-      const sum = rows.reduce((acc, row) => {
-        const val = Number(row[col.key]);
-        return acc + (isNaN(val) ? 0 : val);
-      }, 0);
-      totals[col.key] = Math.round(sum * 100) / 100;
-    }
-  });
-  return totals;
 }
 
 function normalizeReportPayload(data) {
@@ -197,10 +167,21 @@ function buildClassificationColumns() {
 }
 
 function buildReportsConfigPayload() {
+  // Ship each classification with its human description so cards/headers never
+  // fall back to a generic sentence (descriptions are keyed by query slug).
+  const classifications = {};
+  Object.entries(REPORT_REGISTRY.classifications || {}).forEach(([sourceKey, classes]) => {
+    classifications[sourceKey] = (classes || []).map((cls) => ({
+      ...cls,
+      desc: getReportDescription(cls.detailedQuery || cls.summaryQuery || ""),
+    }));
+  });
   return {
     ...REPORT_REGISTRY,
+    classifications,
     reports: REPORT_REGISTRY.reports.map(hydrateReportDefinition),
     classificationColumns: buildClassificationColumns(),
+    valueTranslations: VALUE_TRANSLATIONS,
   };
 }
 
@@ -252,7 +233,7 @@ router.get("/run/:slug", (req, res, next) => {
     const columns = getReportColumns(slug, rows.length ? rows : paginated);
 
     // Compute full-dataset aggregates for totals row
-    const totals = computeTotals(rows, columns);
+    const totals = computeReportTotals(rows, columns);
 
     res.json({
       success: true,
@@ -297,7 +278,7 @@ router.get("/export-slug/:slug", (req, res, next) => {
     const fmt = (format || "excel").toLowerCase();
 
     if (fmt === "word" || fmt === "docx") {
-      const totals = computeTotals(rows, columns);
+      const totals = computeReportTotals(rows, columns);
       filePath = await exportRowsToDocx({ rows, title: reportTitle, columns, rtl: true, filters, totals, companyName: "ElHegazi Retailer" });
       contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       extension = "docx";
@@ -309,7 +290,7 @@ router.get("/export-slug/:slug", (req, res, next) => {
         showTotals: req.query.showTotals !== "false",
         showPageNumbers: req.query.showPageNumbers !== "false",
       };
-      const totals = computeTotals(rows, columns);
+      const totals = computeReportTotals(rows, columns);
       filePath = await exportRowsToPdfV3({ rows, title: reportTitle, columns, filters, totals, ...pdfOpts });
       contentType = "application/pdf";
       extension = "pdf";
@@ -406,10 +387,14 @@ router.get("/source/:sourceKey/run", requireReportAccess(true), (req, res, next)
     // Allow up to 10,000 rows for print preview / full-export requests
     const ps = Math.min(10000, Math.max(1, parseInt(pageSize) || 50));
     const paginated = rows.slice((p - 1) * ps, p * ps);
-    const columns = getReportColumns(clsDef.detailedQuery || clsDef.summaryQuery, rows.length ? rows : paginated);
-    const totals = computeTotals(rows, columns);
-
-    const querySlug = clsDef.detailedQuery || clsDef.summaryQuery;
+    // Resolve the report identity (columns/title/desc) from the query that actually
+    // ran for this mode — summary mode used to inherit the detailed query's title
+    // and hidden-column sets.
+    const querySlug = mode === "summary"
+      ? (clsDef.summaryQuery || clsDef.detailedQuery)
+      : (clsDef.detailedQuery || clsDef.summaryQuery);
+    const columns = getReportColumns(querySlug, rows.length ? rows : paginated);
+    const totals = computeReportTotals(rows, columns);
     res.json({
       success: true,
       data: paginated,

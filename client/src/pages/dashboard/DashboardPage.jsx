@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, Wifi as WifiIcon, WifiOff as WifiOffIcon } from "lucide-react";
+import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, HardDrive, Wifi as WifiIcon, WifiOff as WifiOffIcon, PlayCircle, CloudUpload, ShieldCheck, Database, ImageIcon } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
@@ -59,6 +59,8 @@ const TOOLTIPS = {
   employees: "بيانات الموظفين والرواتب",
   settings: "الضرائب والطابعات وإعدادات المنشأة",
   updates: "أحدث نسخ وتحديثات النظام",
+  whatsapp_crm: "إدارة رسائل واتساب، SMS، وتيليجرام وحملات التسويق",
+  sync: "مزامنة المنتجات والمخزون والطلبات مع المتجر الإلكتروني",
   history: "سجل حركات النظام للمراقبة",
 };
 
@@ -294,24 +296,38 @@ function QuickEntryModal({ type, onClose }) {
 }
 
 // ─── Magnetic nav card ────────────────────────────────────────────────────────
-// ─── Channel status dots (WhatsApp / SMS / Telegram) ──────────────────────────
-function ChannelStatusDots({ status, className = "" }) {
+// ─── Channel status (WhatsApp / SMS / Telegram) ────────────────────────────
+function ChannelStatusDots({ status, className = "", layout = "vertical" }) {
   if (!status) return null;
-  const dots = [
+  const channels = [
     { key: "whatsapp", label: "واتساب", on: !!status.whatsapp?.connected },
-    { key: "sms", label: "رسائل SMS", on: !!status.sms?.connected },
+    { key: "sms", label: "SMS", on: !!status.sms?.connected },
     { key: "telegram", label: "تيليجرام", on: !!status.telegram?.connected },
   ];
+  if (layout === "horizontal") {
+    return (
+      <div className={`flex items-center gap-1 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
+        {channels.map((d) => (
+          <span
+            key={d.key}
+            className={`text-[9px] font-bold px-1.5 py-0.5 rounded leading-none ${d.on ? "bg-[var(--success-bg)] text-[var(--success-text)]" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"}`}
+          >
+            {d.label}
+          </span>
+        ))}
+      </div>
+    );
+  }
   return (
-    <div
-      className={`flex items-center gap-1 ${className}`}
-      title={dots.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}
-    >
-      {dots.map((d) => (
-        <span
-          key={d.key}
-          className={`w-1.5 h-1.5 rounded-full ${d.on ? "bg-[var(--success-text)]" : "bg-[var(--text-muted)] opacity-40"}`}
-        />
+    <div className={`flex flex-col gap-1 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
+      <span className="text-[10px] font-black text-[var(--on-feature-muted)] leading-none mb-0.5">مركز الرسائل</span>
+      {channels.map((d) => (
+        <span key={d.key} className="flex items-center gap-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.on ? "bg-[var(--success-text)]" : "bg-[var(--text-muted)] opacity-30"}`} />
+          <span className={`text-[10px] font-bold leading-none ${d.on ? "text-[var(--on-feature-muted)]" : "text-[var(--on-feature-muted)] opacity-40"}`}>
+            {d.label}
+          </span>
+        </span>
       ))}
     </div>
   );
@@ -405,7 +421,8 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
               {item.pageKey === "whatsapp_crm" && channelsStatus && (
                 <ChannelStatusDots
                   status={channelsStatus}
-                  className="bg-[var(--bg-input)] rounded-full px-2 py-1.5 self-center"
+                  layout="horizontal"
+                  className="self-center"
                 />
               )}
 
@@ -738,6 +755,47 @@ export default function DashboardPage() {
     return () => { cancelled = true; window.removeEventListener("focus", load); clearInterval(id); };
   }, [canViewChannels]);
 
+  // ── Latest backup info ────────────────────────────────────────────────────
+  const [backupInfo, setBackupInfo] = useState(null);
+  const [backupPreview, setBackupPreview] = useState(null);
+  const [backupTooltipOpen, setBackupTooltipOpen] = useState(false);
+  const [backupTriggering, setBackupTriggering] = useState(false);
+  const canViewBackup = canView("settings");
+
+  const refreshBackupInfo = useCallback(() => {
+    api.get("/api/backup/settings")
+      .then((res) => setBackupInfo(res.data?.data || null))
+      .catch(() => setBackupInfo(null));
+  }, []);
+
+  useEffect(() => {
+    if (!canViewBackup) return;
+    refreshBackupInfo();
+    // Also load coverage preview (dry-run)
+    api.get("/api/backup/preview")
+      .then((res) => setBackupPreview(res.data?.data || null))
+      .catch(() => setBackupPreview(null));
+  }, [canViewBackup, refreshBackupInfo]);
+
+  const handleBackupNow = useCallback(async (e) => {
+    e.stopPropagation();
+    if (backupTriggering) return;
+    setBackupTriggering(true);
+    try {
+      await api.post("/api/backup/trigger", { label: "من لوحة التحكم" });
+      toast.success("✅ تم إنشاء نسخة احتياطية بنجاح");
+      refreshBackupInfo();
+      // Also refresh the backup preview sizes & count
+      api.get("/api/backup/preview")
+        .then((res) => setBackupPreview(res.data?.data || null))
+        .catch(() => {});
+    } catch {
+      toast.error("فشل إنشاء النسخة الاحتياطية");
+    } finally {
+      setBackupTriggering(false);
+    }
+  }, [backupTriggering, refreshBackupInfo]);
+
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey, item.featureKey));
   const visibleModules = NAV_MODULES.map((module) => ({
     ...module,
@@ -780,7 +838,7 @@ export default function DashboardPage() {
         <div className="dash-grain opacity-[0.03]" />
         <div className="dash-mesh opacity-[0.05]" />
 
-        <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 max-w-7xl mx-auto">
+        <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-30 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 text-[var(--on-feature)] rounded-[1.2rem] flex items-center justify-center shadow-2xl">
               <Command className="w-7 h-7" />
@@ -812,15 +870,19 @@ export default function DashboardPage() {
 
           {/* Live Clock + version */}
           <div className="flex items-center gap-3" dir="ltr">
-            {channelsStatus && (
-              <Link
-                to="/whatsapp-crm"
-                title={`واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · رسائل SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"}`}
-                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-2.5 py-1.5 self-end mb-1 shadow-xl flex items-center gap-1.5 hover:bg-[var(--chip-on-primary-hover)] transition-colors"
-              >
-                <ChannelStatusDots status={channelsStatus} />
-              </Link>
-            )}
+            {/* Clock — on the left (first in LTR) */}
+            <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
+              <div className="flex flex-col items-end">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-[var(--on-feature)] leading-none tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {clockTime}
+                </span>
+                <span className="text-[10px] font-bold text-[var(--on-feature-muted)] tracking-wider mt-0.5">
+                  {clockDate}
+                </span>
+              </div>
+            </div>
+
+            {/* Version / connection status */}
             {appVersion && appVersion !== "web" && (
               <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
                 {isServerOnline ? (
@@ -834,16 +896,155 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
               </div>
             )}
-            <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
-              <div className="flex flex-col items-end">
-                <span className="text-2xl md:text-3xl font-black tabular-nums text-[var(--on-feature)] leading-none tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {clockTime}
-                </span>
-                <span className="text-[10px] font-bold text-[var(--on-feature-muted)] tracking-wider mt-0.5">
-                  {clockDate}
-                </span>
-              </div>
-            </div>
+
+            {/* ── Backup Badge ─────────────────────────────────────────── */}
+            {canViewBackup && backupInfo !== null && (
+              backupInfo.auto_backup_enabled ? (
+                /* AUTO-BACKUP IS ON → show last backup time + backup-now button */
+                <div className="relative self-end mb-1 z-50">
+                  <button
+                    type="button"
+                    onClick={() => setBackupTooltipOpen((v) => !v)}
+                    title={backupInfo.last_auto_backup_at
+                      ? `آخر نسخة احتياطية: ${new Date(backupInfo.last_auto_backup_at).toLocaleString("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}`
+                      : "النسخ التلقائي مفعّل — لم تتم نسخة بعد"}
+                    className="flex items-center gap-1.5 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-all group"
+                  >
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      </div>
+                      <span className="text-[9px] font-black text-[var(--on-feature-muted)] group-hover:text-[var(--on-feature)] leading-none">أخر نسخه احتياطي</span>
+                      <span className="text-[9px] font-bold text-[var(--on-feature-muted)] opacity-80 group-hover:opacity-100 leading-none">
+                        {backupInfo.last_auto_backup_at
+                          ? new Date(backupInfo.last_auto_backup_at).toLocaleString("ar-EG", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+                          : "لم تتم بعد"}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Coverage popover */}
+                  <AnimatePresence>
+                    {backupTooltipOpen && (
+                      <>
+                        {/* Backdrop */}
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setBackupTooltipOpen(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                          className="absolute top-full mt-2 right-0 z-50 w-72 rounded-2xl border border-[var(--border-normal)] bg-[var(--bg-surface)] shadow-[var(--shadow-modal)] overflow-hidden"
+                          dir="rtl"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-base)]">
+                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                            <span className="text-xs font-black text-[var(--text-primary)]">تغطية النسخة الاحتياطية</span>
+                          </div>
+
+                          {/* Coverage items */}
+                          <div className="px-4 py-3 space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                              <Database className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+                              <span className="flex-1 font-bold">قاعدة البيانات الكاملة</span>
+                              <span className="text-[10px] font-bold text-[var(--text-muted)]">
+                                {backupPreview?.db?.sizeBytes
+                                  ? `${(backupPreview.db.sizeBytes / 1024 / 1024).toFixed(1)} MB`
+                                  : "محفوظة"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                              <ImageIcon className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+                              <span className="flex-1 font-bold">الصور والمرفقات</span>
+                              <span className="text-[10px] font-bold text-[var(--text-muted)]">
+                                {backupPreview?.images != null
+                                  ? `${backupPreview.images.total} ملف`
+                                  : "محفوظة"}
+                              </span>
+                            </div>
+                            {/* Record counts */}
+                            {backupPreview?.recordCounts && (
+                              <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-x-4 gap-y-1">
+                                {Object.entries(backupPreview.recordCounts)
+                                  .filter(([, v]) => v > 0)
+                                  .slice(0, 6)
+                                  .map(([table, count]) => (
+                                    <div key={table} className="flex items-center justify-between text-[10px]">
+                                      <span className="text-[var(--text-muted)] truncate">{{
+                                        items: "أصناف", customers: "عملاء", suppliers: "موردون",
+                                        invoices: "فواتير", purchases: "مشتريات", payments: "مدفوعات",
+                                        shifts: "ورديات", stock_movements: "حركات مخزون",
+                                        expenses: "مصروفات", revenues: "إيرادات", quotations: "عروض أسعار",
+                                        invoice_lines: "بنود فواتير", purchase_orders: "أوامر شراء",
+                                      }[table] || table}</span>
+                                      <span className="font-black text-[var(--text-primary)] tabular-nums">{count.toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 px-4 pb-4">
+                            <button
+                              type="button"
+                              onClick={handleBackupNow}
+                              disabled={backupTriggering}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-primary text-white rounded-xl text-xs font-black hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+                            >
+                              {backupTriggering
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <CloudUpload className="w-3.5 h-3.5" />}
+                              {backupTriggering ? "جارٍ النسخ..." : "نسخ احتياطي الآن"}
+                            </button>
+                            <Link
+                              to="/settings?tab=maintenance"
+                              onClick={() => setBackupTooltipOpen(false)}
+                              className="flex items-center justify-center gap-1 px-3 py-2 border border-[var(--border-normal)] rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:border-primary hover:text-primary transition-all"
+                            >
+                              <Settings2 className="w-3 h-3" />
+                              إعدادات
+                            </Link>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                /* AUTO-BACKUP IS OFF → activate CTA */
+                <Link
+                  to="/settings?tab=maintenance"
+                  title="النسخ التلقائي غير مفعّل — اضغط لتفعيله"
+                  className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-amber-500/30 hover:border-amber-400/70 transition-all group"
+                >
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex items-center gap-1">
+                      <HardDrive className="w-3 h-3 text-amber-400 shrink-0" />
+                      <PlayCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                    </div>
+                    <span className="text-[9px] font-black text-amber-300 leading-none">النسخ التلقائي</span>
+                    <span className="text-[9px] font-bold text-amber-400/80 group-hover:text-amber-300 leading-none">غير مفعّل — فعّله</span>
+                  </div>
+                </Link>
+              )
+            )}
+
+            {/* Messaging channels */}
+            {channelsStatus && (
+              <Link
+                to="/whatsapp-crm"
+                title={`مركز الرسائل والحملات — واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"}`}
+                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-colors"
+              >
+                <ChannelStatusDots status={channelsStatus} />
+              </Link>
+            )}
           </div>
         </header>
 

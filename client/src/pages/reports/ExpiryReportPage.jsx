@@ -4,6 +4,9 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { Clock, Package, Search, X, ArrowUpDown, Download, Printer, FileSpreadsheet, AlertTriangle, Activity } from "lucide-react";
 import api from "../../services/api";
 import DataGrid from "../../components/ui/DataGrid";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import ReportViaLayout from "../../components/print/templates/ReportViaLayout";
+import { formatNumber } from "../../utils/currency";
 
 const STATUS_TABS = [
   { key: "all", label: "الكل" },
@@ -25,6 +28,7 @@ export default function ExpiryReportPage() {
   const [sortConfig, setSortConfig] = useState({ key: "days_remaining", dir: "asc" });
   const [detailData, setDetailData] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const warehouseRef = useRef(null);
   const searchRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
@@ -141,7 +145,7 @@ export default function ExpiryReportPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => window.print()} className="flex items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+            <button onClick={() => setPrintOpen(true)} className="flex items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
               <Printer className="w-4 h-4" /> طباعة
             </button>
           </div>
@@ -343,6 +347,45 @@ export default function ExpiryReportPage() {
           )}
         </div>
       </div>
+
+      {/* Print Modal */}
+      <PrintPreviewModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        docType="reports_generic"
+        reportColumns={[
+          { key: "item_name", label: "اسم الصنف", type: "text" },
+          { key: "item_code", label: "الكود", type: "code" },
+          { key: "batch_no", label: "رقم الدفعة", type: "code" },
+          { key: "quantity", label: "الكمية", type: "number" },
+          { key: "expiry_date", label: "تاريخ الانتهاء", type: "date" },
+          { key: "days_remaining", label: "الأيام المتبقية", type: "number" },
+          { key: "cost_price", label: "سعر التكلفة", type: "money" },
+          { key: "expiry_status", label: "الحالة", type: "text" },
+        ]}
+        totalRows={detailData.length}
+        renderContent={(s) => (
+          <ReportViaLayout
+            rows={detailData}
+            columns={[
+              { key: "item_name", label: "اسم الصنف", type: "text" },
+              { key: "item_code", label: "الكود", type: "code" },
+              { key: "batch_no", label: "رقم الدفعة", type: "code" },
+              { key: "quantity", label: "الكمية", type: "number" },
+              { key: "expiry_date", label: "تاريخ الانتهاء", type: "date" },
+              { key: "days_remaining", label: "الأيام المتبقية", type: "number" },
+              { key: "cost_price", label: "سعر التكلفة", type: "money" },
+              { key: "expiry_status", label: "الحالة", type: "text" },
+            ]}
+            title="تقرير انتهاء الصلاحية"
+            subtitle={warehouseId ? `مخزن: ${warehouses.find(w => String(w.id) === String(warehouseId))?.name || ""}` : undefined}
+            filters={{ status: statusFilter, search }}
+            settings={s}
+            currentPage={s.currentPage || 1}
+            onPageCount={s.onPageCount}
+          />
+        )}
+      />
     </div>
   );
 }

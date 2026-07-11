@@ -1339,84 +1339,192 @@ export const SCOPE_PRESETS = {
       family: "page",
       isTemplate: true,
       tags: ["classic", "formal"],
-      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
         perBlock: {
-          report_table: { tableBorder: "grid", headerBg: "#1e40af", headerColor: "#ffffff" }
+          doc_title: { variant: "standard" },
+          company_name: { variant: "standard" },
+          report_table: { tableBorder: "grid", headerBg: "#1e40af", headerColor: "#ffffff", lineColor: "#bfdbfe", rowPad: 6 },
         }
       }
     },
     {
       id: "generic_centered",
-      label: "تقرير متمركز فاخر",
+      label: "تقرير بطاقات مميزة",
       family: "page",
       isTemplate: true,
-      tags: ["elegant", "modern"],
-      flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "centered" },
+      tags: ["cards", "modern"],
+      flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
         perBlock: {
-          report_table: { tableBorder: "grid", zebra: true, headerVariant: "light" }
+          company_name: { variant: "boxed" },
+          doc_title: { variant: "badge" },
+          report_table: { variant: "bordered-cards", headerVariant: "none", lineColor: "#c4b5fd", rowPad: 6 },
         }
       }
     },
     {
       id: "generic_boxed",
-      label: "تقرير مؤطر فخم",
+      label: "تقرير دفتر أستاذ",
       family: "page",
       isTemplate: true,
-      tags: ["elegant", "classic"],
-      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "boxed" },
+      tags: ["ledger", "accounting"],
+      flat: { accent_color: "#059669", print_font: "monospace", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "report_table", "footer_text"],
+        order: ["company_name", "doc_title", "doc_date", "report_table", "footer_text"],
         perBlock: {
-          report_table: { tableBorder: "lines", zebra: true, headerBg: "#059669", headerColor: "#ffffff" }
+          company_name: { variant: "minimal" },
+          doc_title: { variant: "ruled" },
+          report_table: { variant: "ledger", tableBorder: "grid", headerBg: "#059669", headerColor: "#ffffff", lineColor: "#a7f3d0", rowPad: 4 },
         }
       }
     },
     {
       id: "generic_band",
-      label: "تقرير ترويسة عريضة",
+      label: "تقرير شريط جانبي مميز",
       family: "page",
       isTemplate: true,
-      tags: ["modern", "simple"],
-      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band" },
+      tags: ["accent-stripe", "bold"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
         perBlock: {
-          report_table: { tableBorder: "grid", zebra: true, headerBg: "#dc2626", headerColor: "#ffffff" }
+          company_name: { variant: "underline-accent" },
+          doc_title: { variant: "standard" },
+          report_table: { variant: "accent-stripe", headerVariant: "light", lineColor: "#fecaca", rowPad: 6 },
         }
       }
     },
     {
       id: "generic_strip",
-      label: "تقرير بيان بسيط عريض",
+      label: "تقرير مبسّط بالبيانات",
       family: "page",
       isTemplate: true,
-      tags: ["minimal", "whitespace"],
-      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal" },
+      tags: ["minimal", "clean"],
+      flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 10 },
       layout: {
-        order: ["doc_title", "doc_date", "report_table"],
+        order: ["company_name", "doc_title", "doc_date", "report_table"],
         perBlock: {
-          report_table: { tableBorder: "none", zebra: false, headerVariant: "light" }
+          company_name: { variant: "minimal" },
+          doc_title: { variant: "inline" },
+          report_table: { variant: "compact-row", tableBorder: "none", headerVariant: "light", zebra: true, rowPad: 2 },
         }
       }
     },
     {
       id: "generic_minimal",
-      label: "تقرير مبسّط حديث",
+      label: "تقرير قائمة مبسّطة",
       family: "page",
       isTemplate: true,
-      tags: ["minimal", "modern"],
-      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
+      tags: ["list", "minimal"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10 },
       layout: {
         order: ["doc_title", "doc_date", "report_table", "footer_text"],
         perBlock: {
-          report_table: { tableBorder: "lines", zebra: true, headerVariant: "light" }
+          doc_title: { variant: "ruled" },
+          report_table: { variant: "minimalist-list", headerVariant: "none", lineColor: "#e2e8f0", rowPad: 3 },
         }
       }
-    }
+    },
+    {
+      id: "generic_warm_rose",
+      label: "تقرير بطاقات وردي",
+      family: "page",
+      isTemplate: true,
+      tags: ["warm", "cards"],
+      flat: { accent_color: "#be185d", print_font: "Cairo", item_font_size: 11 },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          company_name: { variant: "retro-brutalist" },
+          doc_title: { variant: "badge" },
+          report_table: { variant: "cards", headerVariant: "none", lineColor: "#fbcfe8", rowPad: 8 },
+        }
+      }
+    },
+    {
+      id: "generic_executive_navy",
+      label: "تقرير تنفيذي برقم تسلسلي",
+      family: "page",
+      isTemplate: true,
+      tags: ["numbered", "executive"],
+      flat: { accent_color: "#1e3a5f", print_font: "Cairo", item_font_size: 11 },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        perBlock: {
+          company_name: { variant: "stacked-bilingual" },
+          doc_title: { variant: "brutalist" },
+          doc_number: { show: true, variant: "boxed", label: "رقم التقرير" },
+          report_table: { variant: "numbered", tableBorder: "grid", headerBg: "#1e3a5f", headerColor: "#ffffff", lineColor: "#94a3b8", rowPad: 5 },
+        }
+      }
+    },
+    {
+      id: "generic_forest_green",
+      label: "تقرير أعمدة مميزة",
+      family: "page",
+      isTemplate: true,
+      tags: ["highlighted", "natural"],
+      flat: { accent_color: "#166534", print_font: "Tajawal", item_font_size: 11 },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          company_name: { variant: "initial-cap" },
+          doc_title: { variant: "standard" },
+          report_table: { variant: "highlighted", tableBorder: "lines", headerBg: "#166534", headerColor: "#ffffff", lineColor: "#bbf7d0", rowPad: 6 },
+        }
+      }
+    },
+    {
+      id: "generic_cards_layout",
+      label: "تقرير تسمية | قيمة",
+      family: "page",
+      isTemplate: true,
+      tags: ["split-label", "clean"],
+      flat: { accent_color: "#6d28d9", print_font: "Tajawal", item_font_size: 11 },
+      layout: {
+        order: ["company_name", "doc_title", "doc_date", "report_table"],
+        perBlock: {
+          company_name: { variant: "minimal" },
+          doc_title: { variant: "badge" },
+          report_table: { variant: "split-label", headerVariant: "none", lineColor: "#c4b5fd", rowPad: 5 },
+        }
+      }
+    },
+    {
+      id: "generic_list_minimal",
+      label: "تقرير كروت بحدود ملونة",
+      family: "page",
+      isTemplate: true,
+      tags: ["bordered-cards", "colorful"],
+      flat: { accent_color: "#ea580c", print_font: "Cairo", item_font_size: 11 },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        perBlock: {
+          company_name: { variant: "boxed" },
+          doc_title: { variant: "ruled" },
+          report_table: { variant: "bordered-cards", headerVariant: "none", lineColor: "#fed7aa", rowPad: 6 },
+        }
+      }
+    },
+    {
+      id: "generic_crimson_formal",
+      label: "تقرير شريط مميز كلاسيكي",
+      family: "page",
+      isTemplate: true,
+      tags: ["formal", "accent-stripe"],
+      flat: { accent_color: "#9f1239", print_font: "Cairo", item_font_size: 11 },
+      layout: {
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "footer_text", "signature_lines"],
+        perBlock: {
+          company_name: { variant: "underline-accent" },
+          doc_title: { variant: "brutalist" },
+          report_table: { variant: "accent-stripe", tableBorder: "lines", headerBg: "#9f1239", headerColor: "#ffffff", lineColor: "#fecdd3", rowPad: 6 },
+        }
+      }
+    },
   ],
   account_statement: [
     {

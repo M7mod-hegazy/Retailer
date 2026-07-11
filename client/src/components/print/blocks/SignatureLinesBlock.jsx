@@ -44,6 +44,26 @@ export default function SignatureLinesBlock({ settings: s, props = {}, family, e
     );
   }
 
+  if (variant === "dotted-ruled") {
+    return (
+      <div style={{
+        display: "flex",
+        justifyContent: "space-around",
+        gap: "8mm",
+        marginTop: "16mm",
+        borderTop: `2px dotted ${accent}`,
+        paddingTop: "8px",
+      }}>
+        {labels.slice(0, count).map((label, i) => (
+          <div key={i} style={{ textAlign: "center", flex: 1 }}>
+            <div style={{ fontSize: "10px", fontWeight: 700, color: accent, marginBottom: "10mm" }}>{label}</div>
+            <div style={{ borderTop: `1px dotted ${accent}`, width: "40mm", margin: "0 auto" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (variant === "split") {
     return (
       <div style={{

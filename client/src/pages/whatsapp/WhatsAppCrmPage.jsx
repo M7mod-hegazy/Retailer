@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import html2canvas from "html2canvas";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
 import ConnectGuide from "../../components/whatsapp/ConnectGuide";
+import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 
 // ─── Shared components ───────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ function SendInvoiceModal({ phone, contactName, onClose }) {
   const [sending, setSending] = useState(false);
   const [sendingInvoiceId, setSendingInvoiceId] = useState(null);
   const previewRef = useRef(null);
+  const wa = useWhatsAppStatus(8000);
 
   useEffect(() => {
     (async () => {
@@ -142,6 +144,10 @@ function SendInvoiceModal({ phone, contactName, onClose }) {
   async function handleSend(invoiceId) {
     const inv = selectedInvoice || invoices.find(i => i.id === invoiceId);
     if (!inv) return;
+    if (!wa.isConnected) {
+      toast.error("واتساب غير متصل — تأكد من الاتصال أولاً");
+      return;
+    }
     setSendingInvoiceId(invoiceId);
     setSending(true);
     try {
@@ -200,6 +206,20 @@ function SendInvoiceModal({ phone, contactName, onClose }) {
           <p className="text-xs font-bold text-text-secondary mb-4">إلى: <span className="text-text-primary">{contactName}</span></p>
         )}
 
+        {!wa.isConnected && wa.status !== "loading" && (
+          <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-4 ${wa.status === "qr" ? "border-warning-border bg-warning-bg" : "border-danger-border bg-danger-bg"}`}>
+            {wa.status === "qr" ? <Smartphone className="h-4 w-4 text-warning-text shrink-0 mt-0.5 animate-pulse" /> : <WifiOff className="h-4 w-4 text-danger shrink-0 mt-0.5" />}
+            <div>
+              <p className={`text-xs font-black ${wa.status === "qr" ? "text-warning-text" : "text-danger"}`}>
+                {wa.status === "qr" ? "واتساب في انتظار مسح QR" : "واتساب غير متصل"}
+              </p>
+              <p className="text-[11px] font-bold text-text-secondary mt-0.5">
+                {wa.status === "qr" ? "امسح رمز QR من هاتفك لتفعيل الإرسال." : "لا يمكن إرسال الفاتورة. اربط واتساب أولاً من مركز الرسائل."}
+              </p>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12"><RefreshCw className="h-6 w-6 animate-spin text-text-muted" /></div>
         ) : invoices.length === 0 ? (
@@ -236,7 +256,7 @@ function SendInvoiceModal({ phone, contactName, onClose }) {
               <button onClick={onClose} className="flex-1 rounded-lg border border-border-normal py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base transition-all">
                 إلغاء
               </button>
-              <button onClick={() => handleSend(selectedInvoice?.id)} disabled={!selectedInvoice || sending}
+              <button onClick={() => handleSend(selectedInvoice?.id)} disabled={!selectedInvoice || sending || !wa.isConnected}
                 className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
                 {sending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {sending ? "جارٍ الإرسال..." : "إرسال الفاتورة"}
@@ -895,6 +915,7 @@ function InboxTab() {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const wa = useWhatsAppStatus(8000);
 
   // Enhanced features state
   const [replyTo, setReplyTo] = useState(null);
@@ -1005,6 +1026,10 @@ function InboxTab() {
   // ─── Send text ─────────────────────────────────────────────────────────
   async function handleSend() {
     if (!sendText.trim() || !selectedJid || sending) return;
+    if (!wa.isConnected) {
+      toast.error("واتساب غير متصل — تأكد من الاتصال أولاً");
+      return;
+    }
     setSending(true);
     const textToSend = replyTo
       ? `↩ "${(replyTo.body || "").slice(0, 50)}"\n\n${sendText.trim()}`
@@ -1029,6 +1054,10 @@ function InboxTab() {
   // ─── Send file (image / document) ──────────────────────────────────────
   async function sendFile(file) {
     if (!selectedJid) return;
+    if (!wa.isConnected) {
+      toast.error("واتساب غير متصل — تأكد من الاتصال أولاً");
+      return;
+    }
     setUploadingMedia(true);
     try {
       const base64 = await new Promise((resolve, reject) => {
@@ -1107,6 +1136,7 @@ function InboxTab() {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(audioChunksRef.current, { type: "audio/ogg; codecs=opus" });
         if (blob.size < 100) { toast.error("لم يتم تسجيل أي صوت"); return; }
+        if (!wa.isConnected) { toast.error("واتساب غير متصل — تأكد من الاتصال أولاً"); return; }
         setUploadingMedia(true);
         try {
           const base64 = await new Promise((resolve, reject) => {
@@ -1467,7 +1497,14 @@ function InboxTab() {
                   )}
 
                   {/* Input area */}
-                  <div className="flex items-center gap-2 p-3 border-t border-border-normal relative">
+                  <div className="p-3 border-t border-border-normal relative">
+                    {!wa.isConnected && wa.status !== "loading" && (
+                      <div className={`flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-[11px] font-black border ${wa.status === "qr" ? "border-warning-border bg-warning-bg text-warning-text" : "border-danger-border bg-danger-bg text-danger"}`}>
+                        {wa.status === "qr" ? <Smartphone className="h-3 w-3 animate-pulse" /> : <WifiOff className="h-3 w-3" />}
+                        {wa.status === "qr" ? "واتساب في انتظار مسح QR" : "واتساب غير متصل — الإرسال متوقف مؤقتاً"}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
                     <input type="file" ref={fileInputRef} className="hidden" onChange={e => {
                       if (e.target.files?.[0]) sendFile(e.target.files[0]);
                       e.target.value = "";
@@ -1517,10 +1554,11 @@ function InboxTab() {
                       onKeyDown={handleInputKeyDown}
                       placeholder={uploadingMedia ? "جاري الرفع..." : "اكتب رسالتك..."} dir="rtl" disabled={uploadingMedia || recording}
                       className="flex-1 rounded-xl border border-border-normal bg-bg-input px-4 py-2.5 text-sm font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors placeholder:text-text-muted disabled:opacity-50" />
-                    <button onClick={handleSend} disabled={!sendText.trim() || sending || uploadingMedia || recording}
+                    <button onClick={handleSend} disabled={!sendText.trim() || sending || uploadingMedia || recording || !wa.isConnected}
                       className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white hover:opacity-90 disabled:opacity-40 transition-all active:scale-95">
                       {sending || uploadingMedia ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </button>
+                    </div>
                   </div>
                 </div>
 

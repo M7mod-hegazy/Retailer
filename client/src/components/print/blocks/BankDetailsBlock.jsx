@@ -14,14 +14,67 @@ export default function BankDetailsBlock({ settings: s, props = {}, family, edit
 
   const isRoll = family === "roll";
   const accent = g(s, "accent_color") || "#1e3a8a";
+  const variant = props.variant || "standard";
+
+  if (variant === "inline") {
+    const parts = [
+      bankName && `البنك: ${bankName}`,
+      accountName && `المستفيد: ${accountName}`,
+    ].filter(Boolean);
+    return (
+      <div style={{ fontSize: isRoll ? "9px" : "10px", marginTop: "4px", marginBottom: "4px", display: "flex", flexWrap: "wrap", gap: "4px 10px" }}>
+        {parts.map((p, i) => <span key={i} style={{ fontWeight: 700 }}>{p}</span>)}
+        {iban && (
+          <span style={{ fontWeight: 900, fontFamily: "monospace", letterSpacing: "0.5px" }} dir="ltr">IBAN: {iban}</span>
+        )}
+      </div>
+    );
+  }
+
+  if (variant === "minimal") {
+    return (
+      <div style={{ fontSize: "9px", marginTop: "3px", marginBottom: "3px", color: "#64748b" }}>
+        {bankName && <span style={{ fontWeight: 700 }}>{bankName}</span>}
+        {iban && <span style={{ fontFamily: "monospace", marginInlineStart: "6px" }} dir="ltr">IBAN: {iban}</span>}
+      </div>
+    );
+  }
+
+  if (variant === "lined") {
+    return (
+      <div style={{ marginTop: "4px", marginBottom: "4px" }}>
+        {bankName && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: isRoll ? "9px" : "10px", padding: "1px 0", borderBottom: "1px solid #000" }}>
+            <span style={{ fontWeight: 700 }}>البنك:</span>
+            <span style={{ fontWeight: 800 }}>{bankName}</span>
+          </div>
+        )}
+        {iban && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: isRoll ? "9px" : "10px", padding: "1px 0", borderBottom: "1px solid #000" }}>
+            <span style={{ fontWeight: 700 }}>IBAN:</span>
+            <span style={{ fontWeight: 900, fontFamily: "monospace" }} dir="ltr">{iban}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (variant === "centered") {
+    return (
+      <div style={{ marginTop: "4px", marginBottom: "4px", textAlign: "center", borderTop: "1px dashed #000", borderBottom: "1px dashed #000", padding: "3px 0" }}>
+        {bankName && <div style={{ fontSize: isRoll ? "9px" : "10px", fontWeight: 900 }}>{bankName}</div>}
+        {iban && <div style={{ fontSize: isRoll ? "8px" : "9px", fontFamily: "monospace", fontWeight: 700 }} dir="ltr">IBAN: {iban}</div>}
+      </div>
+    );
+  }
 
   const cardStyle = {
     marginTop: "6px",
     marginBottom: "6px",
-    border: `1.5px dashed ${isRoll ? "#000" : accent}`,
+    border: variant === "boxed" ? `1.5px solid ${isRoll ? "#000" : accent}` : `1.5px dashed ${isRoll ? "#000" : accent}`,
     borderRadius: "6px",
     padding: isRoll ? "5px" : "8px 12px",
-    background: isRoll ? "transparent" : `${accent}03`,
+    background: isRoll ? "transparent" : (variant === "boxed" ? `${accent}08` : `${accent}03`),
   };
 
   return (

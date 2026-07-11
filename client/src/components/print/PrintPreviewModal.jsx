@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
@@ -12,7 +13,7 @@ import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
 import PrintStudio from "./studio/PrintStudio";
 import { resolveEffectiveLayout } from "./layout/layoutModel";
-import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, PX_PER_MM } from "./studio/studioData";
+import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, PX_PER_MM, familyOfSize } from "./studio/studioData";
 import { applyPreset } from "./presets/presetEngine";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
@@ -43,6 +44,7 @@ export default function PrintPreviewModal({
   onSendWhatsApp,
   children,
 }) {
+  const { t } = useTranslation();
   const { handleDetach } = useDetach("print-preview", {
     onClose, getState: () => ({ invoice, settings: globalSettings, operationLabel, docType, reportColumns, totalRows }), actions: { confirmPrint: () => onConfirmPrint?.(), saveOnly: () => onSaveOnly?.(), exportAllColumns: () => onExportAllColumns?.() },
   });
@@ -234,6 +236,16 @@ export default function PrintPreviewModal({
   const reportFitTone = reportFitScore <= reportCapacity ? "green"
     : reportFitScore <= reportCapacity + 1.5 ? "amber" : "red";
 
+  // ── Per-family inherit check ──
+  // resolveEffectiveLayout already handles per-family inherit for layout.
+  // For flat settings, check inherit_global_roll / inherit_global_page.
+  const activeFam = familyOfSize(activeTemplate);
+  const BLOCK_DOC_SCOPES = new Set(["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
+  const isReportDocForInherit = docType !== "_global" && !BLOCK_DOC_SCOPES.has(docType);
+  const inheritFamilyKey = `inherit_global_${activeFam}`;
+  const docInheritVal = docSettings[inheritFamilyKey] ?? docSettings.inherit_global;
+  const docInheritsGlobal = docInheritVal !== undefined ? docInheritVal : !isReportDocForInherit;
+
   // Merge order (low → high): settings table → props → _global scope flat
   // fields → per-doc flat fields; layout is merged structurally per family so
   // a doc inherits the _global design until it overrides specific pieces.
@@ -242,11 +254,13 @@ export default function PrintPreviewModal({
     page: resolveEffectiveLayout(globalScopeSettings, docSettings, "page", docType),
   };
   const { layout: _gsLayout, ...globalScopeFlat } = globalScopeSettings || {};
+  // When inheriting, skip spreading docSettings for flat settings — use global only
+  const localFlatFields = docInheritsGlobal ? {} : docSettings;
   const combinedSettingsBase = {
     ...(fetchedGlobalSettings || {}),
     ...(globalSettings || {}),
     ...globalScopeFlat,
-    ...docSettings,
+    ...localFlatFields,
     layout: effectiveLayout,
     ...(operationLabel ? { receipt_footer: operationLabel } : {}),
     ...(isReportDoc ? {
@@ -630,7 +644,7 @@ export default function PrintPreviewModal({
                   onClick={() => { onClose(); onSendWhatsApp(); }}
                   className="w-full flex items-center justify-center gap-2 rounded-[12px] border border-success-border bg-success-bg px-3 py-3 text-sm font-black text-success-text transition-all hover:bg-success-bg/80 active:scale-95"
                 >
-                  <MessageCircle size={16} /> إرسال عبر واتساب
+                  <MessageCircle size={16} /> {t("print.sendWhatsApp")}
                 </button>
               )}
 

@@ -27,6 +27,16 @@ import StudioCanvas from "./StudioCanvas";
 import StudioInspector from "./StudioInspector";
 import PresetsGallery from "./PresetsGallery";
 import { applyPreset } from "../presets/presetEngine";
+import { CLASSIFICATIONS } from "./DocClassificationPreview";
+
+// Find which app pages use the current scope
+function pagesForScope(sc) {
+  for (const cls of CLASSIFICATIONS) {
+    const item = cls.items.find((i) => i.key === sc);
+    if (item) return { item, cls };
+  }
+  return null;
+}
 
 const SCOPE_PAGES = {
   _global: "جميع المستندات التي ترث التصميم العام",
@@ -48,6 +58,10 @@ const SCOPE_PAGES = {
 };
 
 const DRAFT_STASH_KEY = "retailer_print_studio_drafts";
+const INHERITABLE_SCOPES = new Set([
+  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
+  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const stripLayout = ({ layout, ...rest } = {}) => rest;
@@ -98,8 +112,20 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [saving, setSaving] = useState(false);
   const [past, setPast] = useState([]);   // [{scope, draft}]
   const [future, setFuture] = useState([]);
+  const isInitialReport = initialScope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(initialScope);
+  // Per-family inherit: roll and page can inherit independently.
+  const defaultInherit = isInitialReport ? false : true;
+  const [inheritByFamily, setInheritByFamily] = useState(() => {
+    const saved = store[initialScope] || {};
+    return {
+      roll: saved.inherit_global_roll ?? saved.inherit_global ?? defaultInherit,
+      page: saved.inherit_global_page ?? saved.inherit_global ?? defaultInherit,
+    };
+  });
+  const inheritGlobal = inheritByFamily[family]; // derived: current family's inherit state
   const printRef = useRef(null);
   const sheetElRef = useRef(null); // the live canvas sheet — free-move math needs its rect
+  const fitToViewRef = useRef(null); // populated by StudioCanvas
   const stashTimer = useRef(null);
 
   const isBlockDoc = scope === "_global" || BLOCK_DOCS.has(scope);
@@ -128,6 +154,14 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       const st = { ...perDoc, _global: ensureLayout(perDoc._global || {}, "_global") };
       setAppSettings(app);
       setStore(st);
+      // Re-derive inherit state now that store is populated (useState initializer ran when store was {})
+      const loaded = st[initialScope] || {};
+      const loadedDefaultInherit = isInitialReport ? false : true;
+      const loadedLegacy = loaded.inherit_global;
+      setInheritByFamily({
+        roll: loaded.inherit_global_roll ?? loadedLegacy ?? loadedDefaultInherit,
+        page: loaded.inherit_global_page ?? loadedLegacy ?? loadedDefaultInherit,
+      });
       const stash = readStash();
       const dirtyStash = Object.keys(stash).filter(
         (k) => JSON.stringify(stash[k]) !== JSON.stringify(st[k] || {})
@@ -146,7 +180,24 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setPast([]); setFuture([]);
     if (initialSize) setSize(initialSize);
     setOrientation(initialOrientation || "portrait");
+    // Re-derive inherit from (already-loaded) store
+    const saved = store[initialScope] || {};
+    const scIsReport = initialScope !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(initialScope);
+    const def = scIsReport ? false : true;
+    const leg = saved.inherit_global;
+    setInheritByFamily({
+      roll: saved.inherit_global_roll ?? leg ?? def,
+      page: saved.inherit_global_page ?? leg ?? def,
+    });
   }, [open]);
+
+  // auto-fit after loading completes — double rAF so StudioCanvas's own effect + measurements run first
+  useEffect(() => {
+    if (loading || !open) return;
+    let raf1, raf2;
+    raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => fitToViewRef.current?.()); });
+    return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
+  }, [loading, open]);
 
   // ── draft accessors ────────────────────────────────────────────────────
   const draftOf = (sc) => {
@@ -170,26 +221,47 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   // real pipeline: app settings → _global flat → per-doc flat)
   const merged = useMemo(() => {
     if (scope === "_global") return { ...appSettings, ...stripLayout(globalDraft) };
-    return { ...appSettings, ...stripLayout(globalDraft), ...stripLayout(cur) };
-  }, [appSettings, globalDraft, cur, scope]);
+    if (inheritGlobal) {
+      // INHERIT ON → flat settings from global only (accent_color, print_font, etc.)
+      return { ...appSettings, ...stripLayout(globalDraft) };
+    }
+    // INHERIT OFF → flat settings from local only
+    return { ...appSettings, ...stripLayout(cur) };
+  }, [appSettings, globalDraft, cur, scope, inheritGlobal]);
 
   // effective layout per family (what the printer will actually use)
   const effFam = (fam) => {
     if (scope === "_global") return (globalDraft.layout || {})[fam] || seedFamilyLayout(fam, scope);
-    const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
-    if (isReport) {
-      const dl = (cur.layout || {})[fam];
-      return dl ? normalizeLayout({ layout: { [fam]: dl } }).settings.layout[fam] : seedFamilyLayout(fam, scope);
+    if (inheritGlobal) {
+      // INHERIT ON → use global layout ONLY, ignore local edits completely
+      return (globalDraft.layout || {})[fam] || seedFamilyLayout(fam, scope);
     }
-    return resolveEffectiveLayout(globalDraft, cur, fam, scope);
+    // INHERIT OFF → use local layout ONLY (preserved edits)
+    const dl = (cur.layout || {})[fam];
+    return dl ? normalizeLayout({ layout: { [fam]: dl } }).settings.layout[fam] : seedFamilyLayout(fam, scope);
+  };
+
+  const toggleInheritGlobal = () => {
+    const next = !inheritGlobal;
+    // Update per-family inherit state
+    setInheritByFamily((prev) => ({ ...prev, [family]: next }));
+    // persist per-family inherit flag into the current scope's draft
+    const curDraft = draftOf(scope);
+    const familyKey = `inherit_global_${family}`;
+    commitDraft(scope, { ...curDraft, [familyKey]: next });
   };
   const renderLayout = useMemo(
     () => ({ roll: effFam("roll"), page: effFam("page") }),
-    [globalDraft, cur, scope, family] // eslint-disable-line react-hooks/exhaustive-deps
+    [globalDraft, cur, scope, family, inheritGlobal]
   );
   const fam = renderLayout[family];
   const ownFamily = scope === "_global" ? true : !!(cur.layout && cur.layout[family]);
-  const hasPreset = !!(merged[`preset_${family}`]) || JSON.stringify(fam) !== JSON.stringify(seedFamilyLayout(family, scope));
+  // When inheriting, the inherited layout IS the preset — don't show "no preset" overlay.
+  // When inherit is OFF, check if there's a local preset applied or local layout differs from seed.
+  const hasPreset = inheritGlobal
+    ? !!(globalDraft[`preset_${family}`]) || JSON.stringify((globalDraft.layout || {})[family]) !== JSON.stringify(seedFamilyLayout(family, scope))
+    : !!(merged[`preset_${family}`]) || JSON.stringify(fam) !== JSON.stringify(seedFamilyLayout(family, scope));
+  const appliedPresetId = (merged[`preset_${family}`] || {}).id || null;
 
   // ── history-aware commit ───────────────────────────────────────────────
   const commitDraft = (sc, nextDraft) => {
@@ -630,19 +702,30 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   // ── scope / size switching ─────────────────────────────────────────────
   const switchScope = (sc) => {
     setScope(sc); setSelected(null); setHovered(null); setEditingKey(null); setScopeMenuOpen(false);
+    // update per-family inherit from saved settings
+    const savedDraft = drafts[sc] || store[sc] || {};
+    const scIsReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    const defaultInherit = scIsReport ? false : true;
+    const legacyInherit = savedDraft.inherit_global;
+    setInheritByFamily({
+      roll: savedDraft.inherit_global_roll ?? legacyInherit ?? defaultInherit,
+      page: savedDraft.inherit_global_page ?? legacyInherit ?? defaultInherit,
+    });
     // pick a sensible size for the doc (its saved default, else keep current)
-    const docSaved = (drafts[sc] || store[sc] || {}).paper_size;
+    const docSaved = savedDraft.paper_size;
     const targetSize = docSaved && SHEET_W[docSaved] ? docSaved : null;
     // Report docs never print on thermal roll — auto-correct
     const scIsDenseReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
     if (targetSize) switchSize(targetSize);
     else if (scIsDenseReport && (size === "58mm" || size === "80mm")) switchSize("A4");
+    // auto-fit handled by StudioCanvas's own layout effect on scope change
   };
   const switchSize = (sz) => {
     setSize(sz);
     const f = familyOfSize(sz);
-    if (f !== family) { setSelected(null); setHovered(null); setZoom(f === "roll" ? 1.1 : 0.7); }
+    if (f !== family) { setSelected(null); setHovered(null); }
     if (sz !== "A5") setOrientation("portrait");
+    // auto-fit handled by StudioCanvas's own layout effect on size change
   };
   // For dense report docs only offer page sizes (A4/A5); roll sizes don't apply.
   const isDenseReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
@@ -689,6 +772,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     overlays, addOverlay, setOverlay, removeOverlay,
     invoiceData, canvasSettings, renderLayout, designer, orientation, setOrientation,
     zoom, setZoom, showRuler, compare, sampleId, showBand, setShowBand,
+    inheritGlobal, inheritByFamily, toggleInheritGlobal, isInheritable: INHERITABLE_SCOPES.has(scope),
     calibration, printerName, openCalibration: () => setCalibOpen(true),
     resetFamily, applyPresetToDraft, sheetElRef, setPinMode, resetPosition, dragSnap,
     editingKey, startEditText: setEditingKey,
@@ -783,37 +867,153 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
               className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-black ${scope === "_global" ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border-normal)] text-[var(--text-secondary)]"} hover:bg-[var(--bg-input)]`}>
               {scope === "_global" ? <Globe size={13} /> : <FileText size={13} />}
               {scopeLabel(scope)}
+              {scope !== "_global" && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black leading-none ${
+                  inheritGlobal
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "bg-[var(--bg-input)] text-[var(--text-muted)]"
+                }`}>
+                  {inheritGlobal ? "يرث" : "مخصص"}
+                </span>
+              )}
               {dirtyScopes.includes(scope) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" title="تغييرات غير محفوظة" />}
               <ChevronDown size={12} />
             </button>
             {scopeMenuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setScopeMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-[var(--border-normal)] bg-[var(--bg-elevated)] p-1.5 shadow-lg">
-                  {["عام", "مبيعات", "مشتريات", "مخزون", "تقارير"].map((grp) => (
-                    <div key={grp}>
-                      <div className="px-2 pb-0.5 pt-2 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">{grp}</div>
-                      {STUDIO_SCOPES.filter((s) => s.group === grp).map((s) => (
+                <div className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[var(--border-normal)] bg-[var(--bg-elevated)] p-1.5 shadow-lg">
+                  {/* ── التصميم العام (الأساسي) ── */}
+                  <div className="mb-1">
+                    <div className="px-2 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--primary)]">التصميم الأساسي</div>
+                    {STUDIO_SCOPES.filter((s) => s.group === "عام").map((s) => {
+                      const docDraft = drafts[s.key] || store[s.key] || {};
+                      return (
                         <button key={s.key} type="button" onClick={() => switchScope(s.key)}
-                          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-right text-[11px] font-bold ${scope === s.key ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`}>
-                          <span className="flex-1 truncate">{s.label}</span>
+                          className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-right transition-all ${
+                            scope === s.key
+                              ? "border-[var(--primary)] bg-[var(--primary)]/5 shadow-sm"
+                              : "border-transparent hover:bg-[var(--bg-input)]"
+                          }`}>
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
+                            scope === s.key ? "bg-[var(--primary)] text-white" : "bg-[var(--bg-input)] text-[var(--text-muted)]"
+                          }`}>
+                            <Globe size={12} />
+                          </div>
+                          <div className="flex-1">
+                            <span className={`block text-[11px] font-black ${scope === s.key ? "text-[var(--primary)]" : "text-[var(--text-primary)]"}`}>{s.label}</span>
+                            <span className="block text-[9px] font-bold text-[var(--text-muted)]">يُرثه جميع المستندات</span>
+                          </div>
                           {dirtyScopes.includes(s.key) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" />}
-                          {!BLOCK_DOCS.has(s.key) && s.key !== "_global" && <span className="rounded bg-[var(--bg-input)] px-1 text-[8px] font-black text-[var(--text-muted)]">قالب</span>}
                         </button>
-                      ))}
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Dividing line ── */}
+                  <div className="mx-2 my-1 border-t border-[var(--border-subtle)]" />
+
+                  {/* ── المستندات القابلة للارث ── */}
+                  <div className="mb-1">
+                    <div className="px-2 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">المستندات القابلة للارث</div>
+                    {["مبيعات", "مشتريات", "مخزون"].map((grp) => (
+                      <div key={grp}>
+                        <div className="px-2 pb-0.5 pt-1 text-[8px] font-black text-[var(--text-muted)]/60">{grp}</div>
+                        {STUDIO_SCOPES.filter((s) => s.group === grp).map((s) => {
+                          const docDraft = drafts[s.key] || store[s.key] || {};
+                          // Per-family inherit: check both roll and page
+                          const inheritRoll = docDraft.inherit_global_roll ?? docDraft.inherit_global;
+                          const inheritPage = docDraft.inherit_global_page ?? docDraft.inherit_global;
+                          // If both inherit, show "يرث". If mixed or both off, show "مخصص".
+                          const isInheriting = inheritRoll !== false && inheritPage !== false;
+                          return (
+                            <button key={s.key} type="button" onClick={() => switchScope(s.key)}
+                              className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-right text-[11px] font-bold transition-colors ${
+                                scope === s.key ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"
+                              }`}>
+                              <span className="flex-1 truncate">{s.label}</span>
+                              <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black leading-none ${
+                                isInheriting
+                                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                                  : "bg-[var(--bg-input)] text-[var(--text-muted)]"
+                              }`}>
+                                {isInheriting ? "يرث" : "مخصص"}
+                              </span>
+                              {dirtyScopes.includes(s.key) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Dividing line ── */}
+                  <div className="mx-2 my-1 border-t border-[var(--border-subtle)]" />
+
+                  {/* ── التقارير (لا ترث — تصميم مستقل) ── */}
+                  <div>
+                    <div className="px-2 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">التقارير والحسابات</div>
+                    {STUDIO_SCOPES.filter((s) => s.group === "تقارير").map((s) => {
+                      const docDraft = drafts[s.key] || store[s.key] || {};
+                      // Reports have different layouts from _global — default to NOT inheriting
+                      const savedVal = docDraft.inherit_global;
+                      const isInheriting = savedVal !== undefined ? savedVal : false;
+                      return (
+                        <button key={s.key} type="button" onClick={() => switchScope(s.key)}
+                          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-right text-[11px] font-bold transition-colors ${
+                            scope === s.key ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"
+                          }`}>
+                          <span className="flex-1 truncate">{s.label}</span>
+                          <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black leading-none ${
+                            isInheriting
+                              ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                              : "bg-[var(--bg-input)] text-[var(--text-muted)]"
+                          }`}>
+                            {isInheriting ? "يرث" : "مخصص"}
+                          </span>
+                          {dirtyScopes.includes(s.key) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </>
             )}
           </div>
 
-          {SCOPE_PAGES[scope] && (
-            <span className="mr-1 inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[9px] font-black text-[var(--primary)] border border-[var(--primary)]/10 shrink-0 max-w-[180px] truncate" title={SCOPE_PAGES[scope]}>
-              <span className="w-1 h-1 rounded-full bg-[var(--primary)]" />
-              {SCOPE_PAGES[scope]}
-            </span>
-          )}
+          {(() => {
+            const scopeInfo = pagesForScope(scope);
+            const appPages = scopeInfo?.item?.pages || [];
+            const cls = scopeInfo?.cls;
+            return (
+              <>
+                {cls && (
+                  <span
+                    className="mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black shrink-0"
+                    style={{ backgroundColor: `${cls.color}15`, color: cls.color, border: `1px solid ${cls.color}30` }}
+                  >
+                    <span className="w-1 h-1 rounded-full" style={{ backgroundColor: cls.color }} />
+                    {cls.label}
+                  </span>
+                )}
+                {appPages.length > 0 && (
+                  <span className="mr-1 inline-flex items-center gap-1 flex-wrap">
+                    {appPages.map((page) => (
+                      <span key={page} className="inline-flex items-center gap-0.5 rounded bg-[var(--bg-input)] border border-[var(--border-subtle)] px-1.5 py-0.5 text-[8px] font-bold text-[var(--text-muted)]">
+                        {page}
+                      </span>
+                    ))}
+                  </span>
+                )}
+                {scope === "_global" && (
+                  <span className="mr-1 inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[9px] font-black text-[var(--primary)] border border-[var(--primary)]/10 shrink-0">
+                    <span className="w-1 h-1 rounded-full bg-[var(--primary)]" />
+                    {SCOPE_PAGES[scope]}
+                  </span>
+                )}
+              </>
+            );
+          })()}
 
           {/* size chips */}
           <div className="flex gap-1">
@@ -894,7 +1094,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                 </div>
               </div>
             )}
-            <StudioCanvas st={st}>
+            <StudioCanvas st={st} fitToViewRef={fitToViewRef}>
               {isTemplateDoc && (
                 hasTemplatePreview
                   ? <TemplateDocPreview scope={scope} mock={invoiceData} settings={{ ...canvasSettings, _previewSize: size }} />
@@ -917,6 +1117,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
           onApply={applyPresetToDraft}
           isBlockDoc={isBlockDoc}
           scope={scope}
+          appliedPresetId={appliedPresetId}
           renderPreview={(previewSettings) => (
             <TemplateDocPreview scope={scope} settings={previewSettings} />
           )}

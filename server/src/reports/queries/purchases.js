@@ -1,11 +1,13 @@
 const { getDb } = require("../../config/database");
-const { addDateFilter, addPaymentTypeFilter } = require("../helpers");
+const { addDateFilter, addPurchasePaymentFilter, baseStatusClause } = require("../helpers");
 const { paginateSql } = require("../pagination");
 
 function _detailPurchaseQuery(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  const ptParams = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
+  const ptFilter = addPurchasePaymentFilter(payment_type, "p", ptParams);
   return db.prepare(`
     SELECT p.id, p.doc_no AS purchase_no,
       DATE(p.created_at) AS date,
@@ -18,12 +20,12 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
     LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE ${baseStatusClause("p", status, ["cancelled", "voided"])} AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
       ${status ? " AND p.status = ?" : ""}
-      ${payment_type ? " AND p.payment_method = ?" : ""}
+      ${ptFilter}
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `).all(
@@ -32,16 +34,17 @@ function _detailPurchaseQuery(startDate, endDate, opts = {}) {
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
     ...(status ? [status] : []),
-    ...(payment_type ? [payment_type] : []),
+    ...ptParams,
   );
 }
 
 function purchaseSummary(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  const ptParams = [];
   const { supplier_id, category_id, item_id, status, payment_type } = opts;
   const dateFilter = addDateFilter("p.created_at", startDate, endDate, params);
-  const ptFilter = addPaymentTypeFilter(payment_type, "p", params);
+  const ptFilter = addPurchasePaymentFilter(payment_type, "p", ptParams);
   return db.prepare(`
     SELECT DATE(p.created_at) AS date,
       COUNT(*) AS purchase_count,
@@ -51,7 +54,7 @@ function purchaseSummary(startDate, endDate, opts = {}) {
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value
     FROM purchases p
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
+    WHERE ${baseStatusClause("p", status, ["cancelled", "voided"])} AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${status ? " AND p.status = ?" : ""}
       ${ptFilter}
@@ -63,6 +66,7 @@ function purchaseSummary(startDate, endDate, opts = {}) {
     ...params,
     ...(supplier_id ? [supplier_id] : []),
     ...(status ? [status] : []),
+    ...ptParams,
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
   );
@@ -71,7 +75,9 @@ function purchaseSummary(startDate, endDate, opts = {}) {
 function detailedPurchases(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  const ptParams = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
+  const ptFilter = addPurchasePaymentFilter(payment_type, "p", ptParams);
   let sql = `
     SELECT p.id, p.doc_no AS purchase_no,
       DATE(p.created_at) AS date,
@@ -84,12 +90,12 @@ function detailedPurchases(startDate, endDate, opts = {}) {
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by
     LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE ${baseStatusClause("p", status, ["cancelled", "voided"])} AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${category_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 JOIN items it2 ON it2.id = pl2.item_id WHERE it2.category_id = ?)" : ""}
       ${item_id ? " AND p.id IN (SELECT DISTINCT pl2.purchase_id FROM purchase_lines pl2 WHERE pl2.item_id = ?)" : ""}
       ${status ? " AND p.status = ?" : ""}
-      ${payment_type ? " AND p.payment_method = ?" : ""}
+      ${ptFilter}
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `;
@@ -99,7 +105,7 @@ function detailedPurchases(startDate, endDate, opts = {}) {
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
     ...(status ? [status] : []),
-    ...(payment_type ? [payment_type] : []),
+    ...ptParams,
   ];
   if (opts.page || opts.pageSize) {
     const p = paginateSql(sql, opts);
@@ -114,11 +120,12 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
   const params = [];
   const returnParams = [];
   const { supplier_id, status, payment_type, category_id, item_id } = opts;
+  const ptParams = [];
   const returnDateFilter = addDateFilter("pr.created_at", startDate, endDate, returnParams);
   const dateFilter = addDateFilter("p.created_at", startDate, endDate, params);
-  const ptFilter = addPaymentTypeFilter(payment_type, "p", params);
+  const ptFilter = addPurchasePaymentFilter(payment_type, "p", ptParams);
   return db.prepare(`
-    SELECT s.name AS supplier_name,
+    SELECT s.id AS supplier_id, s.name AS supplier_name,
       COUNT(p.id) AS purchase_count,
       SUM(p.total) AS total_purchases,
       ROUND(AVG(p.total), 2) AS avg_order_value,
@@ -133,7 +140,7 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
       WHERE pr.status = 'active' ${returnDateFilter}
       GROUP BY pr.supplier_id
     ) pr ON pr.supplier_id = s.id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
+    WHERE ${baseStatusClause("p", status, ["cancelled", "voided"])} AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${dateFilter}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${status ? " AND p.status = ?" : ""}
       ${ptFilter}
@@ -146,6 +153,7 @@ function purchasesBySupplier(startDate, endDate, opts = {}) {
     ...params,
     ...(supplier_id ? [supplier_id] : []),
     ...(status ? [status] : []),
+    ...ptParams,
     ...(category_id ? [category_id] : []),
     ...(item_id ? [item_id] : []),
   );
@@ -182,7 +190,7 @@ function purchasesByItem(startDate, endDate, opts = {}) {
         ${supplier_id ? " AND pr.supplier_id = ?" : ""}
       GROUP BY prl.item_id
     ) ret ON ret.item_id = it.id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status NOT IN ('cancelled', 'voided') AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${category_id ? " AND it.category_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
@@ -232,7 +240,7 @@ function supplierPricing(startDate, endDate, opts = {}) {
     JOIN purchases p ON p.id = pl.purchase_id
     JOIN suppliers s ON s.id = p.supplier_id
     JOIN items it ON it.id = pl.item_id
-    WHERE p.status != 'cancelled' AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
+    WHERE p.status NOT IN ('cancelled', 'voided') AND COALESCE(p.is_opening_balance, 0) = 0 AND COALESCE(p.doc_no, '') NOT LIKE 'OB-%' ${addDateFilter("p.created_at", startDate, endDate, params)}
       ${supplier_id ? " AND p.supplier_id = ?" : ""}
       ${item_id ? " AND it.id = ?" : ""}
     ORDER BY it.name, p.created_at DESC
@@ -305,7 +313,7 @@ function supplierReliabilityReport(startDate, endDate, opts = {}) {
         SUM(total) AS total_purchases,
         MAX(DATE(created_at)) AS last_purchase_date
       FROM purchases
-      WHERE status != 'cancelled' ${addDateFilter("created_at", startDate, endDate, purchaseParams)}
+      WHERE status NOT IN ('cancelled', 'voided') ${addDateFilter("created_at", startDate, endDate, purchaseParams)}
       GROUP BY supplier_id
     ) pur ON pur.supplier_id = s.id
     LEFT JOIN (
@@ -321,7 +329,7 @@ function supplierReliabilityReport(startDate, endDate, opts = {}) {
         ROUND(AVG(julianday(pp.created_at) - julianday(p.created_at)), 1) AS avg_payment_days
       FROM purchases p
       JOIN purchase_payments pp ON pp.purchase_id = p.id
-      WHERE p.status != 'cancelled'
+      WHERE p.status NOT IN ('cancelled', 'voided')
       GROUP BY p.supplier_id
     ) pay ON pay.supplier_id = s.id
     LEFT JOIN (
@@ -336,7 +344,7 @@ function supplierReliabilityReport(startDate, endDate, opts = {}) {
           COUNT(*) AS buys
         FROM purchase_lines pl
         JOIN purchases p ON p.id = pl.purchase_id
-        WHERE p.status != 'cancelled'
+        WHERE p.status NOT IN ('cancelled', 'voided')
         GROUP BY p.supplier_id, pl.item_id
         HAVING buys > 1
       ) item_prices

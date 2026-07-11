@@ -467,7 +467,7 @@ function arAging(startDate, endDate, opts = {}) {
       WHERE outstanding > 0
       GROUP BY customer_id
     )
-    SELECT c.name AS customer_name,
+    SELECT c.id AS customer_id, c.name AS customer_name,
       c.phone,
       c.id AS customer_id,
       COALESCE(dt.invoice_count, 0) AS invoice_count,
@@ -519,7 +519,7 @@ function apAging(startDate, endDate, opts = {}) {
       WHERE outstanding > 0
       GROUP BY supplier_id
     )
-    SELECT s.name AS supplier_name,
+    SELECT s.id AS supplier_id, s.name AS supplier_name,
       s.phone,
       s.id AS supplier_id,
       COALESCE(dt.purchase_count, 0) AS purchase_count,

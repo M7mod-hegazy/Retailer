@@ -46,6 +46,13 @@ router.post("/trigger", can("create"), (req, res, next) => {
   try {
     const label = String(req.body?.label || "").trim() || null;
     const result = performBackup({ triggerType: "manual", label });
+    try {
+      getDb()
+        .prepare("UPDATE settings SET last_auto_backup_at = ?, updated_at = ? WHERE id = 1")
+        .run(result.summary.createdAt, nowSql());
+    } catch (e) {
+      // non-fatal
+    }
     res.json({ success: true, data: { path: result.dbPath, summary: result.summary } });
   } catch (err) {
     next(err);
@@ -206,7 +213,18 @@ router.get("/settings", can("view"), (_req, res, next) => {
     const settings = getDb()
       .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)
       .get();
-    if (settings) settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
+    if (settings) {
+      settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
+      try {
+        const list = listBackups();
+        const latestSnapshot = list.years?.[0]?.months?.[0]?.days?.[0]?.snapshots?.[0];
+        if (latestSnapshot?.createdAt) {
+          settings.last_auto_backup_at = latestSnapshot.createdAt;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
     res.json({ success: true, data: settings });
   } catch (err) {
     next(err);
@@ -232,7 +250,18 @@ router.put("/settings", can("create"), (req, res, next) => {
     const settings = getDb()
       .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)
       .get();
-    if (settings) settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
+    if (settings) {
+      settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
+      try {
+        const list = listBackups();
+        const latestSnapshot = list.years?.[0]?.months?.[0]?.days?.[0]?.snapshots?.[0];
+        if (latestSnapshot?.createdAt) {
+          settings.last_auto_backup_at = latestSnapshot.createdAt;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
     res.json({ success: true, data: settings });
   } catch (err) {
     next(err);

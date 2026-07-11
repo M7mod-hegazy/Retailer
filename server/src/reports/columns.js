@@ -827,6 +827,365 @@ const AR_LABELS = {
   sub_type: "النوع الفرعي",
 };
 
+// Short Arabic help text shown next to each report column (e.g. in a column-picker
+// tooltip). Covers every key used across REPORT_COLUMN_KEYS. For computed money/percent
+// columns the sentence explains HOW the value is calculated, matched against the actual
+// SQL in server/src/reports/queries/*.js and server/src/services/paymentFlowService.js.
+const COLUMN_DESCRIPTIONS = {
+  action: "نوع العملية التي نفّذها المستخدم في النظام (إضافة، تعديل، حذف، تسجيل دخول...).",
+  action_count: "عدد مرات تنفيذ هذا الإجراء خلال الفترة.",
+  active_advances_balance: "إجمالي الرصيد المتبقي على السلف النشطة لهذا الموظف.",
+  active_bonuses_total: "إجمالي قيمة المكافآت النشطة التي لم تُصرف بعد لهذا الموظف.",
+  active_deductions_total: "إجمالي قيمة الخصومات النشطة التي لم تُطبق بعد على هذا الموظف.",
+  additions_amount: "قيمة الإضافات أو الرسوم المضافة على الفاتورة بعد الخصم.",
+  adjustment_type: "نوع التسوية اليدوية المطبقة على حساب الموظف.",
+  advance_deductions: "المبلغ المخصوم من الراتب سداداً لسلفة سابقة.",
+  after_qty: "رصيد الصنف بعد تنفيذ الحركة أو التسوية.",
+  aging_0_30: "المبالغ المستحقة التي مضى عليها 30 يوماً أو أقل.",
+  aging_31_60: "المبالغ المستحقة التي مضى عليها من 31 إلى 60 يوماً.",
+  aging_61_90: "المبالغ المستحقة التي مضى عليها من 61 إلى 90 يوماً.",
+  aging_90_plus: "المبالغ المستحقة التي مضى عليها أكثر من 90 يوماً.",
+  aging_bucket: "الفئة الزمنية التي يصنَّف ضمنها عمر الصنف في المخزون حسب مدة بقائه دون حركة أو دون بيع.",
+  amount: "قيمة المبلغ في هذه الحركة.",
+  avg_daily_sales: "متوسط الكمية المباعة من الصنف يومياً خلال فترة التقرير.",
+  avg_diff_pct: "متوسط نسبة الفرق بين السعر الذي عدّله الكاشير والسعر الأصلي للصنف.",
+  avg_discount: "متوسط قيمة الخصم لكل فاتورة (إجمالي الخصم ÷ عدد الفواتير).",
+  avg_discount_pct: "متوسط نسبة الخصم إلى إجمالي الفاتورة.",
+  avg_discount_percent: "متوسط نسبة الخصم إلى إجمالي الفاتورة قبل الخصم لهذا العميل.",
+  avg_expense: "متوسط قيمة المصروف الواحد خلال الفترة (إجمالي المصروفات ÷ عددها).",
+  avg_invoice_value: "متوسط قيمة الفاتورة الواحدة (إجمالي المبيعات ÷ عدد الفواتير).",
+  avg_order_value: "متوسط قيمة فاتورة الشراء الواحدة (إجمالي المشتريات ÷ عدد الفواتير).",
+  avg_payment_days: "متوسط عدد الأيام الفاصلة بين تاريخ فاتورة الشراء وتاريخ سدادها لهذا المورد.",
+  avg_price_spread_percent: "متوسط نسبة التفاوت بين أعلى وأقل سعر اشتُري به نفس الصنف من هذا المورد ((أعلى سعر - أقل سعر) ÷ متوسط السعر × 100).",
+  avg_return_value: "متوسط قيمة المرتجع الواحد (إجمالي المرتجعات ÷ عددها).",
+  avg_revenue: "متوسط قيمة الإيراد الواحد خلال الفترة.",
+  avg_sale: "متوسط قيمة عملية البيع الواحدة.",
+  avg_transaction: "متوسط قيمة المعاملة الواحدة.",
+  avg_unit_cost: "متوسط تكلفة الوحدة المباعة أو المشتراة من الصنف.",
+  avg_unit_price: "متوسط سعر بيع الوحدة من الصنف.",
+  balance: "الرصيد الحالي للحساب: موجب إذا كان الطرف مديناً (مستحق عليه)، وسالب أو معكوس إذا كان دائناً (مستحق له).",
+  balance_label: "يوضح ما إذا كان الرصيد مديناً (عليه) أم دائناً (له).",
+  bank_name: "اسم البنك المرتبط بهذه الحركة أو الشيك.",
+  barcode: "الباركود الخاص بالصنف.",
+  base_salary: "الراتب الأساسي للموظف قبل إضافة المكافآت أو خصم الاستقطاعات.",
+  basis_label: "الأساس المستخدم في تجميع الإقرار الضريبي (نقدي أو استحقاقي).",
+  batch_no: "رقم دفعة الصنف المرتبط بتاريخ صلاحية محدد.",
+  before_qty: "رصيد الصنف قبل تنفيذ الحركة أو التسوية.",
+  below_threshold: "يشير إلى أن هامش ربح الصنف الحالي أقل من الحد الأدنى المحدد له.",
+  bonus_type: "كود نوع المكافأة.",
+  bonus_type_label: "نوع المكافأة الممنوحة للموظف.",
+  cancelled_at: "تاريخ إلغاء هذا الخصم أو المكافأة قبل تطبيقه.",
+  cancelled_count: "عدد الفواتير التي تم إلغاؤها.",
+  cash_variance: "الفرق بين النقدية الفعلية عند إغلاق الوردية والنقدية المتوقعة حسابياً (النقدية الافتتاحية + مبيعات الوردية النقدية).",
+  cashier: "اسم الكاشير الذي نفّذ العملية.",
+  cashier_id: "معرف الكاشير.",
+  category_count: "عدد فئات الأصناف المختلفة.",
+  category_name: "اسم فئة الصنف.",
+  cheque_no: "رقم الشيك.",
+  closed_at: "تاريخ ووقت إغلاق الوردية.",
+  closing_cash: "قيمة النقدية الفعلية التي تم عدّها عند إغلاق الوردية.",
+  code: "الكود الخاص بالسجل.",
+  cogs: "تكلفة البضاعة المباعة (الكمية المباعة × تكلفة الوحدة).",
+  collected: "إجمالي المبالغ التي تم تحصيلها فعلياً من العميل.",
+  collection_rate: "نسبة المبلغ المحصَّل إلى إجمالي المبلغ المستحق (المحصَّل ÷ المستحق × 100).",
+  completed_at: "تاريخ تطبيق الخصم أو المكافأة فعلياً على راتب الموظف.",
+  cost: "تكلفة الأصناف المباعة أو المشتراة.",
+  cost_basis: "تكلفة الوحدة المعتمدة عند احتساب قيمة حركة التسوية.",
+  cost_change: "الفرق بين تكلفة الصنف الحالية وتكلفته في بداية فترة المقارنة.",
+  cost_of_goods_sold: "تكلفة البضاعة المباعة (الكمية المباعة × تكلفة الوحدة).",
+  cost_price: "سعر تكلفة الوحدة من الصنف.",
+  created_at: "تاريخ إنشاء السجل.",
+  created_by: "اسم المستخدم الذي أنشأ العملية.",
+  created_date: "تاريخ إنشاء السجل.",
+  credit: "المبلغ الدائن في هذه الحركة (يخفّض المبلغ المستحق على الطرف).",
+  current_cost: "تكلفة الوحدة الحالية للصنف.",
+  current_margin_percent: "هامش الربح الحالي للصنف بناءً على سعر البيع الحالي مقابل متوسط تكلفته ((سعر البيع - متوسط التكلفة) ÷ سعر البيع × 100).",
+  current_wacc: "متوسط التكلفة المرجح الحالي لوحدة الصنف.",
+  customer_count: "عدد العملاء المختلفين.",
+  customer_id: "معرف العميل.",
+  customer_name: "اسم العميل.",
+  daily_salary: "قيمة الراتب اليومي للموظف (الراتب الشهري ÷ عدد أيام العمل في الشهر).",
+  date: "تاريخ الحركة أو العملية.",
+  days_of_stock: "عدد الأيام التي تكفي فيها الكمية الحالية في المخزون بناءً على متوسط معدل البيع اليومي خلال الفترة.",
+  days_overdue: "عدد الأيام المنقضية منذ تاريخ استحقاق القسط دون سداد.",
+  days_since_last_movement: "عدد الأيام المنقضية منذ آخر حركة مخزون على هذا الصنف.",
+  days_since_last_purchase: "عدد الأيام المنقضية منذ آخر عملية شراء.",
+  days_since_last_sale: "عدد الأيام المنقضية منذ آخر عملية بيع لهذا الصنف.",
+  days_until_expiry: "عدد الأيام المتبقية حتى تاريخ انتهاء صلاحية الصنف.",
+  debit: "المبلغ المدين في هذه الحركة (يزيد المبلغ المستحق على الطرف).",
+  deduction_type: "كود نوع الخصم.",
+  deduction_type_label: "نوع الخصم المطبق على الموظف.",
+  description: "بيان أو وصف تفصيلي للحركة.",
+  details: "تفاصيل إضافية عن الإجراء المسجل.",
+  direction: "كود اتجاه الحركة المالية (داخل أو خارج).",
+  direction_label: "اتجاه الحركة المالية: داخلة إلى الخزينة أو خارجة منها.",
+  discount: "قيمة الخصم الممنوح على الفاتورة.",
+  discount_invoice_count: "عدد الفواتير التي تضمنت خصماً استثنائياً منحه الكاشير.",
+  discount_range: "الفئة التي تقع ضمنها نسبة الخصم الممنوح على الفاتورة (مثال: 5-10%).",
+  distinct_customers: "عدد العملاء المختلفين الذين تعاملوا مع هذا الصنف.",
+  distinct_suppliers: "عدد الموردين المختلفين الذين تم الشراء منهم.",
+  doc_no: "رقم المستند.",
+  doc_type: "كود نوع المستند.",
+  doc_type_label: "نوع المستند الذي نتجت عنه هذه الحركة المالية (فاتورة بيع، تحصيل، مصروف...).",
+  down_payment: "قيمة الدفعة المقدمة عند بدء خطة التقسيط.",
+  drawer_name: "اسم الساحب المدوّن على الشيك.",
+  due_date: "تاريخ استحقاق السداد.",
+  employee_id: "معرف الموظف.",
+  employee_name: "اسم الموظف.",
+  estimated_revenue_impact: "الأثر التقديري لتجاوزات الكاشير في الأسعار على إجمالي الإيراد.",
+  exception_type: "نوع الاستثناء أو المخالفة المسجلة على الفاتورة (إلغاء، خصم استثنائي، تجاوز سعر).",
+  excludes_from_treasury: "يشير إلى أن حركات هذه الوسيلة لا تُحتسب ضمن رصيد الخزينة.",
+  expected_cash: "النقدية المتوقع وجودها في الدرج عند الإغلاق (النقدية الافتتاحية + مبيعات الوردية النقدية).",
+  expense_count: "عدد المصروفات المسجلة.",
+  expenses: "إجمالي قيمة المصروفات.",
+  expiry_date: "تاريخ انتهاء صلاحية الصنف.",
+  expiry_status: "حالة صلاحية الصنف (سارية، قاربت على الانتهاء، منتهية).",
+  first_invoice_date: "تاريخ أول فاتورة للعميل.",
+  first_period_cost: "تكلفة الوحدة المسجلة في بداية فترة المقارنة.",
+  first_purchase_date: "تاريخ أول عملية شراء لهذا الصنف.",
+  first_sale_date: "تاريخ أول عملية بيع لهذا الصنف.",
+  frequency: "دورية سداد أقساط خطة التقسيط (شهري، أسبوعي...).",
+  frequency_monthly: "معدل عدد مرات شراء العميل التقديري شهرياً (عدد الفواتير ÷ عدد أيام تعامله × 30).",
+  full_name: "الاسم الكامل للمستخدم.",
+  fully_paid_count: "عدد الفواتير الآجلة التي تم سدادها بالكامل.",
+  gross_profit: "صافي المبيعات بعد خصم المرتجعات ناقص تكلفة البضاعة المباعة.",
+  gross_sales: "إجمالي قيمة الفواتير بعد الخصم والإضافات وقبل خصم المرتجعات.",
+  handled_by: "اسم المستخدم الذي تولى تنفيذ عملية الإرجاع.",
+  hour_slot: "الساعة من اليوم التي حدثت خلالها المبيعات.",
+  id: "المعرف الفريد للسجل.",
+  input_vat: "ضريبة القيمة المضافة المدفوعة على المشتريات، والتي يمكن خصمها من ضريبة المخرجات المستحقة.",
+  installment_amount: "قيمة القسط الواحد المستحق.",
+  installment_count: "عدد أقساط خطة التقسيط.",
+  inventory_value: "قيمة المخزون الحالي من الصنف بمتوسط تكلفته المرجح (الكمية المتاحة × متوسط التكلفة).",
+  invoice_count: "عدد الفواتير.",
+  invoice_no: "رقم الفاتورة.",
+  is_recurring: "يشير إلى أن هذا الخصم أو المكافأة يتكرر تلقائياً كل دورة راتب.",
+  item_code: "كود الصنف.",
+  item_count: "عدد الأصناف المختلفة.",
+  item_id: "معرف الصنف.",
+  item_name: "اسم الصنف.",
+  items_per_invoice: "متوسط عدد الأصناف في الفاتورة الواحدة.",
+  items_returned: "عدد الأصناف التي شملتها عملية الإرجاع.",
+  job_title: "المسمى الوظيفي للموظف.",
+  label: "بيان توضيحي للبند.",
+  last_cost: "آخر تكلفة شراء مسجّلة لوحدة الصنف.",
+  last_due_date: "تاريخ آخر استحقاق مسجّل لأقساط العميل.",
+  last_expense_date: "تاريخ آخر مصروف مسجّل في هذه الفئة.",
+  last_invoice_date: "تاريخ آخر فاتورة.",
+  last_login: "تاريخ ووقت آخر تسجيل دخول للمستخدم.",
+  last_movement_at: "تاريخ ووقت آخر حركة مسجّلة على وسيلة الدفع هذه.",
+  last_movement_date: "تاريخ آخر حركة مخزون على الصنف.",
+  last_period_cost: "تكلفة الوحدة المسجلة في نهاية فترة المقارنة.",
+  last_purchase_cost: "آخر تكلفة تم الشراء بها لوحدة الصنف.",
+  last_purchase_date: "تاريخ آخر عملية شراء.",
+  last_return_date: "تاريخ آخر عملية إرجاع مسجّلة.",
+  last_sale_date: "تاريخ آخر عملية بيع للصنف.",
+  lifetime_gross_profit: "إجمالي الربح المتحقق من الصنف منذ أول عملية بيع له حتى الآن (كل إيرادات المبيعات ناقص كل التكاليف والمرتجعات).",
+  line_total: "إجمالي قيمة سطر الفاتورة (الكمية × سعر الوحدة).",
+  low_stock_alerts_count: "عدد الأصناف التي وصل رصيدها إلى حد إعادة الطلب أو أقل.",
+  low_stock_items: "عدد الأصناف التي رصيدها في هذا المخزن أقل من الحد الأدنى المحدد لها.",
+  margin_decline_percent: "نسبة تراجع هامش ربح الصنف في الفترة الحالية مقارنة بالفترة السابقة.",
+  margin_percent: "نسبة مجمل الربح إلى صافي المبيعات (الربح ÷ صافي المبيعات × 100).",
+  method_category: "تصنيف وسيلة الدفع (نقدي، إلكتروني...).",
+  method_icon: "الأيقونة المعروضة لوسيلة الدفع.",
+  method_id: "معرف وسيلة الدفع.",
+  method_key: "مفتاح داخلي يُستخدم لتجميع حركات نفس وسيلة الدفع معاً.",
+  method_name: "اسم وسيلة الدفع.",
+  method_type: "نوع وسيلة الدفع.",
+  min_margin_percent: "الحد الأدنى المسموح به لهامش الربح على هذا الصنف.",
+  min_stock_qty: "الحد الأدنى للكمية المطلوب توفرها من الصنف قبل التنبيه بإعادة الطلب.",
+  movement_type: "نوع حركة المخزون (إدخال، إخراج، تحويل، تسوية...).",
+  name: "الاسم.",
+  net_amount: "صافي أثر الحركة على الخزينة (المبلغ الداخل ناقص المبلغ الخارج).",
+  net_flow: "صافي حركة الحساب البنكي خلال الفترة (إجمالي الإيداعات ناقص إجمالي السحوبات).",
+  net_profit: "صافي الربح بعد إضافة الإيرادات الأخرى وخصم كل المصروفات والمسحوبات من مجمل الربح.",
+  net_purchases: "إجمالي المشتريات من المورد بعد خصم قيمة المرتجعات.",
+  net_quantity_purchased: "صافي الكمية المشتراة من الصنف بعد خصم الكمية المرتجعة.",
+  net_salary: "صافي الراتب المستحق للموظف بعد إضافة المكافآت وخصم الاستقطاعات وخصومات السلف.",
+  net_sales: "إجمالي الفواتير ناقص قيمة المرتجعات.",
+  net_total_cost: "صافي تكلفة الكمية المشتراة بعد خصم تكلفة الكمية المرتجعة.",
+  net_vat: "الفرق بين ضريبة المخرجات وضريبة المدخلات، وهو المبلغ المستحق للحكومة أو القابل للاسترداد.",
+  notes: "ملاحظات إضافية على السجل.",
+  occurred_at: "تاريخ ووقت حدوث حركة التكلفة فعلياً.",
+  opened_date: "تاريخ فتح الوردية.",
+  opening_cash: "قيمة النقدية الموجودة في الدرج عند فتح الوردية.",
+  other_revenues: "إجمالي الإيرادات الأخرى غير الناتجة عن المبيعات.",
+  output_vat: "ضريبة القيمة المضافة المحصَّلة على المبيعات والمستحقة للحكومة.",
+  outstanding: "المبلغ المتبقي غير المحصَّل من إجمالي المستحق (المستحق ناقص المحصَّل).",
+  overdue_amount: "المبلغ المستحق الذي تجاوز عمره 30 يوماً ولم يُسدد بعد.",
+  overdue_bucket: "الفئة الزمنية التي تصنّف مدى تأخر سداد القسط.",
+  overdue_count: "عدد خطط التقسيط التي بها أقساط متأخرة السداد.",
+  overdue_receivables_count: "عدد ذمم العملاء التي تجاوزت موعد استحقاقها.",
+  override_count: "عدد المرات التي عدّل فيها الكاشير سعر صنف يدوياً.",
+  paid_amount: "المبلغ المدفوع فعلياً.",
+  paid_at: "تاريخ سداد القسط أو الدفعة.",
+  paid_count: "عدد المدفوعات.",
+  partially_paid_count: "عدد الفواتير الآجلة التي سُدد جزء من قيمتها فقط.",
+  party: "اسم الطرف المرتبط بالحركة (عميل، مورد، أو جهة عامة).",
+  party_id: "معرف الطرف المرتبط بالحركة.",
+  party_type: "نوع الطرف المرتبط بالحركة (عميل، مورد، عام).",
+  payload_json: "تفاصيل العملية بصيغة تقنية كما سُجّلت في سجل التدقيق.",
+  payment_breakdown: "تفصيل المبالغ الموزعة على وسائل الدفع المختلفة عند الدفع بأكثر من وسيلة.",
+  payment_method: "وسيلة الدفع المستخدمة.",
+  payment_type: "طريقة الدفع المستخدمة في الفاتورة.",
+  pct: "نسبة هذا البند إلى إجمالي الإيرادات في قائمة الأرباح والخسائر.",
+  pct_of_sales: "نسبة هذا الصف إلى إجمالي المبيعات.",
+  pct_of_total: "نسبة هذا البند إلى إجمالي القيمة الكلية.",
+  pending_count: "عدد الحالات المعلّقة.",
+  percentage: "النسبة المئوية لهذا البند من الإجمالي.",
+  period: "الفترة الزمنية التي يمثلها هذا الصف.",
+  period_end: "نهاية الفترة الزمنية.",
+  period_label: "اسم الفترة الضريبية المشمولة بالإقرار.",
+  period_start: "بداية الفترة الزمنية.",
+  phone: "رقم هاتف التواصل.",
+  plan_count: "عدد خطط التقسيط.",
+  potential_profit: "الربح المتوقع تحقيقه عند بيع كامل الكمية المتبقية في المخزون بسعر البيع الحالي، بعد خصم تكلفتها.",
+  potential_revenue: "الإيراد المتوقع تحقيقه عند بيع كامل الكمية المتبقية في المخزون بسعر البيع الحالي.",
+  previous_margin_percent: "هامش الربح المسجل للصنف في الفترة السابقة قبل حدوث التغير.",
+  price_downs: "عدد مرات قيام الكاشير بتخفيض سعر صنف عن سعره الأصلي.",
+  price_ups: "عدد مرات قيام الكاشير برفع سعر صنف عن سعره الأصلي.",
+  purchase_count: "عدد فواتير الشراء.",
+  purchase_date: "تاريخ فاتورة الشراء.",
+  purchase_no: "رقم فاتورة الشراء.",
+  purchase_price: "سعر شراء الوحدة من الصنف.",
+  purchase_qty: "الكمية التي تم شراؤها من الصنف.",
+  purchase_return_qty: "الكمية المرتجعة من مشتريات الصنف.",
+  purchase_return_value: "قيمة الكمية المرتجعة من مشتريات الصنف.",
+  purchase_value: "إجمالي قيمة الكمية المشتراة من الصنف.",
+  purchases_total: "إجمالي قيمة المشتريات.",
+  qty_change: "مقدار التغير في كمية الصنف نتيجة التسوية (بالزيادة أو النقصان).",
+  quantity: "الكمية.",
+  quantity_purchased: "الكمية المشتراة من الصنف.",
+  quantity_returned: "الكمية المرتجعة.",
+  quantity_sold: "الكمية المباعة من الصنف.",
+  raw_method: "كود وسيلة الدفع كما ورد في المستند الأصلي قبل مطابقته بوسائل الدفع المعرّفة في النظام.",
+  reason: "سبب العملية أو الإرجاع.",
+  recurring_label: "يوضح ما إذا كان هذا الخصم أو المكافأة يتكرر تلقائياً كل دورة راتب.",
+  ref_id: "رقم المستند المصدر لهذه الحركة.",
+  reference: "المرجع المرتبط بحركة البنك.",
+  reference_id: "رقم المستند المرجعي لهذه الحركة.",
+  reference_no: "رقم مرجعي للحركة.",
+  reference_type: "نوع المستند المرجعي لهذه الحركة.",
+  refund_method: "الطريقة التي استُرد بها المبلغ للعميل.",
+  remaining: "المبلغ المتبقي غير المسدد.",
+  remaining_balance: "الرصيد المتبقي من السلفة بعد خصم الدفعات المسددة.",
+  remaining_pct: "نسبة المبلغ المتبقي غير المسدد إلى الإجمالي.",
+  repaid_amount: "المبلغ الذي تم سداده من السلفة حتى الآن.",
+  repeat_items: "عدد الأصناف التي تم شراؤها من هذا المورد أكثر من مرة، وتُستخدم لقياس تذبذب أسعاره.",
+  resource: "الشاشة أو المورد الذي طاله الإجراء المسجل.",
+  return_amount: "قيمة المبلغ المرتجع.",
+  return_count: "عدد عمليات الإرجاع.",
+  return_discount: "قيمة الخصم المخصوم من مبلغ المرتجع.",
+  return_increase: "قيمة الإضافات المضافة على مبلغ المرتجع.",
+  return_rate_percent: "نسبة قيمة المرتجعات إلى إجمالي المشتريات من هذا المورد (المرتجعات ÷ المشتريات × 100).",
+  return_ref: "الرقم المرجعي لعملية الإرجاع.",
+  return_total: "صافي قيمة المرتجع بعد الخصم والإضافة.",
+  returns_amount: "إجمالي قيمة المرتجعات.",
+  returns_cost: "تكلفة الأصناف التي تم إرجاعها.",
+  returns_count: "عدد عمليات الإرجاع.",
+  returns_handled: "عدد عمليات الإرجاع التي تعامل معها الكاشير.",
+  returns_total: "إجمالي قيمة المرتجعات.",
+  revenue: "قيمة الإيراد المتحقق من المبيعات.",
+  revenue_count: "عدد الإيرادات المسجلة.",
+  role: "صلاحية المستخدم في النظام.",
+  running_balance: "الرصيد التراكمي للحساب بعد كل حركة بالترتيب الزمني.",
+  running_quantity: "الكمية التراكمية للصنف بعد كل حركة تكلفة بالترتيب الزمني.",
+  running_total: "الرصيد التراكمي لوسيلة الدفع بعد تسجيل كل حركة.",
+  running_wacc: "متوسط التكلفة المرجح للوحدة محسوباً تراكمياً بعد كل حركة تكلفة على الصنف.",
+  salary: "الراتب المحدد للموظف.",
+  salary_period: "دورية صرف الراتب (شهري، أسبوعي...).",
+  sale_price: "سعر بيع الوحدة من الصنف.",
+  sales_cost: "تكلفة الأصناف المباعة من هذا الصنف خلال دورة حياته.",
+  sales_qty: "الكمية المباعة من الصنف.",
+  sales_return_qty: "الكمية المرتجعة من مبيعات الصنف.",
+  sales_return_value: "قيمة الكمية المرتجعة من مبيعات الصنف.",
+  sales_revenue: "إجمالي إيراد مبيعات الصنف.",
+  sales_total: "إجمالي قيمة المبيعات.",
+  section: "القسم الذي ينتمي إليه هذا البند في التقرير.",
+  selling_total: "مجموع أسعار البيع قبل الخصومات والإضافات.",
+  settled_at: "تاريخ صرف الراتب للموظف.",
+  settled_by: "اسم المستخدم الذي قام بصرف الراتب.",
+  shift_count: "عدد الورديات.",
+  shift_id: "رقم الوردية.",
+  signed_amount: "قيمة الحركة موقّعة بإشارة: سالبة إذا كانت خارجة من الخزينة، وموجبة إذا كانت داخلة إليها.",
+  source: "مصدر الرصيد (خزينة أو بنك).",
+  source_doc_no: "رقم المستند الأصلي الذي نتجت عنه حركة التكلفة.",
+  source_group: "التصنيف العام لمصدر الحركة المالية (مبيعات، مشتريات، مصروفات...).",
+  source_id: "معرف المستند المصدر لحركة التكلفة.",
+  source_line_id: "معرف سطر المستند المصدر لحركة التكلفة.",
+  source_table: "اسم الجدول الذي نتجت عنه حركة التكلفة.",
+  spread_min_max: "الفرق بين أعلى وأقل تقييم لقيمة المخزون المتبقي من الصنف بين طرق التكلفة الأربع (متوسط التكلفة، الوارد أولاً، الوارد أخيراً، آخر سعر شراء).",
+  status: "الحالة الحالية للمستند أو العملية.",
+  status_label: "الحالة الحالية للعملية أو خطة التقسيط (نشطة، مسددة، متأخرة...).",
+  stock_on_hand: "الكمية المتوفرة حالياً من الصنف في المخزون.",
+  stock_quantity: "الكمية المتوفرة من الصنف في المخزون.",
+  stock_status: "حالة رصيد الصنف (متوفر، منخفض، نافد).",
+  stock_velocity_status: "تصنيف حركة الصنف بناءً على عدد الأيام التي يكفيها المخزون الحالي: نافد، راكد (بلا مبيعات)، مخزون زائد، مخزون ناقص، أو سليم.",
+  sub_type: "تصنيف فرعي لنوع الحركة المالية المسجلة للموظف.",
+  subtotal: "إجمالي الفاتورة قبل خصم الخصم.",
+  suggested_price: "سعر البيع المقترح لتحقيق الحد الأدنى لهامش الربح المحدد لهذا الصنف.",
+  supplier_count: "عدد الموردين.",
+  supplier_id: "معرف المورد.",
+  supplier_name: "اسم المورد.",
+  system_quantity: "الكمية المسجلة في النظام لحظة إعداد كشف الجرد، قبل مقارنتها بالعدّ الفعلي.",
+  tax_rate: "نسبة الضريبة المطبقة.",
+  tax_type_label: "طريقة احتساب الضريبة على الفاتورة (مضافة على السعر أو شاملة داخل السعر).",
+  taxable_amount: "قيمة المشتريات الخاضعة لضريبة القيمة المضافة.",
+  taxable_sales: "قيمة المبيعات الخاضعة لضريبة القيمة المضافة.",
+  total: "إجمالي قيمة المستند.",
+  total_amount: "إجمالي قيمة المبلغ.",
+  total_billed: "إجمالي المبلغ المستحق على العميل خلال الفترة.",
+  total_bonuses: "إجمالي قيمة المكافآت المضافة لراتب الموظف.",
+  total_cost: "إجمالي تكلفة الأصناف.",
+  total_deductions: "إجمالي قيمة الخصومات المطبقة على راتب الموظف.",
+  total_deposits: "إجمالي قيمة الإيداعات في الحساب البنكي.",
+  total_discount: "إجمالي قيمة الخصومات الممنوحة.",
+  total_due: "إجمالي الرصيد المستحق على الطرف من كل الفواتير غير المسددة إضافة إلى الرصيد الافتتاحي.",
+  total_expenses: "إجمالي قيمة المصروفات.",
+  total_header_discount: "إجمالي قيمة الخصم المطبق على مستوى الفاتورة نفسها (بخلاف خصومات الأصناف).",
+  total_in: "إجمالي المبالغ الداخلة.",
+  total_items_sold: "إجمالي عدد قطع الأصناف المباعة.",
+  total_out: "إجمالي المبالغ الخارجة.",
+  total_paid: "إجمالي المبلغ المدفوع.",
+  total_purchases: "إجمالي قيمة المشتريات.",
+  total_quantity: "إجمالي الكمية.",
+  total_remaining: "إجمالي المبلغ المتبقي غير المسدد.",
+  total_returns: "إجمالي قيمة المرتجعات.",
+  total_revenues: "إجمالي قيمة الإيرادات.",
+  total_sales: "إجمالي قيمة المبيعات.",
+  total_transactions: "إجمالي عدد المعاملات.",
+  total_value: "إجمالي قيمة المخزون من الصنف (الكمية × تكلفة الوحدة).",
+  total_withdrawals: "إجمالي قيمة المسحوبات.",
+  transaction_count: "عدد المعاملات.",
+  transfer_in_qty: "الكمية الواردة للصنف عبر التحويلات بين المخازن.",
+  transfer_out_qty: "الكمية الصادرة من الصنف عبر التحويلات بين المخازن.",
+  turnover_ratio: "معدل دوران المخزون خلال الفترة (تكلفة البضاعة المباعة ÷ قيمة المخزون)، ويوضح عدد مرات تدوير قيمة المخزون.",
+  tx_count: "عدد الحركات.",
+  tx_type_label: "نوع الحركة المالية المسجلة للموظف (خصم، مكافأة، سلفة، صرف راتب...).",
+  type: "نوع الحركة أو المستند.",
+  unit_cost: "تكلفة الوحدة.",
+  unit_name: "اسم وحدة قياس الصنف.",
+  unit_price: "سعر بيع الوحدة.",
+  updated_at: "تاريخ آخر تعديل على السجل.",
+  user_id: "معرف المستخدم.",
+  username: "اسم المستخدم لتسجيل الدخول.",
+  value_fifo: "قيمة المخزون المتبقي بطريقة الوارد أولاً يُصرف أولاً، أي تقييم الكمية المتبقية بتكلفة أحدث الدفعات الواردة.",
+  value_impact: "الأثر المالي لحركة التسوية على قيمة المخزون (الفرق في الكمية × تكلفة الوحدة).",
+  value_last: "قيمة المخزون المتبقي محسوبة بآخر سعر شراء مسجّل للصنف.",
+  value_lifo: "قيمة المخزون المتبقي بطريقة الوارد أخيراً يُصرف أولاً، أي تقييم الكمية المتبقية بتكلفة أقدم الدفعات الواردة.",
+  value_share_pct: "نسبة قيمة مخزون هذا المخزن إلى إجمالي قيمة المخزون في كل المخازن.",
+  value_wacc: "قيمة المخزون المتبقي محسوبة بمتوسط التكلفة المرجح للوحدة.",
+  vat_amount: "قيمة ضريبة القيمة المضافة.",
+  vat_reversed: "قيمة الضريبة المستردة نتيجة إرجاع الفاتورة.",
+  wacc: "متوسط تكلفة الشراء المرجح للوحدة حسب الكميات الواردة.",
+  warehouse_id: "معرف المخزن.",
+  warehouse_name: "اسم المخزن.",
+  weekday_name: "اسم يوم الأسبوع.",
+  weekday_num: "الرقم التسلسلي ليوم الأسبوع.",
+  withdrawals: "إجمالي قيمة المسحوبات من الخزينة.",
+  working_days_per_month: "عدد أيام العمل المعتمدة شهرياً لاحتساب الراتب اليومي للموظف.",
+};
+
 // Column order per report. Re-synced to the actual SQL output keys of each query
 // (introspected against the live schema). Lists every column the query returns so the
 // order is deterministic; technical join/grouping keys (customer_id, item_id, …) are
@@ -1067,6 +1426,107 @@ function labelForKey(key) {
   return AR_LABELS[key] || key;
 }
 
+// ── Totals-row aggregation ─────────────────────────────────────────────
+// Summing every numeric column produces nonsense for ratios (margin % totals to
+// 450%), averages, unit prices and running balances. Each totals cell is either:
+// a plain sum (additive), recomputed from summed parts (ratio), or omitted
+// (non-additive → the UI renders a dash).
+//
+// A ratio rule's num/den are candidate expressions tried in order; an expression
+// is a list of column keys where a "-key" term subtracts. The first expression
+// whose keys all exist in the rows wins.
+const TOTALS_RATIO_RULES = {
+  margin_percent:    { num: [["gross_profit"]], den: [["net_sales"], ["revenue", "-returns_amount"], ["total_sales", "-returns_amount"], ["revenue"]], percent: true },
+  collection_rate:   { num: [["collected"]], den: [["total_billed"]], percent: true },
+  remaining_pct:     { num: [["remaining"]], den: [["total"]], percent: true },
+  avg_invoice_value: { num: [["total_sales"], ["gross_sales"], ["selling_total"], ["total"]], den: [["invoice_count"]] },
+  avg_transaction:   { num: [["total_sales"]], den: [["invoice_count"], ["transaction_count"]] },
+  avg_sale:          { num: [["total_sales"]], den: [["invoice_count"]] },
+  avg_order_value:   { num: [["total_purchases"]], den: [["purchase_count"]] },
+  avg_return_value:  { num: [["returns_total"]], den: [["return_count"]] },
+  avg_expense:       { num: [["total_expenses"]], den: [["expense_count"]] },
+  avg_revenue:       { num: [["total_revenues"]], den: [["revenue_count"]] },
+  avg_unit_price:    { num: [["selling_total"], ["revenue"]], den: [["quantity_sold"]] },
+  avg_unit_cost:     { num: [["cost"], ["total_cost"], ["net_total_cost"]], den: [["quantity_sold"], ["net_quantity_purchased"], ["quantity_purchased"]] },
+  avg_discount:      { num: [["total_discount"]], den: [["invoice_count"]] },
+  items_per_invoice: { num: [["total_items_sold"]], den: [["invoice_count"]] },
+};
+
+// Percent columns that ARE additive because they are shares of one whole.
+const TOTALS_ADDITIVE_PERCENTS = new Set(["pct_of_sales", "pct_of_total", "percentage", "value_share_pct"]);
+
+// Keys whose sum is meaningless — totals cell omitted entirely.
+const TOTALS_SKIP_KEYS = new Set([
+  "wacc", "current_wacc", "running_wacc", "unit_price", "unit_cost", "cost_price",
+  "sale_price", "purchase_price", "last_purchase_cost", "last_cost", "avg_cost",
+  "suggested_price", "installment_amount", "salary", "daily_salary", "base_salary",
+  "opening_balance", "closing_balance", "opening_cash", "closing_cash", "expected_cash",
+  "tax_rate", "turnover_ratio", "frequency_monthly", "avg_daily_sales", "days_of_stock",
+  "shift_id", "weekday_num", "hour_slot", "before_qty", "after_qty", "spread_min_max",
+  "min_stock_qty", "min_stock", "working_days_per_month", "installment_no", "plan_id",
+  "cost_change", "current_cost", "first_period_cost", "last_period_cost",
+]);
+
+function totalsModeForKey(key, type) {
+  if (TOTALS_RATIO_RULES[key]) return "ratio";
+  if (TOTALS_SKIP_KEYS.has(key)) return "skip";
+  if (
+    key.startsWith("avg_") || key.startsWith("running_") || key.startsWith("days_") ||
+    key.startsWith("min_") || key.startsWith("max_") || key.endsWith("_days")
+  ) return "skip";
+  if (type === "percent") return TOTALS_ADDITIVE_PERCENTS.has(key) ? "sum" : "skip";
+  if (type === "money" || type === "number") return "sum";
+  return "skip";
+}
+
+function sumColumn(rows, key) {
+  let sum = 0;
+  let seen = false;
+  for (const row of rows) {
+    const raw = row?.[key];
+    if (raw == null || raw === "") continue;
+    const val = Number(raw);
+    if (!isNaN(val)) { sum += val; seen = true; }
+  }
+  return seen ? sum : null;
+}
+
+function evalTotalsExpr(rows, candidates) {
+  for (const expr of candidates) {
+    let total = 0;
+    let ok = true;
+    for (const term of expr) {
+      const negate = term.startsWith("-");
+      const s = sumColumn(rows, negate ? term.slice(1) : term);
+      if (s == null) { ok = false; break; }
+      total += negate ? -s : s;
+    }
+    if (ok) return total;
+  }
+  return null;
+}
+
+function computeReportTotals(rows, columns) {
+  const totals = {};
+  if (!rows?.length || !columns?.length) return totals;
+  columns.forEach((col) => {
+    const mode = totalsModeForKey(col.key, col.type);
+    if (mode === "skip") return;
+    if (mode === "ratio") {
+      const rule = TOTALS_RATIO_RULES[col.key];
+      const num = evalTotalsExpr(rows, rule.num);
+      const den = evalTotalsExpr(rows, rule.den);
+      if (num == null || den == null || den === 0) return;
+      const value = rule.percent ? (num / den) * 100 : num / den;
+      totals[col.key] = Math.round(value * 100) / 100;
+      return;
+    }
+    const sum = sumColumn(rows, col.key);
+    if (sum != null) totals[col.key] = Math.round(sum * 100) / 100;
+  });
+  return totals;
+}
+
 // How many *core* (non-extra, non-internal) columns are visible by default.
 const MAX_DEFAULT_VISIBLE = 12;
 
@@ -1074,6 +1534,7 @@ function buildColumn(key, coreIndex = 0, hidden = false) {
   return {
     key,
     label: labelForKey(key),
+    desc: COLUMN_DESCRIPTIONS[key] || "",
     type: inferType(key),
     printPriority: hidden ? "optional" : inferPriority(key, coreIndex),
     // Hidden (extra/internal) columns never take a visible slot, so appending extras
@@ -1146,13 +1607,140 @@ function normalizeStructuredReport(data) {
   return null;
 }
 
+// ── Cell-value translations ────────────────────────────────────────────
+// Maps raw English string values returned by SQL queries to their Arabic
+// equivalents so the client can display translated cell data.
+const VALUE_TRANSLATIONS = {
+  // ── Invoice / document status ──
+  paid: "مدفوع",
+  unpaid: "غير مدفوع",
+  partial: "جزئي",
+  cancelled: "ملغي",
+  voided: "ملغى",
+  active: "نشط",
+  pending: "معلق",
+  open: "مفتوح",
+  closed: "مغلق",
+  overdue: "متأخر",
+  settled: "مسدد",
+  completed: "مكتمل",
+  returned: "مرتجع بالكامل",
+  partially_returned: "مرتجع جزئي",
+
+  // ── Cheque status ──
+  cleared: "محصل",
+  bounced: "مرتد",
+  replaced: "مستبدل",
+
+  // ── Purchase order / quotation status ──
+  approved: "موافق عليه",
+  draft: "مسودة",
+  sent: "مرسل",
+
+  // ── Payment type / method ──
+  cash: "نقدي",
+  credit: "آجل",
+  card: "بطاقة",
+  wallet: "محفظة",
+  bank_transfer: "تحويل بنكي",
+  multi: "متعدد",
+  installments: "تقسيط",
+  future_due: "آجل مستحق",
+
+  // ── Direction ──
+  in: "وارد",
+  out: "صادر",
+
+  // ── Source (treasury) ──
+  treasury: "خزينة",
+  bank: "بنك",
+
+  // ── Stock velocity status ──
+  overstocked: "مخزون زائد",
+  understocked: "مخزون ناقص",
+  healthy: "سليم",
+
+  // ── Document types (payment flow) ──
+  pos_invoice: "فاتورة كاش",
+  credit_invoice: "فاتورة آجلة",
+  installment_invoice: "فاتورة تقسيط",
+  payment_allocation: "تسوية دفع",
+  customer_payment: "دفعة عميل",
+  supplier_payment: "دفعة مورد",
+  ajal_payment: "دفعة آجل",
+  expense: "مصروف",
+  revenue: "إيراد",
+  purchase: "شراء",
+  purchase_payment: "دفعة شراء",
+  withdrawal: "سحب",
+  sales_return: "مرتجع مبيعات",
+  purchase_return: "مرتجع شراء",
+
+  // ── Account statement types ──
+  invoice: "فاتورة مبيعات",
+  payment: "دفعة",
+  adjustment: "تسوية",
+
+  // ── Bank transaction types ──
+  deposit: "إيداع",
+
+  // ── Stock movement types ──
+  branch_receive: "استلام فرع",
+  opening_balance: "رصيد افتتاحي",
+  manual_adjustment: "تسوية يدوية",
+  transfer: "تحويل",
+
+  // ── Refund / settlement methods ──
+  cash_back: "استرداد نقدي",
+  split: "تقسيط",
+  account: "على الحساب",
+
+  // ── User roles ──
+  admin: "مدير النظام",
+  cashier: "كاشير",
+  manager: "مشرف",
+
+  // ── Party types ──
+  customer: "عميل",
+  supplier: "مورد",
+  general: "عام",
+
+  // ── Employee transaction types ──
+  deduction: "خصم",
+  bonus: "مكافأة",
+  advance: "سلفة",
+  advance_payment: "دفعة سلفة",
+  settlement: "صرف راتب",
+
+  // ── Period comparison ──
+  period_1: "الفترة الأولى",
+  period_2: "الفترة الثانية",
+
+  // ── Discount ranges ──
+  "0-5%": "0-5%",
+  "5-10%": "5-10%",
+  "10-20%": "10-20%",
+  "20%+": "20%+",
+
+  // ── Tax type ──
+  exclusive: "مضافة خارج السعر",
+  inclusive: "شاملة داخل السعر",
+
+  // ── Fallback / prefix strings ──
+  unknown: "غير معروف",
+  other: "أخرى",
+};
+
 module.exports = {
   REPORT_COLUMN_KEYS,
   REPORT_TITLES,
   REPORT_DESCRIPTIONS,
+  COLUMN_DESCRIPTIONS,
+  VALUE_TRANSLATIONS,
   labelForKey,
   getReportColumns,
   getReportTitle,
   getReportDescription,
   normalizeStructuredReport,
+  computeReportTotals,
 };

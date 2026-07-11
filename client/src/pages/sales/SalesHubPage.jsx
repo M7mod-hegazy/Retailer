@@ -4,10 +4,11 @@ import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
   Package, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  ShoppingBag, Search,
+  ShoppingBag, Search, MessageCircle,
 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { usePermission } from "../../hooks/usePermission";
 import useDebounce from "../../hooks/useDebounce";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import toast from "react-hot-toast";
@@ -16,6 +17,7 @@ import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
 import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAYMENT_LABELS = {
@@ -154,8 +156,10 @@ function buildPaymentChips(d) {
 // ── Preview Drawer ────────────────────────────────────────────────────────────
 function PreviewDrawer({ invoiceId, onClose }) {
   const navigate = useNavigate();
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [waSendOpen, setWaSendOpen] = useState(false);
 
   useEffect(() => {
     if (!invoiceId) return;
@@ -392,20 +396,39 @@ function PreviewDrawer({ invoiceId, onClose }) {
           <button onClick={onClose} className="h-11 px-6 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-black transition-colors">
             رجوع
           </button>
-          <button
-            onClick={() => navigate(`/invoices/${invoiceId}`)}
-            className="h-11 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/10"
-          >
-            <Eye className="w-4 h-4" /> عرض الفاتورة الكاملة
-          </button>
+          <div className="flex items-center gap-2">
+            {(d.customer_phone || d.walk_in_phone) && canSendWhatsApp && (
+              <button
+                onClick={() => setWaSendOpen(true)}
+                className="h-11 px-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black hover:bg-emerald-100 transition-colors flex items-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" /> واتساب
+              </button>
+            )}
+            <button
+              onClick={() => navigate(`/invoices/${invoiceId}`)}
+              className="h-11 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/10"
+            >
+              <Eye className="w-4 h-4" /> عرض الفاتورة الكاملة
+            </button>
+          </div>
         </div>
       </div>
+
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          invoice={d}
+        />
+      )}
     </div>
   );
 }
 
 // ── Invoice Row ────────────────────────────────────────────────────────────────
-function InvoiceRow({ row, navigate, onPreviewRequest }) {
+function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest }) {
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const total    = Number(row.total || 0);
   const received = Number(row.amount_received || 0);
   const debt     = Math.max(0, total - received);
@@ -493,6 +516,15 @@ function InvoiceRow({ row, navigate, onPreviewRequest }) {
         </div>
 
         <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {(row.customer_phone || row.walk_in_phone) && canSendWhatsApp && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onWhatsAppRequest?.(row); }}
+              className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+              title="إرسال عبر واتساب"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </button>
+          )}
           <button onClick={() => onPreviewRequest(row)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors">
             <Eye className="w-4 h-4" />
           </button>
@@ -523,6 +555,7 @@ export default function SalesHubPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [userId, setUserId] = useState("");
+  const [waSendTarget, setWaSendTarget] = useState(null);
   const [customers, setCustomers] = useState([]);
 
   // Customer autocomplete
@@ -869,7 +902,7 @@ export default function SalesHubPage() {
             ) : (
               <>
                 {pagedInvoices.map(row => (
-                  <InvoiceRow key={row.id} row={row} navigate={navigate} onPreviewRequest={setPreviewTarget} />
+                  <InvoiceRow key={row.id} row={row} navigate={navigate} onPreviewRequest={setPreviewTarget} onWhatsAppRequest={setWaSendTarget} />
                 ))}
                 {totalInvoicePages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
@@ -1001,6 +1034,14 @@ export default function SalesHubPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {waSendTarget && (
+        <WhatsAppSendModal
+          open={Boolean(waSendTarget)}
+          onClose={() => setWaSendTarget(null)}
+          invoice={waSendTarget}
+        />
+      )}
     </div>
   );
 }

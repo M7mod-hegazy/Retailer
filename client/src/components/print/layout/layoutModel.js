@@ -217,14 +217,19 @@ export { normalizeLayout, mergeFamilyLayouts };
  * settings object ({ layout: {...} }) or null.
  */
 export function resolveEffectiveLayout(globalScopeSettings, docSettings, family, scope = "_global") {
-  const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
-  if (isReport) {
-    const dl = normalizeLayout(docSettings || {}).settings.layout || {};
-    return dl[family] || seedFamilyLayout(family, scope);
+  // Per-family inherit: inherit_global_roll / inherit_global_page.
+  // Falls back to legacy inherit_global for backward compat.
+  const BLOCK_DOC_SCOPES = new Set(["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
+  const isReportScope = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+  const familyKey = `inherit_global_${family}`;
+  const docInherit = (docSettings || {})[familyKey] ?? (docSettings || {}).inherit_global;
+  const inheritGlobal = docInherit !== undefined ? docInherit : !isReportScope;
+  if (inheritGlobal) {
+    const gl = normalizeLayout(globalScopeSettings || {}).settings.layout || {};
+    return gl[family] || seedFamilyLayout(family, scope);
   }
-  const gl = normalizeLayout(globalScopeSettings || {}).settings.layout || {};
   const dl = normalizeLayout(docSettings || {}).settings.layout || {};
-  return mergeFamilyLayouts(gl[family], dl[family]);
+  return dl[family] || seedFamilyLayout(family, scope);
 }
 
 // Returns a NEW settings object with layout.roll / layout.page seeded if absent.

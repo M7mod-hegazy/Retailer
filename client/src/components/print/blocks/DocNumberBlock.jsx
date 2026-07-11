@@ -83,11 +83,29 @@ export default function DocNumberBlock({ invoice = {}, settings: s, props = {}, 
   const rollLabel = props.label !== undefined ? props.label : "رقم الفاتورة";
   const rollLabelText = showLabel && rollLabel ? `${rollLabel}:` : "";
 
-  if (variant === "boxed" || variant === "giant") {
+  if (variant === "minimal") {
+    return (
+      <div style={{ fontSize: "9px", color: "#475569", textAlign: "center" }}>
+        {showLabel && rollLabel ? <span>{rollLabelText} </span> : null}
+        <span dir="ltr" style={{ fontFamily: "monospace", fontWeight: 700 }}>{no}</span>
+      </div>
+    );
+  }
+
+  if (variant === "boxed") {
     return (
       <div style={{ border: "1px solid #000000", padding: "4px", margin: "4px 0", textAlign: "center" }}>
         {showLabel && rollLabel && <div style={{ fontSize: "9px", fontWeight: 700 }}>{rollLabel}</div>}
         <div style={{ fontFamily: "monospace", fontWeight: 900, fontSize: "12px" }}>{no}</div>
+      </div>
+    );
+  }
+
+  if (variant === "giant") {
+    return (
+      <div style={{ textAlign: "center", margin: "6px 0", borderBottom: "1px dashed #000", paddingBottom: "4px" }}>
+        {showLabel && rollLabel && <div style={{ fontSize: "9px", fontWeight: 700 }}>{rollLabel}</div>}
+        <div style={{ fontSize: "18px", fontWeight: 900, fontFamily: "monospace" }}>{no}</div>
       </div>
     );
   }
