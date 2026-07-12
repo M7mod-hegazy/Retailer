@@ -17,6 +17,7 @@ import LayoutRenderer from "../../components/print/LayoutRenderer";
 import ConnectGuide from "../../components/whatsapp/ConnectGuide";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 import { useTelegramConnect } from "../../hooks/useTelegramConnect";
+import { useSmsConnect } from "../../hooks/useSmsConnect";
 
 // ─── Shared components ───────────────────────────────────────────────────
 
@@ -2308,53 +2309,7 @@ function InfoTip({ text }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function SmsSetupModal({ onClose, onSaved }) {
-  const [sms, setSms] = useState({ sms_enabled: false, sms_api_url: "", sms_api_key: "", sms_sender: "", sms_body_template: "" });
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [testPhone, setTestPhone] = useState("");
-  const [testing, setTesting] = useState(false);
-
-  useEffect(() => {
-    api.get("/api/settings").then(r => {
-      const d = r.data?.data || {};
-      const loaded = {
-        sms_enabled: Boolean(d.sms_enabled),
-        sms_api_url: d.sms_api_url || "",
-        sms_api_key: d.sms_api_key || "",
-        sms_sender: d.sms_sender || "",
-        sms_body_template: d.sms_body_template || "",
-      };
-      setSms(loaded);
-      setSaved(loaded.sms_enabled && Boolean(loaded.sms_api_url));
-    }).catch(() => setLoadError(true)).finally(() => setLoading(false));
-  }, []);
-
-  async function save() {
-    if (sms.sms_enabled && !sms.sms_api_url.trim()) {
-      toast.error("أدخل رابط بوابة الإرسال أولاً");
-      return;
-    }
-    setSaving(true);
-    try {
-      await api.put("/api/settings", sms);
-      setSaved(sms.sms_enabled && Boolean(sms.sms_api_url.trim()));
-      toast.success(sms.sms_enabled ? "تم تفعيل خدمة SMS — جرّب الإرسال لرقمك" : "تم حفظ الإعدادات");
-      onSaved?.();
-    } catch (e) { toast.error(e.response?.data?.message || "فشل الحفظ"); }
-    finally { setSaving(false); }
-  }
-
-  async function sendTest() {
-    if (!testPhone.trim()) return;
-    setTesting(true);
-    try {
-      await api.post("/api/whatsapp/sms-test", { phone: testPhone.trim() });
-      toast.success("وصلت؟ ✓ تم الإرسال عبر بوابة SMS بنجاح");
-    } catch (e) { toast.error(e.response?.data?.message || "فشل إرسال الرسالة التجريبية"); }
-    finally { setTesting(false); }
-  }
+  const { sms, setSms, loading, loadError, saving, saved, testPhone, setTestPhone, testing, save, sendTest } = useSmsConnect(onSaved);
 
   const StepBadge = ({ n, done }) => (
     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-success-text text-white" : "bg-primary text-white"
