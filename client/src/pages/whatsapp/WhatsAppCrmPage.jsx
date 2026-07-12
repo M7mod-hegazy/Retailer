@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   MessageSquare, Wifi, WifiOff, Smartphone, RefreshCw, Link, Unlink, Send, Users,
   BarChart3, Inbox, Megaphone, FileText, ChevronDown, ChevronUp,
-  Search, X, CheckCircle, AlertCircle, Clock, Zap, Info, Archive,
+  Search, X, CheckCircle, Clock, Zap, Info, Archive,
   MessageCircle, UserPlus,
   Bot, Check, Loader2, Image, Settings,
   Pause, Play, Trash2, Plus, Paperclip, Camera, Mic, MicOff,
@@ -18,6 +18,9 @@ import ConnectGuide from "../../components/whatsapp/ConnectGuide";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 import { useTelegramConnect } from "../../hooks/useTelegramConnect";
 import { useSmsConnect } from "../../hooks/useSmsConnect";
+import WhatsAppConnectWizard from "../../components/whatsapp/wizard/whatsappSteps";
+import TelegramConnectWizard from "../../components/whatsapp/wizard/telegramSteps";
+import SmsConnectWizard from "../../components/whatsapp/wizard/smsSteps";
 
 // ─── Shared components ───────────────────────────────────────────────────
 
@@ -399,12 +402,13 @@ export default function WhatsAppCrmPage() {
 //  DASHBOARD TAB
 // ═══════════════════════════════════════════════════════════════════════════
 
-function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, onRefresh, onConfigChanged, setActiveTab }) {
+export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, onRefresh, onConfigChanged, setActiveTab }) {
   const { t } = useTranslation();
   const [linking, setLinking] = useState(false);
   const [engine, setEngine] = useState(waStatus);
   const [smsSetupOpen, setSmsSetupOpen] = useState(false);
   const [connectError, setConnectError] = useState(null);
+  const [wizardChannel, setWizardChannel] = useState(null); // null | "whatsapp" | "sms" | "telegram"
   const pollRef = useRef(null);
   const connectAbortRef = useRef(null);
 
@@ -521,10 +525,9 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
               </div>
               {!isUnavailable && (
                 state !== "connected" ? (
-                  <button onClick={handleLink} disabled={linking}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-card hover:opacity-90 disabled:opacity-50 transition-all active:scale-95 min-w-[130px] justify-center">
-                    {linking ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
-                    {linking ? t("whatsapp.connecting") : state === "qr" ? t("whatsapp.waitingScan") : t("whatsapp.title")}
+                  <button onClick={() => setWizardChannel("whatsapp")}
+                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-card hover:opacity-90 transition-all active:scale-95 min-w-[130px] justify-center">
+                    <Link className="h-3.5 w-3.5" /> {t("whatsapp.title")}
                   </button>
                 ) : (
                   <button onClick={handleUnlink}
@@ -544,76 +547,6 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
               ))}
             </div>
 
-            {/* Loading / QR / Error states */}
-            {!isUnavailable && state !== "connected" && (
-              <div className="mt-4">
-                {linking && state !== "qr" && (
-                  <div className="rounded-xl bg-bg-base p-4 text-center">
-                    <RefreshCw className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
-                    <p className="text-sm font-black text-text-primary">{t("whatsapp.connecting")}</p>
-                    <p className="text-[11px] font-bold text-text-muted mt-1">{t("whatsapp.qrHint")}</p>
-                  </div>
-                )}
-
-                {state === "qr" && engine.qr && (
-                  <div className="rounded-xl border border-warning-border bg-bg-surface p-4">
-                    <div className="flex flex-col items-center gap-3">
-                      <img src={engine.qr} alt="QR" className="h-48 w-48 rounded-xl border-2 border-warning-border" />
-                      <p className="text-sm font-black text-warning-text text-center">{t("whatsapp.waitingScan")}</p>
-                      <p className="text-[11px] font-bold text-text-secondary text-center max-w-xs">{t("whatsapp.qrHint")}</p>
-                      <p className="text-[10px] font-bold text-text-muted text-center">{t("whatsapp.qrRefreshing")}</p>
-                    </div>
-                  </div>
-                )}
-
-                {connectError && (
-                  <div className="rounded-xl border border-danger-border bg-danger-bg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black text-danger">{t("whatsapp.connectFailed")}</p>
-                        <p className="text-[11px] font-bold text-danger-text mt-1">{connectError}</p>
-                        <p className="text-[11px] font-bold text-text-muted mt-2">{t("whatsapp.errorHint")}</p>
-                        <button onClick={handleClearAndRetry}
-                          className="mt-3 flex items-center gap-1.5 rounded-lg bg-danger px-4 py-2 text-xs font-black text-white hover:opacity-90 transition-all active:scale-95">
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          {t("whatsapp.clearSession")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {engine.error && !connectError && (
-                  <div className="rounded-xl border border-danger-border bg-danger-bg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black text-danger">{t("whatsapp.connectFailed")}</p>
-                        <p className="text-[11px] font-bold text-danger-text mt-1">{engine.error}</p>
-                        <p className="text-[11px] font-bold text-text-muted mt-2">{t("whatsapp.errorHint")}</p>
-                        <button onClick={handleClearAndRetry}
-                          className="mt-3 flex items-center gap-1.5 rounded-lg bg-danger px-4 py-2 text-xs font-black text-white hover:opacity-90 transition-all active:scale-95">
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          {t("whatsapp.clearSession")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!linking && state !== "qr" && !connectError && !engine.error && (
-                  <details className="rounded-xl bg-bg-base p-3">
-                    <summary className="text-[11px] font-black text-text-secondary cursor-pointer list-none flex items-center gap-1.5">
-                      <ChevronDown className="h-3 w-3" /> كيف أبدأ الربط؟
-                    </summary>
-                    <div className="mt-2.5">
-                      <ConnectGuide channel="whatsapp" />
-                    </div>
-                  </details>
-                )}
-              </div>
-            )}
           </div>
 
           {/* SMS channel */}
@@ -632,7 +565,7 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
                 </div>
                 <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("sms.desc")}</p>
               </div>
-              <button onClick={() => setSmsSetupOpen(true)}
+              <button onClick={() => (smsEnabled ? setSmsSetupOpen(true) : setWizardChannel("sms"))}
                 className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${smsEnabled
                     ? "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-base"
                     : "bg-primary text-white shadow-card hover:opacity-90"
@@ -650,21 +583,6 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
                 </span>
               ))}
             </div>
-            {!smsEnabled && (
-              <details className="mt-4 rounded-xl bg-bg-base p-3">
-                <summary className="text-[11px] font-black text-text-secondary cursor-pointer list-none flex items-center gap-1.5">
-                  <ChevronDown className="h-3 w-3" /> كيف أبدأ التفعيل؟
-                </summary>
-                <ol className="space-y-2 mt-2.5">
-                  {t("sms.steps").split("|").map((step, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-text-secondary">
-                      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            )}
           </div>
 
           {/* Telegram channel */}
@@ -683,7 +601,7 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
                 </div>
                 <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("telegram.channelDesc")}</p>
               </div>
-              <button onClick={() => setActiveTab("telegram")}
+              <button onClick={() => (telegramEnabled ? setActiveTab("telegram") : setWizardChannel("telegram"))}
                 className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${telegramEnabled
                     ? "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-base"
                     : "bg-primary text-white shadow-card hover:opacity-90"
@@ -701,21 +619,6 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
                 </span>
               ))}
             </div>
-            {!telegramEnabled && (
-              <details className="mt-4 rounded-xl bg-bg-base p-3">
-                <summary className="text-[11px] font-black text-text-secondary cursor-pointer list-none flex items-center gap-1.5">
-                  <ChevronDown className="h-3 w-3" /> كيف أبدأ التفعيل؟
-                </summary>
-                <ol className="space-y-2 mt-2.5">
-                  {t("telegram.steps").split("|").map((step, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-text-secondary">
-                      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary text-white text-[10px] font-black">{i + 1}</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            )}
           </div>
         </div>
       </div>
@@ -725,6 +628,20 @@ function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEnabled, o
           onClose={() => setSmsSetupOpen(false)}
           onSaved={() => { onConfigChanged?.(); }}
         />
+      )}
+
+      {wizardChannel === "whatsapp" && (
+        <WhatsAppConnectWizard
+          onClose={() => setWizardChannel(null)}
+          engine={engine} linking={linking} connectError={connectError}
+          onLink={handleLink} onClearAndRetry={handleClearAndRetry}
+        />
+      )}
+      {wizardChannel === "telegram" && (
+        <TelegramConnectWizard onClose={() => setWizardChannel(null)} onSaved={onConfigChanged} />
+      )}
+      {wizardChannel === "sms" && (
+        <SmsConnectWizard onClose={() => setWizardChannel(null)} onSaved={onConfigChanged} />
       )}
 
       {/* Stats grid */}
