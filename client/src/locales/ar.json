@@ -1189,6 +1189,12 @@
   "whatsapp.waWaitingScan": "واتساب في انتظار مسح QR",
   "whatsapp.waWaitingScanHint": "امسح رمز QR من هاتفك لتفعيل الإرسال التلقائي.",
   "whatsapp.copied": "تم النسخ",
+  "whatsapp.sendModeText": "نص",
+  "whatsapp.sendModeImage": "صورة",
+  "whatsapp.imagePreparing": "جارٍ تجهيز الصورة...",
+  "whatsapp.downloadImage": "تنزيل الصورة",
+  "whatsapp.imageCaptionReceipt": "فاتورة رقم {{no}} - {{total}} جنيه",
+  "whatsapp.imageCaptionReturn": "مرتجع رقم {{no}} - {{total}} جنيه",
 
   "sms.title": "رسائل SMS",
   "sms.desc": "قناة مدفوعة تصل لأي هاتف — لا يحتاج العميل واتساب",

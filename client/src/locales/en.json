@@ -1183,6 +1183,12 @@
   "whatsapp.waWaitingScan": "WhatsApp waiting for QR scan",
   "whatsapp.waWaitingScanHint": "Scan the QR code from your phone to enable auto-sending.",
   "whatsapp.copied": "Copied",
+  "whatsapp.sendModeText": "Text",
+  "whatsapp.sendModeImage": "Image",
+  "whatsapp.imagePreparing": "Preparing image...",
+  "whatsapp.downloadImage": "Download image",
+  "whatsapp.imageCaptionReceipt": "Invoice #{{no}} - {{total}} EGP",
+  "whatsapp.imageCaptionReturn": "Return #{{no}} - {{total}} EGP",
 
   "sms.title": "SMS Messages",
   "sms.desc": "Paid channel that reaches any phone — customers don't need WhatsApp",
