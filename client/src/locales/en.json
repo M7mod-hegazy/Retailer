@@ -1136,6 +1136,13 @@
   "wizard.whatsapp.step1.button": "Start linking",
   "wizard.whatsapp.step2.caption": "Open WhatsApp on your phone: Settings → Linked Devices → Link a Device, then scan the code shown here.",
   "wizard.whatsapp.step3.caption": "Linked successfully! Customers will now automatically receive receipts and offers — no need to open your phone again.",
+  "wizard.telegram.title": "Activate Telegram",
+  "wizard.telegram.subtitle": "5 steps — takes about two minutes",
+  "wizard.telegram.step1.caption": "Open Telegram on your phone, search for BotFather (look for the blue verified badge next to the name), and start a chat with it.",
+  "wizard.telegram.step2.caption": "Send /newbot. It will ask for a name — type anything — then a username that must end in \"bot\".",
+  "wizard.telegram.step3.caption": "It will send you a message with a long code (Bot Token) — copy it and paste it in the field below.",
+  "wizard.telegram.step4.caption": "Tap the button below to generate a code, scan it with your phone camera, then tap Start inside the bot.",
+  "wizard.telegram.step5.caption": "Linked! You'll now get instant alerts for every invoice, daily closing, and important events.",
 
   "whatsapp.title": "WhatsApp",
   "whatsapp.desc": "Free customer communication via the store's WhatsApp account",

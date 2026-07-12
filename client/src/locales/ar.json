@@ -1142,6 +1142,13 @@
   "wizard.whatsapp.step1.button": "ابدأ الربط",
   "wizard.whatsapp.step2.caption": "افتح واتساب في موبايلك: الإعدادات ← الأجهزة المرتبطة ← ربط جهاز، وصوّر الكود اللي هنا",
   "wizard.whatsapp.step3.caption": "تم الربط بنجاح! دلوقتي هيتبعت للعملاء إيصالات وعروض أوتوماتيك من غير ما تفتح موبايلك",
+  "wizard.telegram.title": "تفعيل تيليجرام",
+  "wizard.telegram.subtitle": "٥ خطوات — هتاخد دقيقتين بس",
+  "wizard.telegram.step1.caption": "افتح تطبيق تيليجرام في موبايلك، وابحث عن BotFather (هتلاقي علامة توثيق زرقاء جنب اسمه)، وابدأ محادثة معاه",
+  "wizard.telegram.step2.caption": "ابعتله /newbot، هيسألك عن اسم للبوت اكتب أي اسم، وبعدين هيطلب اسم مستخدم لازم ينتهي بكلمة bot",
+  "wizard.telegram.step3.caption": "هيبعتلك رسالة فيها كود طويل (Bot Token) — انسخه والصقه في الخانة تحت",
+  "wizard.telegram.step4.caption": "دوس الزرار عشان يظهر كود، صوّره بكاميرا موبايلك، وبعدين دوس Start جوه البوت",
+  "wizard.telegram.step5.caption": "تم الربط! هتوصلك تنبيهات فورية على كل فاتورة، إغلاق يومية، وأحداث مهمة",
 
   "whatsapp.title": "واتساب",
   "whatsapp.desc": "تواصل مجاني مع العملاء عبر حساب واتساب المتجر",
