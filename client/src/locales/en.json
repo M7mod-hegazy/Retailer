@@ -1143,6 +1143,13 @@
   "wizard.telegram.step3.caption": "It will send you a message with a long code (Bot Token) — copy it and paste it in the field below.",
   "wizard.telegram.step4.caption": "Tap the button below to generate a code, scan it with your phone camera, then tap Start inside the bot.",
   "wizard.telegram.step5.caption": "Linked! You'll now get instant alerts for every invoice, daily closing, and important events.",
+  "wizard.sms.title": "Activate SMS Messages",
+  "wizard.sms.subtitle": "A paid channel via an external provider",
+  "wizard.sms.step1.caption": "SMS reaches any phone number even without internet or WhatsApp — but you need to subscribe with a provider like SMS Misr or Cequens first.",
+  "wizard.sms.step2.caption": "The provider will give you an API URL and API key — paste them here.",
+  "wizard.sms.step3.caption": "Tap the button to activate, then send yourself a test message to confirm it works.",
+  "wizard.sms.step3.button": "Activate and save",
+  "wizard.sms.step4.caption": "Done! You can now choose SMS for any campaign or reminder.",
 
   "whatsapp.title": "WhatsApp",
   "whatsapp.desc": "Free customer communication via the store's WhatsApp account",

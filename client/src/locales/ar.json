@@ -1149,6 +1149,13 @@
   "wizard.telegram.step3.caption": "هيبعتلك رسالة فيها كود طويل (Bot Token) — انسخه والصقه في الخانة تحت",
   "wizard.telegram.step4.caption": "دوس الزرار عشان يظهر كود، صوّره بكاميرا موبايلك، وبعدين دوس Start جوه البوت",
   "wizard.telegram.step5.caption": "تم الربط! هتوصلك تنبيهات فورية على كل فاتورة، إغلاق يومية، وأحداث مهمة",
+  "wizard.sms.title": "تفعيل رسائل SMS",
+  "wizard.sms.subtitle": "قناة مدفوعة عبر شركة خارجية",
+  "wizard.sms.step1.caption": "SMS بتوصل لأي رقم موبايل حتى لو مفيش نت أو واتساب — بس لازم تشترك عند شركة زي SMS Misr أو Cequens الأول",
+  "wizard.sms.step2.caption": "الشركة هتديك رابط API ومفتاح API — الصقهم هنا",
+  "wizard.sms.step3.caption": "دوس الزرار عشان يتفعّل، بعدين جرّب تبعت لنفسك رسالة للتأكد إنها شغالة",
+  "wizard.sms.step3.button": "تشغيل وحفظ",
+  "wizard.sms.step4.caption": "تمام! دلوقتي أي حملة أو تذكير هتقدر تختار تبعته SMS",
 
   "whatsapp.title": "واتساب",
   "whatsapp.desc": "تواصل مجاني مع العملاء عبر حساب واتساب المتجر",
