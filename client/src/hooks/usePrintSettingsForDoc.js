@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { resolveEffectiveLayout } from "../components/print/layout/layoutModel";
-import { resolveDocPaperSize, DOC_PAPER_CONFIG, familyOfSize } from "../components/print/studio/studioData";
-
-const BLOCK_DOC_SCOPES = new Set([
-  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
+import { resolveDocPaperSize, DOC_PAPER_CONFIG, familyOfSize, BLOCK_DOC_SCOPES } from "../components/print/studio/studioData";
 
 export function usePrintSettingsForDoc(docType) {
   const [loading, setLoading] = useState(Boolean(docType));

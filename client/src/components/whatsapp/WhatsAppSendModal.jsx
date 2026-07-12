@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { MessageCircle, Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
@@ -7,6 +7,10 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "../../stores/authStore";
 import { buildWhatsAppReceiptMessage, normalizeEgyptPhone } from "../../utils/whatsappReceiptMessage";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
+import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
+import { PrintThermalDoc, PrintA4Doc } from "../print/PrintDoc";
+import { SHEET_W, familyOfSize } from "../print/studio/studioData";
+import html2canvas from "html2canvas";
 
 function ConnectionBadge({ wa }) {
   const { t } = useTranslation();
@@ -29,6 +33,38 @@ function ConnectionBadge({ wa }) {
   );
 }
 
+const KIND_DOC_TYPE = { receipt: "pos_receipt", return_receipt: "sales_return" };
+
+// Mirrors the field mapping each source page already applies before handing
+// the invoice to PrintPreviewModal (see InvoiceDetailPage.jsx / SalesReturnDetailPage.jsx),
+// so the captured image matches what the user would see there.
+function normalizeInvoiceForPrint(invoice, kind) {
+  const lines = invoice?.lines || invoice?.items || [];
+  const invoice_no = invoice?.invoice_no || invoice?.doc_no || invoice?.id;
+  if (kind === "return_receipt") {
+    return {
+      ...invoice,
+      invoice_no,
+      lines: lines.map((l) => ({
+        ...l,
+        item_name: l.item_name_ar || l.item_name || l.name,
+        code: l.item_code || l.code || "",
+        discount_amount: 0,
+      })),
+    };
+  }
+  return {
+    ...invoice,
+    invoice_no,
+    lines: lines.map((l) => ({
+      ...l,
+      item_name: l.item_name || l.name,
+      code: l.item_code || l.code || "",
+      discount_amount: l.discount_amount ?? l.discount ?? 0,
+    })),
+  };
+}
+
 export default function WhatsAppSendModal({ open, onClose, invoice, kind = "receipt", title, onBeforeSend }) {
   const { t } = useTranslation();
   const { user } = useAuthStore();
@@ -40,6 +76,12 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const [savingFirst, setSavingFirst] = useState(false);
   const [phone, setPhone] = useState("");
   const [shopName, setShopName] = useState("");
+  const [sendMode, setSendMode] = useState("text");
+  const captureRef = useRef(null);
+
+  const docType = KIND_DOC_TYPE[kind] || null;
+  const showImageOption = Boolean(docType);
+  const { loading: printSettingsLoading, template: printTemplate, settings: printSettings } = usePrintSettingsForDoc(docType);
 
   const customerName = invoice?.customer_name || invoice?.walk_in_name || "";
   const rawPhone = invoice?.customer_phone || invoice?.walk_in_phone || "";
@@ -48,6 +90,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   useEffect(() => {
     if (open) {
       setPhone(normalizeEgyptPhone(rawPhone));
+      setSendMode("text");
     }
   }, [open, rawPhone]);
 
@@ -92,6 +135,16 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     });
   }, [template, customerName, invoice, shopName, invoiceItems]);
 
+  const imageCaption = useMemo(() => {
+    const no = invoice?.invoice_no || invoice?.doc_no || invoice?.id || "";
+    const total = invoice?.total ?? "";
+    return kind === "return_receipt"
+      ? t("whatsapp.imageCaptionReturn", { no, total })
+      : t("whatsapp.imageCaptionReceipt", { no, total });
+  }, [invoice, kind, t]);
+
+  const printInvoice = useMemo(() => normalizeInvoiceForPrint(invoice, kind), [invoice, kind]);
+
   const waMeUrl = useMemo(() => {
     if (!phone || !message) return "";
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -114,11 +167,19 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     }
     setSending(true);
     try {
+      let payload;
+      if (sendMode === "image") {
+        const canvas = await html2canvas(captureRef.current, { useCORS: true, scale: 2, backgroundColor: "#ffffff" });
+        const image = canvas.toDataURL("image/png").split(",")[1];
+        payload = { image, caption: imageCaption };
+      } else {
+        payload = { text: message };
+      }
       await api.post("/api/whatsapp/enqueue", {
         recipient_phone: phone,
         customer_id: invoice?.customer_id || null,
         kind,
-        payload: { text: message },
+        payload,
       });
       toast.success(t("whatsapp.queued"));
       onClose?.();
@@ -127,6 +188,16 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     } finally {
       setSending(false);
     }
+  }
+
+  function handleDownloadImage() {
+    if (!captureRef.current) return;
+    html2canvas(captureRef.current, { useCORS: true, scale: 2, backgroundColor: "#ffffff" }).then((canvas) => {
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `${invoice?.invoice_no || invoice?.doc_no || invoice?.id || "invoice"}.png`;
+      a.click();
+    });
   }
 
   async function handleOpenWhatsApp() {
@@ -203,6 +274,41 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
           </div>
         ) : (
           <>
+            {showImageOption && (
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => setSendMode("text")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${
+                    sendMode === "text" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"
+                  }`}>
+                  {t("whatsapp.sendModeText")}
+                </button>
+                <button type="button" onClick={() => setSendMode("image")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${
+                    sendMode === "image" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"
+                  }`}>
+                  <ImageIcon className="h-3.5 w-3.5" /> {t("whatsapp.sendModeImage")}
+                </button>
+              </div>
+            )}
+
+            {sendMode === "image" && showImageOption && (
+              printSettingsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-6 text-xs font-bold text-text-muted">
+                  <RefreshCw className="h-4 w-4 animate-spin" /> {t("whatsapp.imagePreparing")}
+                </div>
+              ) : (
+                <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -1, width: SHEET_W[printTemplate], background: "#ffffff" }}>
+                  <div ref={captureRef}>
+                    {familyOfSize(printTemplate) === "roll" ? (
+                      <PrintThermalDoc invoice={printInvoice} settings={{ ...printSettings, receipt_width: printTemplate }} scope={docType} />
+                    ) : (
+                      <PrintA4Doc invoice={printInvoice} settings={printSettings} size={printTemplate} scope={docType} />
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+
             <div>
               <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.recipient")}</label>
               <input
@@ -215,7 +321,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
               />
             </div>
 
-            {variants.length > 1 && (
+            {sendMode === "text" && variants.length > 1 && (
               <div>
                 <label className="mb-1.5 block text-xs font-black text-text-secondary">اختيار القالب</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -234,44 +340,59 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
               </div>
             )}
 
-            <div>
-              <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.preview")}</label>
-              <textarea
-                value={message}
-                readOnly
-                rows={7}
-                className="w-full resize-none rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-medium leading-relaxed text-text-primary outline-none"
-              />
-            </div>
+            {sendMode === "text" && (
+              <div>
+                <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.preview")}</label>
+                <textarea
+                  value={message}
+                  readOnly
+                  rows={7}
+                  className="w-full resize-none rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-medium leading-relaxed text-text-primary outline-none"
+                />
+              </div>
+            )}
 
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className={`grid gap-2 pt-1 ${sendMode === "image" ? "grid-cols-2" : "grid-cols-3"}`}>
               <button
                 onClick={handleSend}
-                disabled={savingFirst || sending || !phone || !message || !wa.isConnected}
+                disabled={savingFirst || sending || !phone || (sendMode === "text" ? !message : printSettingsLoading) || !wa.isConnected}
                 className="col-span-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
                 title={!wa.isConnected ? (t("whatsapp.notConnected") || "واتساب غير متصل") : undefined}
               >
                 {(sending || savingFirst) ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 {savingFirst ? "جاري الحفظ..." : sending ? t("whatsapp.sending") : t("whatsapp.send")}
               </button>
-              <button
-                onClick={handleOpenWhatsApp}
-                disabled={savingFirst || !waMeUrl}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
-                title={t("whatsapp.openInWhatsApp")}
-              >
-                {savingFirst ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">WhatsApp</span>
-              </button>
-              <button
-                onClick={handleCopy}
-                disabled={savingFirst || !message}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
-                title={t("whatsapp.copyMessage")}
-              >
-                {savingFirst ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">{t("whatsapp.copy")}</span>
-              </button>
+              {sendMode === "image" ? (
+                <button
+                  onClick={handleDownloadImage}
+                  disabled={printSettingsLoading}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("whatsapp.downloadImage")}</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleOpenWhatsApp}
+                    disabled={savingFirst || !waMeUrl}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
+                    title={t("whatsapp.openInWhatsApp")}
+                  >
+                    {savingFirst ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </button>
+                  <button
+                    onClick={handleCopy}
+                    disabled={savingFirst || !message}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
+                    title={t("whatsapp.copyMessage")}
+                  >
+                    {savingFirst ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{t("whatsapp.copy")}</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {!phone && (
