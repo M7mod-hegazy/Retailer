@@ -1136,6 +1136,12 @@
   "telegram.loadError": "تفعيل Telegram يتطلب حساب مدير بصلاحية إعدادات النظام",
   "messaging.channelsTitle": "قنوات التواصل والإشعارات",
   "messaging.channelsSubtitle": "واتساب وSMS للتواصل مع العملاء — Telegram لتنبيهات المالك",
+  "wizard.whatsapp.title": "تفعيل واتساب",
+  "wizard.whatsapp.subtitle": "٣ خطوات بسيطة من موبايلك",
+  "wizard.whatsapp.step1.caption": "هنولّد كود QR على الشاشة، وهتصوّره بكاميرا موبايلك عشان نربط رقم واتساب المتجر بالبرنامج",
+  "wizard.whatsapp.step1.button": "ابدأ الربط",
+  "wizard.whatsapp.step2.caption": "افتح واتساب في موبايلك: الإعدادات ← الأجهزة المرتبطة ← ربط جهاز، وصوّر الكود اللي هنا",
+  "wizard.whatsapp.step3.caption": "تم الربط بنجاح! دلوقتي هيتبعت للعملاء إيصالات وعروض أوتوماتيك من غير ما تفتح موبايلك",
 
   "whatsapp.title": "واتساب",
   "whatsapp.desc": "تواصل مجاني مع العملاء عبر حساب واتساب المتجر",
