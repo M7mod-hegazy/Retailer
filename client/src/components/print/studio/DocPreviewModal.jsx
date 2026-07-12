@@ -6,15 +6,12 @@ import React, { useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import LayoutRenderer from "../LayoutRenderer";
 import TemplateDocPreview from "./TemplateDocPreview";
-import { familyOfSize, BLOCK_DOCS, SHEET_W, sampleById } from "./studioData";
-import { seedFamilyLayout, resolveEffectiveLayout } from "../layout/layoutModel";
+import { familyOfSize, BLOCK_DOCS, SHEET_W, sampleById, BLOCK_DOC_SCOPES } from "./studioData";
 
 const stripLayout = ({ layout, ...rest } = {}) => rest;
 
-const BLOCK_DOC_SCOPES = new Set([
-  "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
+// All block doc scopes including _global, kitchen_ticket, owner_statement
+const ALL_BLOCK_DOC_SCOPES = new Set(["_global", ...BLOCK_DOC_SCOPES, "kitchen_ticket", "owner_statement"]);
 
 export default function DocPreviewModal({
   open, scope, size, label,
@@ -59,6 +56,8 @@ export default function DocPreviewModal({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const isBlockDoc = ALL_BLOCK_DOC_SCOPES.has(scope);
 
   return (
     <div dir="rtl" className="fixed inset-0 z-[10001] flex flex-col bg-black/80 backdrop-blur-sm">

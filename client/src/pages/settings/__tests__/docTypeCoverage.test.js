@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DOC_PAPER_CONFIG } from "../PrintingSettingsPanel";
+import { DOC_PAPER_CONFIG } from "../../../components/print/studio/studioData";
 import { DOC_TYPES } from "@shared/docTypes";
 
 describe("settings panel doc-type coverage", () => {

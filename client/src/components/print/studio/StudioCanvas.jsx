@@ -6,16 +6,10 @@ import {
 import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import { rollPrintWidthMm, rollBandLeftMm } from "../blocks/blockUtils";
-import { SIZES, SHEET_W, PX_PER_MM, pageDimensions, pageWidthStr, pageHeightStr, findNaturalBreaks } from "./studioData";
+import { SIZES, SHEET_W, PX_PER_MM, pageDimensions, pageWidthStr, pageHeightStr, findNaturalBreaks, INHERITABLE_SCOPES } from "./studioData";
 
 const NO_TYPOGRAPHY = new Set(["logo", "qr", "image", "divider", "spacer", "barcode"]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-// Scopes that can inherit from _global. Reports have their own layouts.
-const INHERITABLE_SCOPES = new Set([
-  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
 
 function FloatingToolbar({ st }) {
   const { selected, fam } = st;

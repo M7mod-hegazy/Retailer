@@ -1,16 +1,17 @@
 import React, { useEffect } from "react";
 import LayoutRenderer from "../LayoutRenderer";
 
-const ROWS_PER_PAGE = 15;
-
 export default function AccountStatementTemplate({ statement = {}, settings = {}, currentPage, onPageCount }) {
   const rows = statement.rows || [];
   const summary = statement.summary || {};
-  const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
 
+  // One logical flow: the statement blocks render every row and the print
+  // pipeline paginates at natural block/row boundaries. Reporting
+  // ceil(rows/15) here while rendering ALL rows made the hidden print
+  // container hold N full copies of the statement — printed duplicates.
   useEffect(() => {
-    if (onPageCount) onPageCount(totalPages);
-  }, [totalPages, onPageCount]);
+    if (onPageCount) onPageCount(1);
+  }, [onPageCount]);
 
   const invoice = {
     statement_rows: rows,

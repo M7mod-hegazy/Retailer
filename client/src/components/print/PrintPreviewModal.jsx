@@ -10,10 +10,9 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
 import { withCalibration } from "../../services/printCalibration";
-import { DOC_PAPER_CONFIG, resolveDocPaperSize } from "../../pages/settings/PrintingSettingsPanel";
+import { DOC_PAPER_CONFIG, resolveDocPaperSize, SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, getPagedDocumentHtml, PX_PER_MM, familyOfSize, BLOCK_DOC_SCOPES } from "./studio/studioData";
 import PrintStudio from "./studio/PrintStudio";
 import { resolveEffectiveLayout } from "./layout/layoutModel";
-import { SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, PX_PER_MM, familyOfSize } from "./studio/studioData";
 import { applyPreset } from "./presets/presetEngine";
 import { formatNumber } from "../../utils/currency";
 import { useDetach } from "../../hooks/useDetach";
@@ -57,13 +56,23 @@ export default function PrintPreviewModal({
   const [globalScopeSettings, setGlobalScopeSettings] = useState({});
   const [reportPrintKeys, setReportPrintKeys] = useState([]);
   const [printPage, setPrintPage] = useState(1);
+  const printPageRef = useRef(1);
   const [totalPrintPages, setTotalPrintPages] = useState(1);
   const [columnWeights, setColumnWeights] = useState({});
   const [docSettingsLoaded, setDocSettingsLoaded] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [smartBreaksMm, setSmartBreaksMm] = useState([]);
-  const [pageViewMode, setPageViewMode] = useState("stacked");
+  
   const instantFired = useRef(false);
+  // True once the pagination measurement has run for the current doc/template —
+  // instant mode must not fire before it (it used to race the 60/200ms
+  // measurement debounce and print with fixed-height cuts through blocks).
+  const [measuredOnce, setMeasuredOnce] = useState(false);
+  // Shared rows-per-page ceiling for self-paginating report docs. When a
+  // rendered page overflows the paper, this shrinks (never grows) until every
+  // page fits — one shared value so all pages slice the SAME row ranges.
+  const [reportRowsCap, setReportRowsCap] = useState(null);
+  const reportRowsUsedRef = useRef(0);
 
   const isDragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -101,6 +110,8 @@ export default function PrintPreviewModal({
       setDocSettings({});
       setDocSettingsLoaded(false);
       instantFired.current = false;
+      setMeasuredOnce(false);
+      setReportRowsCap(null);
       return;
     }
     let cancelled = false;
@@ -110,8 +121,7 @@ export default function PrintPreviewModal({
       .then((r) => {
         if (!cancelled) {
           let saved = r.data.data || {};
-          const BLOCK_DOC_TYPES = new Set(["pos_receipt", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
-          const isReport = docType !== "_global" && !BLOCK_DOC_TYPES.has(docType);
+          const isReport = docType !== "_global" && !BLOCK_DOC_SCOPES.has(docType);
           if (isReport && (!saved || !saved.layout) && SCOPE_PRESETS[docType] && SCOPE_PRESETS[docType].length) {
             saved = applyPreset(saved, SCOPE_PRESETS[docType][0], docType);
           }
@@ -147,8 +157,7 @@ export default function PrintPreviewModal({
     api.get(`/api/print-settings-per-doc/${docType}`)
       .then((r) => {
         let saved = r.data.data || {};
-        const BLOCK_DOC_TYPES = new Set(["pos_receipt", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
-        const isReport = docType !== "_global" && !BLOCK_DOC_TYPES.has(docType);
+        const isReport = docType !== "_global" && !BLOCK_DOC_SCOPES.has(docType);
         if (isReport && (!saved || !saved.layout) && SCOPE_PRESETS[docType] && SCOPE_PRESETS[docType].length) {
           saved = applyPreset(saved, SCOPE_PRESETS[docType][0], docType);
         }
@@ -168,24 +177,79 @@ export default function PrintPreviewModal({
   const isThermal = activeTemplate === "58mm" || activeTemplate === "80mm";
   const isPageDoc = !isThermal && activeTemplate !== "58mm" && activeTemplate !== "80mm";
 
-  // Measure hidden content for smart page breaks (page docs only)
+  // Measure hidden content for smart page breaks (page docs only).
+  // Uses ResizeObserver to catch ALL layout changes (async fonts, images,
+  // conditional blocks, settings reloads) plus an initial rAF measurement.
   useLayoutEffect(() => {
-    if (!open || isThermal || renderContent || !printAllRef.current) {
-      setSmartBreaksMm([]);
+    // Report docs that split themselves into multiple pages don't need flow
+    // breaks; but a SINGLE-flow renderContent doc (statements, one-page
+    // reports that actually overflow) paginates here like any invoice.
+    if (!open || isThermal || (renderContent && totalPrintPages > 1) || !printAllRef.current) {
+      // Use functional updater: return the SAME reference when already empty
+      // to prevent re-renders. Without this, setSmartBreaksMm([]) always
+      // creates a new [] reference, React's Object.is sees it as changed,
+      // triggers a re-render, the effect re-runs (invoice is a new {} on
+      // every render as a default param), and we get an infinite loop.
+      setSmartBreaksMm((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     const dims = pageDimensions(activeTemplate, orientation);
     const pageHmm = dims.hMm;
-    if (!pageHmm || pageHmm <= 0) { setSmartBreaksMm([]); return; }
-    requestAnimationFrame(() => {
+    if (!pageHmm || pageHmm <= 0) { setSmartBreaksMm((prev) => (prev.length === 0 ? prev : [])); return; }
+
+    let cancelled = false;
+    let pendingRaf = 0;
+    let debounceTimer = null;
+
+    const doMeasure = () => {
+      if (cancelled || !printAllRef.current) return;
       const breaks = findNaturalBreaks(printAllRef.current, pageHmm, PX_PER_MM);
-      setSmartBreaksMm(breaks);
+      if (!cancelled) {
+        setSmartBreaksMm((prev) =>
+          prev.length === breaks.length && prev.every((v, i) => v === breaks[i]) ? prev : breaks
+        );
+        setMeasuredOnce((p) => p || true);
+      }
+    };
+
+    // Debounced observer callback — wait 60ms for layout to stabilise
+    const onResize = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doMeasure, 60);
+    };
+
+    // Initial measurement after rAF (DOM committed) + delayed re-measure
+    // to catch late-arriving content (web fonts, conditional blocks).
+    pendingRaf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      doMeasure();
+      debounceTimer = setTimeout(doMeasure, 200);
     });
-  }, [open, activeTemplate, orientation, isThermal, renderContent, docSettings, docSettingsLoaded]);
+
+    // Observe the container for size changes (content loading, blocks appearing)
+    const container = printAllRef.current;
+    const ro = new ResizeObserver(onResize);
+    ro.observe(container);
+
+    return () => {
+      cancelled = true;
+      if (pendingRaf) cancelAnimationFrame(pendingRaf);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      ro.disconnect();
+    };
+  // NOTE: renderContent is intentionally excluded from deps. It is an inline
+  // function from parent components — a new reference every render. Including
+  // it would re-run this effect (and call setSmartBreaksMm([])) on every
+  // parent re-render, causing unnecessary state churn. The effect already
+  // early-returns when renderContent is truthy, so its presence is sufficient.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeTemplate, orientation, isThermal, docSettings, docSettingsLoaded, invoice, totalPrintPages, reportRowsCap]);
 
   const smartPages = smartBreaksMm.length + 1;
   const hasSmartBreaks = isPageDoc && smartBreaksMm.length > 0;
   const displayTotalPages = hasSmartBreaks ? smartPages : totalPrintPages;
+
+
 
   // Column fitting logic
   const scoreColumn = (col) => {
@@ -240,7 +304,6 @@ export default function PrintPreviewModal({
   // resolveEffectiveLayout already handles per-family inherit for layout.
   // For flat settings, check inherit_global_roll / inherit_global_page.
   const activeFam = familyOfSize(activeTemplate);
-  const BLOCK_DOC_SCOPES = new Set(["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
   const isReportDocForInherit = docType !== "_global" && !BLOCK_DOC_SCOPES.has(docType);
   const inheritFamilyKey = `inherit_global_${activeFam}`;
   const docInheritVal = docSettings[inheritFamilyKey] ?? docSettings.inherit_global;
@@ -271,6 +334,9 @@ export default function PrintPreviewModal({
       report_total_rows: totalRows,
       template: activeTemplate,
       columnWeights: Object.keys(columnWeights).length > 0 ? columnWeights : undefined,
+      // Fit-to-page ceiling + feedback channel (see reportRowsCap above).
+      report_rows_per_page: reportRowsCap || undefined,
+      onReportRowsPerPage: (n) => { reportRowsUsedRef.current = n; },
     } : {}),
   };
 
@@ -281,11 +347,50 @@ export default function PrintPreviewModal({
     ? withCalibration(combinedSettingsBase, mappedPrinter, activeTemplate)
     : combinedSettingsBase;
 
-  // Page navigation
+  // Reset the fit ceiling whenever anything that changes row/column geometry
+  // changes — it can then re-converge downward for the new layout.
+  useEffect(() => {
+    setReportRowsCap(null);
+  }, [open, docType, activeTemplate, orientation, reportPrintKeys, columnWeights]);
+
+  // Fit-to-page guard for multi-page report docs: measure the hidden per-page
+  // renders; if the tallest page overflows the paper, shrink the shared
+  // rows-per-page cap proportionally. Monotonic (only shrinks, floor 1) so it
+  // cannot oscillate; overflowing rows used to be silently clipped on paper.
+  useLayoutEffect(() => {
+    if (!open || !isReportDoc || isThermal || totalPrintPages <= 1) return undefined;
+    const el = printAllRef.current;
+    if (!el) return undefined;
+    const dims = pageDimensions(activeTemplate, orientation);
+    if (!dims.hMm) return undefined;
+    const pageHpx = dims.hMm * PX_PER_MM;
+    const raf = requestAnimationFrame(() => {
+      const pages = el.querySelectorAll(":scope > [data-print-page]");
+      if (!pages.length) return;
+      let worst = 0;
+      pages.forEach((p) => { worst = Math.max(worst, p.scrollHeight); });
+      const used = reportRowsUsedRef.current;
+      if (worst > pageHpx * 1.02 && used > 1) {
+        const fit = Math.max(1, Math.min(used - 1, Math.floor(used * (pageHpx / worst))));
+        setReportRowsCap((cur) => (cur == null || fit < cur ? fit : cur));
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open, isReportDoc, isThermal, totalPrintPages, reportRowsCap, activeTemplate, orientation, reportPrintKeys, columnWeights, docSettings]);
+
+  // Page navigation — use ref for printPage to keep handlePageCount stable.
+  // ReportViaLayout's useLayoutEffect depends on onPageCount identity; if we
+  // recreate it on every printPage change the effect re-fires and can cascade
+  // into an infinite setTotalPrintPages ↔ re-render loop.
+  useEffect(() => { printPageRef.current = printPage; }, [printPage]);
+
   const handlePageCount = useCallback((count) => {
-    setTotalPrintPages(count);
-    if (printPage > count) setPrintPage(Math.max(1, count));
-  }, [printPage]);
+    setTotalPrintPages((prev) => {
+      if (prev === count) return prev;           // same value → React bails
+      return count;
+    });
+    if (printPageRef.current > count) setPrintPage(Math.max(1, count));
+  }, []);
 
   const goToPage = (p) => {
     setPrintPage(Math.max(1, Math.min(p, displayTotalPages)));
@@ -337,9 +442,9 @@ export default function PrintPreviewModal({
     setPan({ x: 0, y: 0 });
   };
 
-  const renderDoc = () => {
+  const renderDoc = (pageOverride) => {
     if (renderContent) {
-      return renderContent({ ...combinedSettings, currentPage: printPage, onPageCount: handlePageCount });
+      return renderContent({ ...combinedSettings, currentPage: pageOverride ?? printPage, onPageCount: handlePageCount });
     }
     if (activeTemplate === "58mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "58mm" }} scope={docType} />;
     if (activeTemplate === "80mm") return <PrintThermalDoc invoice={invoice} settings={{ ...combinedSettings, receipt_width: "80mm" }} scope={docType} />;
@@ -347,55 +452,24 @@ export default function PrintPreviewModal({
     return <PrintA4Doc invoice={invoice} settings={combinedSettings} size="A4" scope={docType} />;
   };
 
-  // Build page-clipped preview for smart-break page docs
+  // Page-clipped preview: render the document ONCE, clip to current page
+  // (same approach as WhatsAppSendModal's PageView).
   const smartPreviewContent = useMemo(() => {
-    if (!hasSmartBreaks) return null;
-    const doc = renderDoc();
+    if (!hasSmartBreaks || smartPages <= 1) return null;
     const dims = pageDimensions(activeTemplate, orientation);
-    const pageHeightFull = dims.hMm;
-    const breaks = smartBreaksMm;
-    const pages = smartPages;
-
-    const pgH = (idx) => {
-      if (idx === 0) return breaks[0];
-      if (idx < breaks.length) return breaks[idx] - breaks[idx - 1];
-      return pageHeightFull;
-    };
-    const pgOff = (idx) => (idx === 0 ? 0 : breaks[idx - 1]);
-
-    const pageDiv = (i) => {
-      const ph = pgH(i);
-      return (
-        <div key={i} style={{ height: `${ph}mm`, overflow: "hidden", position: "relative", background: "#fff", boxShadow: "0 2px 12px rgba(0,0,0,0.15)", borderRadius: "1mm", marginBottom: i < pages - 1 ? "6mm" : 0 }}>
-          {pages > 1 && (
-            <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", zIndex: 25, pointerEvents: "none", fontSize: "7px", fontWeight: 700, color: "#94a3b8", background: "#fff", padding: "0 4px", borderRadius: "0 0 2px 2px", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
-            {i + 1} / {pages}
-          </div>)}
-          <div style={{ marginTop: `-${pgOff(i)}mm` }}>{doc}</div>
+    const pageHFull = dims.hMm;
+    const i = Math.min(printPage - 1, smartPages - 1);
+    const prevBreak = i <= 0 ? 0 : smartBreaksMm[i - 1];
+    const nextBreak = smartBreaksMm[i] || pageHFull * 1.5;
+    const clipHmm = nextBreak - prevBreak;
+    return (
+      <div style={{ height: `${clipHmm}mm`, overflow: "hidden", position: "relative", background: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", border: "1px solid #cbd5e1", borderRadius: "1mm" }}>
+        <div style={{ position: "absolute", top: `${-prevBreak}mm`, left: 0, width: "100%" }}>
+          {renderDoc()}
         </div>
-      );
-    };
-
-    if (pageViewMode === "page") {
-      const i = Math.min(printPage - 1, pages - 1);
-      return <div>{pageDiv(i)}</div>;
-    }
-
-    if (pageViewMode === "grid") {
-      const cols = 2;
-      const w = pageWidthStr(activeTemplate, orientation);
-      return (
-        <div style={{ width: `calc(${w} * ${cols} + 4mm)` }}>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, ${w})`, gap: "4mm" }}>
-            {Array.from({ length: pages }).map((_, i) => pageDiv(i))}
-          </div>
-        </div>
-      );
-    }
-
-    // Stacked (default)
-    return <div>{Array.from({ length: pages }).map((_, i) => pageDiv(i))}</div>;
-  }, [hasSmartBreaks, smartBreaksMm, smartPages, printPage, pageViewMode, activeTemplate, orientation, docSettings, docSettingsLoaded, fetchedGlobalSettings, globalSettings, globalScopeSettings, docType, operationLabel, invoice, isReportDoc, reportColumns]);
+      </div>
+    );
+  }, [hasSmartBreaks, smartPages, smartBreaksMm, printPage, activeTemplate, orientation, renderDoc]);
 
   const handlePrint = () => {
     const pageSizeStr = printPageSizeStr(activeTemplate, orientation);
@@ -405,43 +479,70 @@ export default function PrintPreviewModal({
       ? () => { onConfirmPrint(template); onClose(); }
       : undefined;
 
-    // Give React one frame to flush layout effects before capturing
+    // Give React TWO frames to flush layout effects + DOM commit before capturing
     requestAnimationFrame(() => {
-      const sourceNode = printAllRef.current;
-      if (!sourceNode) {
-        const singleNode = printContentRef.current;
-        const html = singleNode ? singleNode.innerHTML : "";
-        buildIframeAndPrint(html, pageSizeStr, afterPrint);
-        return;
-      }
+      requestAnimationFrame(() => {
+        const sourceNode = printAllRef.current;
+        if (!sourceNode) {
+          const singleNode = printContentRef.current;
+          const html = singleNode ? singleNode.innerHTML : "";
+          buildIframeAndPrint(html, pageSizeStr, afterPrint);
+          return;
+        }
 
-      // If we have smart breaks, build paged HTML using the SAME clipping
-      // technique as the preview: each page is a fixed-height div with
-      // overflow:hidden, and the full content is shifted by a negative
-      // margin so only the relevant slice is visible.  This GUARANTEES the
-      // print matches the preview because both use identical rendering.
-      // (CSS break-after:page on <tr> is unreliable in Chromium, so we
-      //  can't rely on injecting page-break styles into the DOM.)
-      if (hasSmartBreaks && smartBreaksMm.length > 0) {
+        const isPage = activeTemplate === "A4" || activeTemplate === "A5";
+        if (!isPage) {
+          // Thermal: continuous roll, no pagination.
+          buildIframeAndPrint(sourceNode.innerHTML, pageSizeStr, afterPrint);
+          return;
+        }
+
         const pageW = pageWidthStr(activeTemplate, orientation);
         const pageHmm = pageDimensions(activeTemplate, orientation).hMm;
-        const contentHtml = sourceNode.innerHTML;
-        const pages = smartBreaksMm.length + 1;
+        const pageHpx = pageHmm * PX_PER_MM;
+        // Fixed-size page container. clip-path AND overflow:hidden — print
+        // engines are inconsistent about honoring either alone. When `inner`
+        // is offset content, position:relative+top keeps it in flow so the
+        // container has height while the clip shows exactly one page.
+        const wrapPage = (inner, isLast, offsetMm = 0, sliceHMm = pageHmm) =>
+          `<div style="width:${pageW};height:${pageHmm}mm;position:relative;overflow:hidden;clip-path:inset(0 0 0 0);${isLast ? "" : "page-break-after:always;break-after:page;"}">`
+          + `<div style="width:${pageW};height:${sliceHMm}mm;overflow:hidden;position:relative;clip-path:inset(0 0 0 0);">`
+          + (offsetMm ? `<div style="position:relative;top:-${offsetMm}mm;width:${pageW};">${inner}</div>` : inner)
+          + `</div>`
+          + `</div>`;
 
-        let pagedHtml = "";
-        for (let i = 0; i < pages; i++) {
-          const offset = i === 0 ? 0 : smartBreaksMm[i - 1];
-          const isLast = i === pages - 1;
-          pagedHtml += `<div style="width:${pageW};height:${pageHmm}mm;overflow:hidden;position:relative;${isLast ? "" : "page-break-after:always;break-after:page;"}">`;
-          pagedHtml += `<div style="margin-top:-${offset}mm;width:${pageW};">${contentHtml}</div>`;
-          pagedHtml += `</div>`;
+        // Self-paginating report docs render one node per page in the hidden
+        // container. When every page fits the paper, print them as INDEPENDENT
+        // fixed-height sheets — offset-slicing the concatenated blob (the old
+        // path) accumulated drift and cut rows at every sheet boundary.
+        const pageNodes = sourceNode.querySelectorAll(":scope > [data-print-page]");
+        if (pageNodes.length > 1) {
+          const allFit = Array.from(pageNodes).every((p) => p.scrollHeight <= pageHpx * 1.05);
+          if (allFit) {
+            let pagedHtml = "";
+            pageNodes.forEach((p, i) => { pagedHtml += wrapPage(p.innerHTML, i === pageNodes.length - 1); });
+            buildIframeAndPrint(pagedHtml, pageSizeStr, afterPrint);
+            return;
+          }
         }
-        buildIframeAndPrint(pagedHtml, pageSizeStr, afterPrint);
-        return;
-      }
 
-      const rawHtml = sourceNode.innerHTML;
-      buildIframeAndPrint(rawHtml, pageSizeStr, afterPrint);
+        // Flow documents (invoices, statements, single-page reports): slice at
+        // block/row boundaries measured FRESH from the exact DOM being
+        // captured — never at blind fixed-height intervals, which cut blocks
+        // and tables mid-way and printed phantom empty pages.
+        const pageHtmls = getPagedDocumentHtml(sourceNode, pageHmm, PX_PER_MM);
+        if (!pageHtmls.length) {
+          const wrapSingle = `<div style="width:${pageW};height:${pageHmm}mm;position:relative;overflow:hidden;">${sourceNode.firstElementChild?.outerHTML || sourceNode.innerHTML}</div>`;
+          buildIframeAndPrint(wrapSingle, pageSizeStr, afterPrint);
+          return;
+        }
+        let pagedHtml = "";
+        pageHtmls.forEach((html, idx) => {
+          const isLast = idx === pageHtmls.length - 1;
+          pagedHtml += `<div style="width:${pageW};height:${pageHmm}mm;position:relative;overflow:hidden;${isLast ? "" : "page-break-after:always;break-after:page;"}">${html}</div>`;
+        });
+        buildIframeAndPrint(pagedHtml, pageSizeStr, afterPrint);
+      });
     });
   };
 
@@ -497,6 +598,9 @@ export default function PrintPreviewModal({
   useEffect(() => {
     if (!open || !docType || isReportDoc || !instantMode || !docSettingsLoaded) return;
     if (studioOpen || instantFired.current) return;
+    // Page docs must wait for the pagination measurement — firing on a blind
+    // timer raced the measurement debounce and printed fixed-height cuts.
+    if (!isThermal && !measuredOnce) return;
     instantFired.current = true;
     // Creation mode closes via afterPrint (save callback); view mode closes on
     // a delay so the print capture (rAF + async job) finishes first.
@@ -504,7 +608,7 @@ export default function PrintPreviewModal({
     const closeT = !onConfirmPrint ? setTimeout(() => onClose(), 2000) : null;
     return () => { clearTimeout(t); if (closeT) clearTimeout(closeT); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, docType, isReportDoc, instantMode, docSettingsLoaded, studioOpen]);
+  }, [open, docType, isReportDoc, instantMode, docSettingsLoaded, studioOpen, isThermal, measuredOnce]);
 
   return (
     <>
@@ -516,7 +620,7 @@ export default function PrintPreviewModal({
       }}>
         {renderContent && totalPrintPages > 0
           ? Array.from({ length: totalPrintPages }).map((_, i) => (
-              <div key={i} style={{ pageBreakAfter: i < totalPrintPages - 1 ? "always" : undefined }}>
+              <div key={i} data-print-page={i + 1} style={{ pageBreakAfter: i < totalPrintPages - 1 ? "always" : undefined }}>
                 {renderContent({ ...combinedSettings, currentPage: i + 1, onPageCount: handlePageCount })}
               </div>
             ))
@@ -554,8 +658,8 @@ export default function PrintPreviewModal({
                   transition: isDragging.current ? "none" : "transform 0.05s",
                   userSelect: "none",
                   pointerEvents: isDragging.current ? "none" : "auto",
-                  background: "white",
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                  background: isPageDoc ? "transparent" : "white",
+                  boxShadow: isPageDoc ? "none" : "0 10px 30px rgba(0,0,0,0.08)",
                 }}
               >
                 <div
@@ -566,7 +670,13 @@ export default function PrintPreviewModal({
                          : pageWidthStr(activeTemplate, orientation),
                   }}
                 >
-                  {smartPreviewContent || renderDoc()}
+                  {smartPreviewContent ? smartPreviewContent : (
+                    isPageDoc ? (
+                      <div style={{ background: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", border: "1px solid #cbd5e1", borderRadius: "1mm" }}>
+                        {renderDoc()}
+                      </div>
+                    ) : renderDoc()
+                  )}
                 </div>
               </div>
 
@@ -694,14 +804,9 @@ export default function PrintPreviewModal({
                 </div>
               )}
 
-              {hasSmartBreaks && (
-                <div className="flex gap-1">
-                  {["stacked", "page", "grid"].map((mode) => (
-                    <button key={mode} type="button" onClick={() => setPageViewMode(mode)}
-                      className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-all ${pageViewMode === mode ? "border-primary bg-primary text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] hover:bg-[var(--bg-input)]"}`}>
-                      {mode === "stacked" ? "عمودي" : mode === "page" ? "فردي" : "شبكي"}
-                    </button>
-                  ))}
+              {hasSmartBreaks && smartPages > 1 && (
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--text-secondary)]">
+                  <span>عدد الصفحات: {smartPages}</span>
                 </div>
               )}
 

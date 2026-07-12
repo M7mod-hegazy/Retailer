@@ -70,7 +70,7 @@ const alignMap = {
 };
 
 export default function QrBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
-  const showQr = g(s, "show_qr") !== false;
+  const showQr = g(s, "show_qr") === true;
   if (!showQr) return null;
 
   const size = g(s, "qr_size") || 80;

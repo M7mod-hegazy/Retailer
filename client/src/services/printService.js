@@ -116,15 +116,31 @@ function printViaIframe(fullHtml, afterPrint) {
   iframe.setAttribute("title", "print-frame");
   iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
   document.body.appendChild(iframe);
-  const idoc = iframe.contentWindow.document;
+  const win = iframe.contentWindow;
+  const idoc = win.document;
   idoc.open();
   idoc.write(fullHtml);
   idoc.close();
-  iframe.contentWindow.focus();
-  requestAnimationFrame(() => {
-    iframe.contentWindow.print();
-    if (afterPrint) afterPrint();
-    setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+  // Print only after the embedded @font-face fonts and images are ready —
+  // printing immediately rendered the fallback font (fuzzy/different output
+  // on paper vs preview) and dropped late-loading logos. Timeout-capped so a
+  // broken resource can never block printing.
+  const fontsReady = idoc.fonts && idoc.fonts.ready
+    ? idoc.fonts.ready.catch(() => {})
+    : Promise.resolve();
+  const imagesReady = Promise.all(
+    Array.from(idoc.images || []).map((img) =>
+      img.complete ? null : new Promise((res) => { img.onload = img.onerror = res; })
+    )
+  );
+  const timeout = new Promise((res) => setTimeout(res, 2500));
+  Promise.race([Promise.all([fontsReady, imagesReady]), timeout]).then(() => {
+    requestAnimationFrame(() => {
+      win.focus();
+      win.print();
+      if (afterPrint) afterPrint();
+      setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+    });
   });
 }
 

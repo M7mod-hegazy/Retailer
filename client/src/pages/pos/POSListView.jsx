@@ -145,6 +145,7 @@ export default function POSListView({ vm }) {
     totals,
     getLineMaxStock,
     PAYMENT_TYPES,
+    lastSavedInvoice, setLastSavedInvoice,
   } = vm;
 
   const entryBarRef = useRef(null);
@@ -767,9 +768,20 @@ export default function POSListView({ vm }) {
                 <span className="text-[11px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1">
                   <Pencil className="h-3 w-3" /> الفاتورة الأصلية المُعدَّلة
                 </span>
-                <button onClick={() => setShowAmendSummary(false)} className="text-amber-400 hover:text-amber-700">
-                  <X className="h-3 w-3" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setWaSendOpen(true)}
+                    className="flex items-center gap-1 rounded bg-[#25D366] text-white px-2 py-0.5 text-[9px] font-black hover:bg-[#20ba5a] transition-colors"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    واتساب
+                  </button>
+                  <button onClick={() => setShowAmendSummary(false)} className="text-amber-400 hover:text-amber-700">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
               {showAmendSummary && (
                 <div className="space-y-1 text-[11px] font-bold text-amber-800">
@@ -1518,22 +1530,61 @@ export default function POSListView({ vm }) {
       </main>
 
       {/* ── Modals ── */}
-      <PrintPreviewModal open={printPreview} onClose={() => setPrintPreview(false)} docType="pos_receipt"
-        invoice={{
-          invoice_no: docNo || invoiceNumber, created_at: new Date().toISOString(),
+      <PrintPreviewModal
+        open={printPreview}
+        onClose={() => { setPrintPreview(false); setLastSavedInvoice(null); }}
+        docType="pos_receipt"
+        invoice={lastSavedInvoice ? {
+          ...lastSavedInvoice,
+          invoice_no: lastSavedInvoice.invoice_no,
+          created_at: lastSavedInvoice.date instanceof Date ? lastSavedInvoice.date.toISOString() : new Date().toISOString(),
+          customer_name: lastSavedInvoice.customer?.name,
+          cashier_name: lastSavedInvoice.created_by_username || lastSavedInvoice.cashier_name || user?.name || "",
+          lines: lastSavedInvoice.lines.map((l) => ({
+            ...l,
+            item_name: l.item_name || l.name,
+            quantity: l.quantity,
+            unit_price: l.unit_price,
+            discount_amount: Number(l.line_discount || l.lineDiscount || 0),
+            unit_name: l.unit_name || "",
+            code: l.code || "",
+          })),
+          payments: lastSavedInvoice.payments || [{ method: lastSavedInvoice.paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[lastSavedInvoice.paymentType] || lastSavedInvoice.paymentType, amount: lastSavedInvoice.totals?.total }],
+          installment_plan: lastSavedInvoice.installment_plan || [],
+          notes: lastSavedInvoice.notes || null,
+          discount: Number(lastSavedInvoice.discount || 0) + Number(lastSavedInvoice.promotionDiscount || 0),
+          increase: Number(lastSavedInvoice.increase || 0),
+          subtotal: lastSavedInvoice.totals?.subtotal || lastSavedInvoice.totals?.total || lastSavedInvoice.subtotal || totals.subtotal || 0,
+          total: lastSavedInvoice.totals?.total,
+          tax_enabled: Number(lastSavedInvoice.tax_amount || 0) > 0 ? 1 : 0,
+          tax_amount: Number(lastSavedInvoice.tax_amount || 0),
+          tax_rate: Number(lastSavedInvoice.tax_rate || 0),
+          tax_type: lastSavedInvoice.tax_type || null,
+        } : {
+          invoice_no: docNo || invoiceNumber,
+          created_at: new Date().toISOString(),
           customer_name: customer?.name,
           walk_in_phone: !customer?.id && vm.waLeadPhone.trim() ? vm.waLeadPhone.trim() : null,
           walk_in_name: !customer?.id && vm.waLeadPhone.trim() ? (vm.waLeadName.trim() || null) : null,
           cashier_name: user?.name || "",
-          lines: lines.map(l => ({ ...l, item_name: l.item_name, quantity: l.quantity, unit_price: l.unit_price, discount_amount: l.line_discount || 0, unit_name: l.unit_name || "", code: l.code || "" })),
+          lines: lines.map((l) => ({
+            ...l,
+            item_name: l.item_name || l.name,
+            quantity: l.quantity,
+            unit_price: l.unit_price,
+            discount_amount: Number(l.line_discount || l.lineDiscount || 0),
+            unit_name: l.unit_name || "",
+            code: l.code || "",
+          })),
           payments: paymentType === "multi" ? [
             ...(Number(multiCash) > 0 ? [{ method: "cash", method_name: "نقدي", amount: Number(multiCash) }] : []),
+            ...(Number(multiVisa) > 0 && visaMethod ? [{ method_id: visaMethod.id, method_name: visaMethod.name, amount: Number(multiVisa) }] : []),
             ...customPayMethods.filter(m => Number(multiCustomAmounts[m.id]||0) > 0).map(m => ({ method_id: m.id, method_name: m.name, amount: Number(multiCustomAmounts[m.id]) })),
             ...(Number(multiCredit) > 0 && customer?.id ? [{ method: "credit", method_name: "آجل", amount: Number(multiCredit) }] : []),
           ] : paymentType === "installments"
             ? (Number(amountPaid) > 0 ? [{ method: "cash", method_name: "دفعة مقدمة", amount: Number(amountPaid) }] : [])
             : [{ method: paymentType, method_name: { cash: "نقدي", credit: "آجل", bank: "بنك" }[paymentType] || paymentType, amount: (paymentType === "cash" && Number(amountReceived) > totals.total) ? Number(amountReceived) : totals.total }],
-          ...(paymentType === "installments" ? { installment_plan: installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) } : {}),
+          installment_plan: paymentType === "installments" ? installmentRows.map((r, i) => ({ installment_no: i + 1, due_date: r.due_date, amount: Number(r.amount || 0), status: "pending" })) : [],
           notes: invoiceNotes || null,
           discount: Number(discount || 0) + Number(promotionDiscount || 0),
           increase: Number(increase || 0),
@@ -1544,16 +1595,36 @@ export default function POSListView({ vm }) {
           tax_rate: taxCalc.taxAmount > 0 ? (taxRate != null ? Number(taxRate) : Number(storeSettings?.tax_rate || 0)) : 0,
           tax_type: storeSettings?.tax_type || null,
         }}
-        settings={storeSettings} operationLabel="فاتورة مبيعات نقدية"
-        onConfirmPrint={() => saveInvoice(false)} confirmLabel="حفظ وطباعة"
-        onSaveOnly={() => saveInvoice(false)} saveOnlyLabel="حفظ فقط" isSaving={isSaving}
+        settings={storeSettings}
+        operationLabel="فاتورة مبيعات نقدية"
+        onConfirmPrint={lastSavedInvoice ? undefined : () => saveInvoice(false)}
+        confirmLabel="حفظ وطباعة"
+        onSaveOnly={lastSavedInvoice ? undefined : () => saveInvoice(false)}
+        saveOnlyLabel="حفظ فقط"
+        isSaving={isSaving}
         onSendWhatsApp={() => setWaSendOpen(true)}
       />
       {waSendOpen && (
         <WhatsAppSendModal
           open={waSendOpen}
           onClose={() => setWaSendOpen(false)}
-          invoice={{
+          onBeforeSend={lastSavedInvoice ? undefined : () => saveInvoice(false)}
+          invoice={lastSavedInvoice ? {
+            id: lastSavedInvoice.id,
+            invoice_no: lastSavedInvoice.invoice_no,
+            customer_id: lastSavedInvoice.customer?.id,
+            customer_name: lastSavedInvoice.customer?.name,
+            customer_phone: lastSavedInvoice.customer?.phone,
+            walk_in_phone: lastSavedInvoice.walk_in_phone,
+            walk_in_name: lastSavedInvoice.walk_in_name,
+            total: lastSavedInvoice.totals?.total ?? lastSavedInvoice.total,
+            created_at: lastSavedInvoice.date || lastSavedInvoice.created_at,
+            payment_type: lastSavedInvoice.paymentType || lastSavedInvoice.payment_type,
+            discount: lastSavedInvoice.discount,
+            created_by_username: lastSavedInvoice.cashier || lastSavedInvoice.created_by_username,
+            lines: lastSavedInvoice.lines,
+            payments: lastSavedInvoice.payments,
+          } : {
             invoice_no: docNo || invoiceNumber,
             customer_id: customer?.id,
             customer_name: customer?.name,
@@ -1679,7 +1750,7 @@ export default function POSListView({ vm }) {
               {/* Save & Print */}
               <button
                 type="button"
-                onClick={() => { setSaveConfirmOpen(false); saveInvoice(true); }}
+                onClick={() => { setSaveConfirmOpen(false); setPrintPreview(true); }}
                 className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-indigo-50/50 bg-indigo-50/20 hover:bg-indigo-50/60 hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/10 group-hover:scale-105 transition-transform shrink-0">
@@ -1694,7 +1765,7 @@ export default function POSListView({ vm }) {
               {/* Save & WhatsApp */}
               <button
                 type="button"
-                onClick={() => { setSaveConfirmOpen(false); saveInvoice(false, { whatsappAfter: true }); }}
+                onClick={() => { setSaveConfirmOpen(false); setWaSendOpen(true); }}
                 className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-[#25D366]/20 bg-[#25D366]/5 hover:bg-[#25D366]/10 hover:border-[#25D366]/50 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-md shadow-[#25D366]/20 group-hover:scale-105 transition-transform shrink-0">

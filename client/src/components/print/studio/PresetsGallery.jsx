@@ -7,7 +7,7 @@ import {
   applyPreset, captureAsPreset, getUserPresets, saveUserPreset,
   deleteUserPreset, exportUserPresets, importUserPresets,
 } from "../presets/presetEngine";
-import { SHEET_W, sampleById, TEMPLATE_PRESETS, TEMPLATE_MOCK, SCOPE_PRESETS } from "./studioData";
+import { SHEET_W, sampleById, TEMPLATE_PRESETS, TEMPLATE_MOCK, SCOPE_PRESETS, BLOCK_DOC_SCOPES } from "./studioData";
 
 export const TAG_LABELS = {
   bilingual: "ثنائي اللغة", compact: "موفر للورق", ticket: "تذكرة طلب",
@@ -87,7 +87,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
     if (appliedPresetId) return appliedPresetId;
     if (!currentFamilyLayout) return null;
     const cfl = currentFamilyLayout;
-    const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+    const isReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
     const builtins = isReport ? (SCOPE_PRESETS[scope] || TEMPLATE_PRESETS) : presetsForSize(size);
     const users = isReport
       ? getUserPresets().filter((p) => p.isTemplate)
@@ -129,7 +129,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [previewOpen]);
-  const isReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+  const isReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
   const invoice = useMemo(() => {
     if (isReport && TEMPLATE_MOCK[scope]) {
       const raw = TEMPLATE_MOCK[scope];

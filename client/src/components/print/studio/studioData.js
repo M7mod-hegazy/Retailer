@@ -61,31 +61,47 @@ export function pageSizeStrFor(size, orientation = "portrait") {
  */
 export function findNaturalBreaks(containerEl, pageHmm, pxPerMm = PX_PER_MM) {
   if (!containerEl || !pageHmm || pageHmm <= 0) return [];
+  const pagePx = pageHmm * pxPerMm;
 
   /**
-   * Walk the offsetParent chain from `el` up to `container` to get
-   * the element's top in container-local px. This is scroll-independent
-   * and works even when the container is off-screen (e.g. fixed left:-9999px).
+   * Get the element's top in container-local px.
+   * Uses getBoundingClientRect for reliable measurement even when the
+   * container is `position: fixed` (which breaks offsetParent chains).
    */
   function offsetTopRelativeTo(el, container) {
-    let top = 0;
-    let node = el;
-    while (node && node !== container) {
-      top += node.offsetTop;
-      node = node.offsetParent;
-    }
-    return top;
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    return eRect.top - cRect.top;
   }
 
   // Collect candidate break units.
   // • Top-level [data-block-key] elements are the coarse units (logo, header,
   //   totals, footer, …).
-  // • For the items table and report table — which can be arbitrarily tall —
-  //   we drill into individual <tr> elements so we never cut through a row.
-  //   We keep the thead as part of the first set of rows (don't break after thead).
+  // • Blocks taller than ~60% of a page are drilled into: table rows first
+  //   (so a break never cuts through a row), then generic element children
+  //   (cards / ledger / flex list variants have no <tr>s).
   const rects = [];
 
-  const topBlocks = containerEl.querySelectorAll(":scope > * [data-block-key], [data-block-key]");
+  const pushUnit = (el) => {
+    const h = el.offsetHeight;
+    if (h < 2) return;
+    const topPx = offsetTopRelativeTo(el, containerEl);
+    rects.push({ topPx, bottomPx: topPx + h });
+  };
+
+  const drill = (el, depth) => {
+    const h = el.offsetHeight;
+    if (h < 2) return;
+    if (h <= pagePx * 0.6 || depth >= 4) { pushUnit(el); return; }
+    const rows = el.querySelectorAll("tbody tr, tr");
+    if (rows.length > 1) { rows.forEach(pushUnit); return; }
+    const kids = Array.from(el.children).filter((k) => k.offsetHeight >= 2);
+    if (kids.length > 1) { kids.forEach((k) => drill(k, depth + 1)); return; }
+    if (kids.length === 1) { drill(kids[0], depth + 1); return; }
+    pushUnit(el);
+  };
+
+  const topBlocks = containerEl.querySelectorAll("[data-block-key]");
   const seenBlocks = new Set();
 
   topBlocks.forEach((block) => {
@@ -93,53 +109,83 @@ export function findNaturalBreaks(containerEl, pageHmm, pxPerMm = PX_PER_MM) {
     if (seenBlocks.has(key)) return; // deduplicate (only first occurrence per key)
     seenBlocks.add(key);
 
-    const blockH = block.offsetHeight;
-    if (blockH < 2) return;
-
-    const blockTopPx = offsetTopRelativeTo(block, containerEl);
-    const pagePx = pageHmm * pxPerMm;
-
-    // If this block is taller than one page, expand it into individual <tr> rows
-    // so we can break between rows rather than being forced to swallow the whole block.
-    if (blockH > pagePx * 0.6) {
-      const rows = block.querySelectorAll("tbody tr, tr");
-      if (rows.length > 1) {
-        rows.forEach((tr) => {
-          const h = tr.offsetHeight;
-          if (h < 2) return;
-          const topPx = offsetTopRelativeTo(tr, containerEl);
-          rects.push({ topPx, bottomPx: topPx + h });
-        });
-        return; // don't also push the whole block
-      }
+    // Group blocks in totals/footer/payments zones into a single indivisible unit
+    const zoneAncestor = block.closest('[data-zone="totals"], [data-zone="footer"], [data-zone="payments"]');
+    if (zoneAncestor) {
+      const zoneKey = "zone_" + zoneAncestor.getAttribute("data-zone");
+      if (seenBlocks.has(zoneKey)) return;
+      seenBlocks.add(zoneKey);
+      pushUnit(zoneAncestor);
+      return;
     }
 
-    rects.push({ topPx: blockTopPx, bottomPx: blockTopPx + blockH });
+    // Freely-positioned blocks (abs pins, overlays, watermarks) sit at fixed mm
+    // coordinates outside the flow — they must not influence break positions.
+    if (block.hasAttribute("data-abs-block")) return;
+    if (typeof window !== "undefined" && window.getComputedStyle
+        && window.getComputedStyle(block).position === "absolute") return;
+    drill(block, 0);
   });
 
-  if (!rects.length) return [];
+  if (!rects.length) {
+    // Fallback: if no block elements found but the container itself is taller
+    // than one page, force breaks at page-height intervals so print output
+    // doesn't overflow.  This handles layouts where blocks lack data-block-key
+    // attributes (e.g. custom renderContent paths).
+    const totalPx = containerEl.scrollHeight || containerEl.offsetHeight;
+    if (totalPx > pagePx * 1.05) {
+      const fallback = [];
+      let pos = pagePx;
+      while (pos < totalPx - pagePx * 0.1) {
+        fallback.push(Math.round((pos / pxPerMm) * 10) / 10);
+        pos += pagePx;
+      }
+      return fallback;
+    }
+    return [];
+  }
   rects.sort((a, b) => a.topPx - b.topPx);
 
   // Remove exact duplicates that can appear when nested selectors match the same el
   const unique = rects.filter((r, i) => i === 0 || r.topPx !== rects[i - 1].topPx);
 
-  const pagePx = pageHmm * pxPerMm;
   const breaksMm = [];
   let pageStartPx = 0;  // absolute top of the current page (container-px)
   let prevBottomPx = 0; // bottom edge of the last accepted unit
 
+  const pushBreak = (px) => {
+    const mm = Math.round((px / pxPerMm) * 10) / 10;
+    if (!breaksMm.length || mm > breaksMm[breaksMm.length - 1]) breaksMm.push(mm);
+    pageStartPx = px;
+  };
+
   for (let i = 0; i < unique.length; i++) {
-    const { topPx, bottomPx } = unique[i];
+    const { bottomPx } = unique[i];
 
     // Does this unit overflow the current page?
     if (bottomPx > pageStartPx + pagePx && prevBottomPx > pageStartPx) {
       // Emit a break at the previous unit's bottom; start a new page there.
-      breaksMm.push(Math.round((prevBottomPx / pxPerMm) * 10) / 10);
-      pageStartPx = prevBottomPx;
+      pushBreak(prevBottomPx);
     }
 
-    // Accept this unit onto the current page (even if it's oversized).
+    // Oversized unit (taller than one page even starting fresh): force
+    // intermediate breaks every page-height. Without these, the print path —
+    // which clips each break-to-break span to ONE page — silently discarded
+    // everything past the first page of the unit.
+    while (bottomPx > pageStartPx + pagePx) {
+      pushBreak(pageStartPx + pagePx);
+    }
+
     prevBottomPx = bottomPx;
+  }
+
+  // Safety fallback: content extends beyond the measured units (unkeyed
+  // trailing markup) — force interval breaks over the remainder.
+  const totalPx = Math.max(containerEl.scrollHeight || 0, prevBottomPx);
+  let tail = pageStartPx + pagePx;
+  while (tail < totalPx - pagePx * 0.1) {
+    pushBreak(tail);
+    tail = pageStartPx + pagePx;
   }
 
   return breaksMm;
@@ -153,8 +199,63 @@ export const BLOCK_DOCS = new Set([
   "quotation", "branch_transfer", "purchase_return", "payment_receipt",
   "bank_statement", "ajal_statement", "ajal_schedule", "ajal_full_statement",
   "cheque_register", "payment_methods_report", "daily_treasury", "reports_generic",
-  "account_statement",
+  "account_statement", "kitchen_ticket", "owner_statement",
 ]);
+
+/**
+ * Block doc scopes that use items_table / generic block rendering and
+ * therefore inherit their layout from _global by default.
+ *
+ * NOTE: kitchen_ticket and owner_statement are block docs with entirely
+ * different block types from _global, so they are NOT included here.
+ * They have their own per-family default layouts and never inherit.
+ */
+export const BLOCK_DOC_SCOPES = new Set([
+  "pos_receipt", "purchase_order", "sales_return",
+  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
+]);
+
+/**
+ * Scopes that CAN inherit from _global in the Studio canvas.
+ * Used by StudioCanvas's INHERITABLE_SCOPES and the Studio's scope
+ * switching logic. Same as BLOCK_DOC_SCOPES — kitchen_ticket and
+ * owner_statement are excluded because their block types are incompatible
+ * with _global's layout.
+ */
+export const INHERITABLE_SCOPES = new Set([...BLOCK_DOC_SCOPES]);
+
+// Valid paper sizes per doc type + system default (user can override).
+// Shared between DocPreviewGallery and PrintingSettingsPanel.
+export const DOC_PAPER_CONFIG = {
+  pos_receipt:            { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
+  purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
+  sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
+  purchase_return:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
+  quotation:              { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
+  branch_transfer:        { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
+  bank_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  ajal_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  ajal_schedule:          { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
+  ajal_full_statement:    { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  cheque_register:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  payment_receipt:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
+  daily_treasury:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  payment_methods_report: { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  owner_statement:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  reports_generic:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+  kitchen_ticket:         { sizes: ["58mm","80mm"],               defaultSize: "80mm" },
+  account_statement:      { sizes: ["A5","A4"],                   defaultSize: "A4"   },
+};
+
+/** Resolve effective paper size for a doc type, falling back to DOC_PAPER_CONFIG defaults. */
+export function resolveDocPaperSize(docType, docTypeSettings = {}) {
+  const cfg = DOC_PAPER_CONFIG[docType];
+  if (!cfg) return "A4";
+  if (docTypeSettings.paper_size && docTypeSettings.paper_size !== "inherit") {
+    return docTypeSettings.paper_size;
+  }
+  return cfg.defaultSize;
+}
 
 // Scope catalog shown in the Studio switcher. `_global` is the shared design
 // every doc type inherits unless it overrides a family layout.
@@ -176,6 +277,8 @@ export const STUDIO_SCOPES = [
   { key: "payment_methods_report", label: "تقرير وسائل الدفع",     group: "تقارير" },
   { key: "reports_generic",        label: "إعدادات طباعة التقارير", group: "تقارير" },
   { key: "account_statement",      label: "كشف حساب (عميل / مورد)", group: "تقارير" },
+  { key: "kitchen_ticket",         label: "تيكت المطبخ",           group: "مطعم" },
+  { key: "owner_statement",        label: "لوحة صاحب المحل",       group: "تقارير" },
 ];
 
 export function scopeLabel(key) {
@@ -1676,7 +1779,377 @@ export const SCOPE_PRESETS = {
         }
       }
     },
-  ]
+  ],
+
+  // ── Kitchen Ticket presets (roll-only) ────────────────────────────────────
+  kitchen_ticket: [
+    {
+      id: "kitchen_classic",
+      label: "تيكت كلاسيكي",
+      family: "roll",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
+        perBlock: {}
+      }
+    },
+    {
+      id: "kitchen_modern",
+      label: "تيكت عصري",
+      family: "roll",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
+        perBlock: {}
+      }
+    },
+    {
+      id: "kitchen_badge",
+      label: "تيكت بالشارات",
+      family: "roll",
+      isTemplate: true,
+      tags: ["modern", "elegant"],
+      flat: { accent_color: "#2563eb", print_font: "Tajawal", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
+        perBlock: {
+          kitchen_order_header: { variant: "badge" },
+          kitchen_order_meta: { variant: "badge" },
+          kitchen_items: { variant: "cards" },
+          kitchen_order_footer: { variant: "badge" },
+        }
+      }
+    },
+    {
+      id: "kitchen_minimal",
+      label: "تيكت مبسّط",
+      family: "roll",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_items", "kitchen_order_footer"],
+        perBlock: {
+          kitchen_order_header: { variant: "minimal" },
+          kitchen_items: { variant: "minimal" },
+          kitchen_order_footer: { variant: "minimal" },
+        }
+      }
+    },
+    {
+      id: "kitchen_alert",
+      label: "تيكت تنبيهات",
+      family: "roll",
+      isTemplate: true,
+      tags: ["formal", "classic"],
+      flat: { accent_color: "#f59e0b", print_font: "Cairo", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
+        perBlock: {
+          kitchen_notes: { variant: "alert" },
+        }
+      }
+    },
+    {
+      id: "kitchen_numbered",
+      label: "تيكت مرقّم",
+      family: "roll",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#7c3aed", print_font: "Tajawal", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
+        perBlock: {
+          kitchen_order_header: { variant: "striped" },
+          kitchen_items: { variant: "numbered" },
+          kitchen_order_meta: { variant: "compact" },
+        }
+      }
+    },
+    {
+      id: "kitchen_compact",
+      label: "تيكت مضغوط",
+      family: "roll",
+      isTemplate: true,
+      tags: ["minimal", "thermal"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 9, header_style: "minimal" },
+      layout: {
+        order: ["kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
+        perBlock: {
+          kitchen_order_meta: { variant: "compact" },
+          kitchen_items: { variant: "ticket" },
+          kitchen_order_footer: { variant: "centered" },
+        }
+      }
+    },
+  ],
+
+  // ── Owner Statement presets (page-only) ──────────────────────────────────
+  owner_statement: [
+    {
+      id: "owner_executive",
+      label: "لوحة المالك التنفيذية",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#0f172a", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date",
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow",
+          "owner_net_profit", "owner_period_comparison", "notes", "signature_lines"],
+        perBlock: {
+          owner_dashboard_metrics: { variant: "stripe" },
+          owner_assets_liabilities: { variant: "stripe" },
+          owner_payment_flow: { variant: "standard" }
+        }
+      }
+    },
+    {
+      id: "owner_modern",
+      label: "لوحة المالك العصرية",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#1e40af", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date",
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison"],
+        perBlock: {
+          owner_dashboard_metrics: { variant: "accent-band" },
+          owner_assets_liabilities: { variant: "accent-band" },
+          owner_net_profit: { variant: "band" },
+          owner_payment_flow: { variant: "cards" }
+        }
+      }
+    },
+    {
+      id: "owner_minimal",
+      label: "لوحة مالية مبسّطة",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date",
+          "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow"],
+        perBlock: {
+          owner_assets_liabilities: { variant: "minimal-rule" },
+          owner_net_profit: { variant: "minimal" },
+          owner_revenue_breakdown: { variant: "minimal" },
+          owner_expense_categories: { variant: "minimal" },
+          owner_payment_flow: { variant: "standard" }
+        }
+      }
+    },
+    {
+      id: "owner_centered",
+      label: "لوحة مالية متمركزة",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date",
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_payment_flow", "owner_net_profit", "owner_period_comparison", "signature_lines"],
+        perBlock: {
+          owner_dashboard_metrics: { variant: "minimal-rule" },
+          owner_assets_liabilities: { variant: "minimal-rule" },
+          owner_net_profit: { variant: "stripe" },
+          owner_revenue_breakdown: { variant: "cards" },
+          owner_payment_flow: { variant: "cards" }
+        }
+      }
+    },
+    {
+      id: "owner_boxed",
+      label: "لوحة مالية شبكي",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_date",
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison", "signature_lines"],
+        perBlock: {
+          owner_dashboard_metrics: { variant: "boxed" },
+          owner_assets_liabilities: { variant: "boxed" },
+          owner_net_profit: { variant: "boxed" },
+          owner_expense_categories: { variant: "cards" },
+          owner_payment_flow: { variant: "standard" },
+          owner_period_comparison: { variant: "cards" },
+        }
+      }
+    },
+    {
+      id: "owner_warm",
+      label: "لوحة مالية دافئة",
+      family: "page",
+      isTemplate: true,
+      tags: ["warm", "elegant"],
+      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "strip", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date",
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_net_profit", "owner_expense_categories", "owner_payment_flow"],
+        perBlock: {
+          owner_dashboard_metrics: { variant: "stripe" },
+          owner_assets_liabilities: { variant: "stripe" },
+          owner_revenue_breakdown: { variant: "bar" },
+          owner_expense_categories: { variant: "pie" },
+          owner_payment_flow: { variant: "standard" }
+        }
+      }
+    },
+    {
+      id: "owner_crimson",
+      label: "لوحة مالية رسمية",
+      family: "page",
+      isTemplate: true,
+      tags: ["formal", "classic"],
+      flat: { accent_color: "#9f1239", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date",
+          "owner_net_profit", "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison",
+          "notes", "footer_text", "signature_lines"],
+        perBlock: {
+          owner_net_profit: { variant: "standard" },
+          owner_dashboard_metrics: { variant: "standard" },
+          owner_assets_liabilities: { variant: "standard" },
+          owner_revenue_breakdown: { variant: "standard" },
+          owner_expense_categories: { variant: "badge" },
+          owner_payment_flow: { variant: "standard" },
+          owner_period_comparison: { variant: "compact" },
+        }
+      }
+    },
+  ],
+
+  // ── Branch Transfer presets ──────────────────────────────────────────────
+  branch_transfer: [
+    {
+      id: "transfer_official",
+      label: "إذن تحويل رسمي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["watermark", "logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "signature_lines", "receiver_signature"],
+        perBlock: {
+          items_table: {
+            tableBorder: "grid", zebra: false, headerBg: "#1e40af", headerColor: "#ffffff",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_modern",
+      label: "تحويل مخزني عصري",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature"],
+        perBlock: {
+          items_table: {
+            tableBorder: "lines", zebra: true, headerBg: "#0f172a", headerColor: "#ffffff",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_minimal",
+      label: "سند نقل بسيط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "doc_date", "items_table", "receiver_signature"],
+        perBlock: {
+          items_table: {
+            tableBorder: "none", zebra: false, headerVariant: "light",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_centered",
+      label: "تحويل فرع متمركز",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "modern"],
+      flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_date", "items_table", "footer_text", "signature_lines"],
+        perBlock: {
+          items_table: {
+            tableBorder: "grid", headerBg: "#059669", headerColor: "#ffffff",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_boxed",
+      label: "سند تحويل شبكي",
+      family: "page",
+      isTemplate: true,
+      tags: ["elegant", "classic"],
+      flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
+      layout: {
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "signature_lines", "receiver_signature"],
+        perBlock: {
+          items_table: {
+            tableBorder: "lines", zebra: true, headerBg: "#6d28d9", headerColor: "#ffffff",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_warm",
+      label: "إذن نقل دافئ",
+      family: "page",
+      isTemplate: true,
+      tags: ["warm", "elegant"],
+      flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "strip", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "footer_text", "signature_lines"],
+        perBlock: {
+          items_table: {
+            tableBorder: "rows", zebra: true, headerBg: "#b45309", headerColor: "#ffffff",
+          }
+        }
+      }
+    },
+    {
+      id: "transfer_compact_roll",
+      label: "سند نقل رول مختصر",
+      family: "roll",
+      isTemplate: true,
+      tags: ["minimal", "thermal"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
+      layout: {
+        order: ["company_name", "branch", "doc_number", "doc_date", "items_table", "receiver_signature"],
+        perBlock: {}
+      }
+    },
+    {
+      id: "transfer_classic_roll",
+      label: "سند تحويل رول رسمي",
+      family: "roll",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "band" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature"],
+        perBlock: {}
+      }
+    },
+  ],
 };
 
 
@@ -1800,6 +2273,62 @@ export const TEMPLATE_MOCK = {
     ],
     total_original: 28500, total_remaining: 19000,
     filters: { from: "2026-06-01", to: "2026-07-05" },
+  },
+  kitchen_ticket: {
+    invoice_number: "INV-20260705-001",
+    order_type: "dine_in",
+    dining_table: { number: "5" },
+    company: { name: "مطعم بيت النكهات" },
+    cashier: "أحمد محمد",
+    created_at: now(),
+    items: [
+      { name: "كشري بالصلصة", quantity: 2, modifiers: "extra spicy", notes: "" },
+      { name: "سلطة يونانية", quantity: 1, modifiers: "", notes: "بدون زيتون" },
+      { name: "عصير برتقال طبيعي", quantity: 3, modifiers: "", notes: "" },
+    ],
+    notes: "الطعام بدون ملح — حساسية",
+  },
+  owner_statement: {
+    period_start: "2026-06-01",
+    period_end: "2026-06-30",
+    metrics: [
+      { key: "revenue",        label: "إجمالي الإيرادات",  value: 185000 },
+      { key: "cogs",           label: "تكلفة البضاعة",      value: 98000 },
+      { key: "gross_profit",   label: "مجمل الربح",        value: 87000 },
+      { key: "operating",      label: "المصروفات التشغيلية", value: 32000 },
+      { key: "net_profit",     label: "صافي الربح",         value: 55000 },
+      { key: "customers",      label: "عدد العملاء",        value: 342 },
+    ],
+    revenue_breakdown: [
+      { label: "مبيعات نقدية", amount: 95000, pct: 51 },
+      { label: "مبيعات آجلة", amount: 52000, pct: 28 },
+      { label: "مرتجعات",     amount: 8000,  pct: 4 },
+      { label: "خدمات",       amount: 46000, pct: 17 },
+    ],
+    expense_categories: [
+      { label: "رواتب",   amount: 18000, color: "#dc2626" },
+      { label: "إيجار",   amount: 8000,  color: "#2563eb" },
+      { label: "مرافق",   amount: 4000,  color: "#d97706" },
+      { label: "تسويق",  amount: 2000,  color: "#059669" },
+    ],
+    total_revenue: 185000,
+    total_expenses: 130000,
+    total_sales: 185000,
+    net_profit: 55000,
+    stock: 145000,
+    cash: 85200,
+    ar: 32400,
+    ap: 19800,
+    payment_flow: [
+      { method_name: "نقدي", transaction_count: 142, total_in: 95000, total_out: 12000, net_amount: 83000 },
+      { method_name: "شبكة / فيزا", transaction_count: 88, total_in: 52000, total_out: 0, net_amount: 52000 },
+      { method_name: "تحويل بنكي", transaction_count: 12, total_in: 38000, total_out: 8000, net_amount: 30000 },
+      { method_name: "أقساط", transaction_count: 4, total_in: 8000, total_out: 0, net_amount: 8000 },
+    ],
+    period_comparison: [
+      { label: "المبيعات",     current: 185000, previous: 162000 },
+      { label: "صافي الربح",  current: 55000,  previous: 42000 },
+    ],
   },
   reports_generic: {
     title: "تقرير المخزون الحالي",
@@ -1934,6 +2463,17 @@ export function templateMockBySample(scope, sampleId = "normal") {
       ],
     },
     daily_treasury: base,
+    kitchen_ticket: {
+      ...base,
+      company: { name: "مطعم بيت النكهات والمأكولات الشرقية" },
+      items: [
+        { name: "كشري بالصلصة الحارة وصلصة الطماطم", quantity: 2, modifiers: "extra spicy, extra garlic", notes: "" },
+        { name: "سلطة يونانية مع جبنة فيتا طازجة", quantity: 1, modifiers: "", notes: "بدون زيتون أسود" },
+        { name: "عصير برتقال طبيعي مع نعناع طازج", quantity: 3, modifiers: "", notes: "" },
+      ],
+      notes: "الطعام بدون ملح — حساسية من الملح والتوابل القوية",
+    },
+    owner_statement: base,
     ajal_full_statement: {
       debts: [
         { customer_name: "محمد أحمد عبدالله العلي الحارثي",   original_amount: 5000,  remaining: 3000,  created_at: now(), due_date: new Date(Date.now() + 15 * 86400000).toISOString(), status: "active" },
@@ -2165,3 +2705,108 @@ export const COLUMN_CATALOG = [
   { key: "discount", label: "الخصم" },
   { key: "total",    label: "إجمالي" },
 ];
+
+export function getPagedDocumentHtml(sourceNode, pageHmm, pxPerMm = PX_PER_MM) {
+  if (!sourceNode) return [];
+  const pagePx = pageHmm * pxPerMm;
+
+  // 1. Tag all elements in the source node with a unique index
+  const elements = Array.from(sourceNode.querySelectorAll("*"));
+  const coords = new Map();
+  const cRect = sourceNode.getBoundingClientRect();
+
+  elements.forEach((el, idx) => {
+    el.setAttribute("data-print-index", idx);
+    const rect = el.getBoundingClientRect();
+    coords.set(idx, {
+      top: rect.top - cRect.top,
+      bottom: rect.bottom - cRect.top,
+      height: rect.height,
+    });
+  });
+
+  // 2. Find the natural breaks
+  const breaks = findNaturalBreaks(sourceNode, pageHmm, pxPerMm);
+  const pagesCount = breaks.length + 1;
+  const pagesHtml = [];
+
+  for (let i = 0; i < pagesCount; i++) {
+    const startPx = i === 0 ? 0 : breaks[i - 1] * pxPerMm;
+    const endPx = i < breaks.length ? breaks[i] * pxPerMm : Infinity;
+
+    // Clone the real printed document root (which is the first child of the sourceNode)
+    const rootEl = sourceNode.firstElementChild || sourceNode;
+    const clone = rootEl.cloneNode(true);
+
+    // Find all elements in the clone that have a print index
+    const clonedElements = Array.from(clone.querySelectorAll("[data-print-index]"));
+
+    clonedElements.forEach((el) => {
+      const idxAttr = el.getAttribute("data-print-index");
+      const idx = parseInt(idxAttr, 10);
+      const coord = coords.get(idx);
+      if (!coord) return;
+
+      // Always keep watermarks or absolutely positioned background layers on all pages
+      if (el.hasAttribute("data-abs-block") || el.getAttribute("data-block-key") === "watermark") {
+        return;
+      }
+
+      // Check if it is a table row in the header
+      const isTheadRow = el.tagName === "TR" && el.closest("thead");
+      if (isTheadRow) {
+        // Always keep the header row (so the columns header is repeated)
+        return;
+      }
+
+      // We only prune layout blocks and table rows
+      const isLayoutBlock = el.hasAttribute("data-block-key");
+      const isBodyRow = el.tagName === "TR" && el.closest("tbody");
+
+      if (isLayoutBlock || isBodyRow) {
+        if (coord.bottom - 0.5 <= startPx) {
+          // Completely above this page
+          el.remove();
+        } else if (coord.top + 0.5 >= endPx) {
+          // Completely below this page
+          el.remove();
+        }
+      }
+    });
+
+    // Clean up empty tables: if a table's tbody has no tr elements left, remove the entire table/block
+    const tables = Array.from(clone.querySelectorAll("table"));
+    tables.forEach((table) => {
+      const rows = table.querySelectorAll("tbody tr");
+      if (rows.length === 0) {
+        const block = table.closest("[data-block-key]");
+        if (block) block.remove();
+        else table.remove();
+      }
+    });
+
+    // Clean up empty zones: if a zone has no children, remove it
+    const zones = Array.from(clone.querySelectorAll("[data-zone]"));
+    zones.forEach((zone) => {
+      if (zone.children.length === 0) {
+        zone.remove();
+      }
+    });
+
+    // Remove the data-print-index attributes to clean up the HTML
+    clone.removeAttribute("data-print-index");
+    clone.querySelectorAll("[data-print-index]").forEach((el) => {
+      el.removeAttribute("data-print-index");
+    });
+
+    pagesHtml.push(clone.outerHTML);
+  }
+
+  // Clean up original node attributes
+  sourceNode.removeAttribute("data-print-index");
+  sourceNode.querySelectorAll("[data-print-index]").forEach((el) => {
+    el.removeAttribute("data-print-index");
+  });
+
+  return pagesHtml;
+}

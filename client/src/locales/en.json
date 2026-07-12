@@ -1189,6 +1189,10 @@
   "whatsapp.downloadImage": "Download image",
   "whatsapp.imageCaptionReceipt": "Invoice #{{no}} - {{total}} EGP",
   "whatsapp.imageCaptionReturn": "Return #{{no}} - {{total}} EGP",
+  "whatsapp.paperSize": "Paper size",
+  "whatsapp.imagePreview": "Image preview",
+  "whatsapp.fit": "Fit",
+  "whatsapp.zoomHint": "Drag to pan | Scroll to zoom",
 
   "sms.title": "SMS Messages",
   "sms.desc": "Paid channel that reaches any phone — customers don't need WhatsApp",

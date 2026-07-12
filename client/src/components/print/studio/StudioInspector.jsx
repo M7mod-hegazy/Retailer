@@ -9,7 +9,7 @@ import { PLACEHOLDER_KEYS } from "../blocks/placeholders";
 import { g } from "../blocks/blockUtils";
 import { COMPUTED_FIELDS } from "../blocks/CustomFieldBlock";
 import { PRINT_FONT_FAMILIES } from "../../../services/printFonts";
-import { COLUMN_CATALOG } from "./studioData";
+import { COLUMN_CATALOG, BLOCK_DOC_SCOPES } from "./studioData";
 import { defaultReportColumns } from "../layout/layoutModel";
 
 const BLOCK_VARIANTS = {
@@ -300,6 +300,164 @@ const BLOCK_VARIANTS = {
     { value: "boxed", label: "محاط بحدود" },
     { value: "centered", label: "متمركزي بحدود متقطعة" },
     { value: "lined", label: "بحدود سفلية لكل سطر" },
+  ],
+  // Kitchen ticket blocks
+  kitchen_order_header: [
+    { value: "standard", label: "ترويسة بسيطة" },
+    { value: "badge", label: "شارة ملونة" },
+    { value: "minimal", label: "最小 بفاصل" },
+    { value: "boxed", label: "محاط بحدود" },
+    { value: "striped", label: "شريط مخطط" },
+  ],
+  kitchen_order_meta: [
+    { value: "standard", label: "بيانات بفاصل متقطّع" },
+    { value: "badge", label: "شارات ملونة" },
+    { value: "inline", label: "سطر واحد مدمج" },
+    { value: "compact", label: "مضغوط مركزي" },
+    { value: "ruled", label: "محاط بحدود جانبية" },
+  ],
+  kitchen_items: [
+    { value: "standard", label: "قائمة بسيطة" },
+    { value: "cards", label: "بطاقات بحدود جانبية" },
+    { value: "minimal", label: "قائمة مختصرة" },
+    { value: "ticket", label: "ستايل تيكت بفاصل" },
+    { value: "numbered", label: "مرقّم بدوائر" },
+  ],
+  kitchen_notes: [
+    { value: "standard", label: "ملاحظة على خلفية صفراء" },
+    { value: "alert", label: "تنبيه أحمر بحدود جانبية" },
+    { value: "minimal", label: "ملاحظة بخط مائل" },
+    { value: "boxed", label: "ملاحظة في صندوق متقطّع" },
+    { value: "centered", label: "ملاحظة متمركزة" },
+  ],
+  kitchen_order_footer: [
+    { value: "standard", label: "تذييل بسيط" },
+    { value: "badge", label: "وقت في شارة" },
+    { value: "minimal", label: "وقت فقط مركزي" },
+    { value: "centered", label: "متمركز بفاصل متقطّع" },
+    { value: "ruled", label: "محاط بحدود جانبية" },
+  ],
+  // Owner statement blocks
+  owner_dashboard_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  owner_revenue_breakdown: [
+    { value: "standard", label: "قائمة ب نقاط ملونة" },
+    { value: "cards", label: "شبكة بطاقات" },
+    { value: "bar", label: "أعمدة أفقية" },
+    { value: "minimal", label: "أعمدة مركزيّة بحد" },
+    { value: "compact", label: "قائمة مختصرة بفاصل" },
+  ],
+  owner_expense_categories: [
+    { value: "standard", label: "قائمة ب مربّعات ملونة" },
+    { value: "cards", label: "شبكة بطاقات (٣ أعمدة)" },
+    { value: "pie", label: "رسم دائري + تفصيل" },
+    { value: "minimal", label: "أعمدة تقدّمية" },
+    { value: "badge", label: "وسوم ملوّنة" },
+  ],
+  owner_net_profit: [
+    { value: "standard", label: "ثلاث بطاقات KPI" },
+    { value: "band", label: "شريط ملوّن كامل" },
+    { value: "minimal", label: "رقم ضخم بحد سفلي" },
+    { value: "boxed", label: "ثلاث صواني ملوّنة" },
+    { value: "stripe", label: "ثلاث خلفيات ملوّنة متتالية" },
+  ],
+  owner_period_comparison: [
+    { value: "standard", label: "جدول مقارنة بأعمدة" },
+    { value: "cards", label: "شبكة بطاقات مع نسب" },
+    { value: "bar", label: "أعمدة مزدوجة (حالي/سابق)" },
+    { value: "minimal", label: "أعمدة مركزيّة مختصرة" },
+    { value: "compact", label: "قائمة مختصرة بنسب مئوية" },
+  ],
+  // Report/account metric blocks (shared MetricCard variants)
+  bank_statement_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  ajal_statement_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  ajal_schedule_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  ajal_full_statement_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  daily_treasury_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  cheque_register_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  payment_methods_report_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "accent-band", label: "شريط ملون علوي" },
+    { value: "minimal-rule", label: "حد سفلي ملوّن" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+    { value: "stripe", label: "شريط ملوّن علوي رفيع" },
+  ],
+  // Table summary blocks
+  daily_treasury_summaries: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "striped-compact", label: "مضغوط بترويسة ملونة" },
+  ],
+  payment_methods_by_method: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "striped-compact", label: "مضغوط بترويسة ملونة" },
+  ],
+  // Party blocks
+  ajal_party: [
+    { value: "standard", label: "بطاقة رمادية بسيطة" },
+    { value: "boxed-accent", label: "بحدود جانبية ملوّنة" },
+  ],
+  account_statement_party: [
+    { value: "standard", label: "جدول بيانات برويسة ملوّنة" },
+    { value: "boxed-accent", label: "بحدود جانبية ملوّنة" },
+  ],
+  // Ledger/summary blocks
+  account_statement_ledger: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "banded", label: "بألوان خلفية ملوّنة" },
+  ],
+  account_statement_summary: [
+    { value: "standard", label: "جدول ملخص عادي" },
+    { value: "boxed-strip", label: "مغلّف بحدود ملوّنة" },
+  ],
+  // Decorative divider
+  pattern_divider: [
+    { value: "standard", label: "خط مستمر" },
+    { value: "double", label: "خط مزدوج" },
+    { value: "dots", label: "نقاط متتالية" },
+    { value: "dash-dot", label: "شرطة نقطة" },
+    { value: "geometric", label: "رموز هندسية ◆◇◆" },
+    { value: "star", label: "نجوم ✦✦✦" },
   ],
 };
 
@@ -634,6 +792,7 @@ export default function StudioInspector({ st }) {
               className="h-14 w-full resize-none rounded-lg border border-[var(--border-normal)] bg-[var(--bg-input)] p-2 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]" />
           </label>
         ))}
+        <Toggle label='ختم "نسخة" عند إعادة الطباعة' checked={merged.reprint_stamp === true} onChange={(v) => st.setFlat("reprint_stamp", v)} />
       </Section>
 
       {/* ═══ selected free overlay (page decorations) ═══ */}
@@ -975,7 +1134,7 @@ export default function StudioInspector({ st }) {
                   <Row label="القيمة">
                     <select value={selInsert.props?.compute || "grand_total"} onChange={(e) => st.setInsert(selInsert.id, { props: { compute: e.target.value } })} className={`${inputCls} w-40`}>
                       {COMPUTED_FIELDS.filter(f => {
-                        const isReport = st.scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(st.scope);
+                        const isReport = st.scope !== "_global" && !BLOCK_DOC_SCOPES.has(st.scope);
                         return !isReport || ["grand_total", "daily_no"].includes(f.key);
                       }).map((f) => (
                         <option key={f.key} value={f.key}>{f.label}</option>
@@ -2025,6 +2184,10 @@ export default function StudioInspector({ st }) {
                   <option value="standard">افتراضي</option>
                   <option value="sidebar">جانبي حديث</option>
                   <option value="executive">رسمي مزدوج</option>
+                  <option value="split-header">رأس مقسوم</option>
+                  <option value="ticket">تذكرة مركزية</option>
+                  <option value="letterhead">ترويسة رسمية</option>
+                  <option value="minimal-top">علوي بسيط</option>
                 </select>
               </Row>
               <Row label="شكل الترويسة">
@@ -2045,18 +2208,14 @@ export default function StudioInspector({ st }) {
                   <option value="left">يسار</option><option value="center">وسط</option><option value="right">يمين</option>
                 </select>
               </Row>
+              <Row label="هامش الصفحة (مم)">
+                <input type="number" min={0} max={25}
+                  value={Number.isFinite(Number(merged.page_padding)) && merged.page_padding !== "" && merged.page_padding != null ? Number(merged.page_padding) : 2}
+                  onChange={(e) => st.setFlat("page_padding", Math.max(0, Math.min(25, Number(e.target.value) || 0)))}
+                  className={`${inputCls} w-20`} />
+              </Row>
             </Section>
           )}
-
-          <Section title="نصوص المستند">
-            {[["receipt_header", "رأس المستند"], ["receipt_footer", "تذييل المستند"]].map(([k, lbl]) => (
-              <label key={k} className="mb-2 block space-y-1">
-                <span className="text-[10px] font-bold text-[var(--text-muted)]">{lbl}</span>
-                <input value={merged[k] || ""} onChange={(e) => st.setFlat(k, e.target.value)} className={`${inputCls} w-full`} />
-              </label>
-            ))}
-            <Toggle label='ختم "نسخة" عند إعادة الطباعة' checked={merged.reprint_stamp === true} onChange={(v) => st.setFlat("reprint_stamp", v)} />
-          </Section>
 
           {family === "page" && (
             <Section title="عناصر حرة (بالمليمتر)">

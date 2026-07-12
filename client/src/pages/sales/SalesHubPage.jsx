@@ -4,7 +4,7 @@ import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
   Package, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  ShoppingBag, Search, MessageCircle,
+  ShoppingBag, Search, MessageCircle, Printer, Trash2,
 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
@@ -18,6 +18,7 @@ import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
 import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
 import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAYMENT_LABELS = {
@@ -427,7 +428,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
 }
 
 // ── Invoice Row ────────────────────────────────────────────────────────────────
-function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest }) {
+function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrintRequest, onCancelRequest }) {
   const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const total    = Number(row.total || 0);
   const received = Number(row.amount_received || 0);
@@ -516,7 +517,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest }) {
         </div>
 
         <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {(row.customer_phone || row.walk_in_phone) && canSendWhatsApp && (
+          {canSendWhatsApp && (
             <button
               onClick={(e) => { e.stopPropagation(); onWhatsAppRequest?.(row); }}
               className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
@@ -525,15 +526,93 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest }) {
               <MessageCircle className="w-4 h-4" />
             </button>
           )}
-          <button onClick={() => onPreviewRequest(row)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors">
+          <button
+            onClick={() => onPreviewRequest(row)}
+            className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
+            title="معاينة"
+          >
             <Eye className="w-4 h-4" />
           </button>
-          <button onClick={() => navigate(`/invoices/${row.id}`)} className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
+          <PermissionGate page="pos" action="print">
+            <button
+              onClick={(e) => { e.stopPropagation(); onPrintRequest?.(row); }}
+              className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+              title="طباعة الفاتورة"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </PermissionGate>
+          <button
+            onClick={() => navigate(`/invoices/${row.id}`)}
+            className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+            title="تفاصيل الفاتورة"
+          >
             <Pencil className="w-4 h-4" />
           </button>
+          {row.status !== "cancelled" && (
+            <PermissionGate page="pos" action="void">
+              <button
+                onClick={(e) => { e.stopPropagation(); onCancelRequest?.(row); }}
+                className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                title="إلغاء الفاتورة"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </PermissionGate>
+          )}
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function CancelReasonModal({ title, onConfirm, onClose }) {
+  const [reason, setReason] = useState("");
+  const [presets, setPresets] = useState([]);
+
+  useEffect(() => {
+    api.get("/api/invoices/cancel-reasons").then(r => setPresets(r.data.data || [])).catch(() => {});
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[16px] font-black text-zinc-800">{title}</h3>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-zinc-50 text-zinc-400 hover:text-zinc-700"><X className="h-4 w-4" /></button>
+        </div>
+        <p className="text-2sm text-zinc-500 mb-3 font-bold">اختر سبباً أو اكتب سبباً مخصصاً:</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {presets.map(p => (
+            <button
+              key={p}
+              onClick={() => setReason(p)}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "bg-white border-zinc-200 text-zinc-600 hover:border-rose-300"}`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="أو اكتب السبب..."
+          className="w-full border border-zinc-200 rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300 text-zinc-800 font-bold"
+        />
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => reason.trim() && onConfirm(reason)}
+            disabled={!reason.trim()}
+            className="flex-1 bg-rose-600 text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40 transition-colors hover:bg-rose-700"
+          >
+            تأكيد
+          </button>
+          <button onClick={onClose} className="flex-1 border border-zinc-200 rounded-xl py-2.5 text-sm font-black text-zinc-600 hover:bg-zinc-50 transition-colors">
+            رجوع
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -542,6 +621,40 @@ export default function SalesHubPage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("invoices");
+  const [printTarget, setPrintTarget] = useState(null);
+  const [printSettings, setPrintSettings] = useState({});
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  useEffect(() => {
+    api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
+  }, []);
+
+  async function handlePrintClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل الفاتورة...");
+    try {
+      const res = await api.get(`/api/invoices/${row.id}`);
+      setPrintTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل الفاتورة");
+      toast.dismiss(tid);
+    }
+  }
+
+  async function handleConfirmCancel(reason) {
+    if (!cancelTarget) return;
+    const tid = toast.loading("جاري إلغاء الفاتورة...");
+    try {
+      await api.delete(`/api/invoices/${cancelTarget.id}`, { data: { reason } });
+      toast.success(`تم إلغاء الفاتورة ${cancelTarget.invoice_no || `#${cancelTarget.id}`} بنجاح`);
+      setCancelTarget(null);
+      loadInvoices();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "فشل إلغاء الفاتورة");
+    } finally {
+      toast.dismiss(tid);
+    }
+  }
   const [invoices, setInvoices]   = useState([]);
   const [itemRows, setItemRows]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -557,6 +670,18 @@ export default function SalesHubPage() {
   const [userId, setUserId] = useState("");
   const [waSendTarget, setWaSendTarget] = useState(null);
   const [customers, setCustomers] = useState([]);
+
+  async function handleWhatsAppClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل الفاتورة...");
+    try {
+      const res = await api.get(`/api/invoices/${row.id}`);
+      setWaSendTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل الفاتورة");
+      toast.dismiss(tid);
+    }
+  }
 
   // Customer autocomplete
   const [customerQuery, setCustomerQuery] = useState("");
@@ -902,7 +1027,15 @@ export default function SalesHubPage() {
             ) : (
               <>
                 {pagedInvoices.map(row => (
-                  <InvoiceRow key={row.id} row={row} navigate={navigate} onPreviewRequest={setPreviewTarget} onWhatsAppRequest={setWaSendTarget} />
+                  <InvoiceRow
+                    key={row.id}
+                    row={row}
+                    navigate={navigate}
+                    onPreviewRequest={setPreviewTarget}
+                    onWhatsAppRequest={handleWhatsAppClick}
+                    onPrintRequest={handlePrintClick}
+                    onCancelRequest={setCancelTarget}
+                  />
                 ))}
                 {totalInvoicePages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
@@ -1040,6 +1173,48 @@ export default function SalesHubPage() {
           open={Boolean(waSendTarget)}
           onClose={() => setWaSendTarget(null)}
           invoice={waSendTarget}
+        />
+      )}
+
+      {printTarget && (
+        <PrintPreviewModal
+          open={Boolean(printTarget)}
+          onClose={() => setPrintTarget(null)}
+          docType="pos_receipt"
+          invoice={{
+            ...printTarget,
+            invoice_no: printTarget.invoice_no,
+            created_at: printTarget.created_at,
+            customer_name: printTarget.customer_name,
+            cashier_name: printTarget.created_by_username || printTarget.cashier_name || "",
+            subtotal: printTarget.subtotal || printTarget.total || 0,
+            total: printTarget.total || 0,
+            discount: printTarget.discount || 0,
+            increase: printTarget.increase || 0,
+            notes: printTarget.notes || "",
+            lines: (printTarget.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_price,
+              discount_amount: l.discount || 0,
+              code: l.item_code || l.code || "",
+            })),
+          }}
+          settings={printSettings}
+          operationLabel="فاتورة بيع"
+          onSendWhatsApp={() => {
+            const target = printTarget;
+            setWaSendTarget(target);
+          }}
+        />
+      )}
+
+      {cancelTarget && (
+        <CancelReasonModal
+          title={`إلغاء الفاتورة ${cancelTarget.invoice_no || `#${cancelTarget.id}`}`}
+          onConfirm={handleConfirmCancel}
+          onClose={() => setCancelTarget(null)}
         />
       )}
     </div>

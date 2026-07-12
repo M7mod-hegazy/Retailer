@@ -52,6 +52,27 @@ function MetricCard({ label, val, color, bg, settings, variant = "standard" }) {
     );
   }
 
+  if (variant === "boxed") {
+    return (
+      <div style={{ flex: 1, border: `2px solid ${c}`, borderRadius: 8, padding: "10px", textAlign: "center", background: b }}>
+        <div style={{ fontSize: "0.75em", fontWeight: 800, color: c, marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: "1.35em", fontWeight: 950, color: c }}>{val}</div>
+      </div>
+    );
+  }
+
+  if (variant === "stripe") {
+    return (
+      <div style={{ flex: 1, borderRadius: 6, overflow: "hidden", border: `1px solid ${c}22` }}>
+        <div style={{ height: 4, background: c }} />
+        <div style={{ padding: "8px", textAlign: "center" }}>
+          <div style={{ fontSize: "0.8em", color: "#64748b", fontWeight: 700 }}>{label}</div>
+          <div style={{ fontSize: "1.35em", fontWeight: 950, color: c }}>{val}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, border: `1.5px solid ${c}22`, borderTop: `4px solid ${c}`, borderRadius: 6, padding: "10px", background: b, textAlign: "center" }}>
       <div style={{ fontSize: "0.85em", color: "#64748b", fontWeight: 700, marginBottom: 2 }}>{label}</div>
@@ -398,7 +419,9 @@ export function ReportTableBlock({ invoice = {}, settings: s, props = {}, family
     //   - Array of { key, label, type, ... } objects (from SourceWorkspacePage)
     //   - Array of raw strings (legacy)
     cols = invoice.columns.map((c, idx) => {
-      if (typeof c === "string") return { key: c, label: c };
+      // Legacy raw-string columns: rows are positional arrays/objects keyed by
+      // index — the label is NOT the row key.
+      if (typeof c === "string") return { key: String(idx), label: c };
       return {
         key: c.key || c.id || String(idx),
         label: c.label || c.header || String(idx),
@@ -409,6 +432,8 @@ export function ReportTableBlock({ invoice = {}, settings: s, props = {}, family
   } else {
     cols = Object.keys(colDefs).map((k) => ({ key: k, label: colDefs[k].label }));
   }
+
+  if (!rows.length) return null;
 
   const border = props.tableBorder || "lines";
   const headerVariant = props.headerVariant || "dark";

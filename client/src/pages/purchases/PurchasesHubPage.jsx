@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
+import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
@@ -178,7 +179,7 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
 }
 
 // ── Preview Modal Component ──────────────────────────────────────────────────
-function PreviewDrawer({ purchaseId, onClose }) {
+function PreviewDrawer({ purchaseId, onClose, onEditBlocked }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -368,7 +369,10 @@ function PreviewDrawer({ purchaseId, onClose }) {
             {d.status !== "cancelled" && (
               <PermissionGate page="purchases" action="edit">
                 <button
-                  onClick={() => navigate(`/purchases/${purchaseId}`)}
+                  onClick={() => {
+                    if (d.has_returns) { onEditBlocked?.(); return; }
+                    navigate(`/purchases/${purchaseId}`);
+                  }}
                   className="h-11 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-colors flex items-center gap-2 shadow-lg shadow-emerald-600/10"
                 >
                   <Pencil className="w-4 h-4" /> تعديل الفاتورة
@@ -383,7 +387,7 @@ function PreviewDrawer({ purchaseId, onClose }) {
 }
 
 // ── Individual Invoice List Row ────────────────────────────────────────────────
-function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
+function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRequest }) {
   const total = Number(row.total || 0);
   const paid = Number(row.amount_paid || 0);
   const remaining = Math.max(0, total - paid);
@@ -499,7 +503,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest }) {
             <>
               <PermissionGate page="purchases" action="edit">
                 <button 
-                  onClick={() => navigate(`/purchases/${row.id}`)} 
+                  onClick={() => onEditRequest(row)} 
                   className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
                 >
                   <Pencil className="w-4 h-4" />
@@ -563,6 +567,7 @@ export default function PurchasesHubPage() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [previewTarget, setPreviewTarget] = useState(null);
+  const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [itemPage, setItemPage] = useState(1);
 
@@ -995,6 +1000,10 @@ export default function PurchasesHubPage() {
                     navigate={navigate}
                     onPreviewRequest={(r) => setPreviewTarget(r)}
                     onCancelRequest={setCancelTarget}
+                    onEditRequest={(r) => {
+                      if (r.has_returns) { setReturnsWarningOpen(true); return; }
+                      navigate(`/purchases/${r.id}`);
+                    }}
                   />
                 ))}
                 {totalInvoicePages > 1 && (
@@ -1131,7 +1140,8 @@ export default function PurchasesHubPage() {
               <div className="overflow-y-auto px-7 pb-7">
                 <PreviewDrawer 
                   purchaseId={previewTarget.id || previewTarget.purchase_id} 
-                  onClose={() => setPreviewTarget(null)} 
+                  onClose={() => setPreviewTarget(null)}
+                  onEditBlocked={() => { setPreviewTarget(null); setReturnsWarningOpen(true); }}
                 />
               </div>
             </motion.div>
@@ -1145,6 +1155,11 @@ export default function PurchasesHubPage() {
         onConfirm={handleConfirmCancel}
         onClose={() => setCancelTarget(null)}
         cancelling={cancelling}
+      />
+
+      <ReturnsWarningModal
+        open={returnsWarningOpen}
+        onClose={() => setReturnsWarningOpen(false)}
       />
     </div>
   );

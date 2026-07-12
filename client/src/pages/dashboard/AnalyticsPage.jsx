@@ -9,6 +9,7 @@ import {
   Download, Users, ArrowLeftRight, Grid3X3, Percent, HeartPulse
 } from "lucide-react";
 import api from "../../services/api";
+import { printContent, getPrinterForPageSize } from "../../services/printService";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
@@ -499,11 +500,24 @@ export default function AnalyticsPage() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
-      window.print();
+      handlePrintFallback();
     } finally {
       setExporting(false);
     }
   }, [summary, todayRevenues, todayExpenses, lowStock, belowMargin, comparison, cashFlow, topCustomers, topItems, topCategories, allSalesRows]);
+
+  const pageContentRef = useRef(null);
+
+  const handlePrintFallback = useCallback(() => {
+    if (!pageContentRef.current) { window.print(); return; }
+    printContent({
+      contentHtml: pageContentRef.current.innerHTML,
+      pageSizeStr: "210mm 297mm",
+      deviceName: getPrinterForPageSize("210mm 297mm"),
+      docType: "_global",
+      docLabel: "تحليلات",
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -518,7 +532,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
+    <div ref={pageContentRef} className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
 
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-6 relative z-10 w-full max-w-[1400px] mx-auto gap-4">

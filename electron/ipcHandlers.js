@@ -289,10 +289,22 @@ function setupIpc(window) {
         const heightMm = Math.ceil((contentHeightPx * PX) / MM) + 1;
         printOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
       }
-    } else if (/^148mm/.test(pageSizeStr)) {
-      printOptions.pageSize = "A5";
     } else if (pageSizeStr) {
-      printOptions.pageSize = "A4";
+      // Sheet sizes: parse "Wmm Hmm" and map dims + orientation. The old
+      // /^148mm/ prefix test sent A5 LANDSCAPE ("210mm 148mm") to A4 portrait.
+      const m = /^(\d+(?:\.\d+)?)mm\s+(\d+(?:\.\d+)?)mm$/.exec(pageSizeStr);
+      if (m) {
+        const w = parseFloat(m[1]);
+        const h = parseFloat(m[2]);
+        const lo = Math.min(w, h);
+        const hi = Math.max(w, h);
+        if (w > h) printOptions.landscape = true;
+        if (lo === 148 && hi === 210) printOptions.pageSize = "A5";
+        else if (lo === 210 && hi === 297) printOptions.pageSize = "A4";
+        else printOptions.pageSize = { width: Math.round(lo * MM), height: Math.round(hi * MM) };
+      } else {
+        printOptions.pageSize = "A4";
+      }
     }
     return printOptions;
   }
@@ -475,10 +487,11 @@ if (-not [RawPrinter]::Send($env:RETAILER_ESC_PRINTER, $bytes)) { exit 1 }
       if (rollWidthMm) {
         const heightMm = Math.ceil((loaded.contentHeightPx * PX) / MM) + 1;
         pdfOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
-      } else if (/^148mm/.test(pageSizeStr)) {
-        pdfOptions.pageSize = "A5";
       } else {
-        pdfOptions.pageSize = "A4";
+        // Mirror buildPrintOptions: dims + orientation, not a prefix guess.
+        const m = /^(\d+(?:\.\d+)?)mm\s+(\d+(?:\.\d+)?)mm$/.exec(pageSizeStr || "");
+        if (m && parseFloat(m[1]) > parseFloat(m[2])) pdfOptions.landscape = true;
+        pdfOptions.pageSize = m && Math.min(parseFloat(m[1]), parseFloat(m[2])) === 148 ? "A5" : "A4";
       }
       const pdf = await printWin.webContents.printToPDF(pdfOptions);
       const outDir = path.join(app.getPath("userData"), "print-debug");

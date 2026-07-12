@@ -6,16 +6,12 @@ import { seedFamilyLayout, resolveEffectiveLayout } from "../layout/layoutModel"
 import {
   SAMPLES, sampleById, templateMockBySample, familyOfSize,
   pageWidthStr, pageHeightStr, pageDimensions, PX_PER_MM,
+  resolveDocPaperSize, BLOCK_DOC_SCOPES as SHARED_BLOCK_DOC_SCOPES,
 } from "./studioData";
-
-const BLOCK_DOC_SCOPES = new Set([
-  "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
 
 /** Match Studio's effFam() exactly — raw layout, no normalizeLayout. */
 function getRawLayout(scopeSettings, globalSettings, fam, scope) {
-  const isReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+  const isReport = scope !== "_global" && !SHARED_BLOCK_DOC_SCOPES.has(scope);
   // Respect per-family inherit flags (inherit_global_roll / inherit_global_page)
   const familyKey = fam ? `inherit_global_${fam}` : null;
   const docInherit = familyKey ? (scopeSettings?.[familyKey] ?? scopeSettings?.inherit_global) : scopeSettings?.inherit_global;
@@ -29,6 +25,12 @@ function getRawLayout(scopeSettings, globalSettings, fam, scope) {
 /**
  * MiniPreview — renders a scaled-down LayoutRenderer for a given scope.
  * Uses the exact same layout + settings path as the Studio canvas.
+ *
+ * Roll papers: two-pass render.
+ *   1. Hidden measuring pass → natural content height
+ *   2. Visible pass → smart zoom that fits full height, centered
+ *
+ * Page papers: single-pass, fit within both bounds.
  */
 export function MiniPreview({ scope, scopeSettings, globalSettings, rendererSettings, width = 200, height = 280 }) {
   const sampleId = "normal";
@@ -37,49 +39,125 @@ export function MiniPreview({ scope, scopeSettings, globalSettings, rendererSett
   const orientation = rendererSettings?.orientation || scopeSettings?.orientation || "portrait";
 
   const mockData = useMemo(() => templateMockBySample(scope, sampleId) || sampleById(sampleId), [scope, sampleId]);
-
-  const layout = useMemo(() => {
-    return getRawLayout(scopeSettings, globalSettings, fam, scope);
-  }, [scopeSettings, globalSettings, fam, scope]);
+  const layout = useMemo(() => getRawLayout(scopeSettings, globalSettings, fam, scope), [scopeSettings, globalSettings, fam, scope]);
 
   const sheetW = pageWidthStr(size, orientation);
   const dims = pageDimensions(size, orientation);
   const pxW = dims.wMm * PX_PER_MM;
-  const pxH = dims.hMm > 0 ? dims.hMm * PX_PER_MM : 200 * PX_PER_MM; // roll: use 200mm default height
 
-  // Roll: width only (tall receipt). Page: fit within both bounds.
-  const scale = fam === "roll" ? width / pxW : Math.min(width / pxW, height / pxH);
+  // RollWrapper reads `receipt_width` from settings, not `paper_size`.
+  // Inject it so the paper renders at the correct width for this size.
+  const rrSettings = useMemo(() => {
+    const base = rendererSettings || scopeSettings || {};
+    if (fam === "roll") return { ...base, receipt_width: size };
+    return base;
+  }, [rendererSettings, scopeSettings, fam, size]);
+
+  // ── Roll: measure content height, then smart-zoom ──
+  const [rollH, setRollH] = useState(null);
+  const measureRef = useRef(null);
+
+  useEffect(() => {
+    if (fam !== "roll") return;
+    setRollH(null);
+    const raf = requestAnimationFrame(() => {
+      const el = measureRef.current;
+      if (!el) return;
+      const h = el.scrollHeight || el.offsetHeight;
+      if (h > 0) setRollH(h);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [fam, size, scope, layout, mockData]);
+
+  if (fam === "roll") {
+    if (!rollH) {
+      // Pass 1 — hidden measuring: render at actual paper width, measure natural height
+      const placeholderW = Math.round(pxW * Math.min(height / 600, 1));
+      return (
+        <div style={{
+          width: `${width}px`, height: `${height}px`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            width: `${placeholderW}px`, height: `${height}px`,
+            position: "relative", overflow: "hidden",
+            borderRadius: "8px", background: "#fff",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            border: "1px solid var(--border-normal)",
+          }}>
+            <div ref={measureRef} style={{
+              position: "absolute", visibility: "hidden", width: sheetW, top: 0, right: 0,
+            }}>
+              <LayoutRenderer
+                family={fam} size={size} orientation={orientation}
+                invoice={mockData}
+                settings={rrSettings}
+                layout={{ [fam]: layout }}
+                scope={scope}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Pass 2 — height-driven zoom: fit FULL content height.
+    // Width is whatever it naturally is at that scale (narrow receipt strip).
+    // 58mm naturally appears narrower than 80mm — no special handling needed.
+    const scale = Math.min(height / rollH, width / pxW, 1);
+    const scaledW = Math.round(pxW * scale);
+    const scaledH = Math.min(Math.round(rollH * scale), height);
+
+    return (
+      <div style={{
+        width: `${width}px`, height: `${height}px`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{
+          width: `${scaledW}px`, height: `${scaledH}px`,
+          overflow: "hidden", borderRadius: "8px", background: "#fff",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          border: "1px solid var(--border-normal)",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+        }}>
+          <div style={{ zoom: scale, width: sheetW, background: "#fff", flexShrink: 0 }}>
+            <LayoutRenderer
+              family={fam} size={size} orientation={orientation}
+              invoice={mockData}
+              settings={rrSettings}
+              layout={{ [fam]: layout }}
+              scope={scope}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Page papers: fit within both bounds ──
+  const pxH = dims.hMm * PX_PER_MM;
+  const scale = Math.min(width / pxW, height / pxH, 1);
   const scaledW = Math.round(pxW * scale);
   const scaledH = Math.round(pxH * scale);
 
   return (
-    <div
-      style={{
-        width: `${scaledW}px`,
-        height: `${scaledH}px`,
-        margin: "0 auto",
-        overflow: "hidden",
-        borderRadius: "8px",
-        background: "#fff",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        border: "1px solid var(--border-normal)",
-        display: "flex",
-        justifyContent: "center",
-      }}
-    >
+    <div style={{
+      width: `${scaledW}px`, height: `${scaledH}px`,
+      margin: "0 auto", overflow: "hidden",
+      borderRadius: "8px", background: "#fff",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+      border: "1px solid var(--border-normal)",
+      display: "flex", justifyContent: "center",
+    }}>
       <div style={{
-        zoom: scale,
-        width: sheetW,
-        minHeight: pageHeightStr(size, orientation) === "auto" ? "200mm" : pageHeightStr(size, orientation),
-        background: "#fff",
-        flexShrink: 0,
+        zoom: scale, width: sheetW,
+        minHeight: pageHeightStr(size, orientation),
+        background: "#fff", flexShrink: 0,
       }}>
         <LayoutRenderer
-          family={fam}
-          size={size}
-          orientation={orientation}
+          family={fam} size={size} orientation={orientation}
           invoice={mockData}
-          settings={rendererSettings || scopeSettings || {}}
+          settings={rrSettings}
           layout={{ [fam]: layout }}
           scope={scope}
         />
@@ -99,13 +177,9 @@ export default function DocPreviewGallery({ open, onClose, docSettings = {}, app
   const closeFullscreen = useCallback(() => setFullscreenScope(null), []);
 
   const stripLayout = ({ layout, ...rest } = {}) => rest;
-  const BLOCK_DOC_SCOPES = new Set([
-    "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-    "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-  ]);
   const mergedFor = (scope, family) => {
     const doc = docSettings[scope] || {};
-    const isReportScope = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
+    const isReportScope = scope !== "_global" && !SHARED_BLOCK_DOC_SCOPES.has(scope);
     // Per-family inherit: check inherit_global_roll / inherit_global_page, fallback to legacy inherit_global
     const familyKey = family ? `inherit_global_${family}` : null;
     const docInherit = familyKey ? (doc[familyKey] ?? doc.inherit_global) : doc.inherit_global;
@@ -170,12 +244,11 @@ export default function DocPreviewGallery({ open, onClose, docSettings = {}, app
                   {cls.items.map((item) => {
                     const settings = docSettings[item.key] || {};
                     const hasLayout = !!settings?.layout;
-                    const itemSize = settings.paper_size || "A4";
+                    const itemSize = resolveDocPaperSize(item.key, settings);
                     const itemFamily = familyOfSize(itemSize);
                     const itemInheritKey = `inherit_global_${itemFamily}`;
                     const itemInheritVal = settings[itemInheritKey] ?? settings.inherit_global;
-                    const BLOCK_DOC = ["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"];
-                    const isInheriting = item.key !== "_global" && (itemInheritVal !== undefined ? itemInheritVal : BLOCK_DOC.includes(item.key));
+                    const isInheriting = item.key !== "_global" && (itemInheritVal !== undefined ? itemInheritVal : SHARED_BLOCK_DOC_SCOPES.has(item.key));
                     return (
                       <button
                         key={item.key}
@@ -189,7 +262,7 @@ export default function DocPreviewGallery({ open, onClose, docSettings = {}, app
                             scope={item.key}
                             scopeSettings={settings}
                             globalSettings={globalSettings}
-                            rendererSettings={mergedFor(item.key, itemFamily)}
+                            rendererSettings={{ ...mergedFor(item.key, itemFamily), paper_size: itemSize }}
                             width={160}
                             height={200}
                           />
@@ -332,7 +405,7 @@ export default function DocPreviewGallery({ open, onClose, docSettings = {}, app
  */
 function FullscreenPreview({ scope, settings, globalSettings, appSettings, docSettings }) {
   const sampleId = "normal";
-  const size = settings?.paper_size || "A4";
+  const size = resolveDocPaperSize(scope, settings);
   const fam = familyOfSize(size);
   const orientation = settings?.orientation || "portrait";
   const mockData = useMemo(() => templateMockBySample(scope, sampleId) || sampleById(sampleId), [scope, sampleId]);
@@ -341,11 +414,9 @@ function FullscreenPreview({ scope, settings, globalSettings, appSettings, docSe
 
   // Compute merged flat settings matching Studio behavior
   const stripLayoutFn = ({ layout: _l, ...rest } = {}) => rest;
-  const BLOCK_DOC = new Set(["_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
   const rendererSettings = useMemo(() => {
     const doc = settings || {};
-    const isReportScope = scope !== "_global" && !BLOCK_DOC.has(scope);
-    // Per-family inherit: check inherit_global_roll / inherit_global_page, fallback to legacy inherit_global
+    const isReportScope = scope !== "_global" && !SHARED_BLOCK_DOC_SCOPES.has(scope);
     const familyKey = `inherit_global_${fam}`;
     const docInherit = doc[familyKey] ?? doc.inherit_global;
     const inheritGlobal = docInherit !== undefined ? docInherit : !isReportScope;
@@ -353,44 +424,68 @@ function FullscreenPreview({ scope, settings, globalSettings, appSettings, docSe
     return { ...appSettings, ...stripLayoutFn(doc) };
   }, [appSettings, globalSettings, settings, scope, fam]);
 
+  // RollWrapper reads `receipt_width`, not `paper_size` — inject it for correct paper width
+  const rrSettings = useMemo(
+    () => fam === "roll" ? { ...rendererSettings, receipt_width: size } : rendererSettings,
+    [rendererSettings, fam, size]
+  );
+
   const paperRef = useRef(null);
   const containerRef = useRef(null);
-  const [contentH, setContentH] = useState(0);
   const [scale, setScale] = useState(1);
+  const [rollH, setRollH] = useState(null);
 
-  // Use known paper width (scrollWidth is unreliable for mm units)
   const dims = pageDimensions(size, orientation);
   const contentW = dims.wMm * PX_PER_MM;
+  const isRoll = fam === "roll";
+  // Reference width: always 80mm so 58mm is narrower at the same zoom
+  const ROLL_REF_MM = 80;
+  const refPxW = ROLL_REF_MM * PX_PER_MM;
 
   useEffect(() => {
-    const el = paperRef.current;
+    if (isRoll) {
+      setRollH(null);
+    }
+  }, [isRoll, scope, size, layout, mockData]);
+
+  useEffect(() => {
     const container = containerRef.current?.closest('[data-scroll-area]');
-    if (!el || !container) return;
+    if (!container) return;
     const raf = requestAnimationFrame(() => {
-      const h = el.scrollHeight;
-      if (h <= 0 || contentW <= 0) return;
-      setContentH(h);
-      const availH = container.clientHeight - 12;
-      const availW = container.clientWidth - 12;
-      if (availH <= 0 || availW <= 0) return;
-      const z = Math.min(availW / contentW, availH / h, 1);
-      setScale(Math.round(z * 100) / 100);
+      const availW = container.clientWidth - 48;
+      const availH = container.clientHeight - 48;
+      if (availW <= 0 || availH <= 0) return;
+      if (isRoll) {
+        if (rollH === null) {
+          const el = paperRef.current;
+          if (el) {
+            const h = el.scrollHeight || el.offsetHeight;
+            if (h > 0) {
+              setRollH(h / scale);
+            }
+          }
+        } else {
+          const z = Math.min(availW / refPxW, availH / rollH, 1);
+          setScale(Math.round(z * 100) / 100);
+        }
+      } else {
+        const contentH = dims.hMm * PX_PER_MM;
+        if (contentW <= 0 || contentH <= 0) return;
+        const z = Math.min(availW / contentW, availH / contentH, 1);
+        setScale(Math.round(z * 100) / 100);
+      }
     });
     return () => cancelAnimationFrame(raf);
-  }, [layout, size, orientation, scope, contentW]);
-
-  const scaledW = Math.round(contentW * scale);
-  const scaledH = Math.round(contentH * scale);
+  }, [isRoll, contentW, dims.hMm, rollH, scale]);
 
   return (
-    <div ref={containerRef} style={{ width: scaledW || "auto", height: scaledH || "auto", overflow: "hidden" }}>
+    <div ref={containerRef} style={{ display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
       <div
         ref={paperRef}
         style={{
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
+          zoom: scale,
           width: pageWidthStr(size, orientation),
-          minHeight: pageHeightStr(size, orientation) === "auto" ? "200mm" : pageHeightStr(size, orientation),
+          ...(isRoll ? {} : { minHeight: pageHeightStr(size, orientation) }),
           background: "#fff",
           boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
           borderRadius: "2px",
@@ -401,7 +496,7 @@ function FullscreenPreview({ scope, settings, globalSettings, appSettings, docSe
           size={size}
           orientation={orientation}
           invoice={mockData}
-          settings={rendererSettings}
+          settings={rrSettings}
           layout={{ [fam]: layout }}
           scope={scope}
         />

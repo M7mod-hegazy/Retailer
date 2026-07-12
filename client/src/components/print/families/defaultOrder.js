@@ -12,7 +12,9 @@ const COMMON = [
 // `signature_lines` is a footer element, placed after notes/footer/qr/barcode.
 export const DEFAULT_ORDER = {
   roll: [...COMMON, "receiver_signature"],
-  page: ["watermark", ...COMMON, "signature_lines"],
+  // Page must stay a superset of roll — a roll-only block silently disappears
+  // when the same doc is printed on A4/A5 otherwise.
+  page: ["watermark", ...COMMON, "receiver_signature", "signature_lines"],
 
   // Report scopes default orders
   bank_statement: [
@@ -93,6 +95,32 @@ export const DEFAULT_ORDER = {
       "items_table",
       "notes", "footer_text", "signature_lines", "receiver_signature",
     ]
+  },
+
+  kitchen_ticket: {
+    roll: [
+      "kitchen_order_header", "kitchen_order_meta",
+      "kitchen_items", "kitchen_notes", "kitchen_order_footer",
+    ],
+    page: [
+      "watermark", "kitchen_order_header", "kitchen_order_meta",
+      "kitchen_items", "kitchen_notes", "kitchen_order_footer", "signature_lines",
+    ],
+  },
+
+  owner_statement: {
+    page: [
+      "watermark", "logo", "company_name", "branch", "address", "tax_id",
+      "doc_title", "doc_number", "doc_date",
+      "owner_dashboard_metrics",
+      "owner_assets_liabilities",
+      "owner_revenue_breakdown",
+      "owner_expense_categories",
+      "owner_payment_flow",
+      "owner_net_profit",
+      "owner_period_comparison",
+      "notes", "footer_text", "signature_lines",
+    ],
   },
 };
 

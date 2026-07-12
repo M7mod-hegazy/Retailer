@@ -14,6 +14,7 @@ import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
+import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 import toast from "react-hot-toast";
 import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
@@ -87,6 +88,7 @@ export default function InvoiceDetailPage() {
   const [timeline, setTimeline] = useState([]);
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
 
   const ALL_COLUMNS = ["index","code","name","quantity","unit_price","discount","line_total"];
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -162,6 +164,10 @@ export default function InvoiceDetailPage() {
 
   function handleEdit() {
     if (!invoice) return;
+    if (invoice.has_returns) {
+      setReturnsWarningOpen(true);
+      return;
+    }
     navigate("/pos", {
       state: {
         edit_invoice_id: invoice.id,
@@ -251,13 +257,15 @@ export default function InvoiceDetailPage() {
                 طباعة
               </DocumentActionButton>
             </PermissionGate>
-            {(invoice.customer_phone || invoice.walk_in_phone) && (
-              <PermissionGate page="whatsapp_receipt" action="send">
-                <DocumentActionButton variant="default" icon={MessageCircle} onClick={() => setWaSendOpen(true)}>
-                  واتساب
-                </DocumentActionButton>
-              </PermissionGate>
-            )}
+            <PermissionGate page="whatsapp_receipt" action="send">
+              <DocumentActionButton
+                onClick={() => setWaSendOpen(true)}
+                className="bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20"
+                icon={MessageCircle}
+              >
+                واتساب
+              </DocumentActionButton>
+            </PermissionGate>
             {!isCancelled && !isAmended && (
               <PermissionGate page="pos" action="edit">
                 <DocumentActionButton variant="edit" icon={Pencil} onClick={handleEdit}>
@@ -478,6 +486,11 @@ export default function InvoiceDetailPage() {
         />
       )}
 
+      <ReturnsWarningModal
+        open={returnsWarningOpen}
+        onClose={() => setReturnsWarningOpen(false)}
+      />
+
       <PrintPreviewModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
@@ -504,6 +517,7 @@ export default function InvoiceDetailPage() {
         }}
         settings={printSettings}
         operationLabel="فاتورة بيع"
+        onSendWhatsApp={() => setWaSendOpen(true)}
       />
 
       {waSendOpen && (

@@ -120,7 +120,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "grid",
         gridTemplateColumns: "2fr 3fr",
         background: "transparent",
-        color: "var(--text-primary)",
+        color: "#0f172a",
         borderBottom: `2px dashed #cbd5e1`,
         marginBottom: "16px",
         paddingBottom: "12px",
@@ -130,7 +130,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "flex",
         flexDirection: "column",
         gap: "4px",
-        borderLeft: `1px solid var(--border-normal)`,
+        borderLeft: `1px solid #cbd5e1`,
         paddingLeft: "16px",
       };
       docPaneStyle = {
@@ -163,7 +163,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "grid",
         gridTemplateColumns: "2fr 3fr",
         background: `${accent}05`,
-        color: "var(--text-primary)",
+        color: "#0f172a",
         border: `1px solid ${accent}33`,
         borderRadius: "8px",
         marginBottom: "16px",
@@ -205,7 +205,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "grid",
         gridTemplateColumns: "2fr 3fr",
         background: "transparent",
-        color: "var(--text-primary)",
+        color: "#0f172a",
         borderTop: "2px solid #cbd5e1",
         borderBottom: "2px solid #cbd5e1",
         marginBottom: "16px",
@@ -216,7 +216,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "flex",
         flexDirection: "column",
         gap: "4px",
-        borderLeft: `1px solid var(--border-normal)`,
+        borderLeft: `1px solid #cbd5e1`,
         paddingLeft: "16px",
       };
       docPaneStyle = {
@@ -246,7 +246,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "grid",
         gridTemplateColumns: "2fr 3fr",
         background: "transparent",
-        color: "var(--text-primary)",
+        color: "#0f172a",
         borderBottom: `4px double ${accent}`,
         paddingBottom: "12px",
         marginBottom: "16px",
@@ -256,7 +256,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         display: "flex",
         flexDirection: "column",
         gap: "4px",
-        borderLeft: `1px solid var(--border-normal)`,
+        borderLeft: `1px solid #cbd5e1`,
         paddingLeft: "16px",
       };
       docPaneStyle = {
@@ -382,7 +382,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
     let headerBorder = `3px solid ${accent}`;
     let titleBlock = <div style={{ fontSize: "13px", fontWeight: 700, color: accent, marginTop: "8px", letterSpacing: "2px", textTransform: "uppercase" }}>{docTitle}</div>;
     let headerBg = "transparent";
-    let headerColor = "var(--text-primary)";
+    let headerColor = "#0f172a";
     let headerPadding = "16px 12px 12px";
 
     if (headerStyle === "brutalist") {
@@ -621,7 +621,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
       brandColStyle = { display: "flex", flexDirection: "column", gap: "4px", background: accent, color: "#fff", padding: "10px", borderRadius: "6px" };
       docColStyle = { textAlign: "left", display: "flex", flexDirection: "column", justifyContent: "center" };
       titleBlock = <div style={{ fontSize: "18px", fontWeight: 900, color: accent }}>{docTitle}</div>;
-      metaWrapperStyle = { display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", color: "var(--text-secondary)" };
+      metaWrapperStyle = { display: "flex", flexDirection: "column", gap: "4px", fontSize: "10px", color: "#475569" };
     }
 
     return (
@@ -693,15 +693,15 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
     if (headerStyle === "asymmetric") {
       isDarkSidebar = false;
       sidebarBg = "#f8fafc";
-      sidebarColor = "var(--text-primary)";
-      sidebarBorder = `1px solid var(--border-normal)`;
-      metaDivider = `1px solid var(--border-subtle)`;
-      customerBg = "var(--bg-input)";
+      sidebarColor = "#0f172a";
+      sidebarBorder = `1px solid #cbd5e1`;
+      metaDivider = `1px solid #e2e8f0`;
+      customerBg = "#f1f5f9";
     } else if (headerStyle === "classic") {
       isDarkSidebar = false;
       sidebarBg = "#ffffff";
-      sidebarColor = "var(--text-primary)";
-      sidebarBorder = `1px solid var(--border-normal)`;
+      sidebarColor = "#0f172a";
+      sidebarBorder = `1px solid #cbd5e1`;
       metaDivider = `2px solid ${accent}`;
       customerBg = `${accent}05`;
     }
@@ -783,7 +783,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
       marginBottom: "16px",
     };
     let titleStyle = { fontSize: "22px", fontWeight: 900, color: accent, letterSpacing: "1px" };
-    let metaStyle = { textAlign: "left", fontSize: "11px", color: "var(--text-secondary)" };
+    let metaStyle = { textAlign: "left", fontSize: "11px", color: "#475569" };
 
     if (headerStyle === "band") {
       isDarkHeader = true;
@@ -806,7 +806,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
         alignItems: "center",
         border: `1px solid ${accent}33`,
         background: `${accent}05`,
-        color: "var(--text-primary)",
+        color: "#0f172a",
         padding: "12px 16px",
         borderRadius: "6px",
         marginBottom: "16px",

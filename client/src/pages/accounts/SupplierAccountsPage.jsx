@@ -21,6 +21,7 @@ import AccountExportModal from "./AccountExportModal";
 import InstallmentsTab from "../../components/accounts/InstallmentsTab";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import AccountStatementTemplate from "../../components/print/templates/AccountStatementTemplate";
+import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -916,6 +917,7 @@ export default function SupplierAccountsPage() {
   const [detailReturn, setDetailReturn] = useState(null);
   const [detailReturnData, setDetailReturnData] = useState(null);
   const [detailReturnLoading, setDetailReturnLoading] = useState(false);
+  const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -1650,7 +1652,10 @@ export default function SupplierAccountsPage() {
                 </div>
 
                 <div className="flex gap-2 mt-4">
-                  <button onClick={() => { setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); navigate(`/purchases/${detailPurchase.id}`); }}
+                  <button onClick={() => {
+                    if (detailData?.has_returns) { setReturnsWarningOpen(true); return; }
+                    setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); navigate(`/purchases/${detailPurchase.id}`);
+                  }}
                     className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-2sm font-black text-white ${detailPurchaseIsOriginal ? "bg-amber-600 hover:bg-amber-700" : "bg-orange-600 hover:bg-orange-700"}`}>
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
                   </button>
@@ -2011,6 +2016,11 @@ export default function SupplierAccountsPage() {
             />
           );
         }}
+      />
+
+      <ReturnsWarningModal
+        open={returnsWarningOpen}
+        onClose={() => setReturnsWarningOpen(false)}
       />
     </div>
   );

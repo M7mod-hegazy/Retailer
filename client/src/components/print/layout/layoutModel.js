@@ -9,6 +9,7 @@
 
 import { DEFAULT_ORDER } from "../families/defaultOrder";
 import { mergeFamilyLayouts, normalizeLayout } from "@shared/printLayout";
+import { BLOCK_DOC_SCOPES } from "../studio/studioData";
 
 export const FAMILIES = ["roll", "page"];
 
@@ -217,9 +218,6 @@ export { normalizeLayout, mergeFamilyLayouts };
  * settings object ({ layout: {...} }) or null.
  */
 export function resolveEffectiveLayout(globalScopeSettings, docSettings, family, scope = "_global") {
-  // Per-family inherit: inherit_global_roll / inherit_global_page.
-  // Falls back to legacy inherit_global for backward compat.
-  const BLOCK_DOC_SCOPES = new Set(["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"]);
   const isReportScope = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
   const familyKey = `inherit_global_${family}`;
   const docInherit = (docSettings || {})[familyKey] ?? (docSettings || {}).inherit_global;

@@ -103,7 +103,9 @@ describe("order number block", () => {
   it("always renders (no settings toggle) with a large font size", () => {
     const { container } = render(<Block invoice={INV} settings={{}} props={{}} family="roll" />);
     expect(container.textContent).toContain("INV-2026-0001");
-    expect(container.textContent).toContain("رقم الطلب");
+    // Default (doc) source labels itself "رقم المستند"; "رقم الطلب" is the
+    // daily-sequence source label.
+    expect(container.textContent).toContain("رقم المستند");
     const numberDiv = screen.getByText("INV-2026-0001");
     expect(parseInt(numberDiv.style.fontSize, 10)).toBeGreaterThanOrEqual(30);
   });

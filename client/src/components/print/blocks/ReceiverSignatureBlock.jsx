@@ -185,15 +185,15 @@ export default function ReceiverSignatureBlock({ settings: s, props = {}, family
               <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
             </div>
           )}
-          <div style={{ display: "flex", gap: "4px", alignItems: "center", marginTop: "2px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: showDate && showId ? "1fr 1fr" : "1fr", gap: "4px", alignItems: "center", marginTop: "2px" }}>
             {showDate && (
-              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor, flex: "1 1 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor }}>
                 <span style={{ fontWeight: 700, flexShrink: 0 }}>التاريخ:</span>
                 <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
               </div>
             )}
             {showId && (
-              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor, flex: "1 1 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "9px", color: borderColor }}>
                 <span style={{ fontWeight: 700, flexShrink: 0 }}>الهوية:</span>
                 <span style={{ flex: 1, borderBottom: `1px solid ${lightBorder}` }} />
               </div>

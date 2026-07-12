@@ -104,6 +104,8 @@ function getInvoiceWithLines(invoiceId) {
     ? db.prepare("SELECT installment_no, due_date, amount, status FROM ajal_schedules WHERE debt_id = ? ORDER BY installment_no").all(ajalDebt.id)
     : [];
 
+  const has_returns = !!db.prepare("SELECT 1 FROM sales_returns WHERE invoice_id = ? AND status != 'cancelled' LIMIT 1").get(invoiceId);
+
   return {
     ...recalculateInvoiceStatus(db, invoiceId),
     created_by_username: invoice.created_by_username || null,
@@ -119,6 +121,7 @@ function getInvoiceWithLines(invoiceId) {
     })),
     debt_remaining,
     installment_plan,
+    has_returns,
   };
 }
 

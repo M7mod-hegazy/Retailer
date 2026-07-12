@@ -41,6 +41,13 @@ import {
 import {
   AccountStatementPartyBlock, AccountStatementLedgerBlock, AccountStatementSummaryBlock
 } from "./AccountStatementBlocks";
+import {
+  KitchenOrderHeaderBlock, KitchenOrderMetaBlock, KitchenItemsBlock, KitchenNotesBlock, KitchenOrderFooterBlock
+} from "./KitchenBlocks";
+import {
+  OwnerDashboardMetricsBlock, OwnerRevenueBreakdownBlock, OwnerExpenseCategoriesBlock, OwnerNetProfitBlock, OwnerPeriodComparisonBlock,
+  OwnerAssetsLiabilitiesBlock, OwnerPaymentFlowBlock
+} from "./OwnerStatementBlocks";
 
 const ALL = ["roll", "page"];
 
@@ -97,5 +104,21 @@ export const BLOCK_REGISTRY = {
   account_statement_party:         { component: AccountStatementPartyBlock,         label: "بيانات الطرف (كشف حساب)", group: "dochead", families: ["page"] },
   account_statement_ledger:        { component: AccountStatementLedgerBlock,        label: "جدول حركات كشف الحساب",   group: "body",   families: ["page"] },
   account_statement_summary:       { component: AccountStatementSummaryBlock,       label: "ملخص كشف الحساب (الإجمالي)", group: "totals", families: ["page"] },
+
+  // Kitchen ticket blocks
+  kitchen_order_header:   { component: KitchenOrderHeaderBlock,   label: "ترويسة تيكت المطبخ",  group: "dochead", families: ["roll", "page"] },
+  kitchen_order_meta:     { component: KitchenOrderMetaBlock,     label: "بيانات الطلب",         group: "dochead", families: ["roll", "page"] },
+  kitchen_items:          { component: KitchenItemsBlock,          label: "أصناف المطبخ",         group: "body",    families: ["roll", "page"] },
+  kitchen_notes:          { component: KitchenNotesBlock,          label: "ملاحظات المطبخ",       group: "foot",    families: ["roll", "page"] },
+  kitchen_order_footer:   { component: KitchenOrderFooterBlock,   label: "تذييل تيكت المطبخ",   group: "foot",    families: ["roll", "page"] },
+
+  // Owner statement blocks
+  owner_dashboard_metrics:   { component: OwnerDashboardMetricsBlock,   label: "KPIs لوحة المالك",       group: "body",   families: ["page"] },
+  owner_assets_liabilities:  { component: OwnerAssetsLiabilitiesBlock,  label: "الأصول والخصوم للمالك",   group: "body",   families: ["page"] },
+  owner_revenue_breakdown:   { component: OwnerRevenueBreakdownBlock,   label: "تفصيل الإيرادات",         group: "body",   families: ["page"] },
+  owner_expense_categories:  { component: OwnerExpenseCategoriesBlock,  label: "تصنيفات المصروفات",      group: "body",   families: ["page"] },
+  owner_payment_flow:        { component: OwnerPaymentFlowBlock,        label: "تدفقات وسائل الدفع للمالك", group: "body",   families: ["page"] },
+  owner_net_profit:          { component: OwnerNetProfitBlock,          label: "صافي الربح",             group: "totals", families: ["page"] },
+  owner_period_comparison:   { component: OwnerPeriodComparisonBlock,   label: "مقارنة الفترات",         group: "body",   families: ["page"] },
 };
 

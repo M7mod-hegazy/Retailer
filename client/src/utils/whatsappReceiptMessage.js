@@ -30,10 +30,19 @@ function formatPaymentBreakdown(payments) {
 
 function formatItemsTable(items) {
   if (!items || items.length === 0) return "";
-  const rows = items.map(
-    (it) =>
-      `• ${it.item_name || it.name || "منتج"}\n  ${formatMoney(it.quantity || 0)} × ${formatMoney(it.unit_price || 0)} = ${formatMoney(it.line_total || it.total || 0)}`
-  );
+  const rows = items.map((it) => {
+    const name = it.item_name || it.name || "منتج";
+    const qty = Number(it.quantity || 0);
+    const price = Number(it.unit_price || it.price || 0);
+    const disc = Number(it.discount || 0);
+
+    let total = Number(it.line_total || it.total || 0);
+    if (!total && qty > 0 && price > 0) {
+      total = qty * price * (1 - disc / 100);
+    }
+
+    return `• ${name}\n  ${formatMoney(qty)} × ${formatMoney(price)} = ${formatMoney(total)}`;
+  });
   return ["━━━ الأصناف ━━━", ...rows, "━━━━━━━━━━━━━━━━"].join("\n");
 }
 

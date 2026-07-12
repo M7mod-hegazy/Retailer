@@ -34,7 +34,9 @@ import {
 } from "./posPageUtils";
 import { todayCairo } from "../../utils/dateHelpers";
 import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from "../../utils/bodyFlags";
-import { printContent } from "../../services/printService";
+import { printContent, getPrinterForPageSize } from "../../services/printService";
+import LayoutRenderer from "../../components/print/LayoutRenderer";
+import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
@@ -164,6 +166,9 @@ export default function POSPage() {
   const [stockLoaded, setStockLoaded]     = useState(false);
   const [storeSettings, setStoreSettings] = useState({ company_name: "المتجر", address: "" });
   const [printPreview, setPrintPreview] = useState(false);
+  const [kitchenPrintInvoice, setKitchenPrintInvoice] = useState(null);
+  const kitchenPrintRef = useRef(null);
+  const kitchenPrintFired = useRef(false);
   const [waSendOpen, setWaSendOpen] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [showSetDefaultModal, setShowSetDefaultModal] = useState(false);
@@ -710,6 +715,36 @@ export default function POSPage() {
 
   // Reset the payment prefill guard when edit context clears
   useEffect(() => { if (!amendContext) paymentPrefillApplied.current = false; }, [amendContext]);
+
+  // Kitchen ticket design/size/printer come from its per-doc print settings —
+  // it used to hardcode 80mm with no device, so the studio design was ignored
+  // and the ticket always opened the print dialog instead of silent-printing.
+  const { template: kitchenSize, settings: kitchenSettings } = usePrintSettingsForDoc("kitchen_ticket");
+
+  // Kitchen ticket — capture block-rendered HTML and print
+  useEffect(() => {
+    if (!kitchenPrintInvoice || !kitchenPrintRef.current) return;
+    if (kitchenPrintFired.current) return;
+    kitchenPrintFired.current = true;
+    requestAnimationFrame(() => {
+      const node = kitchenPrintRef.current;
+      const invoiceNo = kitchenPrintInvoice.invoice_number || "";
+      if (node) {
+        const pageSizeStr = `${parseFloat(kitchenSize) || 80}mm auto`;
+        printContent({
+          contentHtml: node.innerHTML,
+          pageSizeStr,
+          deviceName: getPrinterForPageSize(pageSizeStr),
+          printFont: kitchenSettings.print_font || "",
+          docType: "kitchen_ticket",
+          docLabel: `\u0645\u0637\u0628\u062e #${invoiceNo}`,
+          title: `\u0623\u0645\u0631 \u0645\u0637\u0628\u062e #${invoiceNo}`,
+        }).catch(() => {});
+      }
+      setKitchenPrintInvoice(null);
+      kitchenPrintFired.current = false;
+    });
+  }, [kitchenPrintInvoice, kitchenSize, kitchenSettings]);
 
   // Store edit context for use during submit
   const amendInvoiceId = amendContext?.edit_invoice_id || null;
@@ -1741,39 +1776,26 @@ export default function POSPage() {
         setWaSendOpen(true);
       }
 
-      // Kitchen ticket: print menu items for restaurant orders
+      // Kitchen ticket: print menu items for restaurant orders via block system
       if (restaurantEnabled && printAfter) {
         const kitchenLines = lines.filter((l) => l.is_menu_item || l.modifiers?.length > 0);
         if (kitchenLines.length > 0) {
-          const orderTypeLabel = { dine_in: "طاولة", takeaway: "طلب خارجي", delivery: "توصيل" }[orderType] || "طاولة";
-          const ticketHtml = `
-            <div dir="rtl" style="font-family: 'Courier New', monospace; padding: 8px; direction: rtl; text-align: right; font-size: 14px;">
-              <div style="text-align: center; margin-bottom: 12px;">
-                <div style="font-size: 20px; font-weight: 900;">🍳 أمر مطبخ</div>
-                <div style="font-size: 12px; color: #555;">فاتورة #${savedInvoiceNo}</div>
-              </div>
-              <div style="border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 8px 0; margin-bottom: 12px; display: flex; justify-content: space-between;">
-                <span>${orderTypeLabel}${diningTableId ? ' — رقم ' + diningTableId : ''}</span>
-                <span>${new Date().toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
-              </div>
-              ${kitchenLines.map((l) => `
-                <div style="margin-bottom: 10px; border-bottom: 1px dotted #ddd; padding-bottom: 6px;">
-                  <div style="font-size: 15px; font-weight: 900;">x${l.quantity} ${l.item_name}</div>
-                  ${(l.modifiers || []).map((m) => `
-                    <div style="font-size: 12px; color: #666; margin-right: 16px;">• ${m.name}</div>
-                  `).join("")}
-                </div>
-              `).join("")}
-              <div style="margin-top: 16px; text-align: center; font-size: 11px; color: #999;">— ${storeSettings.company_name || ""} —</div>
-            </div>
-          `;
-          printContent({
-            contentHtml: ticketHtml,
-            pageSizeStr: "80mm",
-            docType: "kitchen_ticket",
-            docLabel: `مطبخ #${savedInvoiceNo}`,
-            title: `أمر مطبخ #${savedInvoiceNo}`,
-          }).catch(() => {});
+          kitchenPrintFired.current = false;
+          setKitchenPrintInvoice({
+            company: { name: storeSettings.company_name || "" },
+            invoice_number: savedInvoiceNo,
+            order_type: orderType || "dine_in",
+            dining_table: diningTableId ? { number: String(diningTableId) } : undefined,
+            items: kitchenLines.map((l) => ({
+              name: l.item_name || l.name,
+              product_name: l.item_name || l.name,
+              quantity: l.quantity,
+              modifiers: Array.isArray(l.modifiers) ? l.modifiers.map((m) => m.name).join(", ") : (typeof l.modifiers === "string" ? l.modifiers : ""),
+              notes: l.notes || "",
+            })),
+            created_at: new Date().toISOString(),
+            cashier_name: user?.name || "",
+          });
         }
       }
     } catch (error) {
@@ -2043,6 +2065,24 @@ export default function POSPage() {
           onClose={() => setPluNotFoundData(null)}
           onCreated={() => setPluNotFoundData(null)}
         />
+      )}
+      {/* Hidden kitchen ticket renderer — block system */}
+      {kitchenPrintInvoice && (
+        <div style={{ position: "fixed", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}>
+          <div ref={kitchenPrintRef} style={{ width: kitchenSize || "80mm" }}>
+            <LayoutRenderer
+              family="roll"
+              invoice={kitchenPrintInvoice}
+              settings={{
+                accent_color: storeSettings.accent_color || "#dc2626",
+                ...kitchenSettings,
+                receipt_width: kitchenSize || "80mm",
+              }}
+              layout={kitchenSettings.layout || null}
+              scope="kitchen_ticket"
+            />
+          </div>
+        </div>
       )}
     </>
   );

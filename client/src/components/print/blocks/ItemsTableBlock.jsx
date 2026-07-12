@@ -56,6 +56,7 @@ const MOCK_LINES = [
 export default function ItemsTableBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const realLines = invoice.lines || [];
   const lines = realLines.length > 0 ? realLines : (editing ? MOCK_LINES : []);
+  if (!lines.length) return null;
   const accent = g(s, "accent_color");
   const fontSize = `${g(s, "item_font_size")}px`;
   const designerCols = Array.isArray(props.columns) && props.columns.length

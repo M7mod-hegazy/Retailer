@@ -21,6 +21,7 @@ import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import DailyTreasuryTemplate from "../../components/print/templates/DailyTreasuryTemplate";
 import { formatNumber } from "../../utils/currency";
 import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
+import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 
 const fmt = (n) => formatNumber(n);
 const todayStr = () => todayCairo();
@@ -367,6 +368,7 @@ export default function DailyTreasuryPage() {
   const [slideOver, setSlideOver] = useState(null);
   const [slideOverDetails, setSlideOverDetails] = useState(null);
   const [slideOverLoading, setSlideOverLoading] = useState(false);
+  const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
 
   // History drawer
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -2332,7 +2334,10 @@ export default function DailyTreasuryPage() {
                   <motion.button
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => { setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/" + slideOver.id); }}
+                    onClick={() => {
+                      if (slideOverDetails?.has_returns) { setReturnsWarningOpen(true); return; }
+                      setSlideOver(null); setSlideOverDetails(null); navigate("/purchases/" + slideOver.id);
+                    }}
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-2sm font-black text-white hover:bg-orange-700 shadow-lg shadow-orange-600/20"
                   >
                     <ExternalLink className="h-3.5 w-3.5" /> فتح / تعديل الفاتورة
@@ -2385,6 +2390,12 @@ export default function DailyTreasuryPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ReturnsWarningModal
+        open={returnsWarningOpen}
+        onClose={() => setReturnsWarningOpen(false)}
+      />
+
       {/* History Modal */}
       <AnimatePresence>
         {historyOpen && (

@@ -1195,6 +1195,10 @@
   "whatsapp.downloadImage": "تنزيل الصورة",
   "whatsapp.imageCaptionReceipt": "فاتورة رقم {{no}} - {{total}} جنيه",
   "whatsapp.imageCaptionReturn": "مرتجع رقم {{no}} - {{total}} جنيه",
+  "whatsapp.paperSize": "حجم الورق",
+  "whatsapp.imagePreview": "معاينة الصورة",
+  "whatsapp.fit": "ملاءمة",
+  "whatsapp.zoomHint": "اسحب للتحريك | العجلة للتكبير",
 
   "sms.title": "رسائل SMS",
   "sms.desc": "قناة مدفوعة تصل لأي هاتف — لا يحتاج العميل واتساب",

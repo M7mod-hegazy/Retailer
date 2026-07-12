@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef } from "react";
 import { FileText, Printer } from "lucide-react";
+import { printContent, getPrinterForPageSize } from "../../services/printService";
 
 const QUICK_REFS = [
   {
@@ -46,6 +47,18 @@ export default function QuickRefCards({ currentRoute, t }) {
   const refs = currentRoute
     ? QUICK_REFS.filter(r => currentRoute.startsWith(r.page))
     : QUICK_REFS;
+  const contentRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!contentRef.current) return;
+    printContent({
+      contentHtml: contentRef.current.innerHTML,
+      pageSizeStr: "210mm 297mm",
+      deviceName: getPrinterForPageSize("210mm 297mm"),
+      docType: "_global",
+      docLabel: "بطاقات الاختصارات",
+    });
+  };
 
   if (refs.length === 0) {
     return (
@@ -64,12 +77,13 @@ export default function QuickRefCards({ currentRoute, t }) {
         <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
           <FileText className="inline h-3 w-3 ml-1" /> {t?.("quickRef.title") || "بطاقات الاختصارات"}
         </span>
-        <button onClick={() => window.print()}
+        <button onClick={handlePrint}
           className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">
           <Printer className="h-3 w-3" /> {t?.("quickRef.print") || "طباعة"}
         </button>
       </div>
 
+      <div ref={contentRef}>
       {refs.map(ref => (
         <div key={ref.page}
           className="rounded-2xl border p-3" style={{ background: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
@@ -87,6 +101,7 @@ export default function QuickRefCards({ currentRoute, t }) {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

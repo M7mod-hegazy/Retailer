@@ -13,15 +13,17 @@ describe("LayoutRenderer", () => {
     const { container } = render(<LayoutRenderer family="roll" invoice={INV} settings={{ company_name: "ACME", show_tax: false }} />);
     // No discount/fee/tax → no separate "الإجمالي:" subtotal line…
     expect(container.textContent).not.toContain("الإجمالي:");
-    // …but the prominent grand-total box (✦الإجمالي✦) always prints.
-    expect(container.textContent).toContain("✦");
+    // …but the prominent grand-total band (plain label since v1.0.29 — the ✦
+    // decor is opt-in via props.decor) always prints with the amount.
+    expect(container.textContent).toContain("الإجمالي");
+    expect(container.textContent).toContain("10.00");
   });
 
   it("prints رسوم إضافية when the invoice has a surcharge", () => {
     const withFee = { ...INV, increase: 5 };
     const { container } = render(<LayoutRenderer family="roll" invoice={withFee} settings={{ company_name: "ACME", show_tax: false }} />);
     expect(container.textContent).toContain("رسوم إضافية");
-    expect(container.textContent).toContain("✦"); // grand-total box marker
+    expect(container.textContent).toContain("15.00"); // grand total includes the fee
   });
 
   it("honors an explicit order (company name before grand total)", () => {

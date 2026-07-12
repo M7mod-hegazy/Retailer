@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect, useState, useMemo } from "react";
+import React, { useLayoutEffect, useMemo } from "react";
 import LayoutRenderer from "../LayoutRenderer";
 import { formatNumber } from "../../../utils/currency";
 
@@ -86,18 +86,31 @@ export default function ReportViaLayout({
     return normalizedColumns.filter((c) => selected.has(c.key));
   }, [normalizedColumns, settings.report_print_column_keys]);
 
-  // DOM measurement for exact rows-per-page
-  const [measuredRowsPerPage, setMeasuredRowsPerPage] = useState(null);
-  const tbodyRef = useRef(null);
-
-  const rowsPerPage = forcedRowsPerPage || measuredRowsPerPage || getRowsPerPage(visibleColumns, pageSizeMM, marginMM);
+  // Rows per page: an explicit caller override wins, then the print modal's
+  // measured fit-to-page ceiling (settings.report_rows_per_page — shared by
+  // every page so all instances slice identical row ranges), then the
+  // geometric estimate.
+  const heuristicRows = getRowsPerPage(visibleColumns, pageSizeMM, marginMM);
+  const fitCap = Number(settings.report_rows_per_page) || 0;
+  const baseRows = forcedRowsPerPage || heuristicRows;
+  // The fit cap ALWAYS wins when smaller — it comes from measuring real
+  // rendered pages against the paper height, so exceeding it means rows get
+  // clipped off the sheet.
+  const rowsPerPage = Math.max(1, fitCap > 0 ? Math.min(baseRows, fitCap) : baseRows);
   const totalPrintPages = Math.max(1, Math.ceil((rows.length || 1) / rowsPerPage));
   const pageStart = (currentPage - 1) * rowsPerPage;
   const pageRows = rows.slice(pageStart, pageStart + rowsPerPage);
 
   useLayoutEffect(() => {
     if (onPageCount) onPageCount(stmtMode ? 1 : totalPrintPages);
-  }, [totalPrintPages, onPageCount, stmtMode]);
+    if (stmtMode) return;
+    // Feedback channels: the print modal's fit measurement + the hosting
+    // page's screen-pagination mirror (SourceWorkspacePage keeps its table
+    // page size in lockstep with the printed page).
+    if (typeof settings.onReportRowsPerPage === "function") settings.onReportRowsPerPage(rowsPerPage);
+    if (typeof onRowsPerPage === "function") onRowsPerPage(rowsPerPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPrintPages, onPageCount, stmtMode, rowsPerPage]);
 
   // Build the invoice object for LayoutRenderer
   const invoice = useMemo(() => {

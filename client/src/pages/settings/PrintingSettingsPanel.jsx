@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Ruler, AlignLeft, Receipt, FileText, FileBarChart2, Wrench, Download, Upload,
+  Ruler, Receipt, FileText, FileBarChart2, Wrench, Download, Upload,
   Trash2, CheckCircle2, XCircle, History, ChevronDown, ChevronUp, RefreshCw,
-  Paintbrush, Maximize2, Printer as PrinterIcon, Copy, Palette, Eye,
+  Paintbrush, Maximize2, Printer as PrinterIcon, Copy, Palette, Eye, ExternalLink,
 } from "lucide-react";
-import { CustomTextBlocksSection, getCustomBlocks, saveCustomBlocks } from "./CustomTextBlocks";
+import { useFeatureEnabled } from "../../hooks/useFeature";
+
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import CalibrationWizard from "../../components/print/calibration/CalibrationWizard";
 import PrintStudio from "../../components/print/studio/PrintStudio";
 import DocPreviewModal from "../../components/print/studio/DocPreviewModal";
-import DocClassificationPreview from "../../components/print/studio/DocClassificationPreview";
 import DocPreviewGallery, { MiniPreview } from "../../components/print/studio/DocPreviewGallery";
-import { familyOfSize, pageWidthStr, pageHeightStr, pageDimensions, PX_PER_MM, sampleById, templateMockBySample } from "../../components/print/studio/studioData";
+import { familyOfSize, pageWidthStr, pageHeightStr, pageDimensions, PX_PER_MM, sampleById, templateMockBySample, DOC_PAPER_CONFIG, resolveDocPaperSize, BLOCK_DOC_SCOPES } from "../../components/print/studio/studioData";
 import {
   listPrinters, isElectronPrint, getPrinterSizeMap, setPrinterSizeMap,
   getPrintJobLog, clearPrintJobLog,
@@ -39,55 +39,30 @@ const DEFAULTS = { receipt_width: "80mm" };
 const get = (s, k) => s[k] ?? DEFAULTS[k];
 
 const DOC_TYPES = [
-  { key: "pos_receipt",           label: "فاتورة / إيصال المبيعات", badge: "المبيعات (رول / A4 مكتبية)",      hint: "يُطبع تلقائياً فور النقر على 'دفع وحفظ الفاتورة' (F12) في شاشة نقطة البيع (الكاشير)، وعند طباعة أي فاتورة مبيعات محفوظة من سجل المبيعات." },
-  { key: "purchase_order",        label: "أمر شراء",              badge: "سند طلب مشتريات للموردين",         hint: "يُطبع عبر زر 'طباعة' داخل شاشة 'أوامر الشراء' (Purchases -> Orders) لإرساله بالبريد أو الواتساب للمورد لتوفير البضائع." },
-  { key: "sales_return",          label: "مرتجع مبيعات",          badge: "رول / ورق A4 (مرتجع عميل)",         hint: "يُطبع تلقائياً أو يدوياً عند النقر على 'طباعة المرتجع' بعد إتمام الفاتورة الاسترجاعية في شاشة 'مرتجع المبيعات'." },
-  { key: "purchase_return",       label: "مرتجع مشتريات",         badge: "سند مرتجع بضائع للمورد",            hint: "يُطبع من خلال زر 'طباعة السند' داخل شاشة 'مرتجع المشتريات' لتسليمه للمندوب أو المورد مع البضائع المرجعة." },
-  { key: "quotation",             label: "عرض سعر",               badge: "سند عرض تسعير للعملاء",             hint: "يُطبع بالضغط على زر 'طباعة العرض' في شاشة 'عروض الأسعار' (Sales -> Quotations) لتقديمه للعميل للموافقة على الأسعار." },
-  { key: "branch_transfer",       label: "تحويل فرع",             badge: "سند نقل مخزني بين الفروع",          hint: "يُطبع عبر زر 'طباعة إذن التحويل' في شاشة 'حركات المخزون -> تحويلات الفروع' لمرافقة البضائع المنقولة مع السائق." },
-  { key: "bank_statement",        label: "كشف بنكي",              badge: "تقرير مالي (حساب بنك)",             hint: "يُطبع بالنقر على زر 'طباعة الكشف' في شاشة 'الحسابات المالية -> كشوف البنوك' بعد تحديد البنك وفترة الحركة." },
-  { key: "ajal_statement",        label: "كشف آجل",               badge: "كشف مديونية عميل محدد",             hint: "يُطبع بالضغط على زر 'طباعة كشف الحساب' من الملف الشخصي للعميل في شاشة 'العملاء والمندوبين -> حسابات العملاء الآجلين'." },
-  { key: "ajal_schedule",          label: "جدول أقساط",            badge: "تواريخ وجداول الأقساط",              hint: "يُطبع بالضغط على زر 'جدول الأقساط' في نافذة تفاصيل الدين لشاشة 'المبيعات الآجلة والأقساط' لتسليم العميل قائمة التواريخ." },
-  { key: "ajal_full_statement",   label: "كشف حساب كامل",         badge: "سجل الديون لجميع العملاء",           hint: "يُطبع بالضغط على زر 'تصدير وطباعة' في شاشة 'التقارير -> تقرير الديون والأرصدة الآجلة الشامل' لمتابعة كافة التحصيلات المستحقة." },
-  { key: "cheque_register",       label: "سجل شيكات",             badge: "تقرير شيكات صادرة وواردة",          hint: "يُطبع بالضغط على زر 'طباعة السجل' في شاشة 'شؤون الشيكات والأوراق المالية' لمراجعة الشيكات المستحقة وتواريخ التحصيل البنكي." },
-  { key: "payment_receipt",       label: "إيصال دفع",             badge: "سند مالي (قبض وصرف)",               hint: "يُطبع فور حفظ مستند دفع أو قبض في شاشة 'السندات المالية -> سندات الصرف والقبض' لتسليم العميل أو المورد وصلاً ماليًا." },
-  { key: "daily_treasury",        label: "تقرير الخزينة",         badge: "تقرير جرد الصناديق والخزائن",        hint: "يُطبع بالضغط على 'طباعة تقرير الإغلاق' في شاشة 'الخزائن والصناديق -> حركة الخزينة اليومية' لتسليم الإدارة جرد الإيرادات والمصاريف." },
-  { key: "payment_methods_report",label: "تقرير وسائل الدفع",     badge: "تحليل المقبوضات حسب الوسيلة",       hint: "يُطبع بالضغط على زر 'طباعة تقرير المدفوعات' من شاشة 'التقارير -> مبيعات وسائل الدفع' لمطابقة مبالغ الكاش والشبكة والتحويل البنكي." },
-  { key: "owner_statement",       label: "لوحة صاحب المحل",       badge: "كشف الإقفال المالي الشهري",          hint: "يُطبع بالضغط على زر 'طباعة الصفحة' في شاشة 'لوحة صاحب المحل' ويشمل المؤشرات المالية الأساسية والتدفقات النقدية للفترة المحددة." },
-  { key: "reports_generic",       label: "قوالب تقارير (عام)",    badge: "قالب عام لتقارير النظام",            hint: "يتحكم في التصميم الموحد والخط وحجم الهوامش لكافة تقارير النظام الأخرى الصادرة من 'مركز التقارير وقوائم المخزون وجرد المستودعات'." },
-  { key: "account_statement",     label: "كشف حساب (عميل/مورد)",  badge: "كشف حركات عميل أو مورد",             hint: "يُطبع عبر زر 'طباعة كشف الحساب' في شاشات حسابات العملاء والموردين عند تحديد عميل/مورد والضغط على طباعة/تصدير → طباعة. يدعم التصميم الكامل عبر الاستوديو." },
+  { key: "pos_receipt",           label: "فاتورة / إيصال المبيعات", badge: "المبيعات (رول / A4 مكتبية)",      hint: "يُطبع تلقائياً فور النقر على 'دفع وحفظ الفاتورة' (F12) في شاشة نقطة البيع (الكاشير)، وعند طباعة أي فاتورة مبيعات محفوظة من سجل المبيعات.", category: "المبيعات", catColor: "#1e40af", pages: ["نقطة البيع (POS)", "سجل المبيعات"] },
+  { key: "kitchen_ticket",       label: "تيكت المطبخ",           badge: "طباعة مختصرة (رول)",               hint: "يُطبع تلقائياً مع فاتورة المبيعات عند تفعيل خيار 'طباعة تيكت المطبخ' في نقطة البيع، ويحتوي على أصناف الطلب فقط.", category: "المبيعات", catColor: "#1e40af", pages: ["نقطة البيع (POS)"] },
+  { key: "sales_return",          label: "مرتجع مبيعات",          badge: "رول / ورق A4 (مرتجع عميل)",         hint: "يُطبع تلقائياً أو يدوياً عند النقر على 'طباعة المرتجع' بعد إتمام الفاتورة الاسترجاعية في شاشة 'مرتجع المبيعات'.", category: "المبيعات", catColor: "#1e40af", pages: ["مرتجع المبيعات"] },
+  { key: "quotation",             label: "عرض سعر",               badge: "سند عرض تسعير للعملاء",             hint: "يُطبع بالضغط على زر 'طباعة العرض' في شاشة 'عروض الأسعار' (Sales -> Quotations) لتقديمه للعميل للموافقة على الأسعار.", category: "المبيعات", catColor: "#1e40af", pages: ["عروض الأسعار"] },
+  { key: "payment_receipt",       label: "إيصال دفع",             badge: "سند مالي (قبض وصرف)",               hint: "يُطبع فور حفظ مستند دفع أو قبض في شاشة 'السندات المالية -> سندات الصرف والقبض' لتسليم العميل أو المورد وصلاً ماليًا.", category: "المبيعات", catColor: "#1e40af", pages: ["السندات المالية"] },
+
+  { key: "purchase_order",        label: "أمر شراء",              badge: "سند طلب مشتريات للموردين",         hint: "يُطبع عبر زر 'طباعة' داخل شاشة 'أوامر الشراء' (Purchases -> Orders) لإرساله بالبريد أو الواتساب للمورد لتوفير البضائع.", category: "المشتريات", catColor: "#059669", pages: ["أوامر الشراء"] },
+  { key: "purchase_return",       label: "مرتجع مشتريات",         badge: "سند مرتجع بضائع للمورد",            hint: "يُطبع من خلال زر 'طباعة السند' داخل شاشة 'مرتجع المشتريات' لتسليمه للمندوب أو المورد مع البضائع المرجعة.", category: "المشتريات", catColor: "#059669", pages: ["مرتجع المشتريات"] },
+
+  { key: "branch_transfer",       label: "تحويل فرع",             badge: "سند نقل مخزني بين الفروع",          hint: "يُطبع عبر زر 'طباعة إذن التحويل' في شاشة 'حركات المخزون -> تحويلات الفروع' لمرافقة البضائع المنقولة مع السائق.", category: "المخزون", catColor: "#7c3aed", pages: ["تحويلات الفروع"] },
+
+  { key: "account_statement",     label: "كشف حساب (عميل/مورد)",  badge: "كشف حركات عميل أو مورد",             hint: "يُطبع عبر زر 'طباعة كشف الحساب' في شاشات حسابات العملاء والموردين عند تحديد عميل/مورد والضغط على طباعة/تصدير → طباعة. يدعم التصميم الكامل عبر الاستوديو.", category: "الحسابات", catColor: "#dc2626", pages: ["حسابات العملاء", "حسابات الموردين"] },
+  { key: "ajal_statement",        label: "كشف آجل",               badge: "كشف مديونية عميل محدد",             hint: "يُطبع بالضغط على زر 'طباعة كشف الحساب' من الملف الشخصي للعميل في شاشة 'العملاء والمندوبين -> حسابات العملاء الآجلين'.", category: "الحسابات", catColor: "#dc2626", pages: ["الحسابات الآجلة"] },
+  { key: "ajal_schedule",          label: "جدول أقساط",            badge: "تواريخ وجداول الأقساط",              hint: "يُطبع بالضغط على زر 'جدول الأقساط' في نافذة تفاصيل الدين لشاشة 'المبيعات الآجلة والأقساط' لتسليم العميل قائمة التواريخ.", category: "الحسابات", catColor: "#dc2626", pages: ["المبيعات الآجلة والأقساط"] },
+  { key: "ajal_full_statement",   label: "كشف حساب كامل",         badge: "سجل الديون لجميع العملاء",           hint: "يُطبع بالضغط على زر 'تصدير وطباعة' في شاشة 'التقارير -> تقرير الديون والأرصدة الآجلة الشامل' لمتابعة كافة التحصيلات المستحقة.", category: "الحسابات", catColor: "#dc2626", pages: ["تقرير الديون الشامل"] },
+
+  { key: "daily_treasury",        label: "تقرير الخزينة",         badge: "تقرير جرد الصناديق والخزائن",        hint: "يُطبع بالضغط على 'طباعة تقرير الإغلاق' في شاشة 'الخزائن والصناديق -> حركة الخزينة اليومية' لتسليم الإدارة جرد الإيرادات والمصاريف.", category: "الخزينة والمالية", catColor: "#d97706", pages: ["حركة الخزينة اليومية"] },
+  { key: "bank_statement",        label: "كشف بنكي",              badge: "تقرير مالي (حساب بنك)",             hint: "يُطبع بالنقر على زر 'طباعة الكشف' في شاشة 'الحسابات المالية -> كشوف البنوك' بعد تحديد البنك وفترة الحركة.", category: "الخزينة والمالية", catColor: "#d97706", pages: ["كشوف البنوك"] },
+  { key: "cheque_register",       label: "سجل شيكات",             badge: "تقرير شيكات صادرة وواردة",          hint: "يُطبع بالضغط على زر 'طباعة السجل' في شاشة 'شؤون الشيكات والأوراق المالية' لمراجعة الشيكات المستحقة وتواريخ التحصيل البنكي.", category: "الخزينة والمالية", catColor: "#d97706", pages: ["شؤون الشيكات والأوراق المالية"] },
+  { key: "payment_methods_report",label: "تقرير وسائل الدفع",     badge: "تحليل المقبوضات حسب الوسيلة",       hint: "يُطبع بالضغط على زر 'طباعة تقرير المدفوعات' من شاشة 'التقارير -> مبيعات وسائل الدفع' لمطابقة مبالغ الكاش والشبكة والتحويل البنكي.", category: "الخزينة والمالية", catColor: "#d97706", pages: ["مبيعات وسائل الدفع"] },
+  { key: "owner_statement",       label: "لوحة صاحب المحل",       badge: "كشف الإقفال المالي الشهري",          hint: "يُطبع بالضغط على زر 'طباعة الصفحة' في شاشة 'لوحة صاحب المحل' ويشمل المؤشرات المالية الأساسية والتدفقات النقدية للفترة المحددة.", category: "الخزина والمالية", catColor: "#d97706", pages: ["لوحة صاحب المحل"] },
+
+  { key: "reports_generic",       label: "قوالب تقارير (عام)",    badge: "قالب عام لتقارير النظام",            hint: "يتحكم في التصميم الموحد والخط وحجم الهوامش لكافة تقارير النظام الأخرى الصادرة من 'مركز التقارير وقوائم المخزون وجرد المستودعات'.", category: "التقارير العامة", catColor: "#0f172a", pages: ["مركز التقارير", "قوائم المخزون", "جرد المستودعات"] },
 ];
-
-// Valid paper sizes per doc type + system default (user can override)
-export const DOC_PAPER_CONFIG = {
-  pos_receipt:            { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
-  purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
-  sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
-  purchase_return:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
-  quotation:              { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
-  branch_transfer:        { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
-  bank_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  ajal_statement:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  ajal_schedule:          { sizes: ["80mm","A5","A4"],            defaultSize: "A4"   },
-  ajal_full_statement:    { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  cheque_register:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  payment_receipt:        { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
-  daily_treasury:         { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  payment_methods_report: { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  owner_statement:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  reports_generic:        { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-  account_statement:      { sizes: ["A5","A4"],                   defaultSize: "A4"   },
-};
-
-// Resolve the effective paper size for a docType given saved per-doc settings
-export function resolveDocPaperSize(docType, docTypeSettings = {}) {
-  const cfg = DOC_PAPER_CONFIG[docType];
-  if (!cfg) return "A4";
-  if (docTypeSettings.paper_size && docTypeSettings.paper_size !== "inherit") {
-    return docTypeSettings.paper_size;
-  }
-  return cfg.defaultSize;
-}
 
 // Print behavior per doc: preview modal (default) or instant silent print.
 const PRINT_MODES = [
@@ -141,11 +116,6 @@ function PaperPicker({ value, onChange }) {
 
 const stripLayout = ({ layout, ...rest } = {}) => rest;
 
-const BLOCK_DOC_SCOPES = new Set([
-  "_global", "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
-
 /** Match Studio's effFam() exactly — raw layout, no normalizeLayout. */
 function getRawLayout(scopeSettings, globalSettings, fam, scope) {
   const isReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope);
@@ -176,6 +146,7 @@ function mergeRendererSettings(appSettings, docSettings, scope, family) {
 }
 
 export default function PrintingSettingsPanel({ settings, onChange }) {
+  const restaurantEnabled = useFeatureEnabled("feature_restaurant");
   const [docSettings, setDocSettings] = useState({});
   const [expandedDocs, setExpandedDocs] = useState([]); // array of scope keys
   const [printers, setPrinters] = useState([]);
@@ -189,6 +160,11 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [fullPreview, setFullPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
   const importFileRef = useRef(null);
+
+  const visibleDocTypes = useMemo(
+    () => DOC_TYPES.filter((d) => d.key !== "kitchen_ticket" || restaurantEnabled),
+    [restaurantEnabled]
+  );
 
   function toggleExpand(key) {
     setExpandedDocs((prev) =>
@@ -286,7 +262,6 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   }
 
   const s = settings;
-  const customBlocks = getCustomBlocks(settings);
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-10 pb-8">
@@ -391,7 +366,17 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
 
       {/* ── Per-document print behavior + Studio entry ── */}
       <section>
-        <SectionLabel icon={FileText} title="إعدادات طباعة المستندات" hint="اضغط على أي مستند لعرض المقاسات واختيار القوالب والمعاينة" />
+        <div className="flex items-center justify-between mb-2">
+          <SectionLabel icon={FileText} title="إعدادات طباعة المستندات" hint="اضغط على أي مستند لعرض المقاسات واختيار القوالب والمعاينة" />
+          <button
+            type="button"
+            onClick={() => setGalleryOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] px-3 py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
+          >
+            <Maximize2 size={12} />
+            معرض المعاينات
+          </button>
+        </div>
 
         {/* Premium Instruction Box */}
         <div className="mb-4 rounded-xl border border-[var(--primary)]/10 bg-[var(--primary)]/5 p-4 text-[12px] text-[var(--text-secondary)] leading-relaxed shadow-sm">
@@ -423,14 +408,32 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
               </tr>
             </thead>
             <tbody>
-              {DOC_TYPES.map(({ key, label, badge, hint }) => {
-                const cfg = DOC_PAPER_CONFIG[key] || { sizes: ["A4"], defaultSize: "A4" };
-                const doc = docSettings[key] || {};
-                const effSize = resolveDocPaperSize(key, doc);
-                const hasOverride = !!doc.paper_size;
-                const isExpanded = expandedDocs.includes(key);
-                return (
-                  <React.Fragment key={key}>
+              {(() => {
+                const rows = [];
+                let lastCat = null;
+                visibleDocTypes.forEach(({ key, label, badge, hint, category, catColor, pages }) => {
+                  if (category !== lastCat) {
+                    lastCat = category;
+                    rows.push(
+                      <tr key={`cat-${category}`} className="bg-[var(--bg-surface)] border-t-2 border-[var(--border-normal)]">
+                        <td colSpan={4} className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-5 w-5 items-center justify-center rounded text-white text-[9px] font-black shrink-0" style={{ backgroundColor: catColor }}>
+                              {category.charAt(0)}
+                            </div>
+                            <span className="text-[11px] font-black" style={{ color: catColor }}>{category}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const cfg = DOC_PAPER_CONFIG[key] || { sizes: ["A4"], defaultSize: "A4" };
+                  const doc = docSettings[key] || {};
+                  const effSize = resolveDocPaperSize(key, doc);
+                  const hasOverride = !!doc.paper_size;
+                  const isExpanded = expandedDocs.includes(key);
+                  rows.push(
+                    <React.Fragment key={key}>
                     {/* ── Collapsed header row ── */}
                     <tr
                       className={[
@@ -457,6 +460,16 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                             <div className="text-[10px] font-bold text-[var(--text-muted)] mt-1.5 leading-relaxed max-w-[450px]">
                               {hint}
                             </div>
+                            {pages && pages.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {pages.map((p) => (
+                                  <span key={p} className="inline-flex items-center gap-0.5 rounded bg-[var(--bg-input)] border border-[var(--border-subtle)] px-1 py-0.5 text-[8px] font-bold text-[var(--text-muted)]">
+                                    <ExternalLink size={6} />
+                                    {p}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -576,7 +589,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                       const szFamily = familyOfSize(sz);
                                       const szInheritKey = `inherit_global_${szFamily}`;
                                       const szInherit = doc[szInheritKey] ?? doc.inherit_global;
-                                      const szIsInheriting = szInherit !== undefined ? szInherit : key !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(key);
+                                      const szIsInheriting = szInherit !== undefined ? szInherit : key !== "_global" && BLOCK_DOC_SCOPES.has(key);
                                       if (szIsInheriting && key !== "_global") return (
                                         <span className="absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 rounded-full bg-[var(--primary)]/15 border border-[var(--primary)]/25 px-1.5 py-0.5 text-[7px] font-black text-[var(--primary)] backdrop-blur-sm">
                                           <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 3v18"/><path d="M3 12h18"/></svg>
@@ -617,8 +630,10 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                       </tr>
                     )}
                   </React.Fragment>
-                );
-              })}
+                  );
+                });
+                return rows;
+              })()}
             </tbody>
           </table>
         </div>
@@ -626,26 +641,6 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           <Copy size={11} />
           "طباعة فورية" تُرسل المستند مباشرة للطابعة المعيَّنة أعلاه بدون نافذة معاينة. التغييرات تُحفظ تلقائياً.
         </div>
-      </section>
-
-      {/* ── Classification Preview ── */}
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <SectionLabel
-            icon={FileText}
-            title="تصنيفات المستندات"
-            hint="دليل شامل لكل مستند ومكان استخدامه في النظام"
-          />
-          <button
-            type="button"
-            onClick={() => setGalleryOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] px-3 py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
-          >
-            <Maximize2 size={12} />
-            معرض المعاينات
-          </button>
-        </div>
-        <DocClassificationPreview docSettings={docSettings} />
       </section>
 
       {/* ── System default paper (fallback when a doc has no override) ── */}
@@ -721,15 +716,6 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         )}
       </section>
 
-      {/* ── Legacy custom text blocks (rendered on paper via the bridge) ── */}
-      <section>
-        <SectionLabel icon={AlignLeft} title="نصوص مخصصة" hint="نصوص حرة تظهر في مواضع محددة من كل المستندات — للتحكم الكامل بالتصميم استخدم الاستوديو" />
-        <CustomTextBlocksSection
-          blocks={customBlocks}
-          onUpdate={(newBlocks) => saveCustomBlocks(newBlocks, onChange)}
-        />
-      </section>
-
       <CalibrationWizard
         open={calWizard.open}
         onClose={closeCalibrationWizard}
@@ -799,7 +785,11 @@ function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, on
   const effectiveSize = size || settings.paper_size || "A4";
   const fam = familyOfSize(effectiveSize);
   const rendererSettings = useMemo(
-    () => ({ ...mergeRendererSettings(appSettings, docSettings, scope, fam), paper_size: effectiveSize }),
+    () => ({
+      ...mergeRendererSettings(appSettings, docSettings, scope, fam),
+      paper_size: effectiveSize,
+      ...(fam === "roll" ? { receipt_width: effectiveSize } : {}),
+    }),
     [appSettings, docSettings, scope, fam, effectiveSize]
   );
   const orientation = rendererSettings.orientation || settings.orientation || "portrait";
@@ -814,32 +804,51 @@ function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, on
 
   const paperRef = useRef(null);
   const containerRef = useRef(null);
-  const [contentH, setContentH] = useState(0);
   const [scale, setScale] = useState(1);
+  const [rollH, setRollH] = useState(null);
 
-  // Use known paper width (scrollWidth is unreliable for mm units)
   const dims = pageDimensions(effectiveSize, orientation);
   const contentW = dims.wMm * PX_PER_MM;
+  const isRoll = fam === "roll";
+  // Reference width: always 80mm so 58mm is narrower at the same zoom
+  const ROLL_REF_MM = 80;
+  const refPxW = ROLL_REF_MM * PX_PER_MM;
 
   useEffect(() => {
-    const el = paperRef.current;
+    if (isRoll) {
+      setRollH(null);
+    }
+  }, [isRoll, scope, effectiveSize, layout, mockData]);
+
+  useEffect(() => {
     const container = containerRef.current?.closest('[data-scroll-area]');
-    if (!el || !container) return;
+    if (!container) return;
     const raf = requestAnimationFrame(() => {
-      const h = el.scrollHeight;
-      if (h <= 0 || contentW <= 0) return;
-      setContentH(h);
-      const availH = container.clientHeight - 12;
-      const availW = container.clientWidth - 12;
-      if (availH <= 0 || availW <= 0) return;
-      const z = Math.min(availW / contentW, availH / h, 1);
-      setScale(Math.round(z * 100) / 100);
+      const availW = container.clientWidth - 48;
+      const availH = container.clientHeight - 48;
+      if (availW <= 0 || availH <= 0) return;
+      if (isRoll) {
+        if (rollH === null) {
+          const el = paperRef.current;
+          if (el) {
+            const h = el.scrollHeight || el.offsetHeight;
+            if (h > 0) {
+              setRollH(h / scale);
+            }
+          }
+        } else {
+          const z = Math.min(availW / refPxW, availH / rollH, 1);
+          setScale(Math.round(z * 100) / 100);
+        }
+      } else {
+        const contentH = dims.hMm * PX_PER_MM;
+        if (contentW <= 0 || contentH <= 0) return;
+        const z = Math.min(availW / contentW, availH / contentH, 1);
+        setScale(Math.round(z * 100) / 100);
+      }
     });
     return () => cancelAnimationFrame(raf);
-  }, [layout, effectiveSize, orientation, scope, contentW]);
-
-  const scaledW = Math.round(contentW * scale);
-  const scaledH = Math.round(contentH * scale);
+  }, [isRoll, contentW, dims.hMm, rollH, scale]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md" dir="rtl" onClick={onClose}>
@@ -862,7 +871,7 @@ function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, on
             {(() => {
               const inheritKey = `inherit_global_${fam}`;
               const val = settings[inheritKey] ?? settings.inherit_global;
-              const isInheriting = val !== undefined ? val : scope !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(scope);
+              const isInheriting = val !== undefined ? val : scope !== "_global" && BLOCK_DOC_SCOPES.has(scope);
               if (isInheriting && scope !== "_global") return (
                 <span className="flex items-center gap-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2 py-0.5 text-[9px] font-black text-[var(--primary)]">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 3v18"/><path d="M3 12h18"/></svg>
@@ -895,14 +904,13 @@ function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, on
           </div>
         </div>
         <div data-scroll-area className="flex-1 overflow-auto flex items-center justify-center p-6 bg-[var(--bg-base)]">
-          <div ref={containerRef} style={{ width: scaledW || "auto", height: scaledH || "auto", overflow: "hidden" }}>
+          <div ref={containerRef}>
             <div
               ref={paperRef}
               style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "top left",
+                zoom: scale,
                 width: pageWidthStr(effectiveSize, orientation),
-                minHeight: pageHeightStr(effectiveSize, orientation) === "auto" ? "200mm" : pageHeightStr(effectiveSize, orientation),
+                ...(isRoll ? {} : { minHeight: pageHeightStr(effectiveSize, orientation) }),
                 background: "#fff",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
                 borderRadius: "2px",

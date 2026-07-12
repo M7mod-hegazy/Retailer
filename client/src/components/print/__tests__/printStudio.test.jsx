@@ -69,13 +69,12 @@ describe("PrintStudio", () => {
     await waitFor(() => expect(screen.getByText("حفظ").closest("button").disabled).toBe(true));
   });
 
-  it("template docs get the reduced inspector instead of block editing", async () => {
+  it("report scopes are fully designable block docs (full inspector, single texts section)", async () => {
     render(<PrintStudio open onClose={() => {}} initialScope="bank_statement" />);
-    await waitFor(() => expect(screen.getByText("نصوص المستند")).toBeTruthy());
-    // no block tree for template docs
-    expect(screen.queryByText("ترتيب العناصر — اسحب للترتيب")).toBeNull();
-    // flat settings still editable
-    expect(screen.getByText("الورق والخط")).toBeTruthy();
+    // bank_statement moved from a fixed template to the block library — the
+    // full inspector shows, and the texts section appears exactly once.
+    await waitFor(() => expect(screen.getAllByText("نصوص المستند").length).toBe(1));
+    expect(screen.getAllByText("جدول بيانات التقرير").length).toBeGreaterThan(0);
   });
 
   it("page blocks can be pinned absolutely from the inspector", async () => {

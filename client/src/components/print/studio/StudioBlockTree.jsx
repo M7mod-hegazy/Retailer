@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { GripVertical, Eye, EyeOff, Trash2, Type, Minus, Square, QrCode, Link2, Unlink, Move, Variable, Grid2x2, Landmark, Sparkles } from "lucide-react";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import { DEFAULT_ORDER } from "../families/defaultOrder";
+import { BLOCK_DOC_SCOPES } from "./studioData";
 
 const INSERTABLE = [
   { type: "custom_text", label: "نص مخصص", icon: Type },
@@ -110,7 +111,7 @@ export default function StudioBlockTree({ st }) {
   const [dropIdx, setDropIdx] = useState(null);
   const { fam, family, selected, hovered } = st;
 
-  const isReport = st.scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(st.scope);
+  const isReport = st.scope !== "_global" && !BLOCK_DOC_SCOPES.has(st.scope);
   const isStatement = st.scope === "account_statement";
 
   const insertableList = INSERTABLE.filter(item => {

@@ -18,7 +18,7 @@ import { resolveCalibration, withCalibration } from "../../../services/printCali
 import CalibrationWizard from "../calibration/CalibrationWizard";
 import TemplateDocPreview, { TEMPLATE_PREVIEW_DOCS } from "./TemplateDocPreview";
 import {
-  SIZES, SHEET_W, PAGE_H_MM, BLOCK_DOCS, STUDIO_SCOPES, scopeLabel,
+  SIZES, SHEET_W, PAGE_H_MM, BLOCK_DOCS, BLOCK_DOC_SCOPES, INHERITABLE_SCOPES, STUDIO_SCOPES, scopeLabel,
   SAMPLES, sampleById, templateMockBySample, pageSizeStrFor, familyOfSize, SCOPE_PRESETS,
   pageWidthStr,
 } from "./studioData";
@@ -58,10 +58,6 @@ const SCOPE_PAGES = {
 };
 
 const DRAFT_STASH_KEY = "retailer_print_studio_drafts";
-const INHERITABLE_SCOPES = new Set([
-  "pos_receipt", "sales_invoice", "purchase_order", "sales_return",
-  "quotation", "branch_transfer", "purchase_return", "payment_receipt",
-]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const stripLayout = ({ layout, ...rest } = {}) => rest;
@@ -112,7 +108,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [saving, setSaving] = useState(false);
   const [past, setPast] = useState([]);   // [{scope, draft}]
   const [future, setFuture] = useState([]);
-  const isInitialReport = initialScope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(initialScope);
+  const isInitialReport = initialScope !== "_global" && !BLOCK_DOC_SCOPES.has(initialScope);
   // Per-family inherit: roll and page can inherit independently.
   const defaultInherit = isInitialReport ? false : true;
   const [inheritByFamily, setInheritByFamily] = useState(() => {
@@ -182,7 +178,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setOrientation(initialOrientation || "portrait");
     // Re-derive inherit from (already-loaded) store
     const saved = store[initialScope] || {};
-    const scIsReport = initialScope !== "_global" && !["pos_receipt","sales_invoice","purchase_order","sales_return","quotation","branch_transfer","purchase_return","payment_receipt"].includes(initialScope);
+    const scIsReport = initialScope !== "_global" && !BLOCK_DOC_SCOPES.has(initialScope);
     const def = scIsReport ? false : true;
     const leg = saved.inherit_global;
     setInheritByFamily({
@@ -204,7 +200,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     if (drafts[sc] !== undefined) return drafts[sc];
     const val = store[sc];
     if (val && val.layout) return val;
-    const isReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    const isReport = sc !== "_global" && !BLOCK_DOC_SCOPES.has(sc);
     if (isReport && SCOPE_PRESETS[sc] && SCOPE_PRESETS[sc].length) {
       return applyPreset(val || {}, SCOPE_PRESETS[sc][0], sc);
     }
@@ -704,7 +700,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     setScope(sc); setSelected(null); setHovered(null); setEditingKey(null); setScopeMenuOpen(false);
     // update per-family inherit from saved settings
     const savedDraft = drafts[sc] || store[sc] || {};
-    const scIsReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    const scIsReport = sc !== "_global" && !BLOCK_DOC_SCOPES.has(sc);
     const defaultInherit = scIsReport ? false : true;
     const legacyInherit = savedDraft.inherit_global;
     setInheritByFamily({
@@ -715,7 +711,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     const docSaved = savedDraft.paper_size;
     const targetSize = docSaved && SHEET_W[docSaved] ? docSaved : null;
     // Report docs never print on thermal roll — auto-correct
-    const scIsDenseReport = sc !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(sc);
+    const scIsDenseReport = sc !== "_global" && !BLOCK_DOC_SCOPES.has(sc);
     if (targetSize) switchSize(targetSize);
     else if (scIsDenseReport && (size === "58mm" || size === "80mm")) switchSize("A4");
     // auto-fit handled by StudioCanvas's own layout effect on scope change
@@ -728,7 +724,9 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     // auto-fit handled by StudioCanvas's own layout effect on size change
   };
   // For dense report docs only offer page sizes (A4/A5); roll sizes don't apply.
-  const isDenseReport = scope !== "_global" && !["pos_receipt", "sales_invoice", "purchase_order", "sales_return", "quotation", "branch_transfer", "purchase_return", "payment_receipt"].includes(scope);
+  // kitchen_ticket is a block doc with incompatible layout vs _global (excluded
+  // from BLOCK_DOC_SCOPES) but it IS a roll-first doc type, so treat it as non-dense.
+  const isDenseReport = scope !== "_global" && !BLOCK_DOC_SCOPES.has(scope) && scope !== "kitchen_ticket";
   const availableSizes = (isBlockDoc && !isDenseReport) ? [...SIZES.roll, ...SIZES.page] : SIZES.page;
 
   // ── keyboard shortcuts ─────────────────────────────────────────────────
@@ -971,6 +969,27 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                           }`}>
                             {isInheriting ? "يرث" : "مخصص"}
                           </span>
+                          {dirtyScopes.includes(s.key) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Dividing line ── */}
+                  <div className="mx-2 my-1 border-t border-[var(--border-subtle)]" />
+
+                  {/* ── المطعم ── */}
+                  <div>
+                    <div className="px-2 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">المطعم</div>
+                    {STUDIO_SCOPES.filter((s) => s.group === "مطعم").map((s) => {
+                      const docDraft = drafts[s.key] || store[s.key] || {};
+                      return (
+                        <button key={s.key} type="button" onClick={() => switchScope(s.key)}
+                          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-right text-[11px] font-bold transition-colors ${
+                            scope === s.key ? "bg-[var(--accent-soft)] text-[var(--primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"
+                          }`}>
+                          <span className="flex-1 truncate">{s.label}</span>
+                          <span className="rounded-full px-1.5 py-0.5 text-[8px] font-black leading-none bg-[var(--bg-input)] text-[var(--text-muted)]">مستقل</span>
                           {dirtyScopes.includes(s.key) && <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning-text)]" />}
                         </button>
                       );

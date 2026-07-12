@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import api from "../../services/api";
+import { printContent, getPrinterForPageSize } from "../../services/printService";
 import toast from "react-hot-toast";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
@@ -288,6 +289,7 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(1);
   const columns = ROW_COLUMNS[metric?.key] || [];
+  const contentRef = useRef(null);
 
   const filtered = useMemo(() => {
     let next = rows.filter((row) => rowText(row).includes(search.trim().toLowerCase()));
@@ -367,7 +369,16 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
               </button>
 
               <button
-                onClick={() => window.print()}
+                onClick={() => {
+                  if (!contentRef.current) return;
+                  printContent({
+                    contentHtml: contentRef.current.innerHTML,
+                    pageSizeStr: "210mm 297mm",
+                    deviceName: getPrinterForPageSize("210mm 297mm"),
+                    docType: "owner_statement",
+                    docLabel: metric?.label || "كشف تفصيلي",
+                  });
+                }}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
               >
                 <Printer size={13} /> طباعة
@@ -391,7 +402,7 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
           )}
 
           {/* Table Container */}
-          <div className="flex-1 overflow-auto bg-bg-base/20 scrollbar-thin">
+          <div ref={contentRef} className="flex-1 overflow-auto bg-bg-base/20 scrollbar-thin">
             <table className="w-full min-w-[760px] border-collapse text-right text-xs">
               <thead className="sticky top-0 bg-bg-overlay/90 backdrop-blur-md text-[11px] font-black uppercase text-text-muted border-b border-border-normal/80">
                 <tr>
@@ -1268,26 +1279,52 @@ export default function OwnerStatementPage() {
         open={printOpen}
         onClose={() => setPrintOpen(false)}
         docType="owner_statement"
-        renderContent={(settings) => (
-          <div className="p-8 font-sans" dir="rtl">
-            <div className="mb-6 text-center border-b pb-4">
-              <h1 className="text-2xl font-black mb-1">كشف صاحب المحل</h1>
-              <p className="text-sm text-text-secondary">
-                من {display?.period_start || range.from} إلى {display?.period_end || range.to}
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {(display?.metrics || []).map((metric) => (
-                <div key={metric.key} className="border rounded-2xl p-4 bg-bg-surface">
-                  <div className="text-sm font-black text-text-primary mb-2">{metric.label}</div>
-                  <div className="font-mono text-xl font-black text-text-primary" dir="ltr">
-                    {money(metric.value)} {settings.currency_symbol || currencySymbol}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        invoice={(() => {
+          if (!display) return {};
+          const values = display.values || {};
+          const profitRows = display.rows?.net_profit || [];
+          const find = (source) => profitRows.find((r) => r.source === source)?.amount || 0;
+          return {
+            owner: {
+              total_sales: find("sales"),
+              total_purchases: 0,
+              net_profit: find("net_profit"),
+              total_revenue: find("revenues") + find("net_sales"),
+              total_expenses: find("expenses") + find("cogs"),
+              prev_sales: 0,
+              prev_purchases: 0,
+              prev_profit: 0,
+              stock: values.stock || 0,
+              cash: values.cash || 0,
+              ar: values.ar || 0,
+              ap: values.ap || 0,
+              period_start: display.period_start || range.from,
+              period_end: display.period_end || range.to,
+              payment_flow: paymentFlowRows.map((row) => ({
+                method_name: row.method_name || "غير محدد",
+                total_in: row.total_in || 0,
+                total_out: row.total_out || 0,
+                net_amount: row.net_amount || 0,
+                transaction_count: row.transaction_count || 0,
+              })),
+              revenue_breakdown: [
+                { label: "إجمالي المبيعات", amount: find("sales") },
+                { label: "مرتجعات المبيعات", amount: find("returns") },
+                { label: "إيرادات أخرى", amount: find("revenues") },
+                { label: "المسحوبات", amount: find("withdrawals") },
+              ].filter((r) => r.amount > 0),
+              expense_categories: [
+                { label: "تكلفة البضاعة المباعة", amount: find("cogs"), color: "#dc2626" },
+                { label: "المصروفات", amount: find("expenses"), color: "#2563eb" },
+                { label: "المسحوبات", amount: find("withdrawals"), color: "#d97706" },
+              ].filter((r) => r.amount > 0),
+              period_comparison: [
+                { label: "المبيعات", current: find("sales"), previous: 0 },
+                { label: "صافي الربح", current: find("net_profit"), previous: 0 },
+              ],
+            },
+          };
+        })()}
       />
 
     </div>

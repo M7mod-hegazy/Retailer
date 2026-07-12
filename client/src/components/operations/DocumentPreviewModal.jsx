@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,7 +34,23 @@ import {
   AlertTriangle
 } from "lucide-react";
 import api from "../../services/api";
+import PrintPreviewModal from "../print/PrintPreviewModal";
 import { dateTime, money, PAYMENT_LABELS, REFUND_LABELS, SETTLEMENT_LABELS, statusBadge } from "./docHelpers";
+
+// Quick-view doc types → print-settings scopes. Printing goes through the
+// shared PrintPreviewModal pipeline so the paper size, the studio design and
+// the silent-print routing are the SAME as everywhere else — the old path
+// dumped this modal's Tailwind DOM into a bare iframe (unstyled output) with
+// "80mm"/"A4" passed as a CSS page-size string (an 80×80mm square page, and a
+// failed printer-map lookup that routed receipts to the A4 printer).
+const PRINT_SCOPE = {
+  invoice: "pos_receipt",
+  sales_return: "sales_return",
+  purchase: "purchase_order",
+  purchase_return: "purchase_return",
+  branch_transfer: "branch_transfer",
+  opening_balance: "purchase_order",
+};
 
 const TITLE = {
   invoice: "فاتورة بيع",
@@ -257,7 +273,9 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const config = CONFIG[docType];
+  const contentRef = useRef(null);
 
   useEffect(() => {
     if (!open || !config || !docId) return;
@@ -291,6 +309,8 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handlePrint = () => setPrintOpen(true);
 
   const overlayVariants = {
     hidden: { opacity: 0 },
@@ -378,7 +398,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
             </div>
           ) : (
             /* Split Panel Workspace Layout */
-            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6 flex-1 overflow-auto p-6 bg-slate-50/20 scrollbar-thin">
+            <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6 flex-1 overflow-auto p-6 bg-slate-50/20 scrollbar-thin">
               
               {/* Column 1: Thermal Receipt Card Mockup with CSS Jagged Torn Edges (Right Column in RTL) */}
               <div className="lg:col-span-1 flex flex-col justify-start">
@@ -920,7 +940,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
               </Link>
             </motion.div>
             <motion.div whileTap={{ scale: 0.96 }}>
-              <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+              <button onClick={handlePrint} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
                 <Printer size={13} /> طباعة
               </button>
             </motion.div>
@@ -934,6 +954,16 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
           </div>
         </motion.div>
       </motion.div>
+
+      {printOpen && (
+        <PrintPreviewModal
+          open={printOpen}
+          onClose={() => setPrintOpen(false)}
+          invoice={doc || {}}
+          docType={PRINT_SCOPE[docType] || "pos_receipt"}
+          operationLabel={TITLE[docType] || docType}
+        />
+      )}
     </AnimatePresence>
   );
 }

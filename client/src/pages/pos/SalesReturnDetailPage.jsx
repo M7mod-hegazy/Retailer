@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, Printer, RotateCcw,
-  User, Calendar, X, Package,
+  User, Calendar, X, Package, MessageCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import { REFUND_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
 import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
@@ -55,6 +56,7 @@ export default function SalesReturnDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
+  const [waSendOpen, setWaSendOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -339,7 +341,17 @@ export default function SalesReturnDetailPage() {
         }}
         settings={printSettings}
         operationLabel="مرتجع مبيعات"
+        onSendWhatsApp={() => setWaSendOpen(true)}
       />
+
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          invoice={doc}
+          kind="return_receipt"
+        />
+      )}
     </div>
   );
 }

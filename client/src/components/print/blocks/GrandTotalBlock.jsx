@@ -14,7 +14,7 @@ import { tafqeet } from "./tafqeet";
  *              "tag"           | price-tag badge: label pill left, amount right
  *              "split-amount"  | giant amount on left, stacked caption right
  *  label       line caption (default "الإجمالي")
- *  decor       decoration text around the label on band (default "✦", empty = none)
+ *  decor       decoration text around the label on band (default none; e.g. "✦")
  *  labelSize   caption font size in px
  *  amountSize  number font size in px
  *  background / textColor   band colors on PAGE (roll band stays black/white)

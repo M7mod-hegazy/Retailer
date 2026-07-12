@@ -70,11 +70,14 @@ function getPurchaseWithLines(db, purchaseId) {
     ORDER BY pp.id ASC
   `).all(purchaseId);
 
+  const has_returns = !!db.prepare("SELECT 1 FROM purchase_return_lines prl JOIN purchase_lines pl ON pl.id = prl.purchase_line_id WHERE pl.purchase_id = ? LIMIT 1").get(purchaseId);
+
   return {
     ...purchase,
     lines: lines.map(l => ({ ...l, returnable_quantity: Math.max(0, l.quantity - (l.returned_quantity || 0)) })),
     debt_remaining,
     payments,
+    has_returns,
   };
 }
 
@@ -400,7 +403,13 @@ router.get("/", requirePagePermission("purchases", "view"), (req, res) => {
                 ORDER BY id DESC LIMIT 1
               ), 0)
               ELSE 0
-            END AS amount_paid
+            END AS amount_paid,
+            EXISTS(
+              SELECT 1 FROM purchase_return_lines prl
+              JOIN purchase_lines pl ON pl.id = prl.purchase_line_id
+              WHERE pl.purchase_id = p.id
+              LIMIT 1
+            ) AS has_returns
      FROM purchases p
      LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN users u ON u.id = p.created_by

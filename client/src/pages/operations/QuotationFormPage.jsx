@@ -272,7 +272,9 @@ export default function QuotationFormPage() {
   const handleSaveRef = useRef(null);
   handleSaveRef.current = handleSave;
   useShortcut("quotation.save", () => handleSaveRef.current?.());
-  useShortcut("quotation.print", () => window.print());
+  const handlePrintRef = useRef(null);
+  handlePrintRef.current = handlePrint;
+  useShortcut("quotation.print", () => handlePrintRef.current?.());
 
   // Barcode scanner listener
   const barcodeBuffer = useRef("");

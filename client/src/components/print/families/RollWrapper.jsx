@@ -1,5 +1,8 @@
 import React from "react";
 import { g, rollPaperWidthMm, rollPrintWidthMm, rollBandLeftMm, rollClampFontPx } from "../blocks/blockUtils";
+import { ensurePrintParityCss } from "../../../services/printDocument";
+
+ensurePrintParityCss();
 
 /**
  * Thermal roll container. The outer div is the physical PAPER width so the
@@ -17,7 +20,7 @@ export default function RollWrapper({ settings: s, children, overlay }) {
     // and in RTL over-constrained block layout the browser IGNORES margin-left
     // and honors margin-right — which slammed the band flush right (preview
     // AND paper). Physical band geometry must resolve left-based.
-    <div dir="ltr" style={{
+    <div dir="ltr" data-print-root="" style={{
       width: `${paperMm}mm`,
       boxSizing: "border-box",
       background: "#fff",
