@@ -229,6 +229,10 @@ export function computeTotals(invoice = {}, s = {}) {
 
   // Use invoice.total as authoritative if present (handles exclusive vs inclusive correctly).
   const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount + headerIncrease;
-  const paid = (invoice.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const rawPayments = invoice.payments;
+  const paymentsArr = Array.isArray(rawPayments)
+    ? rawPayments
+    : (typeof rawPayments === "string" ? (() => { try { return JSON.parse(rawPayments); } catch { return []; } })() : []);
+  const paid = paymentsArr.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   return { subtotal, totalDiscount, totalIncrease: headerIncrease, taxAmount, grandTotal, paid, change: paid - grandTotal, taxRate };
 }

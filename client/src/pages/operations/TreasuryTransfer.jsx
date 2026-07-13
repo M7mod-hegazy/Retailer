@@ -235,6 +235,26 @@ export default function TreasuryTransfer() {
               </div>
            </div>
 
+           {/* Live plain-language summary of what will happen */}
+           {(() => {
+              const src = treasuries.find(t => String(t.id) === String(formData.source_id));
+              const dst = treasuries.find(t => String(t.id) === String(formData.destination_id));
+              const amt = Number(formData.amount || 0);
+              if (!src || !dst || !amt) return null;
+              const after = Number(src.balance) - amt;
+              return (
+                 <div className="mt-8 rounded-md border border-emerald-100 bg-emerald-50/60 p-4">
+                    <p className="text-[13px] font-black text-slate-700 leading-relaxed">
+                       سيتم خصم <b className="text-rose-600">{formatMoney(amt)} ج.م</b> من «{src.name}» وإضافتها فوراً إلى «{dst.name}».
+                    </p>
+                    <p className={`mt-1 text-[11px] font-bold ${after < 0 ? "text-rose-600" : "text-slate-500"}`}>
+                       رصيد «{src.name}» بعد التحويل: {formatMoney(after)} ج.م
+                       {after < 0 && " — أكبر من الرصيد المتاح!"}
+                    </p>
+                 </div>
+              );
+           })()}
+
            <div className="mt-12 flex items-center justify-between border-t border-slate-100 pt-8">
               <div className="flex items-center gap-3 rounded-sm bg-amber-50 px-4 py-2 border border-amber-100">
                  <Info className="h-4 w-4 text-amber-600" />

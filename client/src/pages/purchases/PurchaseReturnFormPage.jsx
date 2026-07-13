@@ -5,6 +5,7 @@ import {
   Package, UserPlus, Calendar, Loader2, ChevronDown, Filter, Settings2,
   AlertTriangle,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import ProductSearchField from "../../components/ui/ProductSearchField";
@@ -39,6 +40,7 @@ import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
 import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import PurchaseReturnFormBottomBar from "./PurchaseReturnFormBottomBar";
 import SmartTooltip from "../../components/ui/SmartTooltip";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -257,6 +259,7 @@ export default function PurchaseReturnFormPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
+  const [waSendOpen, setWaSendOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [reasonOpen, setReasonOpen] = useState(false);
 
@@ -967,6 +970,15 @@ export default function PurchaseReturnFormPage() {
                 طباعة
               </DocumentActionButton>
             </PermissionGate>
+            {isEditMode && (
+              <DocumentActionButton
+                onClick={() => setWaSendOpen(true)}
+                className="bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20"
+                icon={WhatsAppIcon}
+              >
+                واتساب
+              </DocumentActionButton>
+            )}
             {isEditMode && isLocked && (
               <PermissionGate page="purchase_returns" action="edit">
                 <DocumentActionButton variant="edit" icon={Pencil} onClick={() => setShowEditWarnModal(true)}>
@@ -1842,6 +1854,11 @@ export default function PurchaseReturnFormPage() {
           </div>
           <div className="flex gap-3 justify-end">
             <button onClick={() => setShowSaveConfirmModal(false)} className="rounded-md border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+            <button onClick={() => { setShowSaveConfirmModal(false); setWaSendOpen(true); }}
+              className="flex items-center gap-2 rounded-md bg-[#25D366] px-5 py-2 text-sm font-bold text-white hover:bg-[#20b858] disabled:opacity-50 transition-all active:scale-[0.98]">
+              <WhatsAppIcon className="h-4 w-4" />
+              إرسال واتساب
+            </button>
             <button data-help="pr-form-submit" onClick={() => { setShowSaveConfirmModal(false); handleSave(); }} disabled={isSaving}
               className="flex items-center gap-2 rounded-md bg-amber-700 px-5 py-2 text-sm font-bold text-white hover:bg-amber-800 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><CheckCircle2 className="w-4 h-4" /> نعم، حفظ المرتجع</>}
@@ -1914,8 +1931,33 @@ export default function PurchaseReturnFormPage() {
         confirmLabel="حفظ وطباعة"
         onSaveOnly={() => handleSave()}
         saveOnlyLabel="حفظ بدون طباعة"
+        onSendWhatsApp={() => setWaSendOpen(true)}
         isSaving={isSaving}
       />
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          kind="purchase_return_receipt"
+          invoice={{
+            invoice_no: docNo,
+            supplier_name: supplier?.name,
+            customer_name: supplier?.name,
+            customer_phone: supplier?.phone,
+            total: total,
+            discount: Number(headerDiscount) || 0,
+            lines: (mode === "direct" ? cart : purchaseLines.filter(l => l.checked)).map(l => ({
+              ...l,
+              item_name: l.item_name,
+              quantity: mode === "direct" ? l.quantity : l.qty_to_return,
+              unit_price: l.unit_cost,
+              discount_amount: 0,
+            })),
+            created_by_username: user?.name || "",
+            created_at: invoiceCreatedAt || new Date().toISOString(),
+          }}
+        />
+      )}
       <AddSupplierModal open={supplierCreateOpen} onClose={() => setSupplierCreateOpen(false)} onCreated={s => { setSuppliers(prev => [s, ...prev]); setSupplier({ id: s.id, name: s.name }); }} />
       <SupplierInfoModal open={supplierInfoOpen} supplierId={supplier?.id} onClose={() => setSupplierInfoOpen(false)} onUpdated={(u) => { setSuppliers(prev => prev.map(s => s.id === u.id ? u : s)); setSupplier(prev => prev?.id === u.id ? { ...prev, ...u } : prev); }} />
       <UnsavedChangesModal

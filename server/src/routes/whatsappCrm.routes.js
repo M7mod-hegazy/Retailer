@@ -429,6 +429,8 @@ router.delete("/campaigns/:id", canEdit, (req, res) => {
 // implied by the category, not user-editable per variant.
 const CATEGORY_CHANNEL = {
   receipt: "whatsapp", return_receipt: "whatsapp", birthday: "whatsapp", debt: "whatsapp",
+  purchase_receipt: "whatsapp", purchase_return_receipt: "whatsapp",
+  transfer_send: "whatsapp", transfer_receive: "whatsapp",
   telegram_new_invoice: "telegram", telegram_daily_close: "telegram", telegram_shift_close: "telegram",
   telegram_large_invoice: "telegram", telegram_large_discount: "telegram", telegram_sales_return: "telegram",
   telegram_invoice_voided: "telegram", telegram_purchase_created: "telegram", telegram_customer_payment: "telegram",

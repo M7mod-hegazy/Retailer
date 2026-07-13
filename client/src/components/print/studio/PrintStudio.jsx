@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Save, Printer, Undo2, Redo2, LayoutTemplate, FileDown,
@@ -28,6 +28,7 @@ import StudioInspector from "./StudioInspector";
 import PresetsGallery from "./PresetsGallery";
 import { applyPreset } from "../presets/presetEngine";
 import { CLASSIFICATIONS } from "./DocClassificationPreview";
+import { useFeatureEnabled } from "../../../hooks/useFeature";
 
 // Find which app pages use the current scope
 function pagesForScope(sc) {
@@ -85,6 +86,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [store, setStore] = useState({});   // saved per-scope settings (incl. _global)
   const [drafts, setDrafts] = useState({}); // unsaved edits per scope
   const [restoreBanner, setRestoreBanner] = useState(null); // stashed drafts found
+  const restaurantEnabled = useFeatureEnabled("feature_restaurant");
 
   // ── editor state ───────────────────────────────────────────────────────
   const [scope, setScope] = useState(initialScope);
@@ -105,6 +107,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   const [calibOpen, setCalibOpen] = useState(false);
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [saving, setSaving] = useState(false);
   const [past, setPast] = useState([]);   // [{scope, draft}]
   const [future, setFuture] = useState([]);
@@ -239,12 +242,25 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
 
   const toggleInheritGlobal = () => {
     const next = !inheritGlobal;
-    // Update per-family inherit state
     setInheritByFamily((prev) => ({ ...prev, [family]: next }));
-    // persist per-family inherit flag into the current scope's draft
     const curDraft = draftOf(scope);
     const familyKey = `inherit_global_${family}`;
-    commitDraft(scope, { ...curDraft, [familyKey]: next });
+    if (!next) {
+      // Turning OFF inherit: copy the current global layout + flat into the doc
+      // so the user starts from the global design, not a fresh seed.
+      const globalLayout = (globalDraft.layout || {})[family];
+      const globalPreset = globalDraft[`preset_${family}`];
+      const nextDraft = { ...curDraft, [familyKey]: false };
+      if (globalLayout) {
+        nextDraft.layout = { ...(curDraft.layout || {}), [family]: clone(globalLayout) };
+      }
+      if (globalPreset) {
+        nextDraft[`preset_${family}`] = clone(globalPreset);
+      }
+      commitDraft(scope, nextDraft);
+    } else {
+      commitDraft(scope, { ...curDraft, [familyKey]: true });
+    }
   };
   const renderLayout = useMemo(
     () => ({ roll: effFam("roll"), page: effFam("page") }),
@@ -298,8 +314,21 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   // A doc without its own family layout inherits _global. The first edit
   // materializes the inherited layout into the doc draft, then applies.
   const withFamBase = () => {
-    if (scope === "_global" || (cur.layout && cur.layout[family])) return cur;
-    return { ...cur, layout: { ...(cur.layout || {}), [family]: clone(effFam(family)) } };
+    if (scope === "_global") return cur;
+    const familyKey = `inherit_global_${family}`;
+    const hasLocal = cur.layout && cur.layout[family];
+    if (!hasLocal) {
+      // First edit: clone inherited layout into doc draft and mark as custom
+      setInheritByFamily((prev) => ({ ...prev, [family]: false }));
+      return { ...cur, layout: { ...(cur.layout || {}), [family]: clone(effFam(family)) }, [familyKey]: false };
+    }
+    // Local layout exists but inherit flag is still on (user turned inherit ON then edits)
+    // → flip inherit off so canvas uses the local layout
+    if (inheritGlobal) {
+      setInheritByFamily((prev) => ({ ...prev, [family]: false }));
+      return { ...cur, [familyKey]: false };
+    }
+    return cur;
   };
   const setFamLayout = (mut) => {
     const base = withFamBase();
@@ -311,10 +340,26 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     if (scope === "_global" || !cur.layout || !cur.layout[family]) return;
     const layout = { ...cur.layout };
     delete layout[family];
-    commitDraft(scope, { ...cur, layout });
+    const familyKey = `inherit_global_${family}`;
+    setInheritByFamily((prev) => ({ ...prev, [family]: true }));
+    commitDraft(scope, { ...cur, layout, [familyKey]: true });
     setSelected(null);
   };
-  const setFlat = (key, val) => commitDraft(scope, { ...cur, [key]: val });
+  const setFlat = (key, val) => {
+    const next = { ...cur, [key]: val };
+    // Flip inherit to false when editing flat settings on a doc scope.
+    // Must also clone the global layout so effFam() uses the real design
+    // instead of falling back to bare seedFamilyLayout defaults.
+    if (scope !== "_global" && inheritGlobal) {
+      const familyKey = `inherit_global_${family}`;
+      next[familyKey] = false;
+      if (globalDraft.layout && globalDraft.layout[family]) {
+        next.layout = { ...(cur.layout || {}), [family]: clone(globalDraft.layout[family]) };
+      }
+      setInheritByFamily((prev) => ({ ...prev, [family]: false }));
+    }
+    commitDraft(scope, next);
+  };
 
   // ── visibility / order / overrides / inserts (ported from designer) ────
   const isVisible = (type) => {
@@ -626,11 +671,21 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
         delete nextLayout[family];
         next.layout = nextLayout;
       }
+      // Reset inherit flag to true (back to inherited)
+      const familyKey = `inherit_global_${family}`;
+      next[familyKey] = true;
+      setInheritByFamily((prev) => ({ ...prev, [family]: true }));
     } else {
       const base = cur.layout ? cur : { ...cur, layout: {} };
       next = applyPreset(base, preset, scope);
       const targetFam = preset.family || family;
       next[`preset_${targetFam}`] = { id: preset.id, label: preset.name || preset.label || "" };
+      // Mark as custom when applying preset to a doc scope
+      if (scope !== "_global") {
+        const familyKey = `inherit_global_${family}`;
+        next[familyKey] = false;
+        setInheritByFamily((prev) => ({ ...prev, [family]: false }));
+      }
     }
     commitDraft(scope, next);
     setSelected(null);
@@ -668,6 +723,32 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
     if (failed.length) toast.error(`تعذّر حفظ: ${failed.map(scopeLabel).join("، ")}`);
     else { toast.success("تم حفظ التصميم"); writeStash({}); }
   };
+
+  // ── unsaved-changes guard ──────────────────────────────────────────────
+  const handleCloseAttempt = useCallback(() => {
+    if (!dirtyScopes.length) { onClose(); return; }
+    setConfirmClose(true);
+  }, [dirtyScopes.length, onClose]);
+
+  const confirmCloseSave = useCallback(async () => {
+    setConfirmClose(false);
+    await saveAll();
+    onClose();
+  }, [saveAll, onClose]);
+
+  const confirmCloseDiscard = useCallback(() => {
+    setConfirmClose(false);
+    writeStash({});
+    onClose();
+  }, [onClose]);
+
+  // block browser tab close when there are unsaved changes
+  useEffect(() => {
+    if (!open || !dirtyScopes.length) return;
+    const h = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [open, dirtyScopes.length]);
 
   // ── test print / PDF export ────────────────────────────────────────────
   const testPrint = () => {
@@ -804,7 +885,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                 { icon: Printer, label: "طباعة تجريبية", action: testPrint },
                 ...(family === "roll" ? [{ icon: Wrench, label: "معايرة الطابعة", action: () => setCalibOpen(true) }] : []),
                 { divider: true },
-                { icon: X, label: "إغلاق", action: async () => { if (dirtyScopes.length) await saveAll(); onClose(); } },
+                { icon: X, label: "إغلاق", action: handleCloseAttempt },
               ],
             },
             {
@@ -979,6 +1060,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                   <div className="mx-2 my-1 border-t border-[var(--border-subtle)]" />
 
                   {/* ── المطعم ── */}
+                  {restaurantEnabled && (
                   <div>
                     <div className="px-2 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">المطعم</div>
                     {STUDIO_SCOPES.filter((s) => s.group === "مطعم").map((s) => {
@@ -995,6 +1077,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
                       );
                     })}
                   </div>
+                  )}
                 </div>
               </>
             )}
@@ -1059,7 +1142,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
             className="flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3.5 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-40">
             <Save size={13} /> {saving ? "جارٍ الحفظ…" : dirtyScopes.length > 1 ? `حفظ (${dirtyScopes.length})` : "حفظ"}
           </button>
-          <button type="button" onClick={async () => { if (dirtyScopes.length) await saveAll(); onClose(); }} title="حفظ وإغلاق"
+          <button type="button" onClick={handleCloseAttempt} title="إغلاق"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-input)]"><X size={16} /></button>
         </div>
       </div>
@@ -1144,6 +1227,32 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
       )}
       {calibOpen && (
         <CalibrationWizard open={calibOpen} onClose={() => setCalibOpen(false)} printerName={printerName} sizeKey={size} />
+      )}
+
+      {/* ── unsaved-changes confirmation modal ──────────────────────────── */}
+      {confirmClose && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-[var(--border-normal)] bg-[var(--bg-surface)] p-6 shadow-modal">
+            <h3 className="text-base font-black text-[var(--text-primary)]">تغييرات غير محفوظة</h3>
+            <p className="mt-2 text-[13px] font-bold leading-relaxed text-[var(--text-secondary)]">
+              لديك تغييرات لم تُحفظ بعد في {dirtyScopes.map(scopeLabel).join("، ")}. ماذا تريد أن تفعل؟
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <button type="button" onClick={confirmCloseSave}
+                className="w-full rounded-xl bg-[var(--primary)] px-4 py-2.5 text-[13px] font-black text-white transition-opacity hover:opacity-90">
+                حفظ والإغلاق
+              </button>
+              <button type="button" onClick={confirmCloseDiscard}
+                className="w-full rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] px-4 py-2.5 text-[13px] font-black text-[var(--danger-text)] transition-opacity hover:opacity-80">
+                تجاهل التغييرات وإغلاق
+              </button>
+              <button type="button" onClick={() => setConfirmClose(false)}
+                className="w-full rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] px-4 py-2.5 text-[13px] font-bold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-overlay)]">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   ), document.body);

@@ -27,6 +27,16 @@ export const useHelpStore = create((set, get) => ({
     }
   },
 
+  // Generic seen-marker (used by page guides with a "guide:" prefixed key) —
+  // persists through the same user_help_state table as tours.
+  markSeen: async (key) => {
+    const { touredPages } = get();
+    set({ touredPages: { ...touredPages, [key]: true } });
+    try {
+      await api.patch(`/api/help/state/tour/${encodeURIComponent(key)}`, { seen: true });
+    } catch { }
+  },
+
   triggerPageTour: (pageKey) => {
     const { touredPages, toursDisabledGlobally } = get();
     if (toursDisabledGlobally) return;

@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, RotateCcw, X, Eye, Pencil, Trash2, AlertTriangle, ArrowUpRight, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, RotateCcw, X, Eye, Pencil, Trash2, AlertTriangle, ArrowUpRight, FileText, Search, Package, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, Printer } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
@@ -11,6 +13,8 @@ import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import SearchInput from "../../components/ui/SearchInput";
 import SearchDropdown from "../../components/ui/SearchDropdown";
 import { formatNumber } from "../../utils/currency";
+import { usePermission } from "../../hooks/usePermission";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 
 const REASON_MAP = {
   defective: "عيب في المنتج",
@@ -290,7 +294,8 @@ function PreviewModal({ returnId, onClose }) {
   );
 }
 
-function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
+function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest, onPrintRequest, onWhatsAppRequest }) {
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const settlementType = row.settlement_type || "account";
   const cashAmt   = settlementType === "cash"  ? Number(row.total || 0)
                   : settlementType === "split"  ? Number(row.cash_amount || 0) : 0;
@@ -368,8 +373,16 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest }) {
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button onClick={() => onPreviewRequest(row.id)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"><Eye className="w-4 h-4" /></button>
+          <PermissionGate page="purchase_returns" action="print">
+            <button onClick={() => onPrintRequest(row)} className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"><Printer className="w-4 h-4" /></button>
+          </PermissionGate>
+          {canSendWhatsApp && (
+            <button onClick={(e) => { e.stopPropagation(); onWhatsAppRequest?.(row); }} className="p-2 text-zinc-400 hover:text-[#25D366] hover:bg-[#25D366]/10 rounded-xl transition-colors" title="إرسال عبر واتساب">
+              <WhatsAppIcon className="w-4 h-4" />
+            </button>
+          )}
           <PermissionGate page="purchase_returns" action="edit">
-            <button onClick={() => navigate("/purchases/returns/new", { state: { edit_return_id: row.id } })} className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Pencil className="w-4 h-4" /></button>
+            <button onClick={() => navigate("/purchases/returns/new", { state: { edit_return_id: row.id } })} className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"><Pencil className="w-4 h-4" /></button>
           </PermissionGate>
           <PermissionGate page="purchase_returns" action="delete">
             <button onClick={() => onDeleteRequest(row)} className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -410,6 +423,10 @@ export default function PurchaseReturnsListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [previewId, setPreviewId] = useState(null);
+  const [printTarget, setPrintTarget] = useState(null);
+  const [printSettings, setPrintSettings] = useState({});
+  const [waSendTarget, setWaSendTarget] = useState(null);
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const [page, setPage] = useState(1);
   const [itemPage, setItemPage] = useState(1);
 
@@ -423,6 +440,34 @@ export default function PurchaseReturnsListPage() {
 
   const debouncedSearch    = useDebounce(searchTerm, 300);
   const debouncedItemQuery = useDebounce(itemQuery, 300);
+
+  useEffect(() => {
+    api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
+  }, []);
+
+  async function handlePrintClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل المرتجع...");
+    try {
+      const res = await api.get(`/api/purchases/returns/${row.id}`);
+      setPrintTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل المرتجع");
+      toast.dismiss(tid);
+    }
+  }
+
+  async function handleWhatsAppClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل المرتجع...");
+    try {
+      const res = await api.get(`/api/purchases/returns/${row.id}`);
+      setWaSendTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل المرتجع");
+      toast.dismiss(tid);
+    }
+  }
 
   useEffect(() => {
     api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
@@ -684,7 +729,7 @@ export default function PurchaseReturnsListPage() {
               </div>
             ) : (
               <>
-                {pagedRows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} onDeleteRequest={setDeleteTarget} onPreviewRequest={setPreviewId} />)}
+                {pagedRows.map(row => <ReturnRow key={row.id} row={row} navigate={navigate} onDeleteRequest={setDeleteTarget} onPreviewRequest={setPreviewId} onPrintRequest={handlePrintClick} onWhatsAppRequest={handleWhatsAppClick} />)}
                 {totalReturnsPages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
@@ -770,6 +815,43 @@ export default function PurchaseReturnsListPage() {
 
       <DeleteWarningModal row={deleteTarget} onConfirm={handleConfirmDelete} onClose={() => setDeleteTarget(null)} deleting={deleting} />
       <PreviewModal returnId={previewId} onClose={() => setPreviewId(null)} />
+
+      {printTarget && (
+        <PrintPreviewModal
+          open={Boolean(printTarget)}
+          onClose={() => setPrintTarget(null)}
+          docType="purchase_return"
+          invoice={{
+            ...printTarget,
+            invoice_no: printTarget.doc_no || "",
+            customer_name: printTarget.supplier_name || "",
+            cashier_name: printTarget.created_by_username || "",
+            subtotal: printTarget.total || 0,
+            total: printTarget.total || 0,
+            discount: printTarget.discount || 0,
+            increase: printTarget.increase || 0,
+            notes: printTarget.notes || "",
+            lines: (printTarget.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost || l.unit_price,
+              discount_amount: 0,
+              code: l.item_code || l.code || "",
+            })),
+          }}
+          settings={printSettings}
+          operationLabel="مرتجع مشتريات"
+        />
+      )}
+      {waSendTarget && (
+        <WhatsAppSendModal
+          open={Boolean(waSendTarget)}
+          onClose={() => setWaSendTarget(null)}
+          kind="purchase_return_receipt"
+          invoice={waSendTarget}
+        />
+      )}
     </div>
   );
 }

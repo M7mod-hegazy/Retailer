@@ -146,8 +146,6 @@ router.get("/cash-flow", requirePagePermission("analytics", "view"), (req, res) 
   const db = getDb();
   const canView = userHasPagePermission(req.user, "analytics", "view_sensitive");
   const { start_date, end_date } = req.query;
-  // Period-aware: when the analytics period selector passes dates, the cash-flow chart
-  // follows it; otherwise it falls back to the legacy trailing 14-day window.
   const cteParams = [];
   if (start_date) {
     cteParams.push(start_date);
@@ -169,11 +167,21 @@ router.get("/cash-flow", requirePagePermission("analytics", "view"), (req, res) 
     )
     SELECT dates.d AS date,
       COALESCE(inv.total_sales, 0) AS sales,
+      COALESCE(csh.cash_sales, 0) AS cash_sales,
       COALESCE(rev.total_revenues, 0) AS revenues,
       COALESCE(exp.total_expenses, 0) AS expenses,
       COALESCE(wd.total_withdrawals, 0) AS withdrawals
     FROM dates
     LEFT JOIN (SELECT date(created_at) AS d, COALESCE(SUM(total), 0) AS total_sales FROM invoices WHERE status != 'cancelled' GROUP BY d) inv ON inv.d = dates.d
+    LEFT JOIN (
+      SELECT d, COALESCE(SUM(cash_amt), 0) AS cash_sales FROM (
+        SELECT date(created_at) AS d, total AS cash_amt FROM invoices WHERE status != 'cancelled' AND payment_type = 'cash'
+        UNION ALL
+        SELECT date(i.created_at) AS d, COALESCE(SUM(pa.amount), 0) AS cash_amt FROM invoices i JOIN payment_allocations pa ON pa.invoice_id = i.id WHERE i.status != 'cancelled' AND i.payment_type = 'installments' GROUP BY date(i.created_at)
+        UNION ALL
+        SELECT date(i.created_at) AS d, COALESCE(SUM(p.amount), 0) AS cash_amt FROM invoices i JOIN payment_allocations pa ON pa.invoice_id = i.id JOIN payments p ON p.id = pa.payment_id WHERE i.status != 'cancelled' AND i.payment_type = 'multi' AND p.method = 'cash' GROUP BY date(i.created_at)
+      ) GROUP BY d
+    ) csh ON csh.d = dates.d
     LEFT JOIN (SELECT date(created_at) AS d, COALESCE(SUM(amount), 0) AS total_revenues FROM revenues GROUP BY d) rev ON rev.d = dates.d
     LEFT JOIN (SELECT date(created_at) AS d, COALESCE(SUM(amount), 0) AS total_expenses FROM expenses GROUP BY d) exp ON exp.d = dates.d
     LEFT JOIN (SELECT date(created_at) AS d, COALESCE(SUM(amount), 0) AS total_withdrawals FROM withdrawals GROUP BY d) wd ON wd.d = dates.d
@@ -182,13 +190,15 @@ router.get("/cash-flow", requirePagePermission("analytics", "view"), (req, res) 
   let enriched = days.map(r => ({
     date: r.date,
     sales: Number(r.sales),
+    cash_sales: Number(r.cash_sales),
     revenues: Number(r.revenues),
     expenses: Number(r.expenses),
     withdrawals: Number(r.withdrawals),
     net: Number(r.sales) + Number(r.revenues) - Number(r.expenses) - Number(r.withdrawals),
+    cash_net: Number(r.cash_sales) + Number(r.revenues) - Number(r.expenses) - Number(r.withdrawals),
   }));
   if (!canView) {
-    enriched = enriched.map(r => redactSensitive({ ...r }, ["sales", "revenues", "expenses", "withdrawals", "net"]));
+    enriched = enriched.map(r => redactSensitive({ ...r }, ["sales", "cash_sales", "revenues", "expenses", "withdrawals", "net", "cash_net"]));
   }
   res.json({ success: true, data: enriched });
 });

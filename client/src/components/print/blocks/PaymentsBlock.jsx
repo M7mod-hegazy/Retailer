@@ -12,8 +12,12 @@ export default function PaymentsBlock({ invoice = {}, settings: s, props = {}, f
   const showPayment = g(s, "show_payment_details") !== false;
   if (!showPayment) return null;
 
-  let payments = invoice.payments || [];
-  let plan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan : [];
+  const rawPayments = invoice.payments;
+  let payments = Array.isArray(rawPayments)
+    ? rawPayments
+    : (typeof rawPayments === "string" ? (() => { try { return JSON.parse(rawPayments); } catch { return []; } })() : []);
+  let plan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan
+    : (typeof invoice.installment_plan === "string" ? (() => { try { return JSON.parse(invoice.installment_plan); } catch { return []; } })() : []);
   
   // Set up realistic mocks for editor mode
   const isMock = editing && !payments.length && !plan.length;

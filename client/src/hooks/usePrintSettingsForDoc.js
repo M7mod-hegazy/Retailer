@@ -19,11 +19,14 @@ export function usePrintSettingsForDoc(docType) {
     ]).then(([docSettings, globalScopeSettings, globalSettings]) => {
       if (cancelled) return;
       const resolvedTemplate = resolveDocPaperSize(docType, docSettings);
-      const family = familyOfSize(resolvedTemplate);
-      const effectiveLayout = { [family]: resolveEffectiveLayout(globalScopeSettings, docSettings, family, docType) };
+      const effectiveLayout = {
+        roll: resolveEffectiveLayout(globalScopeSettings, docSettings, "roll", docType),
+        page: resolveEffectiveLayout(globalScopeSettings, docSettings, "page", docType),
+      };
 
       const { layout: _gsLayout, ...globalScopeFlat } = globalScopeSettings || {};
       const isReportDocForInherit = docType !== "_global" && !BLOCK_DOC_SCOPES.has(docType);
+      const family = familyOfSize(resolvedTemplate);
       const inheritFamilyKey = `inherit_global_${family}`;
       const docInheritVal = docSettings[inheritFamilyKey] ?? docSettings.inherit_global;
       const docInheritsGlobal = docInheritVal !== undefined ? docInheritVal : !isReportDocForInherit;

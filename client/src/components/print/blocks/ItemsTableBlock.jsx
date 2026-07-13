@@ -533,7 +533,7 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const rollDark = headerVariant !== "light";
   // per-cell border by mode: grid = full box, lines = bottom only, none = bare
   const bodyBorder = border === "grid" ? { border: rb } : border === "lines" ? { borderBottom: rb } : {};
-  const headBorder = border === "grid" ? { border: rb, borderBottom: "2px solid #000" } : { borderBottom: "2px solid #000" };
+  const headBorder = border === "grid" ? { borderTop: rb, borderLeft: rb, borderRight: rb, borderBottom: "2px solid #000" } : { borderBottom: "2px solid #000" };
   const headCell = {
     ...headBorder, padding: "1px 4px 3px", fontWeight: 900, textAlign: "center",
     fontSize: `${rollHeadFs}px`, color: rollDark ? "#fff" : "#000", wordBreak: "break-word",

@@ -2,8 +2,10 @@ import React, { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
-import { Plus, Search, Wrench } from "lucide-react";
+import { Plus, Search, Wrench, Inbox, Stethoscope, CheckCircle2, HandCoins } from "lucide-react";
 import Button from "../../components/ui/Button";
+import FlowStepper from "../../components/ui/FlowStepper";
+import EmptyState from "../../components/ui/EmptyState";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 
 const STATUS_LABELS = {
@@ -52,6 +54,16 @@ export default function RepairOrdersList() {
         </Link>
       </div>
 
+      {/* Device lifecycle — header doubles as a quick status filter */}
+      <FlowStepper
+        stages={[
+          { key: "received",  label: "مستلم",        desc: "الجهاز وصل واتسجل",        icon: Inbox,        count: status ? undefined : rows.filter(r => r.status === "received").length,  active: status === "received",  onClick: () => setStatus(status === "received" ? "" : "received") },
+          { key: "diagnosing", label: "تشخيص وإصلاح", desc: "شغل فعلي على الجهاز",      icon: Stethoscope,  count: status ? undefined : rows.filter(r => ["diagnosing", "waiting_parts", "in_repair"].includes(r.status)).length, active: ["diagnosing", "waiting_parts", "in_repair"].includes(status), onClick: () => setStatus(status === "in_repair" ? "" : "in_repair") },
+          { key: "ready",     label: "جاهز للتسليم",  desc: "اتصل بالعميل",             icon: CheckCircle2, count: status ? undefined : rows.filter(r => ["ready", "waiting_customer"].includes(r.status)).length, tone: "success", active: ["ready", "waiting_customer"].includes(status), onClick: () => setStatus(status === "ready" ? "" : "ready") },
+          { key: "delivered", label: "مُسلَّم",       desc: "اتقفل بالحساب",            icon: HandCoins,    count: status ? undefined : rows.filter(r => r.status === "delivered").length, active: status === "delivered", onClick: () => setStatus(status === "delivered" ? "" : "delivered") },
+        ]}
+      />
+
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -81,7 +93,16 @@ export default function RepairOrdersList() {
       {isLoading ? (
         <div className="text-center text-slate-400 py-16">جاري التحميل...</div>
       ) : rows.length === 0 ? (
-        <div className="text-center text-slate-400 py-16">لا توجد أوامر صيانة</div>
+        <EmptyState
+          icon="🔧"
+          title="لا توجد أوامر صيانة"
+          description="أمر الصيانة بيتتبع الجهاز من الاستلام لحد التسليم — والعميل ياخد إيصال استلام يحميك."
+          steps={[
+            "اضغط «طلب جديد» وسجّل بيانات الجهاز وحالته الظاهرة وعيوبه.",
+            "اطبع إيصال الاستلام وسلّمه للعميل.",
+            "حدّث الحالة مع كل خطوة — العميل لما يسأل «وصل فين؟» الإجابة قدامك.",
+          ]}
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-sm">

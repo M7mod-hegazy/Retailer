@@ -2,8 +2,9 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
-  Package, ShoppingCart, Printer, History, Settings2, MessageCircle,
+  Package, ShoppingCart, Printer, History, Settings2,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useUiStore } from "../../stores/uiStore";
 import api from "../../services/api";
@@ -261,7 +262,7 @@ export default function InvoiceDetailPage() {
               <DocumentActionButton
                 onClick={() => setWaSendOpen(true)}
                 className="bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20"
-                icon={MessageCircle}
+                icon={WhatsAppIcon}
               >
                 واتساب
               </DocumentActionButton>

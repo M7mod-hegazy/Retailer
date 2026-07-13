@@ -182,7 +182,7 @@ export default function StudioBlockTree({ st }) {
                   <span className={`absolute inset-x-0 h-0.5 rounded-full bg-[var(--primary)] ${dragIdx < idx ? "-bottom-0.5" : "-top-0.5"}`} />
                 )}
                 <GripVertical size={12} className="shrink-0 text-[var(--text-muted)]" />
-                <span className="flex-1 truncate">{entry.label}</span>
+                <span className="flex-1 truncate" title={entry.desc}>{entry.label}</span>
                 {(() => { const o = (fam.perBlock || {})[type] || {}; return (o.abs?.xMm != null || (o.rel && (o.rel.dxMm || o.rel.dyMm))); })() && (
                   <Move size={11} className="shrink-0 text-[var(--primary)]" title="تم تحريكه" />
                 )}

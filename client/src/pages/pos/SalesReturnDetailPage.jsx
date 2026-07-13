@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, Printer, RotateCcw,
-  User, Calendar, X, Package, MessageCircle,
+  User, Calendar, X, Package,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";

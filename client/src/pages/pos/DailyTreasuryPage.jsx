@@ -22,6 +22,7 @@ import DailyTreasuryTemplate from "../../components/print/templates/DailyTreasur
 import { formatNumber } from "../../utils/currency";
 import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
 import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
+import ConceptCard from "../../components/ui/ConceptCard";
 
 const fmt = (n) => formatNumber(n);
 const todayStr = () => todayCairo();
@@ -1060,6 +1061,12 @@ export default function DailyTreasuryPage() {
             </div>
           ) : (
             <>
+              <ConceptCard id="daily_treasury_types" title="إزاي تقرأ اليومية دي؟" icon={BookOpen}>
+                كل سطر هنا له نوع — بيع POS، مصروف، تحصيل من عميل، مرتجع، مسحوبات… النوع بيقولك السطر ده
+                {" "}<b>دخّل كاش ولا خرّجه</b>. ولو عايز تعرف أي رقم في ملخص «الداخل/الخارج» جه منين،
+                دوس عليه — الحركات بتتفلتر على البند ده فوراً.
+              </ConceptCard>
+
               {/* Read-only notice for historical days or closed today */}
               {(isClosed || !isToday) && (
                 <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-blue-50 border border-blue-100 px-6 py-4">

@@ -24,7 +24,7 @@ module.exports = {
     updateBody("receipt", "قياسي — مفصل",
       `مرحباً {name}،
 
-🛍️ فاتورة شراء
+🛍️ فاتورة بيع
 ━━━━━━━━━━━━━━━━
 📋 رقم: {invoice_no}
 📅 {date}

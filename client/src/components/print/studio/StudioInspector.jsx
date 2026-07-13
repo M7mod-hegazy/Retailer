@@ -1481,6 +1481,9 @@ export default function StudioInspector({ st }) {
 
           {(selected === "qr" || (selInsert && selInsert.type === "qr")) && (
             <Section title="رمز QR">
+              <div className="mb-2 rounded-lg bg-[var(--info-bg)] p-2 text-[9px] font-bold leading-relaxed text-[var(--info-text)]">
+                رمز استجابة سريعة يُمسحه العميل بكامرة هاتفه. يظهر له بيانات الفاتورة (الاسم، المبلغ، التاريخ) أو يفتح صفحة التحقق الضريبي.
+              </div>
               <Row label="النوع">
                 <select value={merged.qr_mode || "free_text"} onChange={(e) => st.setFlat("qr_mode", e.target.value)} className={`${inputCls} w-36`}>
                   <option value="free_text">نص حر</option>
@@ -2054,6 +2057,9 @@ export default function StudioInspector({ st }) {
 
           {selected === "barcode" && (
             <Section title="الباركود">
+              <div className="mb-2 rounded-lg bg-[var(--info-bg)] p-2 text-[9px] font-bold leading-relaxed text-[var(--info-text)]">
+                شريط رمزي لرقم الفاتورة. يُمسح بجهاز الباركود في الكاشير للبحث السريع عن الفاتورة عند المرتجعات أو الاستفسارات.
+              </div>
               <Row label="نوع الرمز">
                 <select value={st.ov("barcode").type || "CODE128"}
                   onChange={(e) => st.setOverride("barcode", { type: e.target.value })} className={`${inputCls} w-32`}>

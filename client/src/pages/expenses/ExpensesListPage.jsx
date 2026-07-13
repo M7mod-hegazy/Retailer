@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   TrendingDown, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
-  CreditCard, Banknote, HelpCircle, Command, Info, ArrowLeftRight, Lock
+  CreditCard, Banknote, HelpCircle, Command, Info, ArrowLeftRight, Lock,
+  TrendingUp, Wallet
 } from "lucide-react";
+import ChooserCard from "../../components/ui/ChooserCard";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
@@ -606,6 +608,15 @@ export default function ExpensesListPage() {
           <p className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
             دفتر تشغيلي لإدارة وتسجيل كافة النفقات والمدفوعات اليومية. استخدم نموذج الإدخال السريع أعلى القائمة لتسجيل مصروف جديد، أو الفلاتر للبحث وتحديد فترات زمنية.
           </p>
+          <ChooserCard
+            className="w-full max-w-2xl text-start"
+            title="متأكد إن ده مكانه هنا؟"
+            options={[
+              { icon: TrendingDown, label: "مصروف تشغيل", desc: "إيجار، كهربا، مرتبات، صيانة — بيتخصم من ربح المحل.", current: true },
+              { icon: Wallet, label: "مسحوبات شخصية", desc: "سحبت لنفسك أو لبيتك؟ دي مش مصروف — سجلها في المسحوبات.", to: "/withdrawals" },
+              { icon: TrendingUp, label: "إيراد جانبي", desc: "فلوس دخلت من غير بيع (إيجار فترينة مثلاً)؟ سجلها في الإيرادات.", to: "/revenues" },
+            ]}
+          />
         </div>
 
         {/* ------------------------------------------------------------- */}

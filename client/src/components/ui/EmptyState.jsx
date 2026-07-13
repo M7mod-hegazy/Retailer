@@ -23,6 +23,7 @@ export function EmptyState({
   message,
   lang = 'ar',
   action,
+  steps, // optional teaching steps: ["أضف مخزن", "أضف صنف", ...] — turns the empty page into a mini-guide
 }) {
   const preset = type ? PRESETS[type] : null;
 
@@ -38,6 +39,18 @@ export function EmptyState({
       <h3 className="empty-state__title">{displayTitle}</h3>
       {displayDesc && (
         <p className="empty-state__desc">{displayDesc}</p>
+      )}
+      {Array.isArray(steps) && steps.length > 0 && (
+        <ol dir="rtl" className="mt-4 mx-auto max-w-xs space-y-2 text-start">
+          {steps.map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5 rounded-xl border border-border bg-bg-surface p-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-black text-white">
+                {i + 1}
+              </span>
+              <span className="text-[11px] font-bold text-text-secondary leading-relaxed pt-0.5">{step}</span>
+            </li>
+          ))}
+        </ol>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

@@ -49,6 +49,11 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
 
   const metaAlign = s.header_meta_align || (layout && layout.headerMetaAlign) || (s.layout && s.layout.page && s.layout.page.headerMetaAlign) || "left";
   const reportTitles = {
+    pos_receipt: "إيصال نقاط بيع",
+    sales_return: "مرتجع مبيعات",
+    purchase_order: "فاتورة شراء",
+    purchase_return: "مرتجع مشتريات",
+    branch_transfer: "إذن نقل بين فروع",
     bank_statement: "كشف حساب بنكي",
     daily_treasury: "تقرير حركة الخزينة اليومي",
     cheque_register: "سجل حركة الشيكات",
@@ -58,7 +63,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
     ajal_full_statement: "كشف الديون الآجلة الشامل",
     reports_generic: "تقرير عام",
   };
-  const docTitle = invoice.title || reportTitles[scope] || g(s, "receipt_footer") || "فاتورة";
+  const docTitle = invoice.title || reportTitles[scope] || g(s, "receipt_header") || "فاتورة";
   const showCustomer = g(s, "show_customer_name") !== false && invoice.customer_name;
   const cashierName = invoice.cashier_name || invoice.cashier;
   const showCashier = g(s, "show_cashier_name") !== false && cashierName;

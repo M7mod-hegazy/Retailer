@@ -295,6 +295,27 @@ export default function ItemFormModal({ editItem, onSaved }) {
         <Input ref={minPriceRef} label="أقل سعر بيع" type="number" step="0.01" value={form.min_price} onChange={e => set("min_price", e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: minStockRef, prevRef: wholesalePriceRef })} />
       </div>
 
+      {/* Live margin helper — reads the two price fields as you type */}
+      {(() => {
+        const cost = Number(form.cost_price || 0);
+        const sale = Number(form.sale_price || 0);
+        if (!cost || !sale) return null;
+        const profit = sale - cost;
+        const pct = cost > 0 ? (profit / cost) * 100 : 0;
+        const below = profit < 0;
+        return (
+          <div className={`rounded-xl border px-4 py-2.5 text-[12px] font-black ${
+            below
+              ? "border-danger-border bg-danger-bg text-danger-text"
+              : "border-success-border bg-success-bg text-success-text"
+          }`}>
+            {below
+              ? `⚠ بتبيع بأقل من التكلفة — هتخسر ${Math.abs(profit).toFixed(2)} ج.م في كل قطعة!`
+              : `ربحك في القطعة: ${profit.toFixed(2)} ج.م (${pct.toFixed(0)}٪ على التكلفة)`}
+          </div>
+        );
+      })()}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Input ref={minStockRef} label="حد أدنى للمخزون" type="number" value={form.min_stock} onChange={e => set("min_stock", e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: maxStockRef, prevRef: minPriceRef })} />
         <Input ref={maxStockRef} label="حد أقصى للمخزون" type="number" value={form.max_stock} onChange={e => set("max_stock", e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: descriptionRef, prevRef: minStockRef })} />

@@ -15,6 +15,7 @@ import { ROUTES } from "../../constants/routes";
 import { PRIMARY_MENU, NAV_MODULES } from "../../constants/navigation";
 import helpContent from "../../help/helpContent";
 import { getHelpPageKey } from "../../help/routeHelp";
+import PageGuideLauncher from "../help/PageGuideLauncher";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -372,6 +373,9 @@ export default function Topbar() {
               </button>
             );
           })()}
+
+          {/* Page guide — illustrated "كيف تعمل هذه الصفحة؟" (separate from the tour) */}
+          <PageGuideLauncher />
 
           {/* Help Button — toggles tour for this page on/off */}
           {hasHelpContent && (

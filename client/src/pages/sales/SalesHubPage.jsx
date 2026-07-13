@@ -4,8 +4,9 @@ import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
   Package, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  ShoppingBag, Search, MessageCircle, Printer, Trash2,
+  ShoppingBag, Search, Printer, Trash2,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePermission } from "../../hooks/usePermission";
@@ -403,7 +404,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
                 onClick={() => setWaSendOpen(true)}
                 className="h-11 px-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black hover:bg-emerald-100 transition-colors flex items-center gap-2"
               >
-                <MessageCircle className="w-4 h-4" /> واتساب
+                <WhatsAppIcon className="w-4 h-4" /> واتساب
               </button>
             )}
             <button
@@ -517,15 +518,6 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
         </div>
 
         <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {canSendWhatsApp && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onWhatsAppRequest?.(row); }}
-              className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
-              title="إرسال عبر واتساب"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </button>
-          )}
           <button
             onClick={() => onPreviewRequest(row)}
             className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
@@ -536,12 +528,21 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
           <PermissionGate page="pos" action="print">
             <button
               onClick={(e) => { e.stopPropagation(); onPrintRequest?.(row); }}
-              className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+              className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
               title="طباعة الفاتورة"
             >
               <Printer className="w-4 h-4" />
             </button>
           </PermissionGate>
+          {canSendWhatsApp && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onWhatsAppRequest?.(row); }}
+              className="p-2 text-zinc-400 hover:text-[#25D366] hover:bg-[#25D366]/10 rounded-xl transition-colors"
+              title="إرسال عبر واتساب"
+            >
+              <WhatsAppIcon className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => navigate(`/invoices/${row.id}`)}
             className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"

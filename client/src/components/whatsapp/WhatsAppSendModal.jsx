@@ -10,6 +10,8 @@ import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
 import { PrintThermalDoc, PrintA4Doc } from "../print/PrintDoc";
 import { SHEET_W, familyOfSize, PAGE_W_MM, PAGE_H_MM, findNaturalBreaks, PX_PER_MM } from "../print/studio/studioData";
+import { withCalibration } from "../../services/printCalibration";
+import { getPrinterSizeMap } from "../../services/printService";
 import html2canvas from "html2canvas";
 
 function ConnectionBadge({ wa }) {
@@ -42,7 +44,14 @@ function clampZoom(z) {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 }
 
-const KIND_DOC_TYPE = { receipt: "pos_receipt", return_receipt: "sales_return" };
+const KIND_DOC_TYPE = {
+  receipt: "pos_receipt",
+  return_receipt: "sales_return",
+  purchase_receipt: "purchase_order",
+  purchase_return_receipt: "purchase_return",
+  transfer_send: "branch_transfer",
+  transfer_receive: "branch_transfer",
+};
 
 function normalizePayments(payments) {
   if (typeof payments === 'string') {
@@ -55,9 +64,9 @@ function normalizePayments(payments) {
 
 function normalizeInvoice(invoice, kind) {
   const lines = invoice?.lines || invoice?.items || [];
-  const invoice_no = invoice?.invoice_no || invoice?.doc_no || invoice?.id;
+  const invoice_no = invoice?.invoice_no || invoice?.doc_no || invoice?.reference_no || invoice?.id;
   const payments = normalizePayments(invoice?.payments);
-  if (kind === "return_receipt") {
+  if (kind === "return_receipt" || kind === "purchase_return_receipt") {
     return {
       ...invoice,
       invoice_no,
@@ -106,6 +115,12 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const showImageOption = Boolean(docType);
   const { loading: printSettingsLoading, template: printTemplate, settings: printSettings } = usePrintSettingsForDoc(docType);
   const [activePaperSize, setActivePaperSize] = useState(printTemplate || "80mm");
+  const isThermalSize = activePaperSize === "58mm" || activePaperSize === "80mm";
+  const effectiveSettings = useMemo(() => {
+    if (!isThermalSize) return printSettings;
+    const mappedPrinter = getPrinterSizeMap()[activePaperSize] || "";
+    return withCalibration(printSettings, mappedPrinter, activePaperSize);
+  }, [printSettings, activePaperSize, isThermalSize]);
   const [viewZoom, setViewZoom] = useState(ZOOM_FIT);
   const viewportRef = useRef(null);
   const isDragging = useRef(false);
@@ -118,8 +133,8 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const totalPages = isPageDoc ? smartBreaksMm.length + 1 : 1;
   const [viewportDims, setViewportDims] = useState({ w: 0, h: 0 });
 
-  const customerName = invoice?.customer_name || invoice?.walk_in_name || "";
-  const rawPhone = invoice?.customer_phone || invoice?.walk_in_phone || "";
+  const customerName = invoice?.customer_name || invoice?.supplier_name || invoice?.partner_branch || invoice?.walk_in_name || "";
+  const rawPhone = invoice?.customer_phone || invoice?.supplier_phone || invoice?.walk_in_phone || "";
   const invoiceItems = invoice?.lines || invoice?.items || [];
 
   useEffect(() => {
@@ -172,11 +187,15 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   }, [template, customerName, invoice, shopName, invoiceItems]);
 
   const imageCaption = useMemo(() => {
-    const no = invoice?.invoice_no || invoice?.doc_no || invoice?.id || "";
+    const no = invoice?.invoice_no || invoice?.doc_no || invoice?.reference_no || invoice?.id || "";
     const total = invoice?.total ?? "";
-    return kind === "return_receipt"
-      ? t("whatsapp.imageCaptionReturn", { no, total })
-      : t("whatsapp.imageCaptionReceipt", { no, total });
+    if (kind === "return_receipt" || kind === "purchase_return_receipt")
+      return t("whatsapp.imageCaptionReturn", { no, total });
+    if (kind === "purchase_receipt")
+      return t("whatsapp.imageCaptionPurchase", { no, total });
+    if (kind === "transfer_send" || kind === "transfer_receive")
+      return t("whatsapp.imageCaptionTransfer", { no, total });
+    return t("whatsapp.imageCaptionReceipt", { no, total });
   }, [invoice, kind, t]);
 
   const printInvoice = useMemo(() => normalizeInvoice(invoice, kind), [invoice, kind]);
@@ -470,7 +489,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                           {isPageDoc ? (
                             <PageView
                               invoice={printInvoice}
-                              settings={printSettings}
+                              settings={effectiveSettings}
                               size={activePaperSize}
                               scope={docType}
                               page={currentPage}
@@ -479,9 +498,9 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                             />
                           ) : (
                             familyOfSize(activePaperSize) === "roll" ? (
-                              <PrintThermalDoc invoice={printInvoice} settings={{ ...printSettings, receipt_width: activePaperSize }} scope={docType} />
+                              <PrintThermalDoc invoice={printInvoice} settings={{ ...effectiveSettings, receipt_width: activePaperSize }} scope={docType} />
                             ) : (
-                              <PrintA4Doc invoice={printInvoice} settings={printSettings} size={activePaperSize} scope={docType} />
+                              <PrintA4Doc invoice={printInvoice} settings={effectiveSettings} size={activePaperSize} scope={docType} />
                             )
                           )}
                         </div>
@@ -493,7 +512,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                   {/* Hidden full-content for page-break measurement */}
                   <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -1, width: SHEET_W[activePaperSize], background: "#ffffff" }}>
                     <div ref={fullContentRef}>
-                      <PrintA4Doc invoice={printInvoice} settings={printSettings} size={activePaperSize} scope={docType} />
+                      <PrintA4Doc invoice={printInvoice} settings={effectiveSettings} size={activePaperSize} scope={docType} />
                     </div>
                   </div>
 
@@ -501,9 +520,9 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                   <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -2, width: SHEET_W[activePaperSize], background: "#ffffff" }}>
                     <div ref={captureRef}>
                       {isPageDoc ? (
-                        <PrintA4Doc invoice={printInvoice} settings={printSettings} size={activePaperSize} scope={docType} />
+                        <PrintA4Doc invoice={printInvoice} settings={effectiveSettings} size={activePaperSize} scope={docType} />
                       ) : (
-                        <PrintThermalDoc invoice={printInvoice} settings={{ ...printSettings, receipt_width: activePaperSize }} scope={docType} />
+                        <PrintThermalDoc invoice={printInvoice} settings={{ ...effectiveSettings, receipt_width: activePaperSize }} scope={docType} />
                       )}
                     </div>
                   </div>

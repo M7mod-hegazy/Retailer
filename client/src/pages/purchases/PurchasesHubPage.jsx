@@ -2,12 +2,16 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus, Search, X, Eye, Pencil, SlidersHorizontal, Calendar, ExternalLink,
-  User, FileText, Loader2, CreditCard, Clock, Ban, ArrowUpRight,
-  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ClipboardList
+  User, FileText, Loader2, CreditCard, Clock, Trash2, ArrowUpRight,
+  Package, AlertTriangle, RefreshCw, Layers, CheckCircle2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ClipboardList, Printer
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
+import { usePermission } from "../../hooks/usePermission";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import useDebounce from "../../hooks/useDebounce";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
@@ -387,10 +391,11 @@ function PreviewDrawer({ purchaseId, onClose, onEditBlocked }) {
 }
 
 // ── Individual Invoice List Row ────────────────────────────────────────────────
-function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRequest }) {
+function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRequest, onPrintRequest, onWhatsAppRequest }) {
   const total = Number(row.total || 0);
   const paid = Number(row.amount_paid || 0);
   const remaining = Math.max(0, total - paid);
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
 
   return (
     <motion.div
@@ -501,6 +506,23 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRe
           
           {row.status !== "cancelled" && (
             <>
+              <PermissionGate page="purchases" action="print">
+                <button 
+                  onClick={() => onPrintRequest(row)} 
+                  className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
+              </PermissionGate>
+              {canSendWhatsApp && (
+                <button
+                  onClick={() => onWhatsAppRequest?.(row)}
+                  className="p-2 text-zinc-400 hover:text-[#25D366] hover:bg-[#25D366]/10 rounded-xl transition-colors"
+                  title="إرسال عبر واتساب"
+                >
+                  <WhatsAppIcon className="w-4 h-4" />
+                </button>
+              )}
               <PermissionGate page="purchases" action="edit">
                 <button 
                   onClick={() => onEditRequest(row)} 
@@ -514,7 +536,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRe
                   onClick={() => onCancelRequest(row)} 
                   className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                 >
-                  <Ban className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </PermissionGate>
             </>
@@ -568,11 +590,43 @@ export default function PurchasesHubPage() {
   const [cancelling, setCancelling] = useState(false);
   const [previewTarget, setPreviewTarget] = useState(null);
   const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
+  const [printTarget, setPrintTarget] = useState(null);
+  const [printSettings, setPrintSettings] = useState({});
+  const [waSendTarget, setWaSendTarget] = useState(null);
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
   const [page, setPage] = useState(1);
   const [itemPage, setItemPage] = useState(1);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
   const debouncedItemQuery = useDebounce(itemQuery, 300);
+
+  useEffect(() => {
+    api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
+  }, []);
+
+  async function handlePrintClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل الفاتورة...");
+    try {
+      const res = await api.get(`/api/purchases/${row.id}`);
+      setPrintTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل الفاتورة");
+      toast.dismiss(tid);
+    }
+  }
+
+  async function handleWhatsAppClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل الفاتورة...");
+    try {
+      const res = await api.get(`/api/purchases/${row.id}`);
+      setWaSendTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل الفاتورة");
+      toast.dismiss(tid);
+    }
+  }
 
   // Load suppliers filter dropdown
   useEffect(() => {
@@ -1000,6 +1054,8 @@ export default function PurchasesHubPage() {
                     navigate={navigate}
                     onPreviewRequest={(r) => setPreviewTarget(r)}
                     onCancelRequest={setCancelTarget}
+                    onPrintRequest={handlePrintClick}
+                    onWhatsAppRequest={handleWhatsAppClick}
                     onEditRequest={(r) => {
                       if (r.has_returns) { setReturnsWarningOpen(true); return; }
                       navigate(`/purchases/${r.id}`);
@@ -1161,6 +1217,44 @@ export default function PurchasesHubPage() {
         open={returnsWarningOpen}
         onClose={() => setReturnsWarningOpen(false)}
       />
+
+      {printTarget && (
+        <PrintPreviewModal
+          open={Boolean(printTarget)}
+          onClose={() => setPrintTarget(null)}
+          docType="purchase_order"
+          invoice={{
+            ...printTarget,
+            invoice_no: printTarget.doc_no || printTarget.invoice_no,
+            customer_name: printTarget.supplier_name || "",
+            cashier_name: printTarget.created_by_username || "",
+            subtotal: printTarget.subtotal || printTarget.total || 0,
+            total: printTarget.total || 0,
+            discount: printTarget.discount || 0,
+            increase: printTarget.increase || 0,
+            notes: printTarget.notes || "",
+            lines: (printTarget.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost || l.unit_price,
+              discount_amount: l.discount || 0,
+              code: l.item_code || l.code || "",
+            })),
+          }}
+          settings={printSettings}
+          operationLabel="فاتورة مشتريات"
+        />
+      )}
+
+      {waSendTarget && (
+        <WhatsAppSendModal
+          open={Boolean(waSendTarget)}
+          onClose={() => setWaSendTarget(null)}
+          kind="purchase_receipt"
+          invoice={waSendTarget}
+        />
+      )}
     </div>
   );
 }

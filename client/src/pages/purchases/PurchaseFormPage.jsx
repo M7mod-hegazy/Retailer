@@ -7,6 +7,7 @@ import {
   FilePlus, Sparkles, Receipt, Save, Info,
   Loader2, Filter, ClipboardList, Settings2,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
@@ -32,6 +33,7 @@ import { UnsavedChangesModal } from "../../components/ui/UnsavedChangesModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import DocumentHeaderBar from "../../components/document/DocumentHeaderBar";
 import DocumentActionButton from "../../components/document/DocumentActionButton";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { useGridNavigation } from "../../hooks/useGridNavigation";
@@ -190,6 +192,7 @@ export default function PurchaseFormPage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [newInvoiceModalOpen, setNewInvoiceModalOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [waSendOpen, setWaSendOpen] = useState(false);
 
   const itemInputRef      = useRef(null);
   const qtyInputRef       = useRef(null);
@@ -987,6 +990,15 @@ export default function PurchaseFormPage() {
                 {isEditMode ? "حذف" : "مسح"}
               </DocumentActionButton>
             </PermissionGate>
+            {isEditMode && (
+              <DocumentActionButton
+                onClick={() => setWaSendOpen(true)}
+                className="bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20"
+                icon={WhatsAppIcon}
+              >
+                واتساب
+              </DocumentActionButton>
+            )}
             {isEditMode && isLocked ? (
               <DocumentActionButton variant="edit" icon={Pencil} onClick={() => setEditWarnOpen(true)}>
                 تعديل
@@ -2366,6 +2378,7 @@ export default function PurchaseFormPage() {
         confirmLabel="حفظ وطباعة"
         onSaveOnly={() => doSave()}
         saveOnlyLabel="حفظ فقط"
+        onSendWhatsApp={() => setWaSendOpen(true)}
         isSaving={isSaving}
       />
 
@@ -2379,6 +2392,34 @@ export default function PurchaseFormPage() {
           else blocker.proceed?.();
         }}
       />
+
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          kind="purchase_receipt"
+          invoice={{
+            invoice_no: refNo,
+            supplier_name: supplier?.name,
+            customer_name: supplier?.name,
+            customer_phone: supplier?.phone,
+            total: totals.total,
+            discount: discount,
+            increase: increase,
+            lines: lines.map(l => ({
+              ...l,
+              item_name: l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost,
+              discount_amount: 0,
+              code: l.code || "",
+            })),
+            created_by_username: user?.name || "",
+            created_at: docDate,
+            payment_type: paymentMode,
+          }}
+        />
+      )}
     </div>
   );
 }

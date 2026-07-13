@@ -18,6 +18,7 @@ import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import ConsequencePreview from "../../components/ui/ConsequencePreview";
 import PermissionGate from "../../components/ui/PermissionGate";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -716,18 +717,32 @@ export default function PhysicalCountPage() {
         </motion.div>
       </div>
 
-      {/* Confirm Dialog */}
-      {confirmDialog && (
-        <ConfirmDialog
-          open
-          title="تأكيد تسوية الأرصدة"
-          message={`سيتم تحديث أرصدة المخازن آليًا لتعكس الكميات الفعلية المُدخلة لـ ${stats.variance_count} صنف يوجد بها فروقات.`}
-          confirmLabel={confirming ? "جاري الاعتماد..." : "تأكيد واعتماد جرد المخزون"}
-          onConfirm={handleConfirm}
-          onCancel={() => setConfirmDialog(null)}
-          variant="primary"
-        />
-      )}
+      {/* Confirm Dialog — plain-language preview of exactly what the commit will do */}
+      {confirmDialog && (() => {
+        const lines = activeSession?.lines || [];
+        const touchedLines = lines.filter((l) => l.touched);
+        const up = touchedLines.filter((l) => l.variance > 0);
+        const down = touchedLines.filter((l) => l.variance < 0);
+        const upQty = up.reduce((s, l) => s + l.variance, 0);
+        const downQty = down.reduce((s, l) => s + Math.abs(l.variance), 0);
+        const uncounted = stats.total_lines - stats.counted_lines;
+        return (
+          <ConsequencePreview
+            open
+            title="اعتماد الجرد — سيحدث الآتي:"
+            consequences={[
+              up.length > 0 && { tone: "success", text: `${up.length} صنف هيزيد رصيده بإجمالي +${upQty} قطعة (لقيت على الرف أكتر من الشاشة).` },
+              down.length > 0 && { tone: "danger", text: `${down.length} صنف هينقص رصيده بإجمالي −${downQty} قطعة — ده عجز هيتسجل بتاريخ اليوم.` },
+              uncounted > 0 && { tone: "warning", text: `${uncounted} صنف ماتعدّش — رصيده هيفضل زي ما هو ومش هيتلمس.` },
+              { tone: "info", text: "بعد الاعتماد الجلسة بتتقفل للقراءة فقط، والفروقات بتظهر في حركات المخزون بنوع «جرد»." },
+            ].filter(Boolean)}
+            confirmLabel={confirming ? "جاري الاعتماد..." : "تأكيد واعتماد الجرد"}
+            loading={confirming}
+            onConfirm={handleConfirm}
+            onClose={() => setConfirmDialog(null)}
+          />
+        );
+      })()}
 
       {/* Cancel Dialog */}
       {cancelDialog && (

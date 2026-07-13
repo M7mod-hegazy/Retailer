@@ -20,7 +20,7 @@ module.exports = {
     if (!hasVariant("receipt")) {
       const standard = `مرحباً {name}،
 
-🛍️  فاتورة شراء  🛍️
+🛍️  فاتورة بيع  🛍️
 ━━━━━━━━━━━━━━━━━━━━
 رقم الفاتورة: {invoice_no}
 التاريخ: {date}

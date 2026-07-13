@@ -2623,6 +2623,40 @@ const CATEGORY_META = {
       { token: "{name}", label: "اسم العميل" }, { token: "{amount}", label: "المبلغ" }, { token: "{shop}", label: "اسم المتجر" },
     ]
   },
+  purchase_receipt: {
+    label: "فاتورة شراء", hint: "تُرسل عند إتمام عملية شراء", vars: [
+      { token: "{name}", label: "اسم المورد" }, { token: "{invoice_no}", label: "رقم الفاتورة" },
+      { token: "{total}", label: "الإجمالي" }, { token: "{date}", label: "التاريخ والوقت" },
+      { token: "{payment_type}", label: "طريقة الدفع" }, { token: "{discount}", label: "الخصم" },
+      { token: "{items_count}", label: "عدد الأصناف" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{payment_breakdown}", label: "تفصيل الدفع" },
+      { token: "{cashier}", label: "المسؤول" }, { token: "{shop}", label: "اسم المتجر" },
+    ]
+  },
+  purchase_return_receipt: {
+    label: "مرتجع مشتريات", hint: "يُرسل عند استلام مرتجع مشتريات", vars: [
+      { token: "{name}", label: "اسم المورد" }, { token: "{invoice_no}", label: "رقم فاتورة المرتجع" },
+      { token: "{total}", label: "إجمالي المسترد" }, { token: "{date}", label: "التاريخ والوقت" },
+      { token: "{items_count}", label: "عدد الأصناف" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{cashier}", label: "المسؤول" }, { token: "{shop}", label: "اسم المتجر" },
+    ]
+  },
+  transfer_send: {
+    label: "تسليم بضاعة", hint: "يُرسل عند تسليم بضاعة لفرع آخر", vars: [
+      { token: "{name}", label: "الفرع المُستلم" }, { token: "{invoice_no}", label: "رقم المستند" },
+      { token: "{total}", label: "إجمالي التكلفة" }, { token: "{date}", label: "التاريخ والوقت" },
+      { token: "{items_count}", label: "عدد الأصناف" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{cashier}", label: "المسؤول" }, { token: "{shop}", label: "اسم المتجر" },
+    ]
+  },
+  transfer_receive: {
+    label: "استلام بضاعة", hint: "يُرسل عند استلام بضاعة من فرع آخر", vars: [
+      { token: "{name}", label: "الفرع المُرسل" }, { token: "{invoice_no}", label: "رقم المستند" },
+      { token: "{total}", label: "إجمالي التكلفة" }, { token: "{date}", label: "التاريخ والوقت" },
+      { token: "{items_count}", label: "عدد الأصناف" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{cashier}", label: "المسؤول" }, { token: "{shop}", label: "اسم المتجر" },
+    ]
+  },
   telegram_new_invoice: {
     label: "فاتورة مبيعات جديدة", hint: "تنبيه فوري بكل فاتورة بيع", vars: [
       { token: "{invoice_no}", label: "رقم الفاتورة" }, { token: "{customer_name}", label: "اسم العميل" },
@@ -2692,7 +2726,7 @@ const CATEGORY_META = {
     ]
   },
 };
-const WHATSAPP_CATEGORIES = ["receipt", "return_receipt", "birthday", "debt"];
+const WHATSAPP_CATEGORIES = ["receipt", "return_receipt", "birthday", "debt", "purchase_receipt", "purchase_return_receipt", "transfer_send", "transfer_receive"];
 const TELEGRAM_CATEGORIES = [
   "telegram_new_invoice", "telegram_daily_close", "telegram_shift_close", "telegram_large_invoice",
   "telegram_large_discount", "telegram_sales_return", "telegram_invoice_voided", "telegram_purchase_created",
@@ -2702,7 +2736,7 @@ const TELEGRAM_CATEGORIES = [
 const DEFAULT_BODIES = {
   "receipt|قياسي — مفصل": `مرحباً {name}،
 
-🛍️ فاتورة شراء
+🛍️ فاتورة بيع
 ━━━━━━━━━━━━━━━━
 📋 رقم: {invoice_no}
 📅 {date}
@@ -2840,6 +2874,152 @@ const DEFAULT_BODIES = {
 
 وجودكم شرف لنا ❤️
 {shop}`,
+  "purchase_receipt|قياسي — مفصل": `مرحباً {name}،
+
+🛍️ فاتورة شراء
+━━━━━━━━━━━━━━━━
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+
+{items_table}
+
+━━━━ الدفع ━━━━
+{payment_breakdown}
+
+💰 الإجمالي: {total} جنيه
+💸 الخصم: {discount}
+
+شكراً لتعاملكم معنا ✨
+{shop}`,
+  "purchase_receipt|مختصر — سريع": `مرحباً {name}،
+📋 {invoice_no} — {date}
+{items_table}
+💳 {payment_type}
+💰 {total} جنيه
+{shop}`,
+  "purchase_receipt|بريميوم — فاخر": `┌─ {shop} ─┐
+
+{name} العزيز،
+شكراً لاختيارنا ❤️
+
+📋 فاتورة شراء رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+
+{items_table}
+
+━━━━ الدفع ━━━━
+{payment_breakdown}
+
+💰 الإجمالي: {total} جنيه
+💸 الخصم: {discount}
+
+نتشرف بخدمتك دائماً ✨
+{shop}`,
+  "purchase_return_receipt|قياسي — مفصل": `مرحباً {name}،
+
+✅ تم إتمام مرتجع الشراء
+━━━━━━━━━━━━━━━━
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+
+{items_table}
+
+💰 المسترد: {total} جنيه
+
+شكراً لتعاملكم ✨
+{shop}`,
+  "purchase_return_receipt|مختصر — سريع": `مرحباً {name}،
+✅ تم استلام مرتجع الشراء
+📋 {invoice_no} — {date}
+{items_table}
+💰 المسترد: {total} جنيه
+{shop}`,
+  "purchase_return_receipt|بريميوم — فاخر": `┌─ {shop} ─┐
+
+{name} العزيز،
+
+✅ تمت معالجة مرتجع الشراء
+
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+
+المنتجات المسترجعة:
+{items_table}
+
+💰 المسترد: {total} جنيه
+
+نتشرف بخدمتك دائماً ❤️
+{shop}`,
+  "transfer_send|قياسي — مفصل": `📦 تم تسليم البضاعة
+━━━━━━━━━━━━━━━━
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+🏢 الفرع المُستلم: {name}
+
+{items_table}
+
+💰 إجمالي التكلفة: {total} جنيه
+━━━━━━━━━━━━━━━━
+{shop}`,
+  "transfer_send|مختصر — سريع": `📦 تسليم بضاعة
+📋 {invoice_no} — {date}
+🏢 {name}
+{items_table}
+💰 {total} جنيه
+{shop}`,
+  "transfer_send|بريميوم — فاخر": `┌─ {shop} ─┐
+
+📦 إشعار تسليم بضاعة
+
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+🏢 الفرع المُستلم: {name}
+
+{items_table}
+
+💰 الإجمالي: {total} جنيه
+
+تم التسليم بنجاح ✅
+{shop}`,
+  "transfer_receive|قياسي — مفصل": `📦 تم استلام البضاعة
+━━━━━━━━━━━━━━━━
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+🏢 الفرع المُرسل: {name}
+
+{items_table}
+
+💰 إجمالي التكلفة: {total} جنيه
+━━━━━━━━━━━━━━━━
+{shop}`,
+  "transfer_receive|مختصر — سريع": `📦 استلام بضاعة
+📋 {invoice_no} — {date}
+🏢 {name}
+{items_table}
+💰 {total} جنيه
+{shop}`,
+  "transfer_receive|بريميوم — فاخر": `┌─ {shop} ─┐
+
+📦 إشعار استلام بضاعة
+
+📋 رقم: {invoice_no}
+📅 {date}
+👤 {cashier}
+🏢 الفرع المُرسل: {name}
+
+{items_table}
+
+💰 الإجمالي: {total} جنيه
+
+تم الاستلام بنجاح ✅
+{shop}`,
 };
 
 function renderCategoryPreview(body, vars) {
@@ -2897,6 +3077,7 @@ function renderFakePreview(body) {
     "{error_message}": "لا يوجد",
     "{username}": "أحمد",
     "{ip}": "192.168.1.100",
+    "{partner_branch}": "الفرع الثاني",
   };
   return body.replace(/\{(\w+)\}/g, (_, key) => fakeMap[`{${key}}`] || `{${key}}`);
 }

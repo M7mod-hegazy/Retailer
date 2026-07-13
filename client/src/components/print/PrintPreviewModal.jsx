@@ -4,8 +4,9 @@ import Modal from "../ui/Modal";
 import { PrintThermalDoc, PrintA4Doc } from "./PrintDoc";
 import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet,
-  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2, MessageCircle,
+  Printer, Wand2, SkipBack, SkipForward, Image, Receipt, FileText, FileBarChart2, Maximize2,
 } from "lucide-react";
+import WhatsAppIcon from "../ui/WhatsAppIcon";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
@@ -754,7 +755,7 @@ export default function PrintPreviewModal({
                   onClick={() => { onClose(); onSendWhatsApp(); }}
                   className="w-full flex items-center justify-center gap-2 rounded-[12px] border border-success-border bg-success-bg px-3 py-3 text-sm font-black text-success-text transition-all hover:bg-success-bg/80 active:scale-95"
                 >
-                  <MessageCircle size={16} /> {t("print.sendWhatsApp")}
+                  <WhatsAppIcon size={16} /> {t("print.sendWhatsApp")}
                 </button>
               )}
 

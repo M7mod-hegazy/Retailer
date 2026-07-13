@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ChequeRegisterTemplate from "../../components/print/templates/ChequeRegisterTemplate";
 import PermissionGate from "../../components/ui/PermissionGate";
+import FlowStepper from "../../components/ui/FlowStepper";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
@@ -51,6 +52,7 @@ export default function ChequesPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [view, setView] = useState("cards");
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ cheque_no: "", bank_name: "", amount: "", due_date: "", drawer_name: "", notes: "", type: "received", replaces_id: null });
@@ -147,11 +149,18 @@ export default function ChequesPage() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    return rows.filter(r => 
-      (r.cheque_no || "").includes(query) || 
-      (r.bank_name || "").includes(query)
+    return rows.filter(r =>
+      (!statusFilter || r.status === statusFilter) &&
+      ((r.cheque_no || "").includes(query) ||
+      (r.bank_name || "").includes(query))
     );
-  }, [rows, query]);
+  }, [rows, query, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const c = { pending: 0, deposited: 0, cleared: 0, bounced: 0 };
+    rows.forEach(r => { if (c[r.status] != null) c[r.status] += 1; });
+    return c;
+  }, [rows]);
 
   const calendarData = useMemo(() => {
     const grouped = {};
@@ -217,6 +226,23 @@ export default function ChequesPage() {
                <span className="text-[11px] font-bold">ج.م</span>
             </div>
          </div>
+      </div>
+
+      {/* Cheque lifecycle — the page header doubles as a status filter */}
+      <div>
+        <FlowStepper
+          stages={[
+            { key: "pending",   label: "مستلم — قيد الانتظار", desc: "ورقة في الدرج، مش رصيد", icon: Receipt,       count: statusCounts.pending,   tone: "warning", active: statusFilter === "pending",   onClick: () => setStatusFilter(statusFilter === "pending" ? "" : "pending") },
+            { key: "deposited", label: "مودَع في البنك",        desc: "مستني التحصيل",          icon: Banknote,      count: statusCounts.deposited, tone: "primary", active: statusFilter === "deposited", onClick: () => setStatusFilter(statusFilter === "deposited" ? "" : "deposited") },
+            { key: "cleared",   label: "محصَّل",                desc: "بقى فلوس في البنك",      icon: CheckCircle2,  count: statusCounts.cleared,   tone: "success", active: statusFilter === "cleared",   onClick: () => setStatusFilter(statusFilter === "cleared" ? "" : "cleared") },
+            { key: "bounced",   label: "مرتد",                  desc: "ارجع كلّم العميل",       icon: AlertCircle,   count: statusCounts.bounced,   tone: "danger",  active: statusFilter === "bounced",   onClick: () => setStatusFilter(statusFilter === "bounced" ? "" : "bounced") },
+          ]}
+        />
+        {statusFilter && (
+          <button onClick={() => setStatusFilter("")} className="mt-1.5 px-2 text-[11px] font-black text-violet-600 hover:text-violet-800">
+            عرض كل الشيكات ×
+          </button>
+        )}
       </div>
 
       <div data-help="main-table" className="flex flex-col rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden">

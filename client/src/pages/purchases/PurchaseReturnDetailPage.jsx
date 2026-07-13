@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, RotateCcw, Package, X, Printer,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { SETTLEMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
@@ -53,6 +55,7 @@ export default function PurchaseReturnDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
+  const [waSendOpen, setWaSendOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -161,6 +164,14 @@ export default function PurchaseReturnDetailPage() {
             <button onClick={() => setPrintOpen(true)}
               className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all">
               <Printer className="h-4 w-4" /> طباعة
+            </button>
+          </PermissionGate>
+          <PermissionGate page="whatsapp_receipt" action="send">
+            <button
+              onClick={() => setWaSendOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20 px-3 py-1.5 text-xs font-bold transition-all"
+            >
+              <WhatsAppIcon className="h-3.5 w-3.5" /> واتساب
             </button>
           </PermissionGate>
           {!isCancelled && !isAmended && (
@@ -324,6 +335,30 @@ export default function PurchaseReturnDetailPage() {
         settings={printSettings}
         operationLabel="مرتجع مشتريات"
       />
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          kind="purchase_return_receipt"
+          invoice={{
+            invoice_no: doc?.doc_no,
+            supplier_name: doc?.supplier_name,
+            customer_name: doc?.supplier_name,
+            customer_phone: doc?.supplier_phone,
+            total: doc?.total,
+            discount: doc?.discount,
+            lines: (doc?.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost || l.unit_price,
+              discount_amount: 0,
+            })),
+            created_by_username: doc?.created_by_username,
+            created_at: doc?.created_at,
+          }}
+        />
+      )}
     </div>
   );
 }

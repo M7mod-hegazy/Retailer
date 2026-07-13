@@ -1189,6 +1189,8 @@
   "whatsapp.downloadImage": "Download image",
   "whatsapp.imageCaptionReceipt": "Invoice #{{no}} - {{total}} EGP",
   "whatsapp.imageCaptionReturn": "Return #{{no}} - {{total}} EGP",
+  "whatsapp.imageCaptionPurchase": "Purchase #{{no}} - {{total}} EGP",
+  "whatsapp.imageCaptionTransfer": "Transfer #{{no}} - {{total}} EGP",
   "whatsapp.paperSize": "Paper size",
   "whatsapp.imagePreview": "Image preview",
   "whatsapp.fit": "Fit",

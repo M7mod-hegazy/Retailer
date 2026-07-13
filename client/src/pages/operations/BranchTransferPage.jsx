@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import {
-  Eye, Warehouse, Pencil,
+  Eye, Warehouse, Pencil, Trash2,
   ArrowDownToLine, ArrowUpFromLine, RotateCcw,
   Search, ArrowLeftRight, Package, X, Loader2,
   SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  AlertTriangle, TrendingUp, BadgeCheck, Layers,
+  AlertTriangle, TrendingUp, BadgeCheck, Layers, Printer,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
+import { usePermission } from "../../hooks/usePermission";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import toast from "react-hot-toast";
 import useDebounce from "../../hooks/useDebounce";
 import { adaptForServer } from "../../utils/search";
@@ -297,8 +301,14 @@ export default function BranchTransferPage() {
   const [branchesCount, setBranchesCount] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTransfer, setActiveTransfer] = useState(null);
+  const [printTarget, setPrintTarget] = useState(null);
+  const [printSettings, setPrintSettings] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [page, setPage] = useState(1);
   const [itemPage, setItemPage] = useState(1);
+  const [waSendTarget, setWaSendTarget] = useState(null);
+  const canSendWhatsApp = usePermission("whatsapp_receipt", "send");
 
   async function loadData() {
     setLoading(true);
@@ -324,11 +334,39 @@ export default function BranchTransferPage() {
 
   useEffect(() => {
     api.get("/api/users").then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
   }, []);
 
   useEffect(() => {
     api.get("/api/branches").then(r => setBranchesCount((r.data.data || []).length)).catch(() => setBranchesCount(0));
   }, []);
+
+  async function handlePrintClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل المستند...");
+    try {
+      const res = await api.get(`/api/branch-transfers/${row.id}`);
+      setPrintTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل المستند");
+      toast.dismiss(tid);
+    }
+  }
+
+  async function handleConfirmDelete(reason) {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/branch-transfers/${deleteTarget.id}`, { data: { reason } });
+      toast.success(`تم حذف حركة النقل ${deleteTarget.reference_no || `#${deleteTarget.id}`} بنجاح`);
+      setDeleteTarget(null);
+      loadData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "فشل حذف حركة النقل");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function handleShowDetail(row) {
     setActiveTransfer(row);
@@ -338,6 +376,18 @@ export default function BranchTransferPage() {
   function handleEdit(id) {
     setDetailOpen(false);
     navigate(`/operations/branch-transfer/edit/${id}`);
+  }
+
+  async function handleWhatsAppClick(row) {
+    const tid = toast.loading("جاري تحميل تفاصيل المستند...");
+    try {
+      const res = await api.get(`/api/branch-transfers/${row.id}`);
+      setWaSendTarget(res.data?.data || res.data);
+      toast.dismiss(tid);
+    } catch {
+      toast.error("تعذر تحميل تفاصيل المستند");
+      toast.dismiss(tid);
+    }
   }
 
   // Item autocomplete lookup
@@ -723,13 +773,40 @@ export default function BranchTransferPage() {
                           </div>
 
                           <div className="flex items-center justify-end lg:w-[20%] shrink-0 gap-2">
+                            <PermissionGate page="branch_transfer" action="print">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handlePrintClick(row); }}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-zinc-100 hover:border-zinc-300 hover:text-zinc-900 transition-all"
+                                title="طباعة"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </button>
+                            </PermissionGate>
+                            {canSendWhatsApp && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleWhatsAppClick(row); }}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-[#25D366]/10 hover:border-[#25D366]/30 hover:text-[#25D366] transition-all"
+                                title="إرسال عبر واتساب"
+                              >
+                                <WhatsAppIcon className="h-4 w-4" />
+                              </button>
+                            )}
                             <PermissionGate page="branch_transfer" action="edit">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleEdit(row.id); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 transition-all"
                                 title="تعديل"
                               >
                                 <Pencil className="h-4 w-4" />
+                              </button>
+                            </PermissionGate>
+                            <PermissionGate page="branch_transfer" action="delete">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all"
+                                title="حذف"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </PermissionGate>
                             <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300">
@@ -867,6 +944,92 @@ export default function BranchTransferPage() {
           onEdit={handleEdit}
         />
       </Modal>
+
+      {printTarget && (
+        <PrintPreviewModal
+          open={Boolean(printTarget)}
+          onClose={() => setPrintTarget(null)}
+          docType="branch_transfer"
+          invoice={{
+            ...printTarget,
+            invoice_no: printTarget.reference_no || "",
+            customer_name: printTarget.partner_branch || printTarget.warehouse_name || "",
+            cashier_name: printTarget.created_by_username || "",
+            total: printTarget.total_cost || 0,
+            notes: printTarget.notes || "",
+            lines: (printTarget.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost || l.selling_price || 0,
+              discount_amount: 0,
+              code: l.item_code || l.barcode || "",
+            })),
+          }}
+          settings={printSettings}
+          operationLabel={printTarget.type === "receive" ? "استلام بضاعة" : "تسليم بضاعة"}
+        />
+      )}
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
+              <div className="p-7">
+                <div className="flex items-start gap-4 mb-5">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-rose-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-[17px] font-black text-zinc-900 mb-1">تأكيد حذف حركة النقل</h2>
+                    <p className="text-sm font-medium text-zinc-500 leading-relaxed">
+                      سيتم حذف حركة النقل <span className="font-black text-zinc-800 font-mono">{deleteTarget.reference_no || `#${deleteTarget.id}`}</span> وعكس حركات المخزون المرتبطة بها.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button onClick={() => setDeleteTarget(null)}
+                    className="flex-1 h-11 rounded-2xl bg-zinc-100 text-zinc-700 text-sm font-black hover:bg-zinc-200 transition-colors">
+                    إلغاء
+                  </button>
+                  <button onClick={() => { setDeleting(true); handleConfirmDelete("حذف حركة نقل"); }}
+                    disabled={deleting}
+                    className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all">
+                    {deleting ? "جاري الحذف..." : "تأكيد الحذف"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {waSendTarget && (
+        <WhatsAppSendModal
+          open={Boolean(waSendTarget)}
+          onClose={() => setWaSendTarget(null)}
+          kind={waSendTarget?.type === "receive" ? "transfer_receive" : "transfer_send"}
+          invoice={{
+            ...waSendTarget,
+            reference_no: waSendTarget?.reference_no || "",
+            partner_branch: waSendTarget?.partner_branch || waSendTarget?.warehouse_name || "",
+            name: waSendTarget?.partner_branch || waSendTarget?.warehouse_name || "",
+            total: waSendTarget?.total_cost || 0,
+            lines: (waSendTarget?.lines || []).map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost || l.selling_price || 0,
+              discount_amount: 0,
+              code: l.item_code || l.barcode || "",
+            })),
+          }}
+        />
+      )}
     </div>
   );
 }

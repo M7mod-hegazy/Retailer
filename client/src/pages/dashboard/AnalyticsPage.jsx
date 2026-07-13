@@ -6,11 +6,13 @@ import {
   BarChart3, Activity, ArrowDownToLine, ArrowUpFromLine, FileText,
   Boxes, Calendar, PieChart, ShoppingBag, Sparkles, ShoppingCart,
   Maximize2, X, Clock, Trophy, ChevronUp, ChevronDown, Package,
-  Download, Users, ArrowLeftRight, Grid3X3, Percent, HeartPulse
+  Download, Users, ArrowLeftRight, Grid3X3, Percent, HeartPulse,
+  TriangleAlert, Info, Eye, List
 } from "lucide-react";
 import api from "../../services/api";
 import { printContent, getPrinterForPageSize } from "../../services/printService";
 import CurrencyDisplay from "../../components/ui/CurrencyDisplay";
+import SmartTooltip from "../../components/ui/SmartTooltip";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { useFeatureEnabled } from "../../hooks/useFeature";
@@ -106,6 +108,9 @@ export default function AnalyticsPage() {
   const [returnRate, setReturnRate] = useState({ rate: 0, today: 0, period: 0 });
   const [exporting, setExporting] = useState(false);
   const [healthCounts, setHealthCounts] = useState({ low_stock: 0, below_margin: 0, expiring_soon: 0, total: 0 });
+  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
+  const [alertsFullData, setAlertsFullData] = useState({ lowStock: [], belowMargin: [], expiringSoon: [] });
+  const [alertsLoading, setAlertsLoading] = useState(false);
 
   // Period-aware section data (follows the global period selector)
   const [deadStock, setDeadStock] = useState([]);
@@ -430,6 +435,28 @@ export default function AnalyticsPage() {
     };
   }, [heatmap]);
 
+  // Fetch full alert lists when the alerts modal opens
+  const openAlertsModal = useCallback(async () => {
+    setAlertsModalOpen(true);
+    setAlertsLoading(true);
+    try {
+      const [stockRes, marginRes, expiringRes] = await Promise.all([
+        api.get("/api/reports/low-stock").catch(() => ({ data: { data: [] } })),
+        api.get("/api/reports/margin-alerts").catch(() => ({ data: { data: [] } })),
+        api.get("/api/reports/expiring-soon?days=30").catch(() => ({ data: { data: [] } })),
+      ]);
+      setAlertsFullData({
+        lowStock: stockRes.data?.data || [],
+        belowMargin: marginRes.data?.data || [],
+        expiringSoon: expiringRes.data?.data || [],
+      });
+    } catch {
+      setAlertsFullData({ lowStock: [], belowMargin: [], expiringSoon: [] });
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, []);
+
   // Run the two-period comparison
   const runCompare = useCallback(async () => {
     if (!compareA.start || !compareA.end || !compareB.start || !compareB.end) return;
@@ -526,7 +553,7 @@ export default function AnalyticsPage() {
           <div className="absolute inset-0 rounded-full animate-ping bg-slate-900 opacity-10"></div>
           <Activity className="h-8 w-8 animate-pulse text-slate-800" />
         </div>
-        <div className="text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">جاري تجميع البيانات...</div>
+        <div className="text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">بنحضر البيانات...</div>
       </div>
     );
   }
@@ -614,17 +641,35 @@ export default function AnalyticsPage() {
         {/* Live snapshot — these cards are always "now" and intentionally do NOT follow the period selector */}
         <div className="flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="text-[13px] font-black text-slate-500 uppercase tracking-widest">مؤشرات الفترة المحددة — {periodLabel}</h2>
+          <h2 className="text-[13px] font-black text-slate-500 uppercase tracking-widest">مؤشرات الفترة دي — {periodLabel}</h2>
         </div>
 
         {/* Metrics Ribbon */}
         <div data-help="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <BentoMetric title="مبيعات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodSalesTotal} /></SensitiveValue>} icon={TrendingUp} theme="dark" hint={`إجمالي المبيعات داخل الفترة المحددة: ${periodLabel}`} />
-          <BentoMetric title="فواتير الفترة" value={periodInvoiceCount.toLocaleString()} icon={Activity} hint={`عدد الفواتير داخل الفترة المحددة: ${periodLabel}`} />
-          <BentoMetric title="إيرادات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodRevenueSeparate} /></SensitiveValue>} icon={ArrowDownToLine} hint={`إيرادات منفصلة داخل الفترة المحددة: ${periodLabel}`} />
-          <BentoMetric title="مصروفات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodExpenseTotal} /></SensitiveValue>} icon={ArrowUpFromLine} hint={`مصروفات التشغيل داخل الفترة المحددة: ${periodLabel}`} />
-          <BentoMetric title="نسبة المرتجعات (الفترة)" value={<SensitiveValue canView={canViewSensitive}>{`${computedReturnRate.rate.toFixed(1)}%`}</SensitiveValue>} icon={Percent} theme={computedReturnRate.rate > 5 ? "alert" : "default"} hint="نسبة قيمة المرتجعات إلى إجمالي المبيعات خلال الفترة المحددة في الأعلى" />
-          <BentoMetric title={inventoryHealth.healthy ? "تنبيهات حالية" : `تنبيهات حالية ${inventoryHealth.total}`} value={inventoryHealth.healthy ? "0" : inventoryHealth.total} icon={HeartPulse} theme={inventoryHealth.healthy ? "default" : "alert"} hint={`تنبيهات مخزون حالية لا تتبع الفترة: نواقص ${inventoryHealth.lowStock} · هوامش ${inventoryHealth.belowMargin} · صلاحية ${inventoryHealth.expiringSoon}`} />
+          <SmartTooltip content={`إجمالي المبيعات (صافي) في ${periodLabel}\n\nالرقم ده = إجمالي الفواتير - قيمة المرتجعات\nبيشمل كل طرق الدفع: نقدي، بطاقة، آجل، إلخ.`} side="top" wide>
+            <BentoMetric title="مبيعات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodSalesTotal} /></SensitiveValue>} icon={TrendingUp} theme="dark" hint="" />
+          </SmartTooltip>
+          <SmartTooltip content={`عدد الفواتير اللي اتعملت في ${periodLabel}\n\nمش بيشمل الفواتير الملغية`} side="top">
+            <BentoMetric title="فواتير الفترة" value={periodInvoiceCount.toLocaleString()} icon={Activity} hint="" />
+          </SmartTooltip>
+          <SmartTooltip content={`الإيرادات المنفصلة (غير المبيعات) في ${periodLabel}\n\nدي إيرادات تانية زاي إيجار، خدمات، إلخ — مش مبيعات`} side="top">
+            <BentoMetric title="إيرادات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodRevenueSeparate} /></SensitiveValue>} icon={ArrowDownToLine} hint="" />
+          </SmartTooltip>
+          <SmartTooltip content={`مصروفات التشغيل في ${periodLabel}\n\nزي الإيجار، المرتبات، الفواتير، المصاريف اليومية`} side="top">
+            <BentoMetric title="مصروفات الفترة" value={<SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={periodExpenseTotal} /></SensitiveValue>} icon={ArrowUpFromLine} hint="" />
+          </SmartTooltip>
+          <SmartTooltip content={`نسبة قيمة المرتجعات مقارنة بإجمالي المبيعات في ${periodLabel}\n\n= قيمة المرتجعات ÷ إجمالي المبيعات × 100\n\nلو النسبة أكتر من 5% يبقى في مشكلة في الجودة أو انتقاء العملاء`} side="top" wide>
+            <BentoMetric title="نسبة المرتجعات" value={<SensitiveValue canView={canViewSensitive}>{`${computedReturnRate.rate.toFixed(1)}%`}</SensitiveValue>} icon={Percent} theme={computedReturnRate.rate > 5 ? "alert" : "default"} hint="" />
+          </SmartTooltip>
+          <div onClick={!inventoryHealth.healthy ? openAlertsModal : undefined} className={!inventoryHealth.healthy ? "cursor-pointer" : ""}>
+            <SmartTooltip content={inventoryHealth.healthy
+              ? "مفيش تنبيهات دلوقتي — المخزون تمام"
+              : `اضغط عشان تشوف تفاصيل التنبيهات:\n• نواقص بالمخزون: ${inventoryHealth.lowStock}\n• هوامش خاسرة: ${inventoryHealth.belowMargin}\n• صلاحية وشيكة: ${inventoryHealth.expiringSoon}`}
+              side="top" wide
+            >
+              <BentoMetric title={inventoryHealth.healthy ? "تنبيهات حالية" : `تنبيهات حالية ${inventoryHealth.total}`} value={inventoryHealth.healthy ? "0" : inventoryHealth.total} icon={HeartPulse} theme={inventoryHealth.healthy ? "default" : "alert"} hint="" />
+            </SmartTooltip>
+          </div>
         </div>
 
         {/* Selected Period Comparison Strip */}
@@ -793,7 +838,7 @@ export default function AnalyticsPage() {
               </div>
               <div className="flex-1 space-y-3">
                 {topCategories.length === 0 ? (
-                  <div className="text-center text-sm text-slate-400 font-bold py-6">لا توجد بيانات كافية للأقسام</div>
+                  <div className="text-center text-sm text-slate-400 font-bold py-6">مفيش بيانات كافية للأقسام</div>
                 ) : (
                   topCategories.map((cat, idx) => {
                     const maxRev = topCategories[0].revenue || 1;
@@ -828,7 +873,9 @@ export default function AnalyticsPage() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ArrowLeftRight className="w-5 h-5 text-slate-400" />
-                  <h3 className="text-[14px] font-black text-slate-900">التدفق النقدي · {periodLabel}</h3>
+                  <SmartTooltip content={"التدفق النقدي بيشمل كل الإيرادات والمصروفات خلال الفترة\n\nالمبيعات الكل: كل طرق الدفع (نقدي + بطاقة + آجل)\nالمبيعات النقدية: بس اللي اتدفعت كاش فعلياً\n\nالفرق بينهم هو المبيعات الآجلة وبطاقة الائتمان"} side="top" wide>
+                    <h3 className="text-[14px] font-black text-slate-900">التدفق النقدي · {periodLabel}</h3>
+                  </SmartTooltip>
                 </div>
               </div>
               {!canViewSensitive ? (
@@ -848,6 +895,10 @@ export default function AnalyticsPage() {
                           <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3} />
                           <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
+                        <linearGradient id="cf-cash" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                       <XAxis dataKey="date" tick={false} axisLine={false} />
@@ -859,32 +910,41 @@ export default function AnalyticsPage() {
                           return (
                             <div className="rounded-[12px] border border-white/40 bg-white/80 backdrop-blur px-3 py-2 text-xs shadow-lg">
                               <div className="font-bold text-slate-500 mb-1">{label}</div>
-                              <div className="text-emerald-700 font-bold">مبيعات: <CurrencyDisplay value={d.sales} /></div>
-                              <div className="text-emerald-500 font-bold">إيرادات: <CurrencyDisplay value={d.revenues} /></div>
+                              <div className="text-emerald-700 font-bold">كل المبيعات: <CurrencyDisplay value={d.sales} /></div>
+                              <div className="text-indigo-600 font-bold">مبيعات نقدية: <CurrencyDisplay value={d.cash_sales} /></div>
+                              <div className="text-amber-500 font-bold">إيرادات: <CurrencyDisplay value={d.revenues} /></div>
                               <div className="text-rose-600 font-bold">مصروفات: <CurrencyDisplay value={d.expenses} /></div>
                               {d.withdrawals > 0 && <div className="text-rose-400 font-bold">مسحوبات: <CurrencyDisplay value={d.withdrawals} /></div>}
                               <div className={`border-t border-slate-100 mt-1 pt-1 font-black ${d.net >= 0 ? "text-emerald-800" : "text-rose-800"}`}>
-                                الصافي: <CurrencyDisplay value={d.net} />
+                                الصافي (كل المبيعات): <CurrencyDisplay value={d.net} />
+                              </div>
+                              <div className={`font-black ${d.cash_net >= 0 ? "text-indigo-700" : "text-rose-700"}`}>
+                                الصافي نقدي: <CurrencyDisplay value={d.cash_net} />
                               </div>
                             </div>
                           );
                         }}
                       />
                       <Area type="monotone" dataKey="net" stroke="#10b981" strokeWidth={2} fill="url(#cf-pos)" />
+                      <Area type="monotone" dataKey="cash_net" stroke="#6366f1" strokeWidth={2} fill="url(#cf-cash)" strokeDasharray="4 2" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-20 flex items-center justify-center text-slate-400 font-bold text-sm">لا توجد بيانات</div>
+                <div className="h-20 flex items-center justify-center text-slate-400 font-bold text-sm">مفيش بيانات</div>
               )}
               {canViewSensitive && cashFlow.length > 0 && (
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-500">
-                    الداخل: <CurrencyDisplay value={cashFlow.reduce((s, d) => s + d.sales + d.revenues, 0)} />
-                  </span>
-                  <span className="text-[11px] font-bold text-rose-600">
-                    الخارج: <CurrencyDisplay value={cashFlow.reduce((s, d) => s + d.expenses + d.withdrawals, 0)} />
-                  </span>
+                  <SmartTooltip content={"كل المبيعات (نقدي + آجل + بطاقة) + الإيرادات المنفصلة"} side="bottom">
+                    <span className="text-[11px] font-bold text-slate-500 cursor-help">
+                      الداخل: <CurrencyDisplay value={cashFlow.reduce((s, d) => s + d.sales + d.revenues, 0)} />
+                    </span>
+                  </SmartTooltip>
+                  <SmartTooltip content={"المصروفات + المسحوبات من الخزنة"} side="bottom">
+                    <span className="text-[11px] font-bold text-rose-600 cursor-help">
+                      الخارج: <CurrencyDisplay value={cashFlow.reduce((s, d) => s + d.expenses + d.withdrawals, 0)} />
+                    </span>
+                  </SmartTooltip>
                 </div>
               )}
             </div>
@@ -895,14 +955,14 @@ export default function AnalyticsPage() {
                  <Layers className="w-6 h-6 opacity-80" />
                  <div>
                    <div className="text-[28px] font-black tracking-tighter leading-none mt-2">{summary.itemsCount}</div>
-                   <div className="text-[11px] font-bold text-indigo-200 mt-1 uppercase tracking-widest">إجمالي الأصناف</div>
+                   <div className="text-[11px] font-bold text-indigo-200 mt-1 uppercase tracking-widest">كل الأصناف</div>
                  </div>
               </div>
               <div className="rounded-[24px] bg-white p-5 border border-slate-200 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
                  <Boxes className="w-6 h-6 text-slate-400" />
                  <div>
                    <div className="text-[28px] font-black tracking-tighter text-slate-900 leading-none mt-2">{inventoryHealth.lowStock}</div>
-                   <div className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">أصناف نواقص</div>
+                   <div className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">أصناف ناقصة</div>
                  </div>
               </div>
             </div>
@@ -1083,7 +1143,7 @@ export default function AnalyticsPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-40 text-sm font-bold text-slate-400">
-                {heatmapLoading ? "جاري تحميل البيانات..." : "لا توجد بيانات كافية"}
+                {heatmapLoading ? "بنحمل البيانات..." : "مفيش بيانات كافية"}
               </div>
             );
           })()}
@@ -1184,7 +1244,7 @@ export default function AnalyticsPage() {
               );
             })()}
             {topItems.length === 0 && !itemsLoading && (
-              <div className="text-center py-10 text-sm text-slate-400 font-bold">لا يوجد مبيعات في الفترة المحددة</div>
+              <div className="text-center py-10 text-sm text-slate-400 font-bold">مفيش مبيعات في الفترة دي</div>
             )}
             {itemsLoading && (
               <div className="flex items-center justify-center py-10 text-slate-300 animate-pulse">
@@ -1222,7 +1282,7 @@ export default function AnalyticsPage() {
               <Link to="/reports/center" className="text-[10px] font-black text-indigo-600 hover:underline">تقرير كامل ←</Link>
             </div>
             {topCustomers.length === 0 ? (
-              <div className="text-center py-8 text-sm text-slate-400 font-bold">لا توجد بيانات</div>
+              <div className="text-center py-8 text-sm text-slate-400 font-bold">مفيش بيانات</div>
             ) : (
               <div className="flex-1 space-y-2">
                 {topCustomers.map((c, i) => (
@@ -1297,8 +1357,8 @@ export default function AnalyticsPage() {
                    <div className="w-12 h-12 bg-emerald-100/50 rounded-full flex items-center justify-center text-emerald-500 mb-3">
                      <Sparkles className="w-5 h-5" />
                    </div>
-                   <span className="text-[14px] font-black text-slate-800">مخزونك في أمان تام</span>
-                   <span className="text-2sm font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للطلب.</span>
+                   <span className="text-[14px] font-black text-slate-800">المخزون تمام — مفيش مشاكل</span>
+                   <span className="text-2sm font-bold text-slate-500 mt-1">مفيش أصناف تحت الحد الأدنى للطلب.</span>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1347,7 +1407,7 @@ export default function AnalyticsPage() {
           {!canViewSensitive ? (
             <div className="flex items-center justify-center py-8 text-sm font-bold text-slate-300">بيانات مقيدة</div>
           ) : paymentFlow.length === 0 ? (
-            <div className="py-8 text-center text-sm font-bold text-slate-400">لا توجد تدفقات مسجلة في الفترة</div>
+            <div className="py-8 text-center text-sm font-bold text-slate-400">مفيش تدفقات مسجلة في الفترة</div>
           ) : (() => {
             const totalIn = paymentFlow.reduce((s, m) => s + Number(m.total_in || 0), 0);
             const totalOut = paymentFlow.reduce((s, m) => s + Number(m.total_out || 0), 0);
@@ -1394,7 +1454,7 @@ export default function AnalyticsPage() {
             {!canViewSensitive ? (
               <div className="flex-1 flex items-center justify-center text-slate-300 font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
             ) : paymentMix.length === 0 ? (
-              <div className="text-center py-8 text-sm text-slate-400 font-bold">لا توجد مبيعات في الفترة</div>
+              <div className="text-center py-8 text-sm text-slate-400 font-bold">مفيش مبيعات في الفترة</div>
             ) : (() => {
               const labels = { cash: "نقدي", card: "بطاقة", credit: "آجل", wallet: "محفظة", installments: "تقسيط", bank_transfer: "تحويل بنكي", multi: "متعدد" };
               const total = paymentMix.reduce((s, p) => s + Number(p.total_sales || 0), 0) || 1;
@@ -1427,6 +1487,9 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-2">
                 <Percent className="w-5 h-5 text-amber-500" />
                 <h3 className="text-[16px] font-black text-slate-900">تسرّب الخصومات</h3>
+                <SmartTooltip content={"نسبة الخصومات من قيمة البيع = إجمالي الخصومات ÷ (المبيعات + الخصومات)\n\nنسبة الخصومات من الربح = إجمالي الخصومات ÷ صافي الربح\n\nلو النسبة من الربح > 30%، يبقى الخصم بياكل حتة كبيرة من أرباحك — الأحسن تراجع سياسة الخصم"} side="top" wide>
+                  <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                </SmartTooltip>
               </div>
               <span className="text-[11px] font-bold text-slate-400">{periodLabel}</span>
             </div>
@@ -1434,22 +1497,28 @@ export default function AnalyticsPage() {
               <div className="flex-1 flex items-center justify-center text-slate-300 font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
             ) : (
               <div className="flex-1 flex flex-col justify-center gap-4">
-                <div className="flex flex-col items-center">
-                  <span className="text-[34px] font-black text-amber-600 leading-none"><CurrencyDisplay value={periodTotals.discount} /></span>
-                  <span className="text-[11px] font-bold text-slate-400 mt-1">إجمالي الخصومات الممنوحة</span>
-                </div>
+                <SmartTooltip content={"إجمالي قيمة الخصومات اللي اتدفعت على كل الفواتير في الفترة دي"} side="bottom">
+                  <div className="flex flex-col items-center cursor-help">
+                    <span className="text-[34px] font-black text-amber-600 leading-none"><CurrencyDisplay value={periodTotals.discount} /></span>
+                    <span className="text-[11px] font-bold text-slate-400 mt-1">إجمالي الخصومات الممنوحة</span>
+                  </div>
+                </SmartTooltip>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-[16px] bg-slate-50 p-3 text-center">
-                    <div className="text-[18px] font-black text-slate-800">{periodTotals.discountRate.toFixed(1)}%</div>
-                    <div className="text-[10px] font-bold text-slate-400 mt-0.5">من قيمة البيع</div>
-                  </div>
-                  <div className={`rounded-[16px] p-3 text-center ${periodTotals.discountVsProfit > 30 ? "bg-rose-50" : "bg-slate-50"}`}>
-                    <div className={`text-[18px] font-black ${periodTotals.discountVsProfit > 30 ? "text-rose-600" : "text-slate-800"}`}>{periodTotals.discountVsProfit.toFixed(0)}%</div>
-                    <div className="text-[10px] font-bold text-slate-400 mt-0.5">من صافي الربح</div>
-                  </div>
+                  <SmartTooltip content={"نسبة الخصومات مقارنة بقيمة المبيعات total قبل الخصم\n\nكل ما كانت النسبة أقل، كل ما كان أفضل"} side="bottom">
+                    <div className="rounded-[16px] bg-slate-50 p-3 text-center cursor-help">
+                      <div className="text-[18px] font-black text-slate-800">{periodTotals.discountRate.toFixed(1)}%</div>
+                      <div className="text-[10px] font-bold text-slate-400 mt-0.5">من قيمة البيع</div>
+                    </div>
+                  </SmartTooltip>
+                  <SmartTooltip content={"نسبة الخصومات مقارنة بصافي الربح\n\nأكتر من 30% معناه إن الخصم بياكل جزء كبير من الأرباح"} side="bottom">
+                    <div className={`rounded-[16px] p-3 text-center cursor-help ${periodTotals.discountVsProfit > 30 ? "bg-rose-50" : "bg-slate-50"}`}>
+                      <div className={`text-[18px] font-black ${periodTotals.discountVsProfit > 30 ? "text-rose-600" : "text-slate-800"}`}>{periodTotals.discountVsProfit.toFixed(0)}%</div>
+                      <div className="text-[10px] font-bold text-slate-400 mt-0.5">من صافي الربح</div>
+                    </div>
+                  </SmartTooltip>
                 </div>
                 {periodTotals.discountVsProfit > 30 && (
-                  <p className="text-[11px] font-bold text-rose-500 text-center">الخصومات تستهلك نسبة مرتفعة من الأرباح — راجع سياسة الخصم.</p>
+                  <p className="text-[11px] font-bold text-rose-500 text-center">الخصومات بتاكل نسبة كبيرة من الأرباح — راجع سياسة الخصم.</p>
                 )}
               </div>
             )}
@@ -1461,15 +1530,15 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[16px] bg-slate-100 text-slate-500 flex items-center justify-center"><Package className="w-5 h-5" /></div>
             <div className="flex-1">
-              <h2 className="text-[16px] font-black text-slate-900 tracking-tight">مخزون راكد — بدون مبيعات خلال الفترة</h2>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">أصناف عليها رصيد ولم تُباع خلال {periodLabel} — رأس مال مجمّد</p>
+              <h2 className="text-[16px] font-black text-slate-900 tracking-tight">مخزون راكد — مفيش مبيعات في الفترة دي</h2>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">أصناف عليها رصيد وماتباعتش في {periodLabel} — فلوس معلقة</p>
             </div>
             <Link to="/reports/center" className="text-[11px] font-black text-indigo-600 hover:underline shrink-0">تقرير كامل ←</Link>
           </div>
           {deadStock.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-[16px] border border-slate-100">
               <Sparkles className="w-6 h-6 text-emerald-400 mb-2" />
-              <span className="text-[13px] font-black text-slate-700">لا يوجد مخزون راكد في هذه الفترة</span>
+              <span className="text-[13px] font-black text-slate-700">مفيش مخزون راكد في الفترة دي</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1514,6 +1583,9 @@ export default function AnalyticsPage() {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <h2 className="text-[16px] font-black text-slate-900 tracking-tight">صحة الهوامش</h2>
+            <SmartTooltip content={"الهامش = (سعر البيع - متوسط التكلفة) ÷ سعر البيع × 100\n\nالأصناف اللي هنا: التكلفة بتاعتها >= سعر البيع يعني مكسبش فيها حاجة أو خسران\n\nبيتحسب على أساس متوسط التكلفة المرجح (WACC)"} side="top" wide>
+              <Info className="w-4 h-4 text-slate-400 cursor-help" />
+            </SmartTooltip>
             <Link to="/reports/margin-health" className="mr-auto text-[11px] font-black text-indigo-600 hover:underline">تقرير كامل ←</Link>
           </div>
           <div className="flex-1 flex flex-col gap-3">
@@ -1522,8 +1594,8 @@ export default function AnalyticsPage() {
                 <div className="w-12 h-12 bg-emerald-100/50 rounded-full flex items-center justify-center text-emerald-500 mb-3">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <span className="text-[14px] font-black text-slate-800">هوامش الربح سليمة</span>
-                <span className="text-2sm font-bold text-slate-500 mt-1">لا توجد أصناف تحت الحد الأدنى للهامش.</span>
+                <span className="text-[14px] font-black text-slate-800">هوامش الربح كويسة</span>
+                <span className="text-2sm font-bold text-slate-500 mt-1">مفيش أصناف تحت الحد الأدنى للهامش.</span>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1654,10 +1726,10 @@ export default function AnalyticsPage() {
               <Package className="w-8 h-8 text-amber-300 mb-3" />
               <span className="text-sm font-black text-slate-500">
                 {expiryStatusFilter !== "all"
-                  ? "لا توجد دفعات في هذا التصنيف"
+                  ? "مفيش دفعات في التصنيف ده"
                   : expiryStats?.tracked_items > 0
-                    ? `${expiryStats.tracked_items} صنف مفعّل عليه التتبع — ولا توجد دفعات منتهية قريباً`
-                    : "لا توجد دفعات مسجلة"}
+                    ? `${expiryStats.tracked_items} صنف مفعّل عليه التتبع — مفيش دفعات منتهية قريباً`
+                    : "مفيش دفعات مسجلة"}
               </span>
               <span className="text-[11px] font-bold text-slate-400 mt-1 text-center max-w-xs">
                 {expiryStatusFilter !== "all"
@@ -1736,7 +1808,7 @@ export default function AnalyticsPage() {
             <div className="rounded-[14px] bg-indigo-50/60 border border-indigo-200/50 p-3 flex items-center gap-2">
               <span className="text-[10px] font-bold text-indigo-500 shrink-0">ℹ</span>
               <span className="text-[11px] font-bold text-indigo-700">
-                {expiryStats.tracked_without_batches} صنف مفعّل عليها تتبع الصلاحية ولكن لا توجد مشتريات مسجّلة لها مع تواريخ انتهاء.
+                {expiryStats.tracked_without_batches} صنف مفعّل عليها تتبع الصلاحية ولكن مفيش مشتريات مسجلة لها مع تواريخ انتهاء.
               </span>
             </div>
           )}
@@ -1754,6 +1826,197 @@ export default function AnalyticsPage() {
         </div>
         )}
 
+        {alertsModalOpen && (
+          <AlertsDetailModal
+            data={alertsFullData}
+            loading={alertsLoading}
+            onClose={() => setAlertsModalOpen(false)}
+            healthCounts={healthCounts}
+          />
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ALERTS DETAIL MODAL
+// -------------------------------------------------------------
+
+function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
+  const [tab, setTab] = useState("lowStock");
+  const { lowStock, belowMargin, expiringSoon } = data;
+
+  const tabs = [
+    { key: "lowStock", label: "نواقص المخزون", count: healthCounts.low_stock, icon: Package, color: "text-orange-600 bg-orange-50 border-orange-200" },
+    { key: "belowMargin", label: "هوامش خاسرة", count: healthCounts.below_margin, icon: AlertTriangle, color: "text-rose-600 bg-rose-50 border-rose-200" },
+    { key: "expiringSoon", label: "صلاحية وشيكة", count: healthCounts.expiring_soon, icon: Clock, color: "text-amber-600 bg-amber-50 border-amber-200" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 px-4 pb-6 pt-20 backdrop-blur-sm" dir="rtl">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-3xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[16px] bg-rose-100/50 text-rose-600 flex items-center justify-center border border-rose-100">
+              <TriangleAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-[20px] font-black text-slate-900">التنبيهات الحالية</h2>
+              <p className="text-[12px] font-bold text-slate-400 mt-0.5">{healthCounts.total} تنبيه — مشاكل في المخزون محتاجة متابعة</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 px-8 py-4 border-b border-slate-100 bg-slate-50/30">
+          {tabs.map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-[14px] text-[12px] font-black transition-all border ${
+                  tab === t.key ? t.color + " shadow-sm" : "text-slate-400 border-transparent hover:border-slate-200"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {t.label}
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200/50 text-slate-500">
+                  {t.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-300">
+              <Activity className="w-6 h-6 animate-spin" />
+              <span className="mr-3 text-sm font-bold">بنحمل البيانات...</span>
+            </div>
+          ) : tab === "lowStock" ? (
+            lowStock.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
+                <span className="text-[16px] font-black text-slate-700">مفيش نواقص دلوقتي</span>
+                <span className="text-[12px] font-bold text-slate-400 mt-1">كل الأصناف عندها رصيد كافي</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lowStock.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-[16px] border border-orange-100 bg-orange-50/40 p-4 hover:shadow-sm transition-all">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 text-sm">{item.name}</span>
+                        {item.item_code && <span className="font-mono text-[10px] font-bold text-slate-400">• {item.item_code}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[11px] font-bold text-slate-500">الرصيد الحالي: <span className="text-red-600">{Number(item.quantity || 0)}</span></span>
+                        {item.min_stock_qty > 0 && <span className="text-[11px] font-bold text-slate-500">الحد الأدنى: {Number(item.min_stock_qty)}</span>}
+                        {item.last_supplier_name && <span className="text-[11px] font-bold text-slate-400">المورد: {item.last_supplier_name}</span>}
+                      </div>
+                    </div>
+                    <Link to={`/items?search=${encodeURIComponent(item.name)}`}
+                      className="text-[11px] font-black text-indigo-600 hover:underline shrink-0">
+                      <Eye className="w-4 h-4 inline ml-1" />عرض
+                    </Link>
+                  </div>
+                ))}
+                {lowStock.length > 0 && (
+                  <Link to="/stock/levels"
+                    className="block w-full py-3 mt-2 text-center text-[12px] font-black text-indigo-600 bg-indigo-50/50 rounded-[16px] hover:bg-indigo-50 transition-colors">
+                    عرض كل المخزون ←
+                  </Link>
+                )}
+              </div>
+            )
+          ) : tab === "belowMargin" ? (
+            belowMargin.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
+                <span className="text-[16px] font-black text-slate-700">هوامش الربح كويسة</span>
+                <span className="text-[12px] font-bold text-slate-400 mt-1">مفيش أصناف بتتباع بخسارة</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {belowMargin.map((item) => (
+                  <div key={item.item_id || item.id} className="flex items-center justify-between rounded-[16px] border border-rose-100 bg-rose-50/40 p-4 hover:shadow-sm transition-all">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 text-sm">{item.item_name || item.name}</span>
+                        {(item.item_code || item.code) && <span className="font-mono text-[10px] font-bold text-slate-400">• {item.item_code || item.code}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[11px] font-bold text-slate-500">التكلفة: <CurrencyDisplay value={item.cost_price || item.purchase_price} /></span>
+                        <span className="text-[11px] font-bold text-slate-500">البيع: <CurrencyDisplay value={item.sale_price} /></span>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[11px] font-black ring-1 ring-rose-200">
+                      {Number(item.current_margin_percent ?? 0).toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+                {belowMargin.length > 0 && (
+                  <Link to="/reports/margin-health"
+                    className="block w-full py-3 mt-2 text-center text-[12px] font-black text-rose-600 bg-rose-50/50 rounded-[16px] hover:bg-rose-50 transition-colors">
+                    تقرير الهوامش الكامل ←
+                  </Link>
+                )}
+              </div>
+            )
+          ) : (
+            expiringSoon.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
+                <span className="text-[16px] font-black text-slate-700">مفيش دفعات على وشك الانتهاء</span>
+                <span className="text-[12px] font-bold text-slate-400 mt-1">كل التواريخ سارية</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {expiringSoon.map((b) => {
+                  const dr = Number(b.days_remaining);
+                  const statusBg = b.batch_status === "expired" ? "bg-red-50/60 border-red-200" :
+                    b.batch_status === "critical" ? "bg-orange-50/60 border-orange-200" :
+                    b.batch_status === "warning" ? "bg-amber-50/60 border-amber-200" :
+                    "bg-emerald-50/30 border-emerald-100";
+                  const badgeCls = b.batch_status === "expired" ? "bg-red-100 text-red-700 ring-red-200" :
+                    b.batch_status === "critical" ? "bg-orange-100 text-orange-700 ring-orange-200" :
+                    b.batch_status === "warning" ? "bg-amber-100 text-amber-700 ring-amber-200" :
+                    "bg-emerald-100 text-emerald-700 ring-emerald-200";
+                  return (
+                    <div key={b.id} className={`flex items-center justify-between rounded-[16px] border p-4 ${statusBg} hover:shadow-sm transition-all`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 text-sm">{b.item_name}</span>
+                          {b.batch_no && <span className="font-mono text-[10px] font-bold text-slate-400">• {b.batch_no}</span>}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[11px] font-bold text-slate-500">{b.quantity} وحدة</span>
+                          <span className="text-[11px] font-bold text-slate-500">تاريخ: {b.expiry_date}</span>
+                          {b.warehouse_name && <span className="text-[11px] font-bold text-slate-400">مخزن: {b.warehouse_name}</span>}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center h-7 px-3 rounded-full text-[11px] font-black ring-1 shrink-0 ${badgeCls}`}>
+                        {dr < 0 ? `منتهي من ${Math.abs(dr)} يوم` : `فاضل ${Math.round(dr)} يوم`}
+                      </span>
+                    </div>
+                  );
+                })}
+                {expiringSoon.length > 0 && (
+                  <Link to="/reports/expiry-report"
+                    className="block w-full py-3 mt-2 text-center text-[12px] font-black text-amber-600 bg-amber-50/50 rounded-[16px] hover:bg-amber-50 transition-colors">
+                    تقرير الصلاحية الكامل ←
+                  </Link>
+                )}
+              </div>
+            )
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1807,9 +2070,9 @@ function TopItemsModal({ items, onClose, dateLabel }) {
   const metricLabel = { revenue: "الإيراد", gross_profit: "الربح", quantity_sold: "الكمية" };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 px-4 pb-6 pt-20 backdrop-blur-sm" dir="rtl">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-6xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
 
         <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <div>
@@ -1940,7 +2203,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
                 </tbody>
               </table>
               {sorted.length === 0 && (
-                <div className="text-center py-12 text-slate-400 font-bold">لا توجد نتائج</div>
+                <div className="text-center py-12 text-slate-400 font-bold">مفيش نتائج</div>
               )}
             </div>
           </div>

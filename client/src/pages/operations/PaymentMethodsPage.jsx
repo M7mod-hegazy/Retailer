@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Link } from "react-router-dom";
 import {
   CreditCard, Plus, Pencil, Trash2, X, Lock, ArrowUpCircle, ArrowDownCircle,
-  BookOpen, RefreshCw, Search, Printer, Settings2, Wallet, Banknote, ShieldCheck
+  BookOpen, RefreshCw, Search, Printer, Settings2, Wallet, Banknote, ShieldCheck,
+  Landmark, CalendarClock, Users,
 } from "lucide-react";
+import MoneyPath from "../../components/ui/MoneyPath";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -35,6 +37,15 @@ const CAT_COLORS = {
   digital_wallet: "bg-violet-50 text-violet-700",
   other: "bg-slate-50 text-slate-600",
 };
+
+// Where the money actually lands for each method — shown as a chip on every
+// card so the mapping is visible in the list, not buried in behavior.
+function methodDestination(m) {
+  if (m.category === "credit") return { icon: CalendarClock, label: "على حساب العميل — لا كاش الآن" };
+  if (m.category === "card" || m.category === "bank") return { icon: Landmark, label: "حساب البنك (قناة معزولة)" };
+  if (m.excludes_from_treasury) return { icon: Wallet, label: "قناة معزولة — خارج درج الكاشير" };
+  return { icon: Wallet, label: "خزنة الكاشير" };
+}
 
 const DEFAULT_EXTRAS = [
   { name: "InstaPay", category: "digital_wallet", icon: "📲", description: "خدمة إنستاباي", excludes_from_treasury: 1 },
@@ -127,7 +138,14 @@ function MethodsTab() {
       </div>
       
       {m.description && <p className="text-sm text-slate-500 font-bold mb-6 line-clamp-2 leading-relaxed">{m.description}</p>}
-      
+
+      <MoneyPath
+        compact
+        className="relative z-10 mb-4"
+        from={{ icon: Users, label: "العميل يدفع" }}
+        to={methodDestination(m)}
+      />
+
       <div className="mt-auto pt-6 flex items-center justify-between border-t border-slate-100 relative z-10">
         {!isSystem && m.excludes_from_treasury ? (
           <div className="flex items-center gap-2 text-[11px] font-black tracking-widest uppercase text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full">

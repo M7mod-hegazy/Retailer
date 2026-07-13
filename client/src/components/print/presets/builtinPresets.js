@@ -66,20 +66,8 @@ const div = (id, after, style = "solid") => ({ id, type: "divider", after, props
 const gap = (id, after, height = 6) => ({ id, type: "spacer", after, props: { height } });
 const note = (id, after, text, props = {}) => ({ id, type: "custom_text", after, props: { text, align: "center", ...props } });
 
-const rollPreset = (id, name, nameEn, { table = "grid", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["80mm", "58mm"] } = {}) => ({
-  id, family: "roll", sizes, name, nameEn, tags,
-  layout: {
-    ...(order ? { order } : {}),
-    perBlock: {
-      ...perBlock,
-      items_table: {
-        tableBorder: table,
-        ...(perBlock.items_table || {}),
-      },
-    },
-    inserted,
-  },
-  flat: {
+const rollPreset = (id, name, nameEn, { table = "grid", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["80mm", "58mm"] } = {}) => {
+  const effectiveFlat = {
     body_font_size: 11,
     item_font_size: 11,
     footer_font_size: 9,
@@ -88,32 +76,74 @@ const rollPreset = (id, name, nameEn, { table = "grid", perBlock = {}, inserted 
     show_barcode_line: true,
     show_receiver_signature: true,
     ...flat,
-  },
-});
-
-const pagePreset = (id, name, nameEn, { headerStyle = "band", headerMetaAlign, pageLayoutType = "standard", table = "gridZebra", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["A4", "A5"] } = {}) => ({
-  id, family: "page", sizes, name, nameEn, tags,
-  layout: {
-    ...(order ? { order } : {}),
-    headerStyle,
-    pageLayoutType,
-    ...(headerMetaAlign ? { headerMetaAlign } : {}),
-    perBlock: {
-      ...perBlock,
-      items_table: {
-        tableBorder: table.includes("grid") ? "grid" : table.includes("lines") ? "lines" : "none",
-        zebra: table.includes("Zebra"),
-        ...(perBlock.items_table || {}),
+  };
+  let resolvedOrder = order;
+  if (!order) {
+    resolvedOrder = [...DEFAULT_ORDER.roll];
+    if (effectiveFlat.show_barcode_line && !resolvedOrder.includes("barcode")) {
+      const fIdx = resolvedOrder.indexOf("footer_text");
+      resolvedOrder.splice(fIdx >= 0 ? fIdx + 1 : resolvedOrder.length, 0, "barcode");
+    }
+    if (effectiveFlat.show_qr && !resolvedOrder.includes("qr")) {
+      const fIdx = resolvedOrder.indexOf("footer_text");
+      resolvedOrder.splice(fIdx >= 0 ? fIdx + 1 : resolvedOrder.length, 0, "qr");
+    }
+  }
+  return {
+    id, family: "roll", sizes, name, nameEn, tags,
+    layout: {
+      order: resolvedOrder,
+      perBlock: {
+        ...perBlock,
+        items_table: {
+          tableBorder: table,
+          ...(perBlock.items_table || {}),
+        },
       },
+      inserted,
     },
-    inserted,
-  },
-  flat: {
+    flat: effectiveFlat,
+  };
+};
+
+const pagePreset = (id, name, nameEn, { headerStyle = "band", headerMetaAlign, pageLayoutType = "standard", table = "gridZebra", perBlock = {}, inserted = [], order, flat = {}, tags = [], sizes = ["A4", "A5"] } = {}) => {
+  const effectiveFlat = {
     accent_color: "#1e3a8a",
     print_font: "Cairo",
     ...flat,
-  },
-});
+  };
+  let resolvedOrder = order;
+  if (!order) {
+    resolvedOrder = [...DEFAULT_ORDER.page];
+    if (effectiveFlat.show_barcode_line && !resolvedOrder.includes("barcode")) {
+      const fIdx = resolvedOrder.indexOf("footer_text");
+      resolvedOrder.splice(fIdx >= 0 ? fIdx + 1 : resolvedOrder.length, 0, "barcode");
+    }
+    if (effectiveFlat.show_qr && !resolvedOrder.includes("qr")) {
+      const fIdx = resolvedOrder.indexOf("footer_text");
+      resolvedOrder.splice(fIdx >= 0 ? fIdx + 1 : resolvedOrder.length, 0, "qr");
+    }
+  }
+  return {
+    id, family: "page", sizes, name, nameEn, tags,
+    layout: {
+      order: resolvedOrder,
+      headerStyle,
+      pageLayoutType,
+      ...(headerMetaAlign ? { headerMetaAlign } : {}),
+      perBlock: {
+        ...perBlock,
+        items_table: {
+          tableBorder: table.includes("grid") ? "grid" : table.includes("lines") ? "lines" : "none",
+          zebra: table.includes("Zebra"),
+          ...(perBlock.items_table || {}),
+        },
+      },
+      inserted,
+    },
+    flat: effectiveFlat,
+  };
+};
 
 /* ================================================================
  * ROLL LIBRARY — Thermal 58/80mm (29 presets)
@@ -481,7 +511,7 @@ const ROLL_PRESETS = [
       barcode: { variant: "standard" },
       receiver_signature: { variant: "compact", compact: true },
     },
-    flat: { print_font: "Cairo" },
+    flat: { print_font: "Cairo", show_barcode_line: false },
     tags: ["ticket", "kitchen", "restaurant"],
   }),
 
@@ -504,7 +534,7 @@ const ROLL_PRESETS = [
       barcode: { variant: "standard" },
       receiver_signature: { variant: "compact", compact: true },
     },
-    flat: { print_font: "Cairo" },
+    flat: { print_font: "Cairo", show_barcode_line: false },
     tags: ["ticket", "restaurant"],
   }),
 
@@ -515,12 +545,12 @@ const ROLL_PRESETS = [
     perBlock: {
       order_number: { fontSize: 60, bold: true, align: "center", variant: "boxed" },
       company_name: { fontSize: 14, align: "center", bold: true, underline: false },
-      footer_text: { ...frame(1, "dashed", 5), align: "center", fontSize: 11, variant: "boxed" },
+      footer_text: { ...frame(1, "dashed", 5), align: "center", fontSize: 11, variant: "boxed", text: "يرجى الانتظار لحين مناداة رقمك — شكراً لكم" },
       doc_date: { showTime: false },
       barcode: { variant: "standard" },
       receiver_signature: { variant: "compact", compact: true },
     },
-    flat: { receipt_footer: "يرجى الانتظار لحين مناداة رقمك — شكراً لكم", print_font: "Cairo" },
+    flat: { print_font: "Cairo", show_barcode_line: false },
     tags: ["ticket", "restaurant"],
   }),
 
@@ -540,7 +570,7 @@ const ROLL_PRESETS = [
       barcode: { variant: "standard" },
       receiver_signature: { variant: "compact", compact: true },
     },
-    flat: { print_font: "Cairo" },
+    flat: { print_font: "Cairo", show_barcode_line: false },
     tags: ["ticket", "delivery", "restaurant"],
   }),
 
@@ -565,7 +595,7 @@ const ROLL_PRESETS = [
       receiver_signature: { variant: "boxed", compact: true, showStamp: true },
       barcode: { variant: "standard" },
     },
-    flat: { print_font: "Noto Sans Arabic", show_tax_id: true, show_receiver_signature: true },
+    flat: { print_font: "Noto Sans Arabic", show_tax_id: true, show_receiver_signature: true, show_qr: true },
     tags: ["pharmacy", "compliance"],
   }),
 
@@ -729,7 +759,7 @@ const ROLL_PRESETS = [
   rollPreset("roll-electronics", "إلكترونيات وضمان للأجهزة", "Tech Store & Warranty", {
     table: "grid",
     sizes: ["80mm"],
-    order: moveAfter(RO, "barcode", "items_table"),
+    order: (() => { const base = DEFAULT_ORDER.roll.filter(b => b !== "receiver_signature"); const itemsIdx = base.indexOf("items_table"); base.splice(itemsIdx + 1, 0, "barcode"); return [...base, "qr", "receiver_signature"]; })(),
     perBlock: {
       company_name: { fontSize: 16, bold: true, align: "center", underline: false },
       items_table: { columns: R_SUPERMARKET, fontSize: 10, rowPad: 3, headerVariant: "dark", lineWidth: 2, nameWidth: 50 },
@@ -749,14 +779,14 @@ const ROLL_PRESETS = [
       receiver_signature: { variant: "standard", compact: true, showStamp: true },
     },
     inserted: [note("n1", "grand_total", "الضمان يسري لمدة سنتين من تاريخ الفاتورة. يرجى إبراز هذا الإيصال عند الصيانة.", { ...frame(1, "dashed", 5), fontSize: 10, bold: true })],
-    flat: { show_barcode_line: true, print_font: "Cairo", show_receiver_signature: true },
+    flat: { show_barcode_line: true, show_qr: true, print_font: "Cairo", show_receiver_signature: true },
     tags: ["electronics", "warranty"],
   }),
 
   /* ── 26. Specialty: Food & Parcel Delivery ── */
   rollPreset("roll-delivery", "توصيل طلبات منازل", "Food & Parcel Delivery", {
     table: "lines",
-    order: withBlockAfter(RO, "order_number", "doc_date"),
+    order: (() => { const base = withBlockAfter(DEFAULT_ORDER.roll, "order_number", "doc_date"); base.splice(-1, 0, "barcode", "qr"); return base; })(),
     perBlock: {
       order_number: { fontSize: 34, bold: true, align: "center", variant: "badge" },
       customer: { ...frame(2, "solid", 6), fontSize: 13, bold: true, variant: "boxed", showPhone: true, showAddress: true },
@@ -849,7 +879,7 @@ const ROLL_PRESETS = [
       barcode: { variant: "standard" },
       receiver_signature: { variant: "compact", compact: true },
     },
-    flat: { print_font: "Tahoma" },
+    flat: { print_font: "Tahoma", show_barcode_line: false },
     tags: ["compact", "kiosk"],
   }),
 
@@ -1006,7 +1036,7 @@ const PAGE_PRESETS = [
       items_table: { columns: P_STANDARD, fontSize: 10, rowPad: 2, tableBorder: "none", variant: "ledger" },
       grand_total: { variant: "receipt-tape", labelSize: 10, amountSize: 13 },
     },
-    flat: { accent_color: "#374151", body_font_size: 10, item_font_size: 10, header_font_size: 13, footer_font_size: 8 },
+    flat: { accent_color: "#374151", body_font_size: 10, item_font_size: 10, header_font_size: 13, footer_font_size: 8, show_barcode_line: true },
     tags: ["compact"],
   }),
 
@@ -1034,7 +1064,7 @@ const PAGE_PRESETS = [
       grand_total: { variant: "stripe", background: "#047857" },
       company_name: { variant: "stacked-bilingual" },
     },
-    flat: { accent_color: "#047857" },
+    flat: { accent_color: "#047857", show_barcode_line: true },
     tags: ["modern"],
   }),
 
@@ -1092,7 +1122,7 @@ const PAGE_PRESETS = [
       grand_total: { variant: "tag" },
       company_name: { variant: "retro-brutalist" },
     },
-    flat: { accent_color: "#78350f" },
+    flat: { accent_color: "#78350f", show_barcode_line: true },
     tags: ["classic"],
   }),
 
@@ -1107,7 +1137,7 @@ const PAGE_PRESETS = [
       company_name: { variant: "stacked-bilingual" },
     },
     inserted: [note("n1", "footer_text", "This is a computer-generated document. / هذا المستند تم إنشاؤه آلياً ولا يحتاج لختم", { fontSize: 9, italic: true, align: "left" })],
-    flat: { accent_color: "#047857" },
+    flat: { accent_color: "#047857", show_barcode_line: true },
     tags: ["bilingual"],
   }),
 
@@ -1241,7 +1271,7 @@ const PAGE_PRESETS = [
       grand_total: { variant: "receipt-tape" },
       payments: { variant: "table-row" },
     },
-    flat: { accent_color: "#374151", body_font_size: 10, item_font_size: 10 },
+    flat: { accent_color: "#374151", body_font_size: 10, item_font_size: 10, show_barcode_line: true },
     tags: ["wholesale", "dense"],
   }),
 
@@ -1255,7 +1285,7 @@ const PAGE_PRESETS = [
       grand_total: { variant: "stripe", background: "#15803d" },
       payments: { variant: "badge-pill" },
     },
-    flat: { accent_color: "#15803d", item_font_size: 10 },
+    flat: { accent_color: "#15803d", item_font_size: 10, show_barcode_line: true },
     tags: ["supermarket", "dense"],
   }),
 
@@ -1303,7 +1333,7 @@ const PAGE_PRESETS = [
       grand_total: { variant: "dual-row" },
       payments: { variant: "table-row" },
     },
-    flat: { accent_color: "#047857", print_font: "Noto Sans Arabic", show_tax_id: true },
+    flat: { accent_color: "#047857", print_font: "Noto Sans Arabic", show_tax_id: true, show_qr: true },
     tags: ["pharmacy", "compliance"],
   }),
 
@@ -1319,7 +1349,7 @@ const PAGE_PRESETS = [
       doc_number: { fontFamily: "monospace", bold: true },
     },
     inserted: [note("n1", "notes", "الضمان يسري من تاريخ الشراء. يسمح بالاستبدال خلال 7 أيام بحالته الأصلية دون فك التغليف.", { ...frame(1, "dashed", 6, "#1d4ed8"), fontSize: 10 })],
-    flat: { accent_color: "#1d4ed8", show_barcode_line: true },
+    flat: { accent_color: "#1d4ed8", show_barcode_line: true, show_qr: true },
     tags: ["electronics", "warranty"],
   }),
 

@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   ArrowUpFromLine, Plus, Pencil, Trash2, Search, Download, Calendar,
   X, ChevronDown, RefreshCw, AlertTriangle, Filter, Database, Check,
-  CreditCard, Banknote, HelpCircle, Command, TrendingDown, ArrowLeftRight, Lock
+  CreditCard, Banknote, HelpCircle, Command, TrendingDown, ArrowLeftRight, Lock,
+  Wallet
 } from "lucide-react";
+import ChooserCard from "../../components/ui/ChooserCard";
 
 import { Link, useNavigate } from "react-router-dom";
 import SmartDatePicker from "../../components/ui/SmartDatePicker";
@@ -591,6 +593,14 @@ export default function WithdrawalsListPage() {
           <p className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
             دفتر تشغيلي لإدارة وتسجيل كافة المسحوبات والعهد. استخدم نموذج الإدخال السريع أعلى القائمة لتسجيل سحب جديد، أو الفلاتر للبحث وتحديد فترات زمنية.
           </p>
+          <ChooserCard
+            className="w-full max-w-2xl text-start"
+            title="متأكد إن ده مكانه هنا؟"
+            options={[
+              { icon: Wallet, label: "مسحوبات شخصية", desc: "فلوس خرجت لصاحب المحل — بتتخصم من حقك، مش من ربح المحل.", current: true },
+              { icon: TrendingDown, label: "مصروف تشغيل", desc: "إيجار، كهربا، مرتبات؟ ده مصروف على المحل — سجّله في المصروفات.", to: "/expenses" },
+            ]}
+          />
         </div>
 
         {/* ------------------------------------------------------------- */}

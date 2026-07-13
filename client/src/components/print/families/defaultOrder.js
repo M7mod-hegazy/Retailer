@@ -4,7 +4,7 @@ const COMMON = [
   "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
   "doc_number", "doc_date", "customer", "cashier",
   "items_table", "subtotal", "discount", "increase", "tax", "grand_total", "payments",
-  "notes", "footer_text", "qr", "barcode",
+  "notes", "footer_text",
 ];
 
 // Page-only additions: `watermark` is an absolutely-positioned overlay so its

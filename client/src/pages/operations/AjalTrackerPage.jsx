@@ -409,14 +409,42 @@ export default function AjalTrackerPage() {
                     onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: schedFrequencyRef })}
                     className="w-full h-10 rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-amber-500" />
                 </div>
-                {selected.remaining > 0 && schedForm.installments > 0 && (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
-                    <div className="text-[11px] text-amber-700 font-bold">قسط تقريبي</div>
-                    <div className="text-[18px] number-fmt-primary text-amber-800">
-                      {fmt(selected.remaining / schedForm.installments)} ج.م
+                {/* Live preview of the exact schedule that will be created */}
+                {selected.remaining > 0 && Number(schedForm.installments) >= 2 && (() => {
+                  const n = Math.min(Number(schedForm.installments), 60);
+                  const per = selected.remaining / n;
+                  const start = schedForm.start_date ? new Date(schedForm.start_date) : new Date();
+                  const rows = [];
+                  for (let i = 0; i < n; i++) {
+                    const d = new Date(start);
+                    if (schedForm.frequency === "weekly") d.setDate(d.getDate() + i * 7);
+                    else if (schedForm.frequency === "biweekly") d.setDate(d.getDate() + i * 14);
+                    else d.setMonth(d.getMonth() + i);
+                    rows.push(d);
+                  }
+                  const shown = rows.slice(0, 5);
+                  return (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
+                      <div className="text-[11px] text-amber-700 font-black mb-2">
+                        الجدول اللي هيتعمل — {n} قسط × {fmt(per)} ج.م تقريباً:
+                      </div>
+                      <ul className="space-y-1">
+                        {shown.map((d, i) => (
+                          <li key={i} className="flex items-center justify-between text-[11px] font-bold text-amber-800">
+                            <span>قسط {i + 1} — {fmtDate(d)}</span>
+                            <span className="number-fmt">{fmt(per)} ج.م</span>
+                          </li>
+                        ))}
+                        {n > shown.length && (
+                          <li className="text-[10px] font-bold text-amber-600">… و{n - shown.length} أقساط كمان حتى {fmtDate(rows[n - 1])}</li>
+                        )}
+                      </ul>
+                      <div className="mt-2 text-[10px] font-bold text-amber-600">
+                        التواريخ تقريبية للمعاينة — الجدول الفعلي بيتسجل عند الضغط على «إنشاء».
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
                 <button onClick={handleSchedule} disabled={scheduling}
                   className="w-full rounded-xl bg-primary py-3 text-sm font-black text-white hover:bg-primary-600 disabled:opacity-40">
                   {scheduling ? "جاري الجدولة..." : "إنشاء جدول الأقساط"}

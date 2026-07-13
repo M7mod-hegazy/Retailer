@@ -6,6 +6,7 @@ import {
   AlertTriangle, TrendingUp, Lock, Loader2, ExternalLink, CheckCircle2,
   Settings2, Info, X,
 } from "lucide-react";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
 import { useNavigate, useSearchParams, useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -33,6 +34,7 @@ import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import BranchTransferFormBottomBar from "./BranchTransferFormBottomBar";
 import { formatNumber } from "../../utils/currency";
 import SmartTooltip from "../../components/ui/SmartTooltip";
+import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
@@ -117,6 +119,7 @@ export default function BranchTransferFormPage() {
   // Header modals
   const [todayModalOpen, setTodayModalOpen] = useState(false);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
+  const [waSendOpen, setWaSendOpen] = useState(false);
 
   // Column visibility
   const ALL_COLUMNS = ["index","code","name","unit","warehouse","quantity","unit_cost","selling_price","profit_pct","wholesale_price","locks","total_cost","actions"];
@@ -1018,6 +1021,15 @@ export default function BranchTransferFormPage() {
             <DocumentActionButton variant="today" icon={FileText} onClick={() => setTodayModalOpen(true)}>
               المستندات
             </DocumentActionButton>
+            {isEditMode && (
+              <DocumentActionButton
+                onClick={() => setWaSendOpen(true)}
+                className="bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/20"
+                icon={WhatsAppIcon}
+              >
+                واتساب
+              </DocumentActionButton>
+            )}
             <PermissionGate page="branch_transfer" action={isEditMode ? "edit" : "add"}>
               <SmartTooltip content={disabledReason} side="bottom" fill>
                 <div className="inline-block">
@@ -1585,6 +1597,7 @@ export default function BranchTransferFormPage() {
         onSaveOnly={() => { setPreviewOpen(false); handleSaveClick(); }}
         saveOnlyLabel="حفظ بدون طباعة"
         isSaving={isSaving}
+        onSendWhatsApp={() => setWaSendOpen(true)}
       />
 
       <UnsavedChangesModal
@@ -1797,6 +1810,30 @@ export default function BranchTransferFormPage() {
           </div>
         </div>
       </Modal>
+
+      {waSendOpen && (
+        <WhatsAppSendModal
+          open={waSendOpen}
+          onClose={() => setWaSendOpen(false)}
+          kind={isReceive ? "transfer_receive" : "transfer_send"}
+          invoice={{
+            reference_no: displayRef,
+            partner_branch: partnerBranch,
+            name: partnerBranch,
+            total: totalCost,
+            lines: lines.map(l => ({
+              ...l,
+              item_name: l.item_name || l.name,
+              quantity: l.quantity,
+              unit_price: l.unit_cost,
+              discount_amount: 0,
+              code: l.code || l.item_code || "",
+            })),
+            created_by_username: user?.name || "",
+            created_at: displayDate,
+          }}
+        />
+      )}
     </div>
   );
 }

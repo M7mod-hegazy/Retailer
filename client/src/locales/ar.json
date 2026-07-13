@@ -1195,6 +1195,8 @@
   "whatsapp.downloadImage": "تنزيل الصورة",
   "whatsapp.imageCaptionReceipt": "فاتورة رقم {{no}} - {{total}} جنيه",
   "whatsapp.imageCaptionReturn": "مرتجع رقم {{no}} - {{total}} جنيه",
+  "whatsapp.imageCaptionPurchase": "فاتورة شراء رقم {{no}} - {{total}} جنيه",
+  "whatsapp.imageCaptionTransfer": "حركة نقل رقم {{no}} - {{total}} جنيه",
   "whatsapp.paperSize": "حجم الورق",
   "whatsapp.imagePreview": "معاينة الصورة",
   "whatsapp.fit": "ملاءمة",
