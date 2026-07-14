@@ -411,7 +411,7 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
 
   const baseSalary = Number(employee.salary || 0);
 
-  // جمع المكافآت النشطة
+  // جمع المكافآت النشطة (المتكررة + لمرة واحدة — لمرة واحدة تُستهلك بعد الصرف)
   const activeBonuses = db.prepare(
     "SELECT COALESCE(SUM(amount), 0) AS total FROM employee_bonuses WHERE employee_id = ? AND status = 'active'"
   ).get(req.params.id);
@@ -423,80 +423,104 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
   ).get(req.params.id);
   const totalDeductions = Number(activeDeductions.total || 0);
 
-  // الخصومات لمرة واحدة غير المطبقة بعد
+  // الخصومات لمرة واحدة — تُخصم في هذا الصرف أو تُؤجَّل بالكامل للصرف القادم حسب اختيار المستخدم.
+  // عند التأجيل لا تدخل في الحساب إطلاقاً (وإلا تُخصم مرتين).
+  const applyOneTime = payload.consume_one_time === undefined ? true : !!payload.consume_one_time;
   const oneTimeDeductions = db.prepare(
     "SELECT COALESCE(SUM(amount), 0) AS total FROM employee_deductions WHERE employee_id = ? AND status = 'active' AND is_recurring = 0"
   ).get(req.params.id);
-  const totalOneTimeDeductions = Number(oneTimeDeductions.total || 0);
+  const totalOneTimeDeductions = applyOneTime ? Number(oneTimeDeductions.total || 0) : 0;
 
-  // سداد السلف — يقبل مصفوفة من المبالغ المحددة من المستخدم
+  // سداد السلف — يقبل مصفوفة من المبالغ المحددة من المستخدم (تُقرأ وتُقلَّم قبل أي تعديل)
   const advancePayments = Array.isArray(payload.advance_payments) ? payload.advance_payments : [];
+  const advanceRows = [];
+  let advanceDeductions = 0;
+  for (const ap of advancePayments) {
+    const advanceId = Number(ap.advance_id);
+    const payAmount = Number(ap.amount || 0);
+    if (payAmount <= 0) continue;
+    const advance = db.prepare("SELECT * FROM employee_advances WHERE id = ? AND employee_id = ? AND status = 'active'").get(advanceId, req.params.id);
+    if (!advance) continue;
+    const actualPay = Math.min(payAmount, Number(advance.remaining_balance));
+    if (actualPay <= 0) continue;
+    advanceRows.push({ advance, actualPay });
+    advanceDeductions += actualPay;
+  }
 
-  // خيارات الدفع الجزئي
+  // صافي الفترة الحالية — يُرفض الصرف إذا تجاوزت الخصومات والسلف المستحق
+  const totalDeductionsAll = totalDeductions + totalOneTimeDeductions + advanceDeductions;
+  const periodNet = baseSalary + totalBonuses - totalDeductionsAll;
+  if (periodNet < 0) {
+    return res.status(400).json({ success: false, message: "الخصومات وسداد السلف تتجاوز الراتب المستحق — قلّل مبلغ سداد السلف أو أجّل الخصومات" });
+  }
+
+  // مستحقات سابقة للموظف (متبقي صرف جزئي مُفعَّل له الترحيل) — تُضاف للمستحق، لا تُخصم منه
+  const previousOwedRow = db.prepare(
+    "SELECT COALESCE(SUM(remaining_balance), 0) AS total FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
+  ).get(req.params.id);
+  const previousOwed = Number(previousOwedRow.total || 0);
+  const totalDue = periodNet + previousOwed;
+
+  // حساب المبلغ المدفوع والمتبقي
   const paidAmountRaw = payload.paid_amount;
+  const isPartial = paidAmountRaw !== undefined && paidAmountRaw !== null && paidAmountRaw !== "";
+  const paidAmount = isPartial ? Math.min(Math.max(Number(paidAmountRaw) || 0, 0), totalDue) : totalDue;
+  if (isPartial && paidAmount <= 0 && totalDue > 0) {
+    return res.status(400).json({ success: false, message: "أدخل مبلغ صرف جزئي صحيح" });
+  }
+  const remainingBalance = totalDue - paidAmount;
+  const status = remainingBalance > 0 ? 'partial' : 'full';
   const carryForward = !!payload.carry_forward;
 
   const result = db.transaction(() => {
-    let advanceDeductions = 0;
-
-    // معالجة مدفوعات السلف
-    for (const ap of advancePayments) {
-      const advanceId = Number(ap.advance_id);
-      const payAmount = Number(ap.amount || 0);
-      if (payAmount <= 0) continue;
-
-      const advance = db.prepare("SELECT * FROM employee_advances WHERE id = ? AND employee_id = ? AND status = 'active'").get(advanceId, req.params.id);
-      if (!advance) continue;
-
-      const actualPay = Math.min(payAmount, advance.remaining_balance);
-      advanceDeductions += actualPay;
-      const newRemaining = advance.remaining_balance - actualPay;
+    // تطبيق مدفوعات السلف
+    for (const { advance, actualPay } of advanceRows) {
+      const newRemaining = Number(advance.remaining_balance) - actualPay;
       const newStatus = newRemaining <= 0 ? 'fully_repaid' : 'active';
-
       db.prepare("UPDATE employee_advances SET remaining_balance = ?, status = ? WHERE id = ?")
-        .run(newRemaining, newStatus, advanceId);
+        .run(newRemaining, newStatus, advance.id);
       db.prepare("INSERT INTO employee_advance_payments (advance_id, amount, notes, created_by, payment_date) VALUES (?, ?, ?, ?, ?)")
-        .run(advanceId, actualPay, `تسوية راتب — ${periodStart} إلى ${periodEnd}`, req.user?.id || null, nowSql());
+        .run(advance.id, actualPay, `تسوية راتب — ${periodStart} إلى ${periodEnd}`, req.user?.id || null, nowSql());
     }
 
-    // رصيد متبقي من فترات سابقة
-    const outstandingRow = db.prepare(
-      "SELECT COALESCE(SUM(remaining_balance), 0) AS total FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
-    ).get(req.params.id);
-    const outstandingBalance = Number(outstandingRow.total || 0);
+    // ترحيل المستحقات السابقة داخل هذا الصرف — الصفوف القديمة تصبح 'carried' ومتبقيها محسوب هنا
+    if (previousOwed > 0) {
+      db.prepare(
+        "UPDATE salary_settlements SET status = 'carried' WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
+      ).run(req.params.id);
+    }
 
-    const totalDeductionsAll = totalDeductions + totalOneTimeDeductions + advanceDeductions;
-    const netSalary = Math.max(0, baseSalary + totalBonuses - totalDeductionsAll - outstandingBalance);
+    // إنشاء مصروف بالمبلغ المدفوع فقط — لا يُنشأ مصروف صفري
+    let expenseId = null;
+    if (paidAmount > 0) {
+      const docNo = generateDocNumber('expense');
+      const expenseResult = db
+        .prepare(
+          `INSERT INTO expenses (doc_no, amount, category_id, notes, description, payment_method, employee_id, treasury_id, created_at, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+        )
+        .run(docNo, paidAmount, payload.category_id || null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
+      expenseId = expenseResult.lastInsertRowid;
+    }
 
-    // حساب المبلغ المدفوع والمتبقي
-    const isPartial = paidAmountRaw !== undefined && paidAmountRaw !== null && paidAmountRaw !== "";
-    const paidAmount = isPartial ? Math.min(Number(paidAmountRaw) || 0, netSalary) : netSalary;
-    const remainingBalance = Math.max(0, netSalary - paidAmount);
-    const status = remainingBalance > 0 ? 'partial' : 'full';
-
-    // إنشاء مصروف بالمبلغ المدفوع فقط
-    const docNo = generateDocNumber('expense');
-    const expenseResult = db
-      .prepare(
-        `INSERT INTO expenses (doc_no, amount, category_id, notes, description, payment_method, employee_id, treasury_id, created_at, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-      )
-      .run(docNo, paidAmount, payload.category_id || null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
-
-    // تسوية الخصومات لمرة واحدة — تُسجَّل تلقائياً عند الصرف الكامل، أو حسب اختيار المستخدم عند الصرف الجزئي
-    const consumeOneTime = payload.consume_one_time !== undefined ? !!payload.consume_one_time : !isPartial;
-    if (consumeOneTime) {
+    // استهلاك الخصومات لمرة واحدة — فقط إذا دخلت في حساب هذا الصرف
+    if (applyOneTime) {
       db.prepare(
         "UPDATE employee_deductions SET status = 'completed', completed_at = ? WHERE employee_id = ? AND status = 'active' AND is_recurring = 0"
       ).run(nowSql(), req.params.id);
     }
 
+    // استهلاك المكافآت لمرة واحدة — دخلت في الحساب فلا تتكرر في الصرف القادم
+    db.prepare(
+      "UPDATE employee_bonuses SET status = 'completed', completed_at = ? WHERE employee_id = ? AND status = 'active' AND is_recurring = 0"
+    ).run(nowSql(), req.params.id);
+
     // تسجيل صرف الراتب في salary_settlements
     const settleResult = db
       .prepare(
         `INSERT INTO salary_settlements
-         (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, paid_amount, remaining_balance, carry_forward, payment_method, description, settled_by, expense_id, settled_at, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, previous_owed, paid_amount, remaining_balance, carry_forward, payment_method, description, settled_by, expense_id, settled_at, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         req.params.id,
@@ -506,44 +530,20 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
         totalBonuses,
         totalDeductionsAll,
         advanceDeductions,
-        netSalary,
+        periodNet,
+        previousOwed,
         paidAmount,
         remainingBalance,
         carryForward ? 1 : 0,
         payload.payment_method || 'cash',
         payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`,
         req.user?.id || null,
-        expenseResult.lastInsertRowid,
+        expenseId,
         nowSql(),
         status
       );
 
-    // تسجيل في salary_payments
-    db.prepare(
-      `INSERT INTO salary_payments
-       (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, paid_amount, remaining_balance, status, carry_forward, payment_method, description, settled_by, expense_id, settled_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      req.params.id,
-      periodStart,
-      periodEnd,
-      baseSalary,
-      totalBonuses,
-      totalDeductionsAll,
-      advanceDeductions,
-      netSalary,
-      paidAmount,
-      remainingBalance,
-      status,
-      carryForward ? 1 : 0,
-      payload.payment_method || 'cash',
-      payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`,
-      req.user?.id || null,
-      expenseResult.lastInsertRowid,
-      nowSql()
-    );
-
-    return { expenseId: expenseResult.lastInsertRowid, settleId: settleResult.lastInsertRowid, netSalary, paidAmount, remainingBalance, status };
+    return { expenseId, settleId: settleResult.lastInsertRowid, netSalary: totalDue, paidAmount, remainingBalance, status };
   })();
 
   const auditMsg = result.status === 'partial'
@@ -579,12 +579,18 @@ router.get("/:id/salary-balance", requirePagePermission("employees", "settle_pay
   const employee = db.prepare("SELECT * FROM employees WHERE id = ?").get(req.params.id);
   if (!employee) return res.status(404).json({ success: false, message: "الموظف غير موجود" });
 
+  // كل المتبقي المستحق للموظف (سواء مُفعَّل له الترحيل التلقائي أم لا)
   const partial = db.prepare(
-    "SELECT COALESCE(SUM(remaining_balance), 0) AS total_outstanding FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
+    "SELECT COALESCE(SUM(remaining_balance), 0) AS total_outstanding FROM salary_settlements WHERE employee_id = ? AND status = 'partial'"
+  ).get(req.params.id);
+
+  // الجزء الذي سيُضاف تلقائياً للمستحق في الصرف القادم
+  const carry = db.prepare(
+    "SELECT COALESCE(SUM(remaining_balance), 0) AS total FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
   ).get(req.params.id);
 
   const totalPaid = db.prepare(
-    "SELECT COALESCE(SUM(paid_amount), 0) AS total_paid FROM salary_settlements WHERE employee_id = ?"
+    "SELECT COALESCE(SUM(COALESCE(paid_amount, net_salary)), 0) AS total_paid FROM salary_settlements WHERE employee_id = ?"
   ).get(req.params.id);
 
   const totalSettled = db.prepare(
@@ -595,6 +601,7 @@ router.get("/:id/salary-balance", requirePagePermission("employees", "settle_pay
     success: true,
     data: {
       outstanding_balance: Number(partial.total_outstanding || 0),
+      carry_forward_balance: Number(carry.total || 0),
       total_paid: Number(totalPaid.total_paid || 0),
       total_settlements: totalSettled.count,
       salary_period: employee.salary_period,
@@ -613,8 +620,9 @@ router.post("/:id/pay-outstanding", requirePagePermission("employees", "settle_p
   const paidAmount = Number(payload.paid_amount || 0);
   if (paidAmount <= 0) return res.status(400).json({ success: false, message: "أدخل المبلغ" });
 
+  // يشمل كل الصرف الجزئي المتبقي — المتتبَّع يدوياً يُسدَّد من هنا أيضاً
   const partials = db.prepare(
-    "SELECT * FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1 ORDER BY id ASC"
+    "SELECT * FROM salary_settlements WHERE employee_id = ? AND status = 'partial' ORDER BY id ASC"
   ).all(req.params.id);
 
   const totalOutstanding = partials.reduce((s, r) => s + Number(r.remaining_balance || 0), 0);
@@ -631,8 +639,8 @@ router.post("/:id/pay-outstanding", requirePagePermission("employees", "settle_p
       const settle = Math.min(remaining, rb);
       const newRb = rb - settle;
       const newStatus = newRb <= 0 ? 'settled' : 'partial';
-      db.prepare("UPDATE salary_settlements SET remaining_balance = ?, status = ? WHERE id = ?")
-        .run(newRb, newStatus, p.id);
+      db.prepare("UPDATE salary_settlements SET remaining_balance = ?, paid_amount = COALESCE(paid_amount, 0) + ?, status = ? WHERE id = ?")
+        .run(newRb, settle, newStatus, p.id);
       remaining -= settle;
     }
 

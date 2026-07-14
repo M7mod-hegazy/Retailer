@@ -317,7 +317,7 @@ function RecipientSuccessScene() {
   );
 }
 
-function useAddRecipientStepsLogic({ onAdded }) {
+function useAddRecipientStepsLogic() {
   const { t } = useTranslation();
   const connect = useTelegramConnect();
   const { config, qrData, generatingQr, scanConnected, pollStatus, detectChatId, generateDeepLink } = connect;
@@ -325,7 +325,6 @@ function useAddRecipientStepsLogic({ onAdded }) {
   const [method, setMethod] = useState(null);
   const [chatId, setChatId] = useState("");
   const [name, setName] = useState("");
-  const [saved, setSaved] = useState(false);
 
   const steps = [
     { key: "choose-method", illustration: <ChooseMethodScene method={method} setMethod={setMethod} />, caption: t("telegram.wizard.chooseMethodHint"), canGoNext: Boolean(method) },
@@ -356,34 +355,37 @@ function useAddRecipientStepsLogic({ onAdded }) {
 
   const forceIndex = scanConnected && method === "qr" ? steps.findIndex(s => s.key === "name") : undefined;
 
-  return { steps, forceIndex, finalChatId, name, saved, setSaved, onAdded, connect };
+  return { steps, forceIndex, finalChatId, name, connect };
 }
 
-export function useAddRecipientSteps({ onAdded } = {}) {
-  const logic = useAddRecipientStepsLogic({ onAdded });
+export function useAddRecipientSteps() {
+  const logic = useAddRecipientStepsLogic();
   const { steps, forceIndex } = logic;
   return { steps, forceIndex, ...logic };
 }
 
 export function AddRecipientWizard({ onClose, onAdded }) {
   const { t } = useTranslation();
-  const logic = useAddRecipientStepsLogic({ onAdded });
-  const { steps, forceIndex, finalChatId, name, saved, setSaved, connect } = logic;
+  const logic = useAddRecipientStepsLogic();
+  const { steps, forceIndex, finalChatId, name, connect } = logic;
   const { addRecipient } = connect;
+  const [completing, setCompleting] = useState(false);
 
   async function handleComplete() {
-    if (saved) return;
-    if (!finalChatId?.trim()) return;
-    setSaved(true);
+    if (completing || !finalChatId?.trim()) return;
+    setCompleting(true);
     try {
-      await addRecipient();
+      await addRecipient({ chatId: finalChatId.trim(), name: name.trim() });
       onAdded?.();
-    } catch { /* handled by hook */ }
+      onClose?.();
+    } catch { /* toast shown by hook */ }
+    finally { setCompleting(false); }
   }
 
   return (
     <ChannelConnectWizard
-      onClose={onClose} icon={User} accent={ACCENT}
+      onClose={onClose} onComplete={handleComplete} nextDisabled={completing}
+      icon={User} accent={ACCENT}
       title={t("telegram.addRecipientWizard")} subtitle={t("telegram.chooseConnectMethod")}
       steps={steps.map((s, i) => ({
         ...s,

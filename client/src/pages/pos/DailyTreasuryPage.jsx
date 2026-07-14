@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
   CheckCircle2, X, ArrowDownRight, ArrowLeft, Calculator, Users,
-  Calendar, ChevronRight, ChevronDown, ChevronUp, Flag, ExternalLink, TrendingUp,
+  Calendar, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
   FileText, Coins, Banknote, History, Info,
   Edit3, RotateCcw, Eye, Sparkles, CreditCard,
@@ -1050,8 +1050,6 @@ export default function DailyTreasuryPage() {
           variants={staggerContainer}
           className="flex flex-col gap-3"
         >
-          {/* Smart Alerts Banner */}
-
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="flex flex-col items-center gap-4">
@@ -1110,117 +1108,195 @@ export default function DailyTreasuryPage() {
                 </motion.div>
               )}
 
-              {/* Quick Actions (Bold Visible Buttons) */}
+              {/* Quick Actions (Tactile Control Panel Buttons with Live Totals) */}
               {isToday && !isClosed && (
                 <motion.div variants={fadeInUp} className="space-y-3">
-                  {/* Primary row: Expense, Revenue, Withdrawals */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                     {/* Expense */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-danger/10 border-2 border-danger/25 overflow-hidden transition-all hover:bg-danger/20 hover:border-danger/40">
-                      <div className="h-1 bg-danger" />
-                      <div className="flex items-stretch">
-                        <button onClick={() => setQuickModal("expense")} className="flex flex-1 items-center gap-3 px-5 py-4">
-                          <div className="bg-danger/15 p-2.5 rounded-xl"><TrendingDown className="h-6 w-6 text-danger" /></div>
-                          <div className="text-right">
-                            <span className="block text-sm font-black text-danger">تسجيل مصروف سريع</span>
-                            <span className="block text-[11px] text-danger/60 font-bold mt-0.5">مصروفات يومية</span>
-                          </div>
-                        </button>
-                        <button onClick={() => navigate('/expenses')} title="عرض قائمة المصروفات" className="w-11 flex items-center justify-center text-danger/40 hover:text-danger hover:bg-danger/10 transition-all border-e border-danger/20 group-hover:border-danger/40">
-                          <ArrowLeft className="h-4 w-4" />
-                        </button>
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setQuickModal("expense")}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-rose-50 via-rose-100/80 to-rose-200/40 border border-rose-300/60 hover:border-rose-400 hover:shadow-[0_16px_36px_-12px_rgba(220,38,38,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-rose-500 rounded-r-full" />
+
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(220,38,38,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-rose-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(220,38,38,0.12)]">
+                          <TrendingDown className="h-4 w-4 text-rose-600 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:translate-y-0.5 group-hover:scale-110" />
+                        </div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-rose-700">تسجيل مصروف</span>
+                          <span className="text-[9px] font-bold text-rose-500/80 mt-1">سند صرف جديد</span>
+                        </div>
                       </div>
-                    </motion.div>
+                      <div className="w-full bg-rose-100/50 border-t border-rose-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-rose-700/80">إجمالي اليوم:</span>
+                        <span className="font-mono font-black text-rose-800">{fmt(summary?.expenses_cash ?? 0)} ج.م</span>
+                      </div>
+                    </motion.button>
 
                     {/* Revenue */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-success/10 border-2 border-success/25 overflow-hidden transition-all hover:bg-success/20 hover:border-success/40">
-                      <div className="h-1 bg-success" />
-                      <div className="flex items-stretch">
-                        <button onClick={() => setQuickModal("revenue")} className="flex flex-1 items-center gap-3 px-5 py-4">
-                          <div className="bg-success/15 p-2.5 rounded-xl"><TrendingUp className="h-6 w-6 text-success" /></div>
-                          <div className="text-right">
-                            <span className="block text-sm font-black text-success">تسجيل إيراد سريع</span>
-                            <span className="block text-[11px] text-success/60 font-bold mt-0.5">إيرادات يومية</span>
-                          </div>
-                        </button>
-                        <button onClick={() => navigate('/revenues')} title="عرض قائمة الإيرادات" className="w-11 flex items-center justify-center text-success/40 hover:text-success hover:bg-success/10 transition-all border-e border-success/20 group-hover:border-success/40">
-                          <ArrowLeft className="h-4 w-4" />
-                        </button>
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setQuickModal("revenue")}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-emerald-50 via-emerald-100/80 to-emerald-200/40 border border-emerald-300/60 hover:border-emerald-400 hover:shadow-[0_16px_36px_-12px_rgba(5,150,105,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-emerald-500 rounded-r-full" />
+
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(5,150,105,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-emerald-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(5,150,105,0.12)]">
+                          <TrendingUp className="h-4 w-4 text-emerald-600 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-110" />
+                        </div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-emerald-700">تسجيل إيراد</span>
+                          <span className="text-[9px] font-bold text-emerald-500/80 mt-1">سند قبض جديد</span>
+                        </div>
                       </div>
-                    </motion.div>
+                      <div className="w-full bg-emerald-100/50 border-t border-emerald-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-emerald-700/80">إجمالي اليوم:</span>
+                        <span className="font-mono font-black text-emerald-800">{fmt(summary?.revenues_cash ?? 0)} ج.م</span>
+                      </div>
+                    </motion.button>
 
                     {/* Withdrawals */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-primary/10 border-2 border-primary/25 overflow-hidden transition-all hover:bg-primary/20 hover:border-primary/40">
-                      <div className="h-1 bg-primary" />
-                      <div className="flex items-stretch">
-                        <button onClick={() => setWithdrawalOpen(true)} className="flex flex-1 items-center gap-3 px-5 py-4">
-                          <div className="bg-primary/15 p-2.5 rounded-xl"><Banknote className="h-6 w-6 text-primary" /></div>
-                          <div className="text-right">
-                            <span className="block text-sm font-black text-primary">تسجيل مسحوبات سريع</span>
-                            <span className="block text-[11px] text-primary/60 font-bold mt-0.5">مسحوبات الخزينة</span>
-                          </div>
-                        </button>
-                        <button onClick={() => navigate('/withdrawals')} title="عرض قائمة المسحوبات" className="w-11 flex items-center justify-center text-primary/40 hover:text-primary hover:bg-primary/10 transition-all border-e border-primary/20 group-hover:border-primary/40">
-                          <ArrowLeft className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  </div>
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setWithdrawalOpen(true)}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-sky-50 via-sky-100/80 to-sky-200/40 border border-sky-300/60 hover:border-sky-400 hover:shadow-[0_16px_36px_-12px_rgba(2,132,199,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-sky-500 rounded-r-full" />
 
-                  {/* Utility row: Money Count, Calculator, Employees */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Money Count */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-info/40">
-                      <button onClick={() => setMoneyOpen(true)} className="w-full flex items-center gap-3 px-5 py-4">
-                        <div className="bg-info/10 p-2 rounded-xl"><Coins className="h-5 w-5 text-info" /></div>
-                        <div className="text-right flex-1">
-                          <span className="block text-xs font-black text-text-primary">عد العملة (جرد الخزينة)</span>
-                          <span className="block text-[10px] text-text-muted font-bold mt-0.5">جرد العملات المعدنية</span>
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(2,132,199,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-sky-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(2,132,199,0.12)]">
+                          <Banknote className="h-4 w-4 text-sky-600 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
                         </div>
-                      </button>
-                    </motion.div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-sky-700">تسجيل مسحوبات</span>
+                          <span className="text-[9px] font-bold text-sky-500/80 mt-1">مسحوبات الخزينة</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-sky-100/50 border-t border-sky-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-sky-700/80">إجمالي اليوم:</span>
+                        <span className="font-mono font-black text-sky-800">{fmt(summary?.withdrawals ?? 0)} ج.م</span>
+                      </div>
+                    </motion.button>
+
+                    {/* Money Count */}
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setMoneyOpen(true)}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-indigo-50 via-indigo-100/80 to-indigo-200/40 border border-indigo-300/60 hover:border-indigo-400 hover:shadow-[0_16px_36px_-12px_rgba(79,70,229,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-indigo-500 rounded-r-full" />
+
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(79,70,229,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-indigo-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(79,70,229,0.12)]">
+                          <Coins className="h-4 w-4 text-indigo-600 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-115" />
+                        </div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-indigo-700">جرد الخزينة</span>
+                          <span className="text-[9px] font-bold text-indigo-500/80 mt-1">عد فئات العملة</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-indigo-100/50 border-t border-indigo-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-indigo-700/80">الرصيد الفعلي:</span>
+                        <span className="font-mono font-black text-indigo-800">{fmt(moneyTotal || 0)} ج.م</span>
+                      </div>
+                    </motion.button>
 
                     {/* Calculator */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-warning/40">
-                      <button onClick={() => setCalcOpen(true)} className="w-full flex items-center gap-3 px-5 py-4">
-                        <div className="bg-warning/10 p-2 rounded-xl"><Calculator className="h-5 w-5 text-warning" /></div>
-                        <div className="text-right flex-1">
-                          <span className="block text-xs font-black text-text-primary">آلة حاسبة</span>
-                          <span className="block text-[10px] text-text-muted font-bold mt-0.5">حسابات سريعة</span>
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setCalcOpen(true)}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-amber-50 via-amber-100/80 to-amber-100/40 border border-amber-300/60 hover:border-amber-400 hover:shadow-[0_16px_36px_-12px_rgba(217,119,6,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-amber-500 rounded-r-full" />
+
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(217,119,6,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-amber-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(217,119,6,0.12)]">
+                          <Calculator className="h-4 w-4 text-amber-600 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-115" />
                         </div>
-                      </button>
-                    </motion.div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-amber-700">الآلة الحاسبة</span>
+                          <span className="text-[9px] font-bold text-amber-500/80 mt-1">عمليات حسابية</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-amber-100/50 border-t border-amber-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-amber-700/80">أداة مساعدة:</span>
+                        <span className="font-black text-amber-700 group-hover:translate-x-[-2px] transition-transform">افتح الحاسبة ←</span>
+                      </div>
+                    </motion.button>
 
                     {/* Employees */}
-                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-primary/40">
-                      <div className="flex items-stretch">
-                        <button onClick={() => setEmpQuickOpen(true)} className="flex flex-1 items-center gap-3 px-5 py-4">
-                          <div className="bg-primary/10 p-2 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
-                          <div className="text-right flex-1">
-                            <span className="block text-xs font-black text-text-primary">الموظفين</span>
-                            <span className="block text-[10px] text-text-muted font-bold mt-0.5">سندات، بونصات، عقوبات</span>
-                          </div>
-                        </button>
-                        <button onClick={() => navigate('/definitions/employees')} title="قائمة الموظفين" className="w-10 flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-all border-e border-border-normal group-hover:border-primary/30">
-                          <ArrowLeft className="h-3.5 w-3.5" />
-                        </button>
+                    <motion.button
+                      whileHover={{ y: -3, scale: 1.01 }}
+                      whileTap={{ scale: 0.99, y: 0 }}
+                      onClick={() => setEmpQuickOpen(true)}
+                      className="group relative flex flex-col justify-between h-[118px] rounded-[22px] bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-teal-50 via-teal-100/80 to-teal-100/40 border border-teal-300/60 hover:border-teal-400 hover:shadow-[0_16px_36px_-12px_rgba(13,148,136,0.28),inset_0_1.5px_0_rgba(255,255,255,0.9)] shadow-[inset_0_1.5px_0_rgba(255,255,255,0.8),0_4px_12px_rgba(15,23,42,0.03)] transition-all overflow-hidden text-right w-full"
+                    >
+                      {/* Glossy glare line */}
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+                      {/* Vertical Accent stripe */}
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-teal-500 rounded-r-full" />
+
+                      <div className="flex items-center gap-3 p-3 w-full relative z-10 pr-4">
+                        <div className="bg-white p-2.5 rounded-xl transition-all duration-300 shadow-[0_4px_10px_rgba(13,148,136,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] border border-teal-200/50 group-hover:scale-105 group-hover:shadow-[0_6px_14px_rgba(13,148,136,0.12)]">
+                          <Users className="h-4 w-4 text-teal-600 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:scale-110" />
+                        </div>
+                        <div className="flex flex-col items-start leading-none">
+                          <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-teal-700">شؤون الموظفين</span>
+                          <span className="text-[9px] font-bold text-teal-500/80 mt-1">سندات وحسابات</span>
+                        </div>
                       </div>
-                    </motion.div>
+                      <div className="w-full bg-teal-100/50 border-t border-teal-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
+                        <span className="font-bold text-teal-700/80">إجراء سريع:</span>
+                        <span className="font-black text-teal hover:text-teal-700 transition-colors group-hover:translate-x-[-2px] transition-transform">سند سريع ←</span>
+                      </div>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}
+
 
               {/* Calculator button for closed/historical days */}
               {(isClosed || !isToday) && (
                 <motion.div variants={fadeInUp} className="flex justify-end">
-                  <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-warning/40">
-                    <button onClick={() => setCalcOpen(true)} className="flex items-center gap-3 px-5 py-3">
-                      <div className="bg-warning/10 p-2 rounded-xl"><Calculator className="h-5 w-5 text-warning" /></div>
-                      <span className="text-xs font-black text-text-primary">آلة حاسبة</span>
+                  <motion.div
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative rounded-2xl bg-warning-bg border-2 border-warning-border overflow-hidden transition-all hover:bg-warning-bg/90 hover:border-warning hover:shadow-[0_12px_24px_-8px_rgba(245,158,11,0.25)] flex items-stretch pr-1.5"
+                  >
+                    <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-warning" />
+                    <button onClick={() => setCalcOpen(true)} className="flex items-center gap-4 px-5 py-3 text-right">
+                      <div className="bg-warning-light p-2.5 rounded-xl transition-all duration-300 group-hover:bg-warning/20">
+                        <Calculator className="h-5 w-5 text-warning-text transition-transform duration-300 group-hover:rotate-12 group-hover:scale-115" />
+                      </div>
+                      <span className="text-xs font-black text-warning-text tracking-tight">آلة حاسبة</span>
                     </button>
                   </motion.div>
                 </motion.div>
               )}
+
 
               {/* KPI Cards */}
               <motion.div data-help="shift-section" variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, CheckCircle, X, Calculator, DollarSign, Tag, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Wallet, CheckCircle, X, Calculator, DollarSign, Tag, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../../services/api";
 import SmartTooltip from "../../../components/ui/SmartTooltip";
-import PermissionGate from "../../../components/ui/PermissionGate";
 import { usePermission } from "../../../hooks/usePermission";
 import useRecordOnlyMethods from "../../../hooks/useRecordOnlyMethods";
+
+function toLocalDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const SETTLEMENT_STATUS = {
+  full: { label: "كامل", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  settled: { label: "مُسدَّد", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  partial: { label: "جزئي", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  carried: { label: "مُرحَّل", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+};
 
 export default function PayrollTab({ employee }) {
   const recordMethods = useRecordOnlyMethods();
@@ -25,10 +38,10 @@ export default function PayrollTab({ employee }) {
   const [isPartial, setIsPartial] = useState(false);
   const [paidAmount, setPaidAmount] = useState("");
   const [carryForward, setCarryForward] = useState(true);
-  const [salaryBalance, setSalaryBalance] = useState(null);
-  const [showExpenseConfirm, setShowExpenseConfirm] = useState(false);
-  const [recordExpense, setRecordExpense] = useState(true);
   const [consumeOneTime, setConsumeOneTime] = useState(true);
+  const [salaryBalance, setSalaryBalance] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showPayOff, setShowPayOff] = useState(false);
   const [payOffAmount, setPayOffAmount] = useState("");
   const [payOffSubmitting, setPayOffSubmitting] = useState(false);
@@ -59,19 +72,15 @@ export default function PayrollTab({ employee }) {
 
   function defaultPeriodStart() {
     const now = new Date();
-    if (employee.salary_period === 'daily') return now.toISOString().slice(0, 10);
+    if (employee.salary_period === 'daily') return toLocalDateStr(now);
     if (employee.salary_period === 'weekly') {
       const start = new Date(now);
       const day = now.getDay();
       const daysFromSat = day === 6 ? 0 : day + 1;
       start.setDate(now.getDate() - daysFromSat);
-      return start.toISOString().slice(0, 10);
+      return toLocalDateStr(start);
     }
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  }
-
-  function todayStr() {
-    return new Date().toISOString().slice(0, 10);
   }
 
   async function handleCalculate() {
@@ -83,19 +92,15 @@ export default function PayrollTab({ employee }) {
         api.get(`/api/employees/${employee.id}/advances`),
         api.get("/api/expenses/categories"),
       ]);
+      await loadSalaryBalance();
 
       const activeBonuses = (bonusesRes.data?.data || []).filter(b => b.status === 'active');
       const recurringDeductions = (deductionsRes.data?.data || []).filter(d => d.status === 'active' && d.is_recurring);
       const oneTimeDeductions = (deductionsRes.data?.data || []).filter(d => d.status === 'active' && !d.is_recurring);
       const advances = (advancesRes.data?.data || []).filter(a => a.status === 'active');
 
-      const baseSalary = Number(employee.salary || 0);
-      const totalBonuses = activeBonuses.reduce((s, b) => s + Number(b.amount), 0);
-      const totalRecurringDeductions = recurringDeductions.reduce((s, d) => s + Number(d.amount), 0);
-      const totalOneTimeDeductions = oneTimeDeductions.reduce((s, d) => s + Number(d.amount), 0);
-
       const ps = defaultPeriodStart();
-      const pe = todayStr();
+      const pe = toLocalDateStr();
 
       const payMap = {};
       advances.forEach(a => { payMap[a.id] = ""; });
@@ -107,15 +112,15 @@ export default function PayrollTab({ employee }) {
       setIsPartial(false);
       setPaidAmount("");
       setCarryForward(true);
+      setConsumeOneTime(true);
       setSettleForm({
         period_start: ps,
         period_end: pe,
-        base_salary: baseSalary,
-        total_bonuses: totalBonuses,
-        total_recurring_deductions: totalRecurringDeductions,
-        total_one_time_deductions: totalOneTimeDeductions,
-        advance_deductions: 0,
-        net_salary: Math.max(0, baseSalary + totalBonuses - totalRecurringDeductions - totalOneTimeDeductions),
+        base_salary: Number(employee.salary || 0),
+        recurring_bonuses: activeBonuses.filter(b => b.is_recurring).reduce((s, b) => s + Number(b.amount), 0),
+        one_time_bonuses: activeBonuses.filter(b => !b.is_recurring).reduce((s, b) => s + Number(b.amount), 0),
+        total_recurring_deductions: recurringDeductions.reduce((s, d) => s + Number(d.amount), 0),
+        total_one_time_deductions: oneTimeDeductions.reduce((s, d) => s + Number(d.amount), 0),
         payment_method: "cash",
         description: `راتب الموظف: ${employee.name} — عن فترة ${ps} إلى ${pe}`,
       });
@@ -124,18 +129,24 @@ export default function PayrollTab({ employee }) {
     finally { setCalculating(false); }
   }
 
-  function recalcNet() {
-    if (!settleForm) return { advanceTotal: 0, outstandingDeduction: 0, netSalary: 0, finalPaid: 0, remaining: 0 };
-    const advanceTotal = activeAdvances.reduce((s, a) => s + (Number(advancePayMap[a.id]) || 0), 0);
+  // الحساب الموحّد للصرف — نفس معادلة السيرفر:
+  // صافي الفترة = الأساسي + المكافآت − الخصومات المتكررة − (خصومات لمرة واحدة إن طُبّقت) − سداد السلف
+  // إجمالي المستحق = صافي الفترة + مستحقات سابقة مُرحَّلة (حق للموظف يُضاف، لا يُخصم)
+  function computeSummary() {
+    if (!settleForm) return { advanceTotal: 0, totalBonuses: 0, oneTimeDed: 0, periodNet: 0, previousOwed: 0, totalDue: 0, finalPaid: 0, remaining: 0, overdrawn: false };
+    const advanceTotal = activeAdvances.reduce(
+      (s, a) => s + Math.min(Number(advancePayMap[a.id]) || 0, Number(a.remaining_balance) || 0), 0
+    );
     const base = Number(settleForm.base_salary || 0);
-    const bonuses = Number(settleForm.total_bonuses || 0);
+    const totalBonuses = Number(settleForm.recurring_bonuses || 0) + Number(settleForm.one_time_bonuses || 0);
     const recurringDed = Number(settleForm.total_recurring_deductions || 0);
-    const oneTimeDed = Number(settleForm.total_one_time_deductions || 0);
-    const outstanding = Number(salaryBalance?.outstanding_balance || 0);
-    const netSalary = Math.max(0, base + bonuses - recurringDed - oneTimeDed - advanceTotal - outstanding);
-    const finalPaid = isPartial ? Math.min(Number(paidAmount) || 0, netSalary) : netSalary;
-    const remaining = Math.max(0, netSalary - finalPaid);
-    return { advanceTotal, outstandingDeduction: outstanding, netSalary, finalPaid, remaining };
+    const oneTimeDed = consumeOneTime ? Number(settleForm.total_one_time_deductions || 0) : 0;
+    const periodNet = base + totalBonuses - recurringDed - oneTimeDed - advanceTotal;
+    const previousOwed = Number(salaryBalance?.carry_forward_balance || 0);
+    const totalDue = Math.max(0, periodNet) + previousOwed;
+    const finalPaid = isPartial ? Math.min(Number(paidAmount) || 0, totalDue) : totalDue;
+    const remaining = Math.max(0, totalDue - finalPaid);
+    return { advanceTotal, totalBonuses, oneTimeDed, periodNet, previousOwed, totalDue, finalPaid, remaining, overdrawn: periodNet < 0 };
   }
 
   async function handlePayOff() {
@@ -165,38 +176,47 @@ export default function PayrollTab({ employee }) {
     }
   }
 
-  function handleOpenExpenseConfirm() {
+  function handleOpenConfirm() {
     if (!settleForm) return;
+    const { overdrawn, totalDue } = computeSummary();
+    if (overdrawn) {
+      toast.error("الخصومات وسداد السلف أكبر من الراتب — قلّل سداد السلف أو أجّل الخصومات");
+      return;
+    }
     if (isPartial && (!paidAmount || Number(paidAmount) <= 0)) {
       toast.error("أدخل مبلغ الصرف الجزئي");
       return;
     }
-    setRecordExpense(true);
-    setShowExpenseConfirm(true);
+    if (isPartial && Number(paidAmount) >= totalDue) {
+      setIsPartial(false);
+      setPaidAmount("");
+    }
+    setShowConfirm(true);
   }
 
   async function handleConfirmSettle() {
-    if (!settleForm) return;
-    setShowExpenseConfirm(false);
-    const { advanceTotal, netSalary, finalPaid } = recalcNet();
+    if (!settleForm || submitting) return;
     const advance_payments = activeAdvances
       .filter(a => Number(advancePayMap[a.id]) > 0)
       .map(a => ({ advance_id: a.id, amount: Number(advancePayMap[a.id]) }));
 
+    setSubmitting(true);
     try {
+      const { finalPaid } = computeSummary();
       const res = await api.post(`/api/employees/${employee.id}/settle`, {
-        ...settleForm,
-        advance_deductions: advanceTotal,
-        net_salary: netSalary,
+        period_start: settleForm.period_start,
+        period_end: settleForm.period_end,
+        description: settleForm.description,
+        payment_method: settleForm.payment_method,
+        category_id: expenseCategoryId || null,
         advance_payments,
-        category_id: recordExpense ? (expenseCategoryId || null) : null,
-        payment_method: recordExpense ? settleForm.payment_method : undefined,
+        consume_one_time: consumeOneTime,
         paid_amount: isPartial ? finalPaid : undefined,
         carry_forward: isPartial ? carryForward : undefined,
-        consume_one_time: isPartial ? consumeOneTime : undefined,
       });
       if (res.data?.success) {
-        toast.success(isPartial ? "تم صرف الراتب الجزئي بنجاح" : "تم صرف الراتب بنجاح");
+        toast.success(isPartial ? "تم صرف الراتب جزئياً — المتبقي مسجَّل كمستحق للموظف" : "تم صرف الراتب بنجاح");
+        setShowConfirm(false);
         setShowSettle(false);
         setSettleForm(null);
         setActiveAdvances([]);
@@ -205,11 +225,13 @@ export default function PayrollTab({ employee }) {
         loadSalaryBalance();
       }
     } catch (err) { toast.error(err?.response?.data?.message || "فشل صرف الراتب"); }
+    finally { setSubmitting(false); }
   }
 
   if (!employee) return null;
 
-  const { advanceTotal, outstandingDeduction, netSalary, finalPaid, remaining } = recalcNet();
+  const { advanceTotal, totalBonuses, oneTimeDed, periodNet, previousOwed, totalDue, finalPaid, remaining, overdrawn } = computeSummary();
+  const outstandingTotal = Number(salaryBalance?.outstanding_balance || 0);
 
   return (
     <div className="p-6">
@@ -224,9 +246,11 @@ export default function PayrollTab({ employee }) {
               <svg className="w-5 h-5 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-black text-indigo-800">صرف الرواتب</p>
+              <p className="text-sm font-black text-indigo-800">كيف يُحسب الراتب؟</p>
               <p className="text-xs font-bold text-indigo-600 mt-1 leading-relaxed">
-                اضغط "صرف الراتب" لمراجعة الملخص الكامل ثم صرف الراتب. يمكنك الصرف الكامل أو الجزئي — المتبقي من الصرف الجزئي بيتسجل وممكن ينخصم تلقائياً من الفترة القادمة أو يتتتبع يدوي. كل صرف بيسجل كمصروف في الخزينة.
+                الراتب الأساسي + المكافآت − الخصومات − سداد السلف = <b>صافي الفترة</b>.
+                لو صرفت مبلغاً أقل (صرف جزئي)، الباقي يظل <b>حقاً للموظف</b>: يُضاف تلقائياً على الصرف القادم، أو تسدده في أي وقت من زر «سداد».
+                كل مبلغ يُصرف يُسجَّل مصروفاً في الخزينة.
               </p>
             </div>
             <button onClick={() => localStorage.setItem('emp-tab-info-payroll', '1')}
@@ -241,7 +265,7 @@ export default function PayrollTab({ employee }) {
           <p className="text-xs text-slate-500 mt-0.5">سجل صرف الرواتب السابقة</p>
         </div>
         {canSettle && (
-          <SmartTooltip content={"افتح نافذة صرف الراتب — هتلاقي ملخص كامل: الراتب الأساسي + المكافآت - الخصومات - السلف. تقدر تصرف كامل أو جزئي."} wide>
+          <SmartTooltip content={"افتح نافذة صرف الراتب — ملخص كامل: الأساسي + المكافآت − الخصومات − سداد السلف. يمكنك الصرف الكامل أو الجزئي."} wide>
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
@@ -256,7 +280,7 @@ export default function PayrollTab({ employee }) {
         )}
       </div>
 
-      {/* ملخص الراتب + الرصيد المتبقي */}
+      {/* ملخص الراتب + المستحقات المتبقية */}
       {employee.salary > 0 && (
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-5 mb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -279,22 +303,27 @@ export default function PayrollTab({ employee }) {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">إجمالي الصرف</p>
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">إجمالي المصروف فعلياً</p>
               <p className="text-sm font-bold text-slate-600 mt-1">
-                {settlements.reduce((s, st) => s + Number(st.paid_amount || st.net_salary), 0).toLocaleString()} ج.م
+                {Number(salaryBalance?.total_paid ?? settlements.reduce((s, st) => s + Number(st.paid_amount ?? st.net_salary), 0)).toLocaleString()} ج.م
               </p>
             </div>
           </div>
-          {salaryBalance && salaryBalance.outstanding_balance > 0 && (
+          {outstandingTotal > 0 && (
             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
               <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
               <div className="flex-1">
-                <p className="text-xs font-black text-amber-700">مبلغ متبقي من فترات سابقة</p>
-                <p className="text-sm font-bold text-amber-800 font-mono">{salaryBalance.outstanding_balance.toLocaleString()} ج.م</p>
+                <p className="text-xs font-black text-amber-700">مستحقات متبقية للموظف من صرف سابق (لم تُدفع له بعد)</p>
+                <p className="text-sm font-bold text-amber-800 font-mono">{outstandingTotal.toLocaleString()} ج.م</p>
+                {Number(salaryBalance?.carry_forward_balance || 0) > 0 && (
+                  <p className="text-[10px] font-bold text-amber-600 mt-0.5">
+                    منها {Number(salaryBalance.carry_forward_balance).toLocaleString()} ج.م ستُضاف تلقائياً على الصرف القادم
+                  </p>
+                )}
               </div>
               {canSettle && (
                 <button
-                  onClick={() => { setPayOffAmount(String(salaryBalance.outstanding_balance)); setShowPayOff(true); }}
+                  onClick={() => { setPayOffAmount(String(outstandingTotal)); setShowPayOff(true); }}
                   className="h-8 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black transition-all"
                 >
                   سداد
@@ -332,7 +361,7 @@ export default function PayrollTab({ employee }) {
                         <Wallet className="h-6 w-6 text-indigo-600" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-black text-slate-800">تأكيد صرف الراتب</h2>
+                        <h2 className="text-xl font-black text-slate-800">صرف راتب</h2>
                         <p className="text-xs text-slate-500 mt-0.5">{employee.name} — الفترة: {settleForm.period_start} إلى {settleForm.period_end}</p>
                       </div>
                     </div>
@@ -346,29 +375,6 @@ export default function PayrollTab({ employee }) {
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 h-full">
                       {/* Right column — Main form (3/5) */}
                       <div className="lg:col-span-3 space-y-6">
-                        {/* تفاصيل الحساب */}
-                        <div className="bg-slate-50 rounded-2xl p-6 space-y-4">
-                          <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">تفاصيل الحساب</h4>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">الراتب الأساسي</span>
-                              <span className="text-sm font-bold text-slate-800 font-mono">{settleForm.base_salary.toLocaleString()} ج.م</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">المكافآت</span>
-                              <span className="text-sm font-bold text-emerald-600 font-mono">+{settleForm.total_bonuses.toLocaleString()} ج.م</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">خصومات متكررة</span>
-                              <span className="text-sm font-bold text-rose-600 font-mono">-{settleForm.total_recurring_deductions.toLocaleString()} ج.م</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">خصومات لمرة واحدة</span>
-                              <span className="text-sm font-bold text-rose-600 font-mono">-{settleForm.total_one_time_deductions.toLocaleString()} ج.م</span>
-                            </div>
-                          </div>
-                        </div>
-
                         {/* فترة الراتب */}
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
@@ -403,8 +409,9 @@ export default function PayrollTab({ employee }) {
                         {activeAdvances.length > 0 && (
                           <div className="space-y-3">
                             <h4 className="text-xs font-black text-amber-700 uppercase tracking-wider flex items-center gap-2">
-                              <DollarSign className="h-4 w-4" /> سداد السلف (اختياري — أدخل المبلغ الذي تريد سداده)
+                              <DollarSign className="h-4 w-4" /> سداد السلف من الراتب (اختياري)
                             </h4>
+                            <p className="text-[11px] font-bold text-slate-400">المبلغ الذي تدخله هنا يُخصم من راتب هذه الفترة ويُسدَّد به رصيد السلفة</p>
                             <div className="space-y-2">
                               {activeAdvances.map(adv => (
                                 <div key={adv.id} className="flex items-center gap-3 bg-amber-50/60 border border-amber-200 rounded-xl px-4 py-3">
@@ -435,16 +442,46 @@ export default function PayrollTab({ employee }) {
                               ))}
                             </div>
                             <div className="flex justify-between items-center bg-amber-100/60 rounded-xl px-4 py-2.5">
-                              <span className="text-sm font-bold text-slate-600">إجمالي خصم السلف</span>
+                              <span className="text-sm font-bold text-slate-600">إجمالي سداد السلف (يُخصم من الراتب)</span>
                               <span className="text-base font-black text-rose-600 font-mono">-{advanceTotal.toLocaleString()} ج.م</span>
                             </div>
                           </div>
                         )}
 
-                        {/* الدفع الجزئي */}
+                        {/* الخصومات لمرة واحدة — تُخصم الآن أم تُؤجَّل؟ */}
+                        {Number(settleForm.total_one_time_deductions) > 0 && (
+                          <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-3">
+                            <h4 className="text-xs font-black text-amber-700 uppercase tracking-wider">
+                              خصومات لمرة واحدة ({Number(settleForm.total_one_time_deductions).toLocaleString()} ج.م)
+                            </h4>
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setConsumeOneTime(true)}
+                                className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${consumeOneTime ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-500'}`}
+                              >
+                                خصمها من هذا الراتب
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConsumeOneTime(false)}
+                                className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${!consumeOneTime ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-500'}`}
+                              >
+                                تأجيلها للراتب القادم
+                              </button>
+                            </div>
+                            <p className="text-[11px] font-bold text-slate-400">
+                              {consumeOneTime
+                                ? "ستُخصم الآن وتُقفل — لن تتكرر في الصرف القادم"
+                                : "لن تدخل في حساب هذا الصرف نهائياً — تبقى معلّقة وتُخصم في الصرف القادم"}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* خيارات الدفع */}
                         <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 space-y-4">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-black text-indigo-700 uppercase tracking-wider">خيارات الدفع</h4>
+                            <h4 className="text-xs font-black text-indigo-700 uppercase tracking-wider">صرف جزئي؟</h4>
                             <button
                               type="button"
                               onClick={() => { setIsPartial(!isPartial); setPaidAmount(""); }}
@@ -454,75 +491,57 @@ export default function PayrollTab({ employee }) {
                             </button>
                           </div>
                           <p className="text-[11px] font-bold text-slate-500">
-                            {isPartial ? "صرف جزئي — أدخل المبلغ المدفوع وسيتم تتبع المتبقي" : "صرف كامل — سيتم دفع صافي الراتب بالكامل"}
+                            {isPartial
+                              ? "تدفع الآن جزءاً من المستحق — الباقي يظل حقاً للموظف ولا يضيع"
+                              : `صرف كامل — سيُدفع إجمالي المستحق (${totalDue.toLocaleString()} ج.م)`}
                           </p>
 
                           {isPartial && (
                             <div className="space-y-4 pt-2 border-t border-indigo-100">
                               <div className="space-y-1.5">
-                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المبلغ المدفوع</label>
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المبلغ المدفوع الآن</label>
                                 <input
                                   type="number"
                                   min="1"
-                                  max={netSalary}
+                                  max={totalDue}
                                   value={paidAmount}
                                   onChange={e => setPaidAmount(e.target.value)}
                                   placeholder="0"
                                   className="w-full h-12 rounded-xl px-4 text-lg font-black font-mono outline-none border border-indigo-200 bg-white focus:border-indigo-400 transition-all text-center"
                                 />
                                 <div className="flex justify-between text-[10px] font-bold text-slate-400 px-1">
-                                  <span>الصافي: {netSalary.toLocaleString()} ج.م</span>
+                                  <span>إجمالي المستحق: {totalDue.toLocaleString()} ج.م</span>
                                   <button
                                     type="button"
-                                    onClick={() => setPaidAmount(String(netSalary))}
+                                    onClick={() => setPaidAmount(String(totalDue))}
                                     className="text-indigo-600 hover:text-indigo-800"
                                   >
-                                    الدفع الكامل
+                                    دفع الكل
                                   </button>
                                 </div>
                               </div>
 
                               <div className="space-y-2">
-                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">مصير المتبقي ({remaining.toLocaleString()} ج.م)</label>
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                                  الباقي للموظف ({remaining.toLocaleString()} ج.م) — كيف يُتابَع؟
+                                </label>
                                 <div className="flex gap-3">
                                   <button
                                     type="button"
                                     onClick={() => setCarryForward(true)}
                                     className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${carryForward ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'}`}
                                   >
-                                    خصم تلقائي من الفترة القادمة
+                                    يُضاف تلقائياً على الصرف القادم
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setCarryForward(false)}
                                     className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${!carryForward ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'}`}
                                   >
-                                    تتبع يدوي فقط
+                                    أسدده يدوياً لاحقاً (زر «سداد»)
                                   </button>
                                 </div>
                               </div>
-
-                              {settleForm.total_one_time_deductions > 0 && (
-                                <div className="space-y-2">
-                                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">الخصومات لمرة واحدة ({settleForm.total_one_time_deductions.toLocaleString()} ج.م)</label>
-                                  <div className="flex gap-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => setConsumeOneTime(true)}
-                                      className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${consumeOneTime ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-500'}`}
-                                    >
-                                      تسجيل كمطبَّق (خصم مرة واحدة)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setConsumeOneTime(false)}
-                                      className={`flex-1 h-11 rounded-xl text-xs font-black border transition-all ${!consumeOneTime ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-500'}`}
-                                    >
-                                      الاحتفاظ بها (تُعاد الفترة القادمة)
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
@@ -542,54 +561,87 @@ export default function PayrollTab({ employee }) {
                       {/* Left column — Summary (2/5) */}
                       <div className="lg:col-span-2 space-y-6">
                         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6 space-y-4 sticky top-0">
-                          <h4 className="text-xs font-black text-indigo-600 uppercase tracking-wider">ملخص الصرف</h4>
+                          <h4 className="text-xs font-black text-indigo-600 uppercase tracking-wider">حساب المستحق</h4>
 
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-slate-500">الراتب الأساسي</span>
-                              <span className="text-sm font-bold font-mono">{settleForm.base_salary.toLocaleString()} ج.م</span>
+                              <span className="text-sm font-bold font-mono">{Number(settleForm.base_salary).toLocaleString()} ج.م</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">+ المكافآت</span>
-                              <span className="text-sm font-bold text-emerald-600 font-mono">+{settleForm.total_bonuses.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500">- خصومات</span>
-                              <span className="text-sm font-bold text-rose-600 font-mono">-{(settleForm.total_recurring_deductions + settleForm.total_one_time_deductions).toLocaleString()}</span>
-                            </div>
+                            {Number(settleForm.recurring_bonuses) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">+ مكافآت متكررة</span>
+                                <span className="text-sm font-bold text-emerald-600 font-mono">+{Number(settleForm.recurring_bonuses).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(settleForm.one_time_bonuses) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">+ مكافآت لمرة واحدة</span>
+                                <span className="text-sm font-bold text-emerald-600 font-mono">+{Number(settleForm.one_time_bonuses).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(settleForm.total_recurring_deductions) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">- خصومات متكررة</span>
+                                <span className="text-sm font-bold text-rose-600 font-mono">-{Number(settleForm.total_recurring_deductions).toLocaleString()}</span>
+                              </div>
+                            )}
+                            {Number(settleForm.total_one_time_deductions) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">- خصومات لمرة واحدة</span>
+                                {consumeOneTime ? (
+                                  <span className="text-sm font-bold text-rose-600 font-mono">-{oneTimeDed.toLocaleString()}</span>
+                                ) : (
+                                  <span className="text-[10px] font-black text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">مؤجَّلة للقادم</span>
+                                )}
+                              </div>
+                            )}
                             {advanceTotal > 0 && (
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-500">- سلف</span>
+                                <span className="text-sm text-slate-500">- سداد سلف</span>
                                 <span className="text-sm font-bold text-rose-600 font-mono">-{advanceTotal.toLocaleString()}</span>
                               </div>
                             )}
-                            {outstandingDeduction > 0 && (
+                            <div className="flex justify-between items-center border-t border-indigo-100 pt-2">
+                              <span className="text-sm font-bold text-slate-600">= صافي الفترة</span>
+                              <span className={`text-sm font-black font-mono ${overdrawn ? 'text-rose-600' : 'text-slate-800'}`}>{periodNet.toLocaleString()} ج.م</span>
+                            </div>
+                            {previousOwed > 0 && (
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-500">- رصيد سابق</span>
-                                <span className="text-sm font-bold text-amber-600 font-mono">-{outstandingDeduction.toLocaleString()}</span>
+                                <span className="text-sm text-slate-500">+ مستحق سابق للموظف</span>
+                                <span className="text-sm font-bold text-emerald-600 font-mono">+{previousOwed.toLocaleString()}</span>
                               </div>
                             )}
                           </div>
 
                           <div className="border-t border-indigo-200 pt-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-base font-black text-slate-800">صافي الراتب</span>
-                              <span className="text-2xl font-black text-indigo-600 font-mono">{netSalary.toLocaleString()} ج.م</span>
+                              <span className="text-base font-black text-slate-800">إجمالي المستحق</span>
+                              <span className="text-2xl font-black text-indigo-600 font-mono">{totalDue.toLocaleString()} ج.م</span>
                             </div>
                           </div>
 
-                          {isPartial && (
+                          {overdrawn && (
+                            <div className="bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                              <p className="text-[11px] font-bold text-rose-700">
+                                الخصومات وسداد السلف أكبر من الراتب — قلّل مبلغ سداد السلف أو أجّل الخصومات لمرة واحدة
+                              </p>
+                            </div>
+                          )}
+
+                          {isPartial && !overdrawn && (
                             <div className="border-t border-indigo-200 pt-3 space-y-2">
                               <div className="flex justify-between items-center">
-                                <span className="text-sm font-bold text-slate-600">المبلغ المدفوع</span>
+                                <span className="text-sm font-bold text-slate-600">يُدفع الآن</span>
                                 <span className="text-lg font-black text-emerald-600 font-mono">{finalPaid.toLocaleString()} ج.م</span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm font-bold text-slate-600">المتبقي</span>
+                                <span className="text-sm font-bold text-slate-600">يبقى للموظف</span>
                                 <span className="text-lg font-black text-amber-600 font-mono">{remaining.toLocaleString()} ج.م</span>
                               </div>
                               <p className="text-[10px] font-bold text-slate-400">
-                                {carryForward ? "سيتم خصم المتبقي من الفترة القادمة" : "تتبع يدوي فقط — لن يُخصم تلقائياً"}
+                                {carryForward ? "الباقي سيُضاف تلقائياً على الصرف القادم" : "الباقي يُسدَّد يدوياً من زر «سداد» في صفحة الموظف"}
                               </p>
                             </div>
                           )}
@@ -607,10 +659,11 @@ export default function PayrollTab({ employee }) {
                       إلغاء
                     </button>
                     <button
-                      onClick={handleOpenExpenseConfirm}
-                      className="flex-[2] h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all"
+                      onClick={handleOpenConfirm}
+                      disabled={overdrawn}
+                      className="flex-[2] h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle className="h-4 w-4" /> تأكيد الصرف
+                      <CheckCircle className="h-4 w-4" /> متابعة للتأكيد
                     </button>
                   </div>
                 </motion.div>
@@ -618,15 +671,15 @@ export default function PayrollTab({ employee }) {
             )}
           </AnimatePresence>
 
-          {/* ═══════════ نافذة تأكيد تسجيل المصروف ═══════════ */}
+          {/* ═══════════ نافذة تأكيد صرف الراتب ═══════════ */}
           <AnimatePresence>
-            {showExpenseConfirm && (
+            {showConfirm && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                onClick={() => setShowExpenseConfirm(false)}
+                onClick={() => setShowConfirm(false)}
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -637,103 +690,76 @@ export default function PayrollTab({ employee }) {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                      <AlertTriangle className="h-5 w-5 text-indigo-600" />
+                      <Wallet className="h-5 w-5 text-indigo-600" />
                     </div>
                     <div>
                       <h3 className="text-lg font-black text-slate-800">تأكيد صرف الراتب</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">المبلغ: {finalPaid.toLocaleString()} ج.م</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{employee.name}</p>
                     </div>
                   </div>
 
                   {/* ملخص */}
                   <div className="bg-slate-50 rounded-xl p-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">صافي الراتب</span>
-                      <span className="font-black font-mono text-slate-800">{netSalary.toLocaleString()} ج.م</span>
+                      <span className="text-slate-500">إجمالي المستحق</span>
+                      <span className="font-black font-mono text-slate-800">{totalDue.toLocaleString()} ج.م</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">المبلغ المدفوع</span>
+                      <span className="text-slate-500">يُدفع الآن</span>
                       <span className="font-black font-mono text-indigo-600">{finalPaid.toLocaleString()} ج.م</span>
                     </div>
-                    {isPartial && (
+                    {isPartial && remaining > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">المتبقي</span>
+                        <span className="text-slate-500">يبقى حقاً للموظف</span>
                         <span className="font-black font-mono text-amber-600">{remaining.toLocaleString()} ج.م</span>
                       </div>
                     )}
                   </div>
 
-                  {/* تبديل تسجيل المصروف */}
-                  <div className="flex items-center justify-between bg-indigo-50/60 border border-indigo-100 rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-black text-slate-800">تسجيل كمصروف؟</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">يسجل المبلغ كمصروف في الخزينة (اختياري)</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setRecordExpense(!recordExpense)}
-                      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${recordExpense ? 'bg-indigo-500' : 'bg-slate-300'}`}
-                    >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${recordExpense ? 'translate-x-7' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-
-                  {/* حقول المصروف — تظهر فقط عند التفعيل */}
-                  <AnimatePresence>
-                    {recordExpense && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden space-y-4"
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">طريقة الدفع</label>
+                      <select
+                        value={settleForm?.payment_method || "cash"}
+                        onChange={e => setSettleForm({ ...settleForm, payment_method: e.target.value })}
+                        className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-indigo-400 transition-all appearance-none"
                       >
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">طريقة الدفع</label>
-                          <select
-                            value={settleForm?.payment_method || "cash"}
-                            onChange={e => setSettleForm({ ...settleForm, payment_method: e.target.value })}
-                            className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-indigo-400 transition-all appearance-none"
-                          >
-                            <option value="cash">💵 نقدي</option>
-                            {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف</label>
-                          <div className="relative">
-                            <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <select
-                              value={expenseCategoryId}
-                              onChange={e => setExpenseCategoryId(e.target.value)}
-                              className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-indigo-400 transition-all appearance-none"
-                            >
-                              <option value="">اختيار التصنيف (اختياري)...</option>
-                              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <option value="cash">💵 نقدي</option>
+                        {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف (اختياري)</label>
+                      <div className="relative">
+                        <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <select
+                          value={expenseCategoryId}
+                          onChange={e => setExpenseCategoryId(e.target.value)}
+                          className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-indigo-400 transition-all appearance-none"
+                        >
+                          <option value="">بدون تصنيف...</option>
+                          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      المبلغ المدفوع يُسجَّل تلقائياً كمصروف رواتب في الخزينة
+                    </p>
+                  </div>
 
                   <div className="flex gap-3 pt-2">
                     <button
-                      onClick={() => setShowExpenseConfirm(false)}
+                      onClick={() => setShowConfirm(false)}
                       className="flex-1 h-11 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
                     >
                       رجوع
                     </button>
                     <button
-                      onClick={() => { setRecordExpense(false); handleConfirmSettle(); }}
-                      className="flex-1 h-11 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
-                    >
-                      تخطي
-                    </button>
-                    <button
                       onClick={handleConfirmSettle}
-                      className="flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all"
+                      disabled={submitting}
+                      className="flex-[2] h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                     >
-                      <CheckCircle className="h-4 w-4" /> تأكيد
+                      <CheckCircle className="h-4 w-4" /> {submitting ? "جاري الصرف..." : `تأكيد صرف ${finalPaid.toLocaleString()} ج.م`}
                     </button>
                   </div>
                 </motion.div>
@@ -741,7 +767,7 @@ export default function PayrollTab({ employee }) {
             )}
           </AnimatePresence>
 
-          {/* ═══════════ نافذة سداد الرصيد المتبقي ═══════════ */}
+          {/* ═══════════ نافذة سداد المستحقات المتبقية ═══════════ */}
           <AnimatePresence>
             {showPayOff && (
               <motion.div
@@ -760,30 +786,30 @@ export default function PayrollTab({ employee }) {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <Wallet className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-slate-800">سداد الرصيد المتبقي</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">المتبقي: {salaryBalance?.outstanding_balance?.toLocaleString()} ج.م</p>
+                      <h3 className="text-lg font-black text-slate-800">سداد مستحقات الموظف</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">المتبقي له: {outstandingTotal.toLocaleString()} ج.م</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المبلغ المراد سداده</label>
+                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المبلغ المراد دفعه له الآن</label>
                       <input
                         type="number"
                         min="1"
-                        max={salaryBalance?.outstanding_balance}
+                        max={outstandingTotal}
                         value={payOffAmount}
                         onChange={e => setPayOffAmount(e.target.value)}
                         className="w-full h-12 rounded-xl px-4 text-lg font-black font-mono outline-none border border-amber-200 bg-white focus:border-amber-400 transition-all text-center"
                       />
                       <button
-                        onClick={() => setPayOffAmount(String(salaryBalance?.outstanding_balance || 0))}
+                        onClick={() => setPayOffAmount(String(outstandingTotal))}
                         className="text-[10px] font-bold text-amber-600 hover:text-amber-800"
                       >
-                       سداد الكل
+                        سداد الكل
                       </button>
                     </div>
 
@@ -798,6 +824,9 @@ export default function PayrollTab({ employee }) {
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      المبلغ يُسجَّل مصروفاً في الخزينة ويُخصم من مستحقات الموظف المتبقية
+                    </p>
                   </div>
 
                   <div className="flex gap-3 pt-2">
@@ -826,25 +855,32 @@ export default function PayrollTab({ employee }) {
       {/* ═══════════ سجل الصرف ═══════════ */}
       <div className="space-y-2">
         {settlements.map(st => {
-          const isStPartial = st.status === 'partial';
+          const statusInfo = SETTLEMENT_STATUS[st.status] || SETTLEMENT_STATUS.full;
+          const paid = Number(st.paid_amount ?? st.net_salary);
           return (
             <div key={st.id} className="bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Wallet className="h-4 w-4 text-indigo-400" />
                 <div>
-                  <span className="text-sm font-bold font-mono text-slate-800">{Number(st.paid_amount || st.net_salary).toLocaleString()} ج.م</span>
+                  <span className="text-sm font-bold font-mono text-slate-800">{paid.toLocaleString()} ج.م</span>
                   <span className="text-[10px] text-slate-500 mr-3">
                     {st.period_start} ← {st.period_end}
                   </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-2 ${isStPartial ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                    {isStPartial ? 'جزئي' : 'كامل'}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-2 ${statusInfo.cls}`}>
+                    {statusInfo.label}
                   </span>
+                  {Number(st.previous_owed) > 0 && (
+                    <span className="text-[10px] text-slate-400">شامل مستحق سابق: {Number(st.previous_owed).toLocaleString()} ج.م</span>
+                  )}
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {st.payment_method === 'cash' ? 'نقداً' : st.payment_method === 'bank_transfer' ? 'تحويل' : st.payment_method}
                 </span>
-                {isStPartial && Number(st.remaining_balance) > 0 && (
-                  <span className="text-[10px] font-bold text-amber-600">المتبقي: {Number(st.remaining_balance).toLocaleString()} ج.م</span>
+                {st.status === 'partial' && Number(st.remaining_balance) > 0 && (
+                  <span className="text-[10px] font-bold text-amber-600">متبقٍ له: {Number(st.remaining_balance).toLocaleString()} ج.م</span>
+                )}
+                {st.status === 'carried' && Number(st.remaining_balance) > 0 && (
+                  <span className="text-[10px] font-bold text-sky-600">رُحِّل متبقيه ({Number(st.remaining_balance).toLocaleString()} ج.م) لصرف لاحق</span>
                 )}
               </div>
               <div className="text-[11px] text-slate-400 font-mono">

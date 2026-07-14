@@ -333,8 +333,8 @@ export function useTelegramConnect(onSaved) {
     return recipientFromApi(r.data?.data);
   }
 
-  async function addRecipient() {
-    const newRec = createRecipient();
+  async function addRecipient(overrides = {}) {
+    const newRec = { ...createRecipient(), ...overrides };
     const saved = await persistRecipient(newRec);
     setRecipients((prev) => [...prev, saved]);
     return saved;
@@ -362,6 +362,14 @@ export function useTelegramConnect(onSaved) {
     const saved = await persistRecipient(recipient);
     setRecipients((prev) => prev.map((r, i) => i === index ? saved : r));
     return saved;
+  }
+
+  async function refreshRecipients() {
+    try {
+      const r = await api.get("/api/telegram/recipients").catch(() => ({ data: { data: [] } }));
+      const loadedRecipients = (r.data?.data || []).map(recipientFromApi);
+      setRecipients(loadedRecipients);
+    } catch { /* silent */ }
   }
 
   function recipientToApi(r) {
@@ -459,8 +467,22 @@ export function useTelegramConnect(onSaved) {
       notifyAdvanceCreated: Boolean(r.notify_advance_created),
       notifyDeductionCreated: Boolean(r.notify_deduction_created),
       notifyBonusCreated: Boolean(r.notify_bonus_created),
-      eventPresets: r.eventPresets || {},
+      eventPresets: parseEventPresets(r.eventPresets ?? r.event_presets),
     };
+  }
+
+  function parseEventPresets(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+    return {};
   }
 
   async function fetchHistory(limit = 50) {
@@ -507,7 +529,7 @@ export function useTelegramConnect(onSaved) {
     config, setConfig, loading, loadError, saving, saved, testing, detecting,
     disconnecting,
     recipients, setRecipients,
-    createRecipient, updateRecipientLocal, addRecipient, saveRecipients, deleteRecipient, saveSingleRecipient,
+    createRecipient, updateRecipientLocal, addRecipient, saveRecipients, deleteRecipient, saveSingleRecipient, refreshRecipients,
     qrData, generatingQr, scanConnected, pollStatus,
     botInfo, validating,
     pairing, startPairing, cancelPairing,

@@ -43,7 +43,7 @@ function employeeList(startDate, endDate, opts = {}) {
       (SELECT COALESCE(SUM(amount), 0) FROM employee_deductions WHERE employee_id = e.id AND status = 'active') AS active_deductions_total,
       (SELECT COALESCE(SUM(amount), 0) FROM employee_bonuses WHERE employee_id = e.id AND status = 'active') AS active_bonuses_total,
       (SELECT COALESCE(SUM(remaining_balance), 0) FROM employee_advances WHERE employee_id = e.id AND status = 'active') AS active_advances_balance,
-      (SELECT COALESCE(SUM(net_salary), 0) FROM salary_settlements WHERE employee_id = e.id) AS total_paid,
+      (SELECT COALESCE(SUM(COALESCE(paid_amount, net_salary)), 0) FROM salary_settlements WHERE employee_id = e.id) AS total_paid,
       e.created_at,
       CASE WHEN e.is_active = 1 OR e.is_active IS NULL THEN 'نشط' ELSE 'مؤرشف' END AS status
     FROM employees e
@@ -160,6 +160,7 @@ function employeePayroll(startDate, endDate, opts = {}) {
     SELECT ss.id, ss.settled_at AS date, e.name AS employee_name,
       ss.period_start, ss.period_end, ss.base_salary, ss.total_bonuses,
       ss.total_deductions, ss.advance_deductions, ss.net_salary,
+      COALESCE(ss.paid_amount, ss.net_salary) AS paid_amount, ss.remaining_balance, ss.status,
       ss.payment_method, ss.description, ss.settled_at, ss.settled_by, ss.expense_id
     FROM salary_settlements ss
     JOIN employees e ON e.id = ss.employee_id
@@ -226,7 +227,7 @@ function employeeFullHistory(startDate, endDate, opts = {}) {
 
     buildUnion("salary_settlements", "ss", "settled_at", {
       tx_type: "'settlement'", tx_type_label: "'صرف راتب'",
-      amount: "ss.net_salary", status: "'settled'",
+      amount: "COALESCE(ss.paid_amount, ss.net_salary)", status: "'settled'",
       description: "ss.description", sub_type: "ss.payment_method", ref_id: "ss.id",
     }, "JOIN employees e ON e.id = ss.employee_id"),
   ];

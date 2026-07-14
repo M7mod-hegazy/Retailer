@@ -2479,7 +2479,7 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
   const {
     config, setConfig, loading, loadError, saving, saved, testing, detecting,
     disconnecting,
-    recipients, updateRecipientLocal, addRecipient, deleteRecipient, saveSingleRecipient,
+    recipients, updateRecipientLocal, addRecipient, deleteRecipient, saveSingleRecipient, refreshRecipients,
     qrData, generatingQr, scanConnected, pollStatus,
     botInfo, validating,
     history, loadingHistory, fetchHistory,
@@ -2965,7 +2965,7 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
             ))}
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            {!recipient.chatId && recipient.name && (
+            {!recipient.chatId && (
               <span className="text-[10px] font-bold text-warning-text flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" /> أدخل Chat ID للحفظ
               </span>
@@ -2985,8 +2985,8 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
               } catch { /* handled by hook */ }
               finally { setSavingRecipientIdx(null); }
             }} disabled={savingRecipientIdx === index || !recipient.chatId}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-              {savingRecipientIdx === index ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+              {savingRecipientIdx === index ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               {t("telegram.save")}
             </button>
           </div>
@@ -3067,7 +3067,7 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
 
   return (
     <div className="space-y-5">
-      {showAddWizard && <AddRecipientWizard onClose={() => setShowAddWizard(false)} onAdded={() => { setShowAddWizard(false); toast.success(t("telegram.recipientAdded")); }} />}
+      {showAddWizard && <AddRecipientWizard onClose={() => setShowAddWizard(false)} onAdded={() => { setShowAddWizard(false); refreshRecipients(); toast.success(t("telegram.recipientAdded")); }} />}
       {showConnectWizard && <TelegramConnectWizard onClose={() => setShowConnectWizard(false)} onSaved={onConfigChanged} />}
 
       {/* Header */}
