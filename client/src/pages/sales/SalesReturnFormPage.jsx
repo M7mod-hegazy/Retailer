@@ -44,6 +44,7 @@ import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
 import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import SalesReturnFormBottomBar from "./SalesReturnFormBottomBar";
 import SmartTooltip from "../../components/ui/SmartTooltip";
+import PriceHealthHint from "../../components/ui/PriceHealthHint";
 import { getRefundHealth, ENTRY_HEALTH_CLASSES } from "../../utils/priceHealth";
 
 function formatMoney(v) {
@@ -52,22 +53,6 @@ function formatMoney(v) {
 function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("ar-EG-u-nu-latn");
-}
-
-// Live indicator of how far the entered return price is from the item's catalog price.
-function PriceDelta({ entered, baseline, baseLabel = "سعر البيع", className = "" }) {
-  const e = Number(entered) || 0;
-  const b = Number(baseline) || 0;
-  if (!b || !e) return <span className={`text-[11px] font-mono text-slate-400 ${className}`}>—</span>;
-  const diff = e - b;
-  const pct = (diff / b) * 100;
-  if (Math.abs(diff) < 0.005) return <span className={`text-[11px] font-bold text-slate-400 ${className}`}>مطابق {baseLabel}</span>;
-  const up = diff > 0;
-  return (
-    <span className={`text-[11px] number-fmt ${up ? "text-emerald-600" : "text-rose-600"} ${className}`}>
-      {up ? "▲ أعلى بـ" : "▼ أقل بـ"} {formatMoney(Math.abs(diff))} ({up ? "+" : "−"}{Math.abs(pct).toFixed(1)}%)
-    </span>
-  );
 }
 
 
@@ -1662,18 +1647,20 @@ export default function SalesReturnFormPage() {
                       <label className="entry-label">سعر المرتجع</label>
                       {(() => {
                         const returnHealth = getRefundHealth(stagingPrice, stagingItem?.sale_price);
+                        const hintLabel = stagingItem
+                          ? `بيع ${Number(stagingItem.sale_price || 0).toFixed(2)} · شراء ${Number(stagingPurchasePrice || 0).toFixed(2)}${
+                              returnHealth.diffFlat != null && Math.abs(returnHealth.diffFlat) >= 0.005
+                                ? ` · ${returnHealth.diffFlat >= 0 ? "+" : ""}${returnHealth.diffFlat.toFixed(2)}`
+                                : ""
+                            }`
+                          : null;
                         return (
-                          <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingWHRef, stagingQtyRef)}
-                            title={stagingItem ? `بيع ${Number(stagingItem.sale_price || 0).toFixed(2)} · شراء ${Number(stagingPurchasePrice || 0).toFixed(2)}` : undefined}
-                            className={`entry-control text-center ${ENTRY_HEALTH_CLASSES[returnHealth.level] || ""}`} />
+                          <PriceHealthHint label={hintLabel}>
+                            <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingWHRef, stagingQtyRef)}
+                              className={`entry-control text-center ${ENTRY_HEALTH_CLASSES[returnHealth.level] || ""}`} />
+                          </PriceHealthHint>
                         );
                       })()}
-                      {stagingItem && (
-                        <div className="flex items-center justify-center gap-2 overflow-hidden">
-                          <span className="text-[9px] font-mono shrink-0 truncate" style={{ color: "var(--text-muted)" }}>بيع {Number(stagingItem.sale_price || 0).toFixed(2)} · شراء {Number(stagingPurchasePrice || 0).toFixed(2)}</span>
-                          <PriceDelta entered={stagingPrice} baseline={stagingItem.sale_price} className="shrink-0" />
-                        </div>
-                      )}
                     </div>
 
                     {/* Unit — read-only preview */}
@@ -1829,15 +1816,21 @@ export default function SalesReturnFormPage() {
                                 : returnHealth.level === "thin"
                                   ? "border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-400 focus:ring-amber-100"
                                   : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200";
+                              const hintLabel = l.sale_price > 0
+                                ? `بيع ${Number(l.sale_price).toFixed(2)}${
+                                    returnHealth.diffFlat != null && Math.abs(returnHealth.diffFlat) >= 0.005
+                                      ? ` · ${returnHealth.diffFlat >= 0 ? "+" : ""}${returnHealth.diffFlat.toFixed(2)}`
+                                      : ""
+                                  }`
+                                : null;
                               return (
-                                <div className="flex flex-col items-center gap-0.5">
+                                <PriceHealthHint label={hintLabel}>
                                   <input type="number" step="any" min="0" value={l.unit_price}
                                     data-grid-cell data-row={idx} data-col="unit_price"
                                     onChange={e => updateCartPrice(l.key, e.target.value)}
                                     onFocus={e => e.target.select()}
                                     className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors ${healthClasses}`} />
-                                  <PriceDelta entered={l.unit_price} baseline={l.sale_price} />
-                                </div>
+                                </PriceHealthHint>
                               );
                             })() : (
                               <span className="text-sm font-black text-slate-700 number-fmt">{formatMoney(l.unit_price)}</span>
