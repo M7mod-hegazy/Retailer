@@ -1201,7 +1201,7 @@ export default function POSListView({ vm }) {
                 {(() => {
                   const priceHealth = getMarginHealth(staging.unitPrice, selectedItem?.purchase_price, selectedItem?.sale_price);
                   const hintLabel = canViewProfit && priceHealth.diffFlat != null
-                    ? `ت ${Number(selectedItem?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
+                    ? `تكلفة ${Number(selectedItem?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
                     : null;
                   return (
                     <PriceHealthHint label={hintLabel}>
@@ -1414,7 +1414,7 @@ export default function POSListView({ vm }) {
                   const item = items.find((it) => String(it.id) === String(l.item_id));
                   const priceHealth = getMarginHealth(l.unit_price, item?.purchase_price, l.master_sale_price);
                   const hintLabel = canViewProfit && priceHealth.diffFlat != null
-                    ? `ت ${Number(item?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
+                    ? `تكلفة ${Number(item?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
                     : null;
                   return (
                     <div className="relative w-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
