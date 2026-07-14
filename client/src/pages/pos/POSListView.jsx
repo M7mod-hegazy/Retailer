@@ -1411,13 +1411,20 @@ export default function POSListView({ vm }) {
               }] : []),
               ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
                   const isOverride = l.item_id !== -1 && l.master_sale_price > 0 && Math.abs(Number(l.unit_price) - Number(l.master_sale_price)) > 0.001;
+                  const item = items.find((it) => String(it.id) === String(l.item_id));
+                  const priceHealth = getMarginHealth(l.unit_price, item?.purchase_price, l.master_sale_price);
+                  const hintLabel = canViewProfit && priceHealth.diffFlat != null
+                    ? `ت ${Number(item?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
+                    : null;
                   return (
                     <div className="relative w-full" title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : undefined}>
-                      <input type="number" step="any" value={l.unit_price}
-                        data-grid-cell data-row={i} data-col="unit_price"
-                        onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
-                        readOnly={!canOverridePrice}
-                        className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border-0 ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : isOverride ? "bg-amber-50 text-amber-800 focus:bg-amber-100" : "bg-transparent focus:bg-indigo-50/50"}`} />
+                      <PriceHealthHint label={hintLabel}>
+                        <input type="number" step="any" value={l.unit_price}
+                          data-grid-cell data-row={i} data-col="unit_price"
+                          onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
+                          readOnly={!canOverridePrice}
+                          className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border border-transparent ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : (HEALTH_BORDER_CLASSES[priceHealth.level] || "bg-transparent focus:bg-indigo-50/50")}`} />
+                      </PriceHealthHint>
                       {isOverride && <span title={`السعر الأصلي: ${Number(l.sale_price).toFixed(2)}`} className="absolute top-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 pointer-events-none" />}
                     </div>
                   );
