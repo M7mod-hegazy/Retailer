@@ -44,6 +44,7 @@ import useCollapsibleSidebar from "../../hooks/useCollapsibleSidebar";
 import PanelEdgeRail from "../pos/parts/PanelEdgeRail";
 import SalesReturnFormBottomBar from "./SalesReturnFormBottomBar";
 import SmartTooltip from "../../components/ui/SmartTooltip";
+import { getRefundHealth, ENTRY_HEALTH_CLASSES } from "../../utils/priceHealth";
 
 function formatMoney(v) {
   return formatNumber(v);
@@ -1659,9 +1660,14 @@ export default function SalesReturnFormPage() {
                     {/* Return price input */}
                     <div className="entry-field entry-field--price">
                       <label className="entry-label">سعر المرتجع</label>
-                      <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingWHRef, stagingQtyRef)}
-                        title={stagingItem ? `بيع ${Number(stagingItem.sale_price || 0).toFixed(2)} · شراء ${Number(stagingPurchasePrice || 0).toFixed(2)}` : undefined}
-                        className={`entry-control text-center ${stagingItem && Number(stagingPurchasePrice) > 0 && Number(stagingPrice) > 0 && Number(stagingPrice) < Number(stagingPurchasePrice) ? "entry-control--error" : ""}`} />
+                      {(() => {
+                        const returnHealth = getRefundHealth(stagingPrice, stagingItem?.sale_price);
+                        return (
+                          <input ref={stagingPriceRef} type="number" step="any" value={stagingPrice} onChange={e => setStagingPrice(e.target.value)} onFocus={e => e.target.select()} onKeyDown={e => handleFieldKeyDown(e, stagingWHRef, stagingQtyRef)}
+                            title={stagingItem ? `بيع ${Number(stagingItem.sale_price || 0).toFixed(2)} · شراء ${Number(stagingPurchasePrice || 0).toFixed(2)}` : undefined}
+                            className={`entry-control text-center ${ENTRY_HEALTH_CLASSES[returnHealth.level] || ""}`} />
+                        );
+                      })()}
                       {stagingItem && (
                         <div className="flex items-center justify-center gap-2 overflow-hidden">
                           <span className="text-[9px] font-mono shrink-0 truncate" style={{ color: "var(--text-muted)" }}>بيع {Number(stagingItem.sale_price || 0).toFixed(2)} · شراء {Number(stagingPurchasePrice || 0).toFixed(2)}</span>
@@ -1816,19 +1822,24 @@ export default function SalesReturnFormPage() {
                             </div>
                           </td>}
                           {visibleColumns.includes("return_price") && <td className="px-3 py-2.5 text-center">
-                            {!isLocked ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <input type="number" step="any" min="0" value={l.unit_price}
-                                  data-grid-cell data-row={idx} data-col="unit_price"
-                                  onChange={e => updateCartPrice(l.key, e.target.value)}
-                                  onFocus={e => e.target.select()}
-                                  className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors
-                                    ${l.purchase_price > 0 && Number(l.unit_price) > 0 && Number(l.unit_price) < l.purchase_price
-                                      ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
-                                      : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200"}`} />
-                                <PriceDelta entered={l.unit_price} baseline={l.sale_price} />
-                              </div>
-                            ) : (
+                            {!isLocked ? (() => {
+                              const returnHealth = getRefundHealth(l.unit_price, l.sale_price);
+                              const healthClasses = returnHealth.level === "loss"
+                                ? "border-rose-300 bg-rose-50 text-rose-700 focus:border-rose-400 focus:ring-rose-100"
+                                : returnHealth.level === "thin"
+                                  ? "border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-400 focus:ring-amber-100"
+                                  : "border-slate-200 bg-slate-50 text-slate-800 focus:border-emerald-400 focus:bg-white focus:ring-emerald-200";
+                              return (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <input type="number" step="any" min="0" value={l.unit_price}
+                                    data-grid-cell data-row={idx} data-col="unit_price"
+                                    onChange={e => updateCartPrice(l.key, e.target.value)}
+                                    onFocus={e => e.target.select()}
+                                    className={`w-24 rounded border px-2 py-1 text-center text-sm number-fmt-primary outline-none focus:ring-1 transition-colors ${healthClasses}`} />
+                                  <PriceDelta entered={l.unit_price} baseline={l.sale_price} />
+                                </div>
+                              );
+                            })() : (
                               <span className="text-sm font-black text-slate-700 number-fmt">{formatMoney(l.unit_price)}</span>
                             )}
                           </td>}
