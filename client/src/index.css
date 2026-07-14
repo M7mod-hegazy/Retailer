@@ -739,6 +739,7 @@ textarea {
     color: var(--text-primary);
     box-shadow: var(--input-well);
     outline: none;
+    transition: border-color 150ms ease;
   }
   .entry-control::placeholder { color: var(--text-muted); font-weight: 600; }
   .entry-control:focus,
@@ -819,6 +820,8 @@ textarea {
 
   /* semantic error border (e.g. price below cost) — theme-driven */
   .entry-control--error { border-color: var(--danger) !important; }
+  .entry-control--warning { border-color: var(--warning-border) !important; }
+  .entry-control--info { border-color: var(--info-border) !important; }
 
   /* themed selected-item chip (code · name) shown under the search field */
   .entry-item-chip {
