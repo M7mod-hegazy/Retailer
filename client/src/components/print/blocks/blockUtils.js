@@ -31,7 +31,7 @@ export const DEFAULTS = {
 };
 
 export const g = (s, k) => {
-  const raw = (s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
+  const raw = (s && s[k] !== undefined && s[k] !== null) ? s[k] : DEFAULTS[k];
   if (k.startsWith("show_") || k.startsWith("logo_on_") || k === "thermal_pure_black") {
     if (raw === 0 || raw === "0" || raw === "false") return false;
     if (raw === 1 || raw === "1" || raw === "true") return true;
@@ -201,6 +201,38 @@ export function smartFormat(n, s) {
   return s !== undefined ? formatPrintDigits(s, str) : str;
 }
 
+const PAYMENT_TYPE_LABELS = {
+  cash: "نقدي",
+  credit: "آجل",
+  card: "شبكة / بطاقة",
+  bank: "تحويل بنكي",
+  multi: "متعدد",
+  installments: "أقساط",
+};
+
+/**
+ * Payments array for a document, with a header-snapshot fallback.
+ * Saved invoices reloaded from the DB derive `payments` from
+ * payment_allocations only — cash POS sales create no allocation rows, so the
+ * array comes back empty and the payments block vanished on reprint even
+ * though the invoice carries payment_type + amount_received. Synthesize one
+ * entry from those header fields; skip when there is no meaningful amount so
+ * docs without payment data (purchases, quotations) stay unchanged.
+ */
+export function resolvePayments(invoice = {}) {
+  const raw = invoice.payments;
+  const arr = Array.isArray(raw)
+    ? raw
+    : (typeof raw === "string" ? (() => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch { return []; } })() : []);
+  if (arr.length) return arr;
+  const type = invoice.payment_type;
+  if (!type) return [];
+  const received = Number(invoice.amount_received) || 0;
+  const amount = received > 0 ? received : (invoice.status === "paid" ? Number(invoice.total) || 0 : 0);
+  if (amount <= 0) return [];
+  return [{ method: type, method_name: PAYMENT_TYPE_LABELS[type] || type, amount }];
+}
+
 export function computeTotals(invoice = {}, s = {}) {
   const lines = invoice.lines || [];
   const subtotal = lines.reduce((sum, l) => sum + ((Number(l.unit_price) || Number(l.unit_cost) || 0) * Number(l.quantity)), 0);
@@ -229,10 +261,6 @@ export function computeTotals(invoice = {}, s = {}) {
 
   // Use invoice.total as authoritative if present (handles exclusive vs inclusive correctly).
   const grandTotal = Number(invoice.total) > 0 ? Number(invoice.total) : subtotal - totalDiscount + taxAmount + headerIncrease;
-  const rawPayments = invoice.payments;
-  const paymentsArr = Array.isArray(rawPayments)
-    ? rawPayments
-    : (typeof rawPayments === "string" ? (() => { try { return JSON.parse(rawPayments); } catch { return []; } })() : []);
-  const paid = paymentsArr.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const paid = resolvePayments(invoice).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   return { subtotal, totalDiscount, totalIncrease: headerIncrease, taxAmount, grandTotal, paid, change: paid - grandTotal, taxRate };
 }

@@ -141,7 +141,29 @@ function lowStockCount(db) {
   } catch (_) { return 0; }
 }
 
+function buildProductsTable(products, currency) {
+  if (!products.length) return "لا توجد منتجات";
+  return products.map((p, i) =>
+    `${i + 1}. ${p.name || "—"} — ${Number(p.qty || 0).toLocaleString("ar-EG")} قطعة (${formatMoney(p.rev, currency)})`
+  ).join("\n");
+}
+
+function buildCustomersTable(customers, currency) {
+  if (!customers.length) return "لا يوجد عملاء";
+  return customers.map((c, i) => `${i + 1}. ${c.name || "—"} — ${formatMoney(c.spent, currency)}`).join("\n");
+}
+
+function renderTemplate(body, vars) {
+  if (!body) return "";
+  return Object.entries(vars).reduce(
+    (acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), val ?? ""),
+    body
+  );
+}
+
 // Build the Arabic Markdown digest for a completed period.
+// If opts.templateBody is provided, it is rendered with digest variables;
+// otherwise a default hardcoded format is used.
 function buildDigest(db, periodType, bounds, opts = {}) {
   const currency = opts.currencySymbol || "ج";
   const branch = opts.branch ? `🏪 *${opts.branch}*\n` : "";
@@ -157,28 +179,50 @@ function buildDigest(db, periodType, bounds, opts = {}) {
   const debts = outstandingDebts(db);
   const lowStock = lowStockCount(db);
 
+  const vars = {
+    period_label: bounds.label,
+    title,
+    sales_total: formatMoney(cur.total, currency),
+    sales_count: String(cur.count),
+    sales_delta: deltaText(cur.total, prev.total),
+    avg_invoice: formatMoney(avg, currency),
+    profit: formatMoney(profit, currency),
+    products_table: buildProductsTable(products, currency),
+    customers_table: buildCustomersTable(customers, currency),
+    treasury_balance: formatMoney(cash.treasuries, currency),
+    bank_balance: formatMoney(cash.banks, currency),
+    liquidity: formatMoney(cash.treasuries + cash.banks, currency),
+    debts: formatMoney(debts, currency),
+    low_stock_count: String(lowStock),
+    branch: opts.branch || "",
+  };
+
+  if (opts.templateBody) {
+    return branch + renderTemplate(opts.templateBody, vars).trim();
+  }
+
   const lines = [];
   lines.push(`${branch}${title} — ${bounds.label}`);
   lines.push("");
-  lines.push(`💰 المبيعات: *${formatMoney(cur.total, currency)}*  ${deltaText(cur.total, prev.total)}`);
-  lines.push(`🧾 عدد الفواتير: *${cur.count}*  (متوسط ${formatMoney(avg, currency)})`);
-  lines.push(`📊 صافي الربح: *${formatMoney(profit, currency)}*`);
+  lines.push(`💰 المبيعات: *${vars.sales_total}*  ${vars.sales_delta}`);
+  lines.push(`🧾 عدد الفواتير: *${vars.sales_count}*  (متوسط ${vars.avg_invoice})`);
+  lines.push(`📊 صافي الربح: *${vars.profit}*`);
 
   if (products.length) {
     lines.push("");
     lines.push("🏆 *أكثر المنتجات مبيعاً:*");
-    products.forEach((p, i) => lines.push(`${i + 1}. ${p.name || "—"} — ${Number(p.qty || 0).toLocaleString("ar-EG")} قطعة (${formatMoney(p.rev, currency)})`));
+    lines.push(vars.products_table);
   }
   if (customers.length) {
     lines.push("");
     lines.push("⭐ *أفضل العملاء:*");
-    customers.forEach((c, i) => lines.push(`${i + 1}. ${c.name || "—"} — ${formatMoney(c.spent, currency)}`));
+    lines.push(vars.customers_table);
   }
 
   lines.push("");
-  lines.push(`🏦 السيولة الحالية: *${formatMoney(cash.treasuries + cash.banks, currency)}* (خزنة ${formatMoney(cash.treasuries, currency)} + بنك ${formatMoney(cash.banks, currency)})`);
-  lines.push(`📌 مديونيات العملاء: *${formatMoney(debts, currency)}*`);
-  lines.push(`⚠️ أصناف تحت الحد الأدنى: *${lowStock}*`);
+  lines.push(`🏦 السيولة الحالية: *${vars.liquidity}* (خزنة ${vars.treasury_balance} + بنك ${vars.bank_balance})`);
+  lines.push(`📌 مديونيات العملاء: *${vars.debts}*`);
+  lines.push(`⚠️ أصناف تحت الحد الأدنى: *${vars.low_stock_count}*`);
 
   return lines.join("\n");
 }

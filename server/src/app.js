@@ -52,6 +52,7 @@ const pricingRoutes = require("./routes/pricing.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
 const whatsappCrmRoutes = require("./routes/whatsappCrm.routes");
 const telegramRoutes = require("./routes/telegram.routes");
+const { pairingPageRouter } = require("./routes/telegram.routes");
 const leadsRoutes = require("./routes/leads.routes");
 const itemUnitsRoutes = require("./routes/itemUnits.routes");
 const variantsRoutes = require("./routes/variants.routes");
@@ -143,6 +144,9 @@ function createApp() {
       res.status(500).json({ ok: false });
     }
   });
+
+  // Phone pairing pages — no auth required, served before the rate limiter.
+  app.use(pairingPageRouter);
 
   app.use(rateLimit({
     windowMs: 60 * 1000,

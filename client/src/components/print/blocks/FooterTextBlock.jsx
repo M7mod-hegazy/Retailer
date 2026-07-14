@@ -7,9 +7,11 @@ const DEFAULT_TEXT = "شكراً لتعاملكم معنا — نرحب بزيا
 export default function FooterTextBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   const showFooter = g(s, "show_footer") !== false;
   if (!showFooter) return null;
+  // Real configured text always wins — the editing sample is only for the
+  // empty state, otherwise the Studio canvas shows text that never prints.
   const rawText = props.text != null && props.text !== ""
     ? props.text
-    : (editing ? DEFAULT_TEXT : (g(s, "receipt_footer") || DEFAULTS.receipt_footer));
+    : (g(s, "receipt_footer") || (editing ? DEFAULT_TEXT : DEFAULTS.receipt_footer));
   const text = resolvePlaceholders(rawText, invoice, s)
     || (editing ? DEFAULT_TEXT : "");
   if (!text) return null;

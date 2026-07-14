@@ -15,14 +15,19 @@
 
 /**
  * Classify an axios error from the local server.
- * @returns {"http"|"timeout"|"disconnect"}
+ * @returns {"http"|"timeout"|"canceled"|"disconnect"}
  *   - "http":       the server answered (any 4xx/5xx) → it is reachable/up.
  *   - "timeout":    our own request timed out / was aborted → server busy, not down.
+ *   - "canceled":   WE aborted the request (debounced search typing, unmount) → says
+ *                   nothing about the server at all.
  *   - "disconnect": a genuine connection failure (ERR_NETWORK / ECONNREFUSED / …).
  */
 export function classifyConnectionError(error) {
   if (error?.response) return "http"; // server answered (4xx/5xx) — it is up
   const code = error?.code || "";
+  if (code === "ERR_CANCELED" || error?.name === "CanceledError") {
+    return "canceled"; // AbortController abort — deliberate, not a failure
+  }
   if (code === "ECONNABORTED" || code === "ETIMEDOUT" || /timeout/i.test(error?.message || "")) {
     return "timeout"; // request aborted by our own timeout — server is busy, not down
   }
@@ -36,6 +41,7 @@ export function classifyConnectionError(error) {
  *
  * Rules:
  *   - "timeout" failures NEVER count toward offline (busy ≠ down) and never clear it.
+ *   - "canceled" (we aborted our own request) is likewise ignored entirely.
  *   - "http" (bridge 5xx) and "disconnect" failures increment a counter.
  *   - offline becomes true only once `threshold` consecutive counting-failures occur.
  *   - a single success clears offline and resets the counter.
@@ -48,8 +54,8 @@ export function createDisconnectTracker({ threshold = 3 } = {}) {
   return {
     record(error) {
       const kind = classifyConnectionError(error);
-      if (kind === "timeout") {
-        // Busy server: leave both the counter and the current offline state untouched.
+      if (kind === "timeout" || kind === "canceled") {
+        // Busy server / self-inflicted abort: leave the counter and offline state untouched.
         return { offline, kind, count };
       }
       count += 1;

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X, Check, ArrowLeft } from "lucide-react";
 
 // Generalized page guide — same visual language as the WhatsApp/Telegram
@@ -82,7 +83,7 @@ export default function IllustratedGuide({ guide, onClose }) {
     if (!isFirst) setIndex((i) => Math.max(i - 1, 0));
   }
 
-  return (
+  return createPortal(
     <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay p-4" onMouseDown={onClose}>
       <div
         className="relative w-full max-w-lg rounded-3xl bg-bg-surface shadow-modal overflow-hidden animate-fade-in"
@@ -148,6 +149,7 @@ export default function IllustratedGuide({ guide, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

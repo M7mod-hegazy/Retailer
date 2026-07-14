@@ -5,6 +5,7 @@ const { auditMutation } = require("../middleware/audit");
 const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 const { generateDocNumber } = require("../utils/docNumber");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -40,6 +41,20 @@ router.post("/", requirePagePermission("employees", "add"), (req, res) => {
       wd
     );
   req.audit("create", "employees", { id: info.lastInsertRowid }, `👤 تم إضافة موظف: ${payload.name || ''}`);
+
+  // Telegram notification
+  try {
+    const userRow = req.user?.id ? getDb().prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.EMPLOYEE_CREATED, {
+      employeeName: payload.name || "غير محدد",
+      jobTitle: payload.job_title || payload.role || null,
+      salary: Number(payload.salary || 0),
+      phone: primaryPhone,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, getDb());
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employees WHERE id = ?").get(info.lastInsertRowid),
@@ -185,6 +200,22 @@ router.post("/:id/advances", requirePagePermission("employees", "manage_advances
     .run(req.params.id, amount, amount, installments, installmentAmount, payload.notes || null, req.user?.id || null, nowSql());
 
   req.audit("create", "employee_advances", { id: info.lastInsertRowid }, `💰 تم إضافة سلفة للموظف بمبلغ ${amount}`);
+
+  // Telegram notification
+  try {
+    const emp = getDb().prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? getDb().prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.ADVANCE_CREATED, {
+      employeeName: emp?.name || "غير محدد",
+      amount,
+      installmentCount: installments,
+      installmentAmount,
+      notes: payload.notes || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, getDb());
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employee_advances WHERE id = ?").get(info.lastInsertRowid),
@@ -259,6 +290,22 @@ router.post("/:id/deductions", requirePagePermission("employees", "manage_deduct
     );
 
   req.audit("create", "employee_deductions", { id: info.lastInsertRowid }, `💰 تم تسجيل خصم للموظف بقيمة ${amount}`);
+
+  // Telegram notification
+  try {
+    const emp = getDb().prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? getDb().prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.DEDUCTION_CREATED, {
+      employeeName: emp?.name || "غير محدد",
+      amount,
+      deductionType: payload.deduction_type || "other",
+      isRecurring: !!payload.is_recurring,
+      notes: payload.notes || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, getDb());
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employee_deductions WHERE id = ?").get(info.lastInsertRowid),
@@ -308,6 +355,22 @@ router.post("/:id/bonuses", requirePagePermission("employees", "manage_bonuses")
     );
 
   req.audit("create", "employee_bonuses", { id: info.lastInsertRowid }, `🎁 تم تسجيل مكافأة للموظف بقيمة ${amount}`);
+
+  // Telegram notification
+  try {
+    const emp = getDb().prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? getDb().prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.BONUS_CREATED, {
+      employeeName: emp?.name || "غير محدد",
+      amount,
+      bonusType: payload.bonus_type || "other",
+      isRecurring: !!payload.is_recurring,
+      notes: payload.notes || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, getDb());
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employee_bonuses WHERE id = ?").get(info.lastInsertRowid),
@@ -369,6 +432,10 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
   // سداد السلف — يقبل مصفوفة من المبالغ المحددة من المستخدم
   const advancePayments = Array.isArray(payload.advance_payments) ? payload.advance_payments : [];
 
+  // خيارات الدفع الجزئي
+  const paidAmountRaw = payload.paid_amount;
+  const carryForward = !!payload.carry_forward;
+
   const result = db.transaction(() => {
     let advanceDeductions = 0;
 
@@ -392,29 +459,44 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
         .run(advanceId, actualPay, `تسوية راتب — ${periodStart} إلى ${periodEnd}`, req.user?.id || null, nowSql());
     }
 
-    const totalDeductionsAll = totalDeductions + totalOneTimeDeductions + advanceDeductions;
-    const netSalary = Math.max(0, baseSalary + totalBonuses - totalDeductionsAll);
+    // رصيد متبقي من فترات سابقة
+    const outstandingRow = db.prepare(
+      "SELECT COALESCE(SUM(remaining_balance), 0) AS total FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
+    ).get(req.params.id);
+    const outstandingBalance = Number(outstandingRow.total || 0);
 
-    // إنشاء مصروف
+    const totalDeductionsAll = totalDeductions + totalOneTimeDeductions + advanceDeductions;
+    const netSalary = Math.max(0, baseSalary + totalBonuses - totalDeductionsAll - outstandingBalance);
+
+    // حساب المبلغ المدفوع والمتبقي
+    const isPartial = paidAmountRaw !== undefined && paidAmountRaw !== null && paidAmountRaw !== "";
+    const paidAmount = isPartial ? Math.min(Number(paidAmountRaw) || 0, netSalary) : netSalary;
+    const remainingBalance = Math.max(0, netSalary - paidAmount);
+    const status = remainingBalance > 0 ? 'partial' : 'full';
+
+    // إنشاء مصروف بالمبلغ المدفوع فقط
     const docNo = generateDocNumber('expense');
     const expenseResult = db
       .prepare(
         `INSERT INTO expenses (doc_no, amount, category_id, notes, description, payment_method, employee_id, treasury_id, created_at, created_by)
          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
       )
-      .run(docNo, netSalary, payload.category_id || null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
+      .run(docNo, paidAmount, payload.category_id || null, null, payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
 
-    // تسوية الخصومات لمرة واحدة
-    db.prepare(
-      "UPDATE employee_deductions SET status = 'completed', completed_at = ? WHERE employee_id = ? AND status = 'active' AND is_recurring = 0"
-    ).run(nowSql(), req.params.id);
+    // تسوية الخصومات لمرة واحدة — تُسجَّل تلقائياً عند الصرف الكامل، أو حسب اختيار المستخدم عند الصرف الجزئي
+    const consumeOneTime = payload.consume_one_time !== undefined ? !!payload.consume_one_time : !isPartial;
+    if (consumeOneTime) {
+      db.prepare(
+        "UPDATE employee_deductions SET status = 'completed', completed_at = ? WHERE employee_id = ? AND status = 'active' AND is_recurring = 0"
+      ).run(nowSql(), req.params.id);
+    }
 
-    // تسجيل صرف الراتب
+    // تسجيل صرف الراتب في salary_settlements
     const settleResult = db
       .prepare(
         `INSERT INTO salary_settlements
-         (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, payment_method, description, settled_by, expense_id, settled_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, paid_amount, remaining_balance, carry_forward, payment_method, description, settled_by, expense_id, settled_at, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         req.params.id,
@@ -425,21 +507,154 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
         totalDeductionsAll,
         advanceDeductions,
         netSalary,
+        paidAmount,
+        remainingBalance,
+        carryForward ? 1 : 0,
         payload.payment_method || 'cash',
         payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`,
         req.user?.id || null,
         expenseResult.lastInsertRowid,
-        nowSql()
+        nowSql(),
+        status
       );
 
-    return { expenseId: expenseResult.lastInsertRowid, settleId: settleResult.lastInsertRowid, netSalary };
+    // تسجيل في salary_payments
+    db.prepare(
+      `INSERT INTO salary_payments
+       (employee_id, period_start, period_end, base_salary, total_bonuses, total_deductions, advance_deductions, net_salary, paid_amount, remaining_balance, status, carry_forward, payment_method, description, settled_by, expense_id, settled_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      req.params.id,
+      periodStart,
+      periodEnd,
+      baseSalary,
+      totalBonuses,
+      totalDeductionsAll,
+      advanceDeductions,
+      netSalary,
+      paidAmount,
+      remainingBalance,
+      status,
+      carryForward ? 1 : 0,
+      payload.payment_method || 'cash',
+      payload.description || `راتب الموظف: ${employee.name} — عن فترة ${periodStart} إلى ${periodEnd}`,
+      req.user?.id || null,
+      expenseResult.lastInsertRowid,
+      nowSql()
+    );
+
+    return { expenseId: expenseResult.lastInsertRowid, settleId: settleResult.lastInsertRowid, netSalary, paidAmount, remainingBalance, status };
   })();
 
-  req.audit("create", "salary_settlements", { id: result.settleId }, `💰 تم صرف راتب للموظف ${employee.name} — صافي ${result.netSalary}`);
+  const auditMsg = result.status === 'partial'
+    ? `💰 تم صرف جزئي لراتب ${employee.name} — مدفوع ${result.paidAmount} / صافي ${result.netSalary}`
+    : `💰 تم صرف راتب للموظف ${employee.name} — صافي ${result.netSalary}`;
+  req.audit("create", "salary_settlements", { id: result.settleId }, auditMsg);
+
+  // Telegram notification
+  try {
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.SALARY_SETTLED, {
+      employeeName: employee.name,
+      period: `${periodStart} → ${periodEnd}`,
+      baseSalary,
+      bonuses: totalBonuses,
+      deductions: totalDeductionsAll,
+      advanceDeductions,
+      netSalary: result.netSalary,
+      paidAmount: result.paidAmount,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM salary_settlements WHERE id = ?").get(result.settleId),
   });
+});
+
+router.get("/:id/salary-balance", requirePagePermission("employees", "settle_payroll"), (req, res) => {
+  const db = getDb();
+  const employee = db.prepare("SELECT * FROM employees WHERE id = ?").get(req.params.id);
+  if (!employee) return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+
+  const partial = db.prepare(
+    "SELECT COALESCE(SUM(remaining_balance), 0) AS total_outstanding FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1"
+  ).get(req.params.id);
+
+  const totalPaid = db.prepare(
+    "SELECT COALESCE(SUM(paid_amount), 0) AS total_paid FROM salary_settlements WHERE employee_id = ?"
+  ).get(req.params.id);
+
+  const totalSettled = db.prepare(
+    "SELECT COUNT(*) AS count FROM salary_settlements WHERE employee_id = ?"
+  ).get(req.params.id);
+
+  res.json({
+    success: true,
+    data: {
+      outstanding_balance: Number(partial.total_outstanding || 0),
+      total_paid: Number(totalPaid.total_paid || 0),
+      total_settlements: totalSettled.count,
+      salary_period: employee.salary_period,
+      base_salary: Number(employee.salary || 0),
+    },
+  });
+});
+
+// سداد الرصيد المتبقي من فترات سابقة
+router.post("/:id/pay-outstanding", requirePagePermission("employees", "settle_payroll"), (req, res) => {
+  const db = getDb();
+  const employee = db.prepare("SELECT * FROM employees WHERE id = ?").get(req.params.id);
+  if (!employee) return res.status(404).json({ success: false, message: "الموظف غير موجود" });
+
+  const payload = req.body || {};
+  const paidAmount = Number(payload.paid_amount || 0);
+  if (paidAmount <= 0) return res.status(400).json({ success: false, message: "أدخل المبلغ" });
+
+  const partials = db.prepare(
+    "SELECT * FROM salary_settlements WHERE employee_id = ? AND status = 'partial' AND carry_forward = 1 ORDER BY id ASC"
+  ).all(req.params.id);
+
+  const totalOutstanding = partials.reduce((s, r) => s + Number(r.remaining_balance || 0), 0);
+  if (totalOutstanding <= 0) return res.status(400).json({ success: false, message: "لا يوجد رصيد متبقي" });
+
+  const actualPay = Math.min(paidAmount, totalOutstanding);
+
+  const result = db.transaction(() => {
+    let remaining = actualPay;
+
+    for (const p of partials) {
+      if (remaining <= 0) break;
+      const rb = Number(p.remaining_balance);
+      const settle = Math.min(remaining, rb);
+      const newRb = rb - settle;
+      const newStatus = newRb <= 0 ? 'settled' : 'partial';
+      db.prepare("UPDATE salary_settlements SET remaining_balance = ?, status = ? WHERE id = ?")
+        .run(newRb, newStatus, p.id);
+      remaining -= settle;
+    }
+
+    const paidOff = actualPay - remaining;
+
+    const docNo = generateDocNumber('expense');
+    const categoryId = payload.category_id || null;
+    const description = `سداد رصيد متبقي — ${employee.name} — ${paidOff.toLocaleString()} ج.م`;
+    const expenseResult = db
+      .prepare(
+        `INSERT INTO expenses (doc_no, amount, category_id, notes, description, payment_method, employee_id, treasury_id, created_at, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      )
+      .run(docNo, paidOff, categoryId, null, description, payload.payment_method || 'cash', req.params.id, nowSql(), req.user?.id || null);
+
+    return { paidOff, expenseId: expenseResult.lastInsertRowid };
+  })();
+
+  const auditMsg = `💰 سداد رصيد متبقي لـ ${employee.name} — ${result.paidOff.toLocaleString()} ج.م`;
+  req.audit("update", "salary_settlements", { employee_id: Number(req.params.id) }, auditMsg);
+
+  res.json({ success: true, data: { paid_off: result.paidOff } });
 });
 
 module.exports = router;

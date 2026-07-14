@@ -9,7 +9,7 @@ import {
 import WhatsAppIcon from "../ui/WhatsAppIcon";
 import api from "../../services/api";
 import toast from "react-hot-toast";
-import { printContent, getPrinterForPageSize, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
+import { printContent, getPrinterForPageSize, getPrinterForPageSizeAsync, getPrinterSizeMap, isElectronPrint, hasPrintedBefore } from "../../services/printService";
 import { withCalibration } from "../../services/printCalibration";
 import { DOC_PAPER_CONFIG, resolveDocPaperSize, SCOPE_PRESETS, pageDimensions, pageWidthStr, pageHeightStr, pageSizeStrFor as printPageSizeStr, findNaturalBreaks, getPagedDocumentHtml, PX_PER_MM, familyOfSize, BLOCK_DOC_SCOPES } from "./studio/studioData";
 import PrintStudio from "./studio/PrintStudio";
@@ -323,10 +323,13 @@ export default function PrintPreviewModal({
   const combinedSettingsBase = {
     ...(fetchedGlobalSettings || {}),
     ...(globalSettings || {}),
+    // operationLabel is only a FALLBACK footer: a footer designed in the
+    // Studio (per-doc or _global scope, spread below) must win, or every
+    // reprint replaces the designed footer with the operation name.
+    ...(operationLabel ? { receipt_footer: operationLabel } : {}),
     ...globalScopeFlat,
     ...localFlatFields,
     layout: effectiveLayout,
-    ...(operationLabel ? { receipt_footer: operationLabel } : {}),
     ...(isReportDoc ? {
       report_print_column_keys: reportPrintKeys,
       report_print_hidden_columns: hiddenReportColumns,
@@ -575,7 +578,7 @@ export default function PrintPreviewModal({
     const result = await printContent({
       contentHtml: withReprintStamp(contentHtml),
       pageSizeStr,
-      deviceName: getPrinterForPageSize(pageSizeStr),
+      deviceName: await getPrinterForPageSizeAsync(pageSizeStr),
       copies: Math.max(1, Number(combinedSettings.print_copies) || 1),
       title: operationLabel || "طباعة",
       afterPrint,
@@ -587,7 +590,10 @@ export default function PrintPreviewModal({
     // Tell the user WHY the dialog opened instead of the fast silent path —
     // silent-silent fallbacks made real print problems undiagnosable.
     if (result.mode === "dialog" && isElectronPrint() && result.reason && result.reason !== "not_electron") {
-      toast(FALLBACK_REASON_LABELS[result.reason] || FALLBACK_REASON_LABELS.print_failed, { icon: "🖨️" });
+      const isRoll = activeTemplate === "58mm" || activeTemplate === "80mm";
+      const base = FALLBACK_REASON_LABELS[result.reason] || FALLBACK_REASON_LABELS.print_failed;
+      const rollHint = isRoll ? " — تأكد إن مقاس الورق مضبوط على " + activeTemplate : "";
+      toast(base + rollHint, { icon: "🖨️", duration: isRoll ? 6000 : 4000 });
     }
   }
 

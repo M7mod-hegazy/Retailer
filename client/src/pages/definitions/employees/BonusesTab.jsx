@@ -100,6 +100,28 @@ export default function BonusesTab({ employee }) {
 
   return (
     <div className="p-6">
+      {/* Info Panel */}
+      {(() => {
+        const dismissed = typeof window !== 'undefined' && localStorage.getItem('emp-tab-info-bonuses');
+        if (dismissed) return null;
+        return (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 flex items-start gap-4 relative mb-6">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-emerald-800">المكافئات</p>
+              <p className="text-xs font-bold text-emerald-600 mt-1 leading-relaxed">
+                سجّل مكافآت الأداء أو الحافز — متكررة (كل فترة) أو لمرة واحدة. يمكنك استخدام "حساب من الأيام" لتحويل أيام العمل لمبلغ. المكافآت المتكررة بتتضاف تلقائياً مع كل صرف راتب.
+              </p>
+            </div>
+            <button onClick={() => localStorage.setItem('emp-tab-info-bonuses', '1')}
+              className="text-emerald-400 hover:text-emerald-600 text-xs font-black shrink-0">فهمت</button>
+          </motion.div>
+        );
+      })()}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-black text-slate-800">المكافئات</h3>

@@ -28,7 +28,8 @@ import {
   Monitor,
   Eye,
   Filter,
-  RefreshCw,
+
+
   Box,
   Tags,
   BadgeDollarSign,
@@ -36,7 +37,8 @@ import {
   TrendingUp,
   Columns,
   RotateCcw,
-  Pencil
+  Pencil,
+  Barcode
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -393,6 +395,7 @@ export default function ItemsListPage() {
   const [newRow, setNewRow]           = useState(EMPTY_DRAFT);
   const [showDeleted, setShowDeleted]     = useState(false);
   const [showSkuGaps, setShowSkuGaps]     = useState(false);
+  const [showBarcode, setShowBarcode]     = useState(() => localStorage.getItem("items_show_barcode") !== "false");
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   // Feature-driven per-item managers (shown on the catalog only when the flag is on)
@@ -587,7 +590,7 @@ export default function ItemsListPage() {
 
   useShortcut("items.new", () => { if (selectedCatId) setQuickAddOpen(true); });
   useShortcut("items.search", () => { searchRef.current?.focus(); searchRef.current?.select(); });
-  useShortcut("items.refresh", () => loadItems(selectedCatId, search, showDeleted));
+
   useShortcut("items.calculator", () => {
     const target = focusedPriceCellRef.current;
     if (target) setCalcAnchor(target);
@@ -700,6 +703,12 @@ export default function ItemsListPage() {
     const next = profitMode === "percentage" ? "number" : "percentage";
     setProfitMode(next);
     localStorage.setItem("items_profit_mode", next);
+  }
+
+  function toggleBarcode() {
+    const next = !showBarcode;
+    setShowBarcode(next);
+    localStorage.setItem("items_show_barcode", String(next));
   }
 
   function profitInfo(purchase, sale) {
@@ -1152,23 +1161,24 @@ export default function ItemsListPage() {
                <button onClick={() => setShowSkuGaps((prev) => !prev)}
                   disabled={isAllCats}
                   title={isAllCats ? "غير متاح في وضع عرض كل الأصناف — اختر فئة محددة" : undefined}
-                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed ${showSkuGaps ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}>
-                  <Box className="h-3.5 w-3.5" /> {showSkuGaps ? "إخفاء الفراغات" : "عرض فراغات SKU"}
+                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${showSkuGaps ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"}`}>
+                  <Box className="h-3.5 w-3.5" /> {showSkuGaps ? "إخفاء الأكواد الفارغة" : "إظهار الأكواد الفارغة"}
+               </button>
+               <button onClick={toggleBarcode}
+                  title={showBarcode ? "إخفاء عمود الباركود" : "إظهار عمود الباركود"}
+                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${showBarcode ? "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50" : "border-sky-300 bg-sky-50 text-sky-700"}`}>
+                  <Barcode className="h-3.5 w-3.5" /> {showBarcode ? "إخفاء الباركود" : "إظهار الباركود"}
                </button>
                <button onClick={() => setShowDeleted((p) => !p)}
                   disabled={isAllCats}
                   title={isAllCats ? "غير متاح في وضع عرض كل الأصناف — اختر فئة محددة" : undefined}
-                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-[11px] font-black transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${
                     showDeleted
                       ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
                       : "border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                   }`}>
-                  <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفة" : "عرض المحذوفة"}
+                  <Eye className="h-3.5 w-3.5" /> {showDeleted ? "إخفاء المحذوفات" : "إظهار المحذوفات"}
                </button>
-                <button data-help="add-button" onClick={() => loadItems(selectedCatId, search, showDeleted)}
-                   className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white hover:bg-primary-600 transition-all shadow-lg active:scale-95">
-                   <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> تحديث القائمة <ShortcutKbd id="items.refresh" className="rounded bg-white/20 px-1.5 text-[9px] font-mono text-white/80" />
-                </button>
             </div>
          </div>
 
@@ -1201,7 +1211,7 @@ export default function ItemsListPage() {
                      الوحدة
                      <div onMouseDown={(e) => onResizeStart(e, "unit")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
                    </th>
-                   <SortTh label="الباركود" sortKey="barcode" sortConfig={sortConfig} onSort={toggleSort} resizableKey="barcode" width={colWidths.barcode} onResizeStart={onResizeStart} />
+                    <SortTh label="الباركود" sortKey="barcode" sortConfig={sortConfig} onSort={toggleSort} resizableKey="barcode" width={colWidths.barcode} onResizeStart={onResizeStart} className={!showBarcode ? "hidden" : ""} />
                    <SortTh label="شراء" sortKey="purchase_price" sortConfig={sortConfig} onSort={toggleSort} resizableKey="purchase_price" width={colWidths.purchase_price} onResizeStart={onResizeStart} />
                    <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.sale_price, minWidth: colWidths.sale_price}}>
                      <div className="flex items-center justify-between gap-2">
@@ -1247,7 +1257,7 @@ export default function ItemsListPage() {
                          <td className="px-4 py-2 border-l border-violet-100">
                            <span className="font-mono text-2sm font-black text-violet-700">{item.code}</span>
                          </td>
-                         <td colSpan={9} className="px-4 py-2 text-[11px] font-bold text-violet-700">
+                          <td colSpan={showBarcode ? 9 : 8} className="px-4 py-2 text-[11px] font-bold text-violet-700">
                            هذا الرقم فارغ. لا يتم إنشاء صنف هنا إلا بعد اختيار الرقم وكتابة بيانات الصف ثم الضغط على إضافة.
                          </td>
                          <td className="px-4 py-2 text-center">
@@ -1345,9 +1355,9 @@ export default function ItemsListPage() {
                        <td className="px-3 py-1 border-l border-slate-100">
                           <UnitSelect value={d.unit_id} units={units} onChange={(e) => updateDraft(item.id, "unit_id", e.target.value)} dirty={isDirty} disabled={isDeleted} />
                        </td>
-                       <td className="px-3 py-1 border-l border-slate-100">
-                          <Cell value={d.barcode} onChange={(e) => updateDraft(item.id, "barcode", e.target.value)} dirty={isDirty} className="font-mono" />
-                       </td>
+                        <td className={`px-3 py-1 border-l border-slate-100 ${!showBarcode ? "hidden" : ""}`}>
+                           <Cell value={d.barcode} onChange={(e) => updateDraft(item.id, "barcode", e.target.value)} dirty={isDirty} className="font-mono" />
+                        </td>
                        <td className="px-3 py-1 border-l border-slate-100">
                           <Cell type="number" value={d.purchase_price} onChange={(e) => updateDraft(item.id, "purchase_price", e.target.value)} dirty={isDirty} className="text-left font-black" />
                        </td>
@@ -1500,10 +1510,10 @@ export default function ItemsListPage() {
                           <td className="px-4 border-l border-slate-100">
                             <span className="text-sm font-medium text-slate-700">{child.name}</span>
                           </td>
-                          <td className="px-3 py-1 border-l border-slate-100 text-xs text-slate-500">{child.barcode || "—"}</td>
-                          <td className="px-3 py-1 border-l border-slate-100 text-xs font-bold text-primary">{Number(child.sale_price || 0).toLocaleString()}</td>
-                          <td className="px-3 py-1 border-l border-slate-100 text-xs text-slate-500">{child.stock_quantity || 0}</td>
-                          <td colSpan={10} />
+                           <td className={`px-3 py-1 border-l border-slate-100 text-xs text-slate-500 ${!showBarcode ? "hidden" : ""}`}>{child.barcode || "—"}</td>
+                           <td className="px-3 py-1 border-l border-slate-100 text-xs font-bold text-primary">{Number(child.sale_price || 0).toLocaleString()}</td>
+                           <td className="px-3 py-1 border-l border-slate-100 text-xs text-slate-500">{child.stock_quantity || 0}</td>
+                           <td colSpan={showBarcode ? 10 : 11} />
                         </tr>
                       )) : [])];
                   })
@@ -1512,7 +1522,7 @@ export default function ItemsListPage() {
              
              {/* New Item Creation Row */}
              {!loading && (
-               <tfoot className="sticky bottom-0 z-20 bg-slate-100 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t border-slate-200">
+               <tfoot className="sticky bottom-0 z-20 border-t-2 border-emerald-500 shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
                   {isAllCats ? (
                   <tr className="bg-amber-50">
                      <td colSpan={COLS} className="px-6 py-4">
@@ -1525,78 +1535,110 @@ export default function ItemsListPage() {
                      </td>
                   </tr>
                   ) : (
-                  <tr className="bg-white">
-                      <td colSpan="3" className="px-2 text-[11px] font-black text-slate-400 uppercase text-center border-l border-slate-100">+ جديد <ShortcutKbd id="items.new" className="inline-flex items-center justify-center rounded bg-slate-200 px-1 py-0.5 text-[9px] font-mono text-slate-500" /></td>
-                     {expiryEnabled && (
-                     <td className="px-1 py-1 text-center border-l border-slate-100">
-                       <button type="button"
-                         title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
-                         onClick={() => setNewRow((prev) => ({ ...prev, track_expiry: !prev.track_expiry }))}
-                         className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
-                           ${newRow.track_expiry ? "bg-orange-50 border-orange-200 hover:bg-orange-100" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}>
-                         <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm ${newRow.track_expiry ? "bg-orange-400" : "bg-slate-300"}`} dir="ltr">
-                           <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${newRow.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
+                  <>
+                  <tr className="bg-emerald-600">
+                     <td colSpan={COLS} className="px-4 py-2">
+                       <div className="flex items-center justify-between" dir="rtl">
+                         <div className="flex items-center gap-3">
+                           <span className="inline-flex items-center gap-1.5 rounded bg-white/20 px-2.5 py-1 text-xs font-black text-white">
+                             <Plus className="h-3.5 w-3.5" /> جديد
+                           </span>
+                           <span className="text-sm font-black text-white">إضافة صنف جديد للفئة المختارة</span>
                          </div>
-                         <span className={`text-[8px] font-black leading-none ${newRow.track_expiry ? "text-orange-600" : "text-slate-400"}`}>
-                           {newRow.track_expiry ? "مفعّل" : "موقف"}
-                         </span>
-                       </button>
+                         <ShortcutKbd id="items.new" className="inline-flex items-center justify-center rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-mono text-white/90" />
+                       </div>
                      </td>
-                     )}
-                     <td className="px-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <span className={`font-mono text-[11px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>
-                          {newRow.code ? (
-                            <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="rounded bg-violet-100 px-1 text-[11px] font-black text-violet-700">آخر</button>
-                          ) : null}
+                  </tr>
+                   <tr className="bg-white">
+                      <td colSpan="3" className="px-2 text-center align-middle border border-slate-200 bg-slate-50/50">
+                        <div className="flex flex-col items-center justify-center h-full">
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2.5 py-1.5 text-[10px] font-black text-emerald-700">
+                            <Plus className="h-3 w-3" /> جديد
+                          </span>
                         </div>
-                     </td>
-                     <td className="px-4 py-3">
-                        <Cell value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })} 
-                          ref={nameInputRef} placeholder="اكتب اسم الصنف الجديد هنا..." className="border-emerald-200/50 bg-emerald-50/30 font-black" />
-                     </td>
-                     <td className="px-3 py-2">
-                         <UnitSelect ref={unitSelectRef} value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: barcodeRef, prevRef: nameInputRef })} />
-                     </td>
-                     <td className="px-3 py-2">
-                         <Cell ref={barcodeRef} value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: purchasePriceRef, prevRef: unitSelectRef })} placeholder="الباركود..." className="font-mono" />
-                     </td>
-                     <td className="px-3 py-2">
-                         <Cell ref={purchasePriceRef} type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: salePriceRef, prevRef: barcodeRef })} placeholder="الشراء" />
-                     </td>
-                     <td className="px-3 py-2">
-                         <Cell ref={salePriceRef} type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesalePriceRef, prevRef: purchasePriceRef })} placeholder="المستهلك" className="text-emerald-700" />
+                      </td>
+                      {expiryEnabled && (
+                      <td className="px-1 py-2 text-center align-middle border border-slate-200 bg-slate-50/50">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-black text-slate-400">انتهاء</span>
+                          <button type="button"
+                            title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
+                            onClick={() => setNewRow((prev) => ({ ...prev, track_expiry: !prev.track_expiry }))}
+                            className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
+                              ${newRow.track_expiry ? "bg-orange-50 border-orange-200 hover:bg-orange-100" : "bg-white border-slate-200 hover:bg-slate-50"}`}>
+                            <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm ${newRow.track_expiry ? "bg-orange-400" : "bg-slate-300"}`} dir="ltr">
+                              <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${newRow.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
+                            </div>
+                          </button>
+                        </div>
+                      </td>
+                      )}
+                      <td className="px-2 text-center align-middle border border-slate-200 bg-slate-50/50">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-black text-slate-400">الكود</span>
+                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">تلقائي</span>
+                          <div className="flex items-center justify-center gap-1 mt-0.5">
+                            <span className={`font-mono text-[12px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>
+                            {newRow.code ? (
+                              <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="rounded bg-violet-100 px-1 text-[11px] font-black text-violet-700">آخر</button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">اسم الصنف <span className="text-rose-500">*</span></label>
+                        <Cell value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
+                          ref={nameInputRef} placeholder="اكتب اسم الصنف الجديد هنا..." className="border-slate-200 bg-slate-50 font-black focus:border-emerald-500 focus:ring-emerald-500/20" onKeyDown={(e) => handleKeyDown(e, { nextRef: unitSelectRef, prevRef: addItemBtnRef })} />
+                      </td>
+                      <td className="px-3 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">الوحدة</label>
+                        <UnitSelect ref={unitSelectRef} value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: showBarcode ? barcodeRef : purchasePriceRef, prevRef: nameInputRef })} />
+                      </td>
+                      <td className={`px-3 py-2 border border-slate-200 bg-white ${!showBarcode ? "hidden" : ""}`}>
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">الباركود</label>
+                        <Cell ref={barcodeRef} value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: purchasePriceRef, prevRef: unitSelectRef })} placeholder="..." className="font-mono border-slate-200 bg-slate-50 focus:border-emerald-500" />
+                      </td>
+                      <td className="px-3 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">الشراء</label>
+                        <Cell ref={purchasePriceRef} type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: salePriceRef, prevRef: showBarcode ? barcodeRef : unitSelectRef })} placeholder="0.00" className="border-slate-200 bg-slate-50 focus:border-emerald-500" />
+                      </td>
+                      <td className="px-3 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">المستهلك</label>
+                        <Cell ref={salePriceRef} type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesalePriceRef, prevRef: purchasePriceRef })} placeholder="0.00" className="text-emerald-700 border-slate-200 bg-slate-50 focus:border-emerald-500" />
                         {(() => {
                           const profit = profitInfo(newRow.purchase_price, newRow.sale_price);
                           return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
                         })()}
-                     </td>
-                     <td className="px-3 py-2">
-                         <Cell ref={wholesalePriceRef} type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: minStockQtyRef, prevRef: salePriceRef })} placeholder="الجملة" className="text-blue-700" />
+                      </td>
+                      <td className="px-3 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">الجملة</label>
+                        <Cell ref={wholesalePriceRef} type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: minStockQtyRef, prevRef: salePriceRef })} placeholder="0.00" className="text-blue-700 border-slate-200 bg-slate-50 focus:border-emerald-500" />
                         {(() => {
                           const profit = profitInfo(newRow.purchase_price, newRow.wholesale_price);
                           return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
                         })()}
-                     </td>
-                     <td className="px-3 py-2">
-                         <Cell ref={minStockQtyRef} type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: addItemBtnRef, prevRef: wholesalePriceRef })} placeholder="الحد" />
-                     </td>
-                     <td colSpan="2" className="px-4 text-center opacity-40">
+                      </td>
+                      <td className="px-3 py-2 border border-slate-200 bg-white">
+                        <label className="block text-[10px] font-black text-slate-400 mb-1">الحد</label>
+                        <Cell ref={minStockQtyRef} type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: addItemBtnRef, prevRef: wholesalePriceRef })} placeholder="0" className="border-slate-200 bg-slate-50 focus:border-emerald-500" />
+                      </td>
+                      <td colSpan="2" className="px-4 text-center align-middle border border-slate-200 bg-slate-50/30 opacity-40">
                         <Shapes className="mx-auto h-4 w-4 text-slate-400" />
-                     </td>
-                     <td className="px-4 py-3 text-center">
+                      </td>
+                      <td className="px-4 py-2 text-center align-middle border border-slate-200 bg-slate-50/50">
                         <PermissionGate page="items" action="add">
                         <button ref={addItemBtnRef}
                             onClick={createFromNewRow}
                             onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: createFromNewRow })}
                             disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
-                            className="flex w-full items-center justify-center gap-2 rounded-sm bg-emerald-600 px-4 py-2.5 text-2sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
+                            className="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
                         >
                            {savingRowId === "new" ? "جاري..." : <><Plus className="h-4 w-4" /> إضافة</>}
                         </button>
                         </PermissionGate>
-                     </td>
-                  </tr>
+                      </td>
+                   </tr>
+                  </>
                   )}
                </tfoot>
              )}

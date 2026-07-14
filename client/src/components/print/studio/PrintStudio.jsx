@@ -1177,7 +1177,7 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
             )}
           <div className="relative flex-1">
             {!hasPreset && isBlockDoc && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg-base)]/90">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg-base)]">
                 <div className="mx-4 max-w-sm rounded-2xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] p-8 text-center shadow-xl">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-soft)] text-primary">
                     <LayoutTemplate size={28} />

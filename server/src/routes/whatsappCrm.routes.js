@@ -301,9 +301,17 @@ router.get("/campaigns/:id", canView, (req, res) => {
 router.post("/campaigns", canEdit, (req, res) => {
   try {
     const db = getDb();
-    const { name, body, channel = "whatsapp", scheduled_at, filters = {} } = req.body;
+    const { name, body, channel = "whatsapp", scheduled_at, filters = {}, image_url } = req.body;
     if (!body || !body.trim()) return res.status(400).json({ success: false, message: "body required" });
     if (!["whatsapp", "sms"].includes(channel)) return res.status(400).json({ success: false, message: "invalid channel" });
+    // image_url is later read from disk by the WhatsApp engine — accept ONLY
+    // the exact /uploads/<file>.<img-ext> shape our upload route produces, or
+    // a crafted path could exfiltrate arbitrary files to a campaign recipient.
+    if (image_url != null && image_url !== "") {
+      if (typeof image_url !== "string" || !/^\/uploads\/[A-Za-z0-9._-]+\.(jpe?g|png|webp|gif)$/i.test(image_url)) {
+        return res.status(400).json({ success: false, message: "رابط الصورة غير صالح" });
+      }
+    }
     if (channel === "sms") {
       let smsReady = false;
       try {
@@ -356,9 +364,9 @@ router.post("/campaigns", canEdit, (req, res) => {
 
     const audienceJson = JSON.stringify(filters);
     const result = db.prepare(`
-      INSERT INTO campaigns (name, body, channel, audience_json, status, total, created_at)
-      VALUES (?,?,?,?,'active',?,datetime('now'))
-    `).run(name?.trim() || null, body.trim(), channel, audienceJson, deduped.length);
+      INSERT INTO campaigns (name, body, channel, audience_json, status, total, image_url, created_at)
+      VALUES (?,?,?,?,'active',?,?,datetime('now'))
+    `).run(name?.trim() || null, body.trim(), channel, audienceJson, deduped.length, image_url || null);
     const campaignId = result.lastInsertRowid;
 
     // Insert recipients + enqueue in wa_outbox, linked back so the drainers can
@@ -384,11 +392,14 @@ router.post("/campaigns", canEdit, (req, res) => {
         .replace(/\{name\}/g, a.name || "")
         .replace(/\{phone\}/g, a.phone || "")
         .replace(/\{shop\}/g, shopName);
+      const outboxPayload = image_url
+        ? { text: resolved, image_url: image_url }
+        : { text: resolved };
       const recipientId = ins.run(campaignId, a.lead_id || null, a.customer_id || null, norm, a.name || null, resolved, i).lastInsertRowid;
       if (hasChannel && hasLink) {
-        outboxIns.run(norm, a.customer_id || null, a.lead_id || null, "broadcast", JSON.stringify({ text: resolved }), scheduled_at || null, channel, recipientId);
+        outboxIns.run(norm, a.customer_id || null, a.lead_id || null, "broadcast", JSON.stringify(outboxPayload), scheduled_at || null, channel, recipientId);
       } else if (channel === "whatsapp") {
-        outboxIns.run(norm, a.customer_id || null, "broadcast", JSON.stringify({ text: resolved }), scheduled_at || null);
+        outboxIns.run(norm, a.customer_id || null, "broadcast", JSON.stringify(outboxPayload), scheduled_at || null);
       }
     });
 
@@ -422,6 +433,26 @@ router.delete("/campaigns/:id", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// Batch check which phone numbers exist on WhatsApp
+router.post("/check-whatsapp-batch", canView, async (req, res) => {
+  try {
+    if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
+    const es = engine.getStatus();
+    if (es.status !== "connected") return res.status(503).json({ success: false, message: "WhatsApp not connected" });
+    const { phones } = req.body;
+    if (!Array.isArray(phones) || !phones.length) return res.status(400).json({ success: false, message: "phones array required" });
+    const results = {};
+    for (const raw of phones.slice(0, 50)) {
+      const norm = normalizeDigits(raw);
+      if (!norm) { results[raw] = false; continue; }
+      try {
+        results[norm] = await engine.checkExists(norm);
+      } catch { results[norm] = null; }
+    }
+    res.json({ success: true, data: results });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ─── Templates ──────────────────────────────────────────────────────────────
 // Category → fixed sending channel. These categories are driven by automatic
 // triggers (a sale, a shift close, a Telegram alert) — not something a user
@@ -435,6 +466,24 @@ const CATEGORY_CHANNEL = {
   telegram_large_invoice: "telegram", telegram_large_discount: "telegram", telegram_sales_return: "telegram",
   telegram_invoice_voided: "telegram", telegram_purchase_created: "telegram", telegram_customer_payment: "telegram",
   telegram_low_stock: "telegram", telegram_backup_result: "telegram", telegram_failed_login: "telegram",
+  telegram_customer_created: "telegram", telegram_supplier_created: "telegram", telegram_expense_created: "telegram",
+  telegram_return_payment: "telegram",
+  telegram_weekly_digest: "telegram", telegram_monthly_digest: "telegram", telegram_yearly_digest: "telegram",
+  // Extended events (migration 194)
+  telegram_stock_transfer: "telegram", telegram_inventory_adjustment: "telegram",
+  telegram_new_product: "telegram", telegram_price_change: "telegram",
+  telegram_batch_expiry: "telegram", telegram_physical_count: "telegram",
+  telegram_supplier_payment: "telegram", telegram_debt_payment: "telegram",
+  telegram_installment_paid: "telegram",
+  telegram_purchase_voided: "telegram", telegram_purchase_return: "telegram",
+  telegram_branch_transfer: "telegram",
+  telegram_password_changed: "telegram", telegram_permission_changed: "telegram",
+  telegram_supervisor_override: "telegram", telegram_repair_created: "telegram",
+  telegram_repair_ready: "telegram", telegram_repair_delivered: "telegram",
+  telegram_revenue_created: "telegram", telegram_withdrawal_created: "telegram",
+  telegram_employee_created: "telegram", telegram_salary_settled: "telegram",
+  telegram_advance_created: "telegram", telegram_deduction_created: "telegram",
+  telegram_bonus_created: "telegram",
 };
 
 // System kinds are auto-send triggers: body-editable via variants below,

@@ -1,5 +1,5 @@
 import React from "react";
-import { g, computeTotals, smartFormat, HEAVY_VAL } from "./blockUtils";
+import { g, computeTotals, resolvePayments, smartFormat, HEAVY_VAL } from "./blockUtils";
 
 const fmtDate = (d) => {
   if (!d) return "";
@@ -12,10 +12,7 @@ export default function PaymentsBlock({ invoice = {}, settings: s, props = {}, f
   const showPayment = g(s, "show_payment_details") !== false;
   if (!showPayment) return null;
 
-  const rawPayments = invoice.payments;
-  let payments = Array.isArray(rawPayments)
-    ? rawPayments
-    : (typeof rawPayments === "string" ? (() => { try { return JSON.parse(rawPayments); } catch { return []; } })() : []);
+  let payments = resolvePayments(invoice);
   let plan = Array.isArray(invoice.installment_plan) ? invoice.installment_plan
     : (typeof invoice.installment_plan === "string" ? (() => { try { return JSON.parse(invoice.installment_plan); } catch { return []; } })() : []);
   

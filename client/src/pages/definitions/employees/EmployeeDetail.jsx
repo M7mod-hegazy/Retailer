@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, User, DollarSign, Percent, Gift, Wallet, MapPin, Phone, Briefcase, Users, ChevronDown } from "lucide-react";
+import { X, User, DollarSign, Percent, Gift, Wallet, MapPin, Phone, Briefcase, Users, ChevronDown, HelpCircle } from "lucide-react";
 import api from "../../../services/api";
+import { useHelpStore } from "../../../stores/helpStore";
 import BasicInfoTab from "./BasicInfoTab";
 import AdvancesTab from "./AdvancesTab";
 import DeductionsTab from "./DeductionsTab";
@@ -19,6 +20,7 @@ const TABS = [
 export default function EmployeeDetail({ employee, employees, onStartCreate, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState("info");
   const [counts, setCounts] = useState({});
+  const { togglePageTour } = useHelpStore();
 
   useEffect(() => {
     if (!employee) return;
@@ -236,12 +238,21 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
             </div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => togglePageTour("employees")}
+            title="شرح الصفحة"
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all shrink-0"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

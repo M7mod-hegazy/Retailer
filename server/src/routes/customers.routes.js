@@ -5,6 +5,7 @@ const { auditMutation } = require("../middleware/audit");
 const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 const { partyTxnSum } = require("../services/partyBalanceService");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -91,6 +92,15 @@ router.post("/", requirePagePermission("customers", "add"), (req, res) => {
       payload.is_active === false ? 0 : 1,
     );
   req.audit("create", "customers", { id: info.lastInsertRowid }, `👤 تم إضافة عميل: ${payload.name || ''}`, `/definitions/customers/${info.lastInsertRowid}`);
+  try {
+    notifyOwner(TG.CUSTOMER_CREATED, {
+      customerName: payload.name,
+      name: payload.name,
+      phone: payload.phone || null,
+      city: payload.addresses || null,
+      openingBalance: Number(payload.opening_balance || 0),
+    });
+  } catch (_) {}
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM customers WHERE id = ?").get(info.lastInsertRowid),

@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import PaymentsBlock from "../blocks/PaymentsBlock";
+import { computeTotals } from "../blocks/blockUtils";
 
 const invoice = {
   payments: [
@@ -36,5 +37,52 @@ describe("PaymentsBlock roll variants", () => {
       <PaymentsBlock invoice={invoice} settings={settings} props={{ variant: "badge-pill" }} family="roll" />
     ).container.innerHTML;
     expect(a).not.toBe(b);
+  });
+});
+
+// Saved invoices reloaded from the DB have payments derived ONLY from
+// payment_allocations; cash POS sales create no allocation rows, so the API
+// returns payments: []. The block must fall back to the header snapshot
+// (payment_type + amount_received/total) or reprints silently lose the
+// payment details the Studio design shows.
+describe("PaymentsBlock header-snapshot fallback", () => {
+  const savedCashInvoice = {
+    payments: [],
+    payment_type: "cash",
+    amount_received: 210,
+    total: 210,
+    status: "paid",
+  };
+
+  it("renders from payment_type + amount_received when payments array is empty", () => {
+    const { container } = render(
+      <PaymentsBlock invoice={savedCashInvoice} settings={settings} props={{ variant: "badge-pill" }} family="roll" />
+    );
+    expect(container.textContent).toContain("نقدي");
+    expect(container.textContent).toContain("210");
+  });
+
+  it("uses total when a paid invoice has no amount_received", () => {
+    const { container } = render(
+      <PaymentsBlock
+        invoice={{ payments: [], payment_type: "cash", total: 150, status: "paid" }}
+        settings={settings}
+        family="roll"
+      />
+    );
+    expect(container.textContent).toContain("150");
+  });
+
+  it("stays hidden when the snapshot has no meaningful amount (e.g. purchase docs)", () => {
+    const { container } = render(
+      <PaymentsBlock invoice={{ payments: [], payment_type: "cash" }} settings={settings} family="roll" />
+    );
+    expect(container.textContent).toBe("");
+  });
+
+  it("computeTotals counts the fallback as paid so PAID/DUE stamps are truthful", () => {
+    const { paid, grandTotal } = computeTotals(savedCashInvoice, settings);
+    expect(paid).toBe(210);
+    expect(paid).toBeGreaterThanOrEqual(grandTotal);
   });
 });

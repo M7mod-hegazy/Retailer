@@ -287,7 +287,6 @@ export default function SettingsPage() {
   const posAutoRail = useUiStore((s) => s.posAutoRail);
   const setPosAutoRail = useUiStore((s) => s.setPosAutoRail);
   const authUser = useAuthStore((s) => s.user);
-  // The "Features" tab toggles store-type modules — restricted to the dev account.
   const isDev = authUser?.role === "dev" || String(authUser?.username || "").toLowerCase() === "m7mod";
   const visibleTabs = isDev ? tabs : tabs.filter((t) => t.id !== "features");
   const originalRef = useRef({});

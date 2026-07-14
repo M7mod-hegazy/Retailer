@@ -4,11 +4,12 @@ import { g } from "./blockUtils";
 // props.label renames the caption (empty string hides it).
 export default function NotesBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
   if (g(s, "show_notes") === false) return null;
+  // Real configured/invoice notes always win — the editing sample is only
+  // for the empty state, otherwise the Studio shows text that never prints.
   let notes = (props.text != null && props.text !== "")
     ? props.text
-    : (editing
-      ? "مثال: يرجى التواصل قبل الاستبدال — صالحة خلال 7 أيام من تاريخ الشراء."
-      : g(s, "receipt_notes") || invoice.notes || "");
+    : (g(s, "receipt_notes") || invoice.notes
+      || (editing ? "مثال: يرجى التواصل قبل الاستبدال — صالحة خلال 7 أيام من تاريخ الشراء." : ""));
   if (!notes || !String(notes).trim()) return null;
   if (props.maxChars && notes.length > props.maxChars) {
     notes = notes.slice(0, props.maxChars) + "...";

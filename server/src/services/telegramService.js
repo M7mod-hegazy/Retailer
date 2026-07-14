@@ -20,14 +20,67 @@ const EVENT_TYPES = {
   INVOICE_VOIDED: "invoice_voided",
   PURCHASE_CREATED: "purchase_created",
   CUSTOMER_PAYMENT: "customer_payment",
+  RETURN_PAYMENT: "return_payment",
   LOW_STOCK: "low_stock",
   BACKUP_RESULT: "backup_result",
   FAILED_LOGIN: "failed_login",
   SHIFT_CLOSE: "shift_close",
+  CUSTOMER_CREATED: "customer_created",
+  SUPPLIER_CREATED: "supplier_created",
+  EXPENSE_CREATED: "expense_created",
   TEST: "test",
+  // Extended events (migration 194)
+  STOCK_TRANSFERRED: "stock_transferred",
+  INVENTORY_ADJUSTED: "inventory_adjusted",
+  NEW_PRODUCT: "new_product",
+  PRICE_CHANGED: "price_changed",
+  BATCH_EXPIRY_WARNING: "batch_expiry_warning",
+  PHYSICAL_COUNT_CONFIRMED: "physical_count_confirmed",
+  SUPPLIER_PAYMENT: "supplier_payment",
+  DEBT_PAYMENT_RECEIVED: "debt_payment_received",
+  INSTALLMENT_PAID: "installment_paid",
+  PURCHASE_VOIDED: "purchase_voided",
+  PURCHASE_RETURN: "purchase_return",
+  BRANCH_TRANSFER: "branch_transfer",
+  PASSWORD_CHANGED: "password_changed",
+  PERMISSION_CHANGED: "permission_changed",
+  SUPERVISOR_OVERRIDE: "supervisor_override",
+  REPAIR_ORDER_CREATED: "repair_order_created",
+  REPAIR_ORDER_READY: "repair_order_ready",
+  REPAIR_ORDER_DELIVERED: "repair_order_delivered",
+  REVENUE_CREATED: "revenue_created",
+  WITHDRAWAL_CREATED: "withdrawal_created",
+  EMPLOYEE_CREATED: "employee_created",
+  SALARY_SETTLED: "salary_settled",
+  ADVANCE_CREATED: "advance_created",
+  DEDUCTION_CREATED: "deduction_created",
+  BONUS_CREATED: "bonus_created",
 };
 
 function getTelegramConfig(db) {
+  try {
+    const row = db
+      .prepare(
+        `SELECT telegram_enabled, telegram_bot_token, telegram_api_base
+         FROM settings WHERE id = 1`
+      )
+      .get();
+    if (!row || !row.telegram_enabled || !row.telegram_bot_token) {
+      return null;
+    }
+    return {
+      enabled: Boolean(row.telegram_enabled),
+      botToken: row.telegram_bot_token,
+      apiBase: row.telegram_api_base || "https://api.telegram.org",
+    };
+  } catch (err) {
+    // Migration not applied yet or schema mismatch.
+    return null;
+  }
+}
+
+// Legacy single-recipient fallback for DBs that haven't been migrated yet.
+function getLegacyTelegramConfig(db) {
   try {
     const row = db
       .prepare(
@@ -41,8 +94,6 @@ function getTelegramConfig(db) {
     if (!row || !row.telegram_enabled || !row.telegram_bot_token || !row.telegram_chat_id) {
       return null;
     }
-    // Granular columns (migration 176) may not exist yet on un-migrated DBs —
-    // fall back to the bundled "important actions" toggle for each of them.
     const bundled = Boolean(row.telegram_notify_important_actions);
     const granular = (col) => (row[col] === undefined || row[col] === null ? bundled : Boolean(row[col]));
     return {
@@ -58,36 +109,170 @@ function getTelegramConfig(db) {
       notifyPurchasesPayments: granular("telegram_notify_purchases_payments"),
       notifyLowStock: granular("telegram_notify_low_stock"),
       notifySystem: granular("telegram_notify_system"),
+      notifyWeekly: Boolean(row.telegram_notify_weekly),
+      notifyMonthly: Boolean(row.telegram_notify_monthly),
+      notifyYearly: Boolean(row.telegram_notify_yearly),
     };
   } catch (err) {
-    // Migration not applied yet or schema mismatch.
     return null;
   }
 }
 
-function isEventEnabled(config, eventType) {
-  if (!config || !config.enabled) return false;
+function getTelegramRecipients(db) {
+  try {
+    const rows = db.prepare("SELECT * FROM telegram_recipients ORDER BY created_at ASC").all();
+    if (!rows || rows.length === 0) return [];
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name || "",
+      chatId: r.chat_id,
+      enabled: Boolean(r.enabled),
+      notifyNewInvoice: Boolean(r.notify_new_invoice),
+      notifyDailyClose: Boolean(r.notify_daily_close),
+      notifyLargeAmounts: Boolean(r.notify_large_amounts),
+      notifyReturnsVoids: Boolean(r.notify_returns_voids),
+      notifyPurchasesPayments: Boolean(r.notify_purchases_payments),
+      notifyCustomerCreated: Boolean(r.notify_customer_created),
+      notifySupplierCreated: Boolean(r.notify_supplier_created),
+      notifyExpenseCreated: Boolean(r.notify_expense_created),
+      notifyReturnPayment: Boolean(r.notify_return_payment),
+      notifyLowStock: Boolean(r.notify_low_stock),
+      notifySystem: Boolean(r.notify_system),
+      notifyWeekly: Boolean(r.notify_weekly),
+      notifyMonthly: Boolean(r.notify_monthly),
+      notifyYearly: Boolean(r.notify_yearly),
+      // Extended events (migration 194)
+      notifyStockTransfer: Boolean(r.notify_stock_transfer),
+      notifyInventoryAdjustment: Boolean(r.notify_inventory_adjustment),
+      notifyNewProduct: Boolean(r.notify_new_product),
+      notifyPriceChange: Boolean(r.notify_price_change),
+      notifyBatchExpiry: Boolean(r.notify_batch_expiry),
+      notifyPhysicalCount: Boolean(r.notify_physical_count),
+      notifySupplierPayment: Boolean(r.notify_supplier_payment),
+      notifyDebtPayment: Boolean(r.notify_debt_payment),
+      notifyInstallmentPaid: Boolean(r.notify_installment_paid),
+      notifyPurchaseVoided: Boolean(r.notify_purchase_voided),
+      notifyPurchaseReturn: Boolean(r.notify_purchase_return),
+      notifyBranchTransfer: Boolean(r.notify_branch_transfer),
+      notifyPasswordChanged: Boolean(r.notify_password_changed),
+      notifyPermissionChanged: Boolean(r.notify_permission_changed),
+      notifySupervisorOverride: Boolean(r.notify_supervisor_override),
+      notifyRepairCreated: Boolean(r.notify_repair_created),
+      notifyRepairReady: Boolean(r.notify_repair_ready),
+      notifyRepairDelivered: Boolean(r.notify_repair_delivered),
+      notifyRevenueCreated: Boolean(r.notify_revenue_created),
+      notifyWithdrawalCreated: Boolean(r.notify_withdrawal_created),
+      notifyEmployeeCreated: Boolean(r.notify_employee_created),
+      notifySalarySettled: Boolean(r.notify_salary_settled),
+      notifyAdvanceCreated: Boolean(r.notify_advance_created),
+      notifyDeductionCreated: Boolean(r.notify_deduction_created),
+      notifyBonusCreated: Boolean(r.notify_bonus_created),
+      eventPresets: parseEventPresets(r.event_presets),
+    }));
+  } catch (err) {
+    return [];
+  }
+}
+
+function parseEventPresets(raw) {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function isEventEnabledForRecipient(recipient, eventType) {
+  if (!recipient || !recipient.enabled) return false;
   switch (eventType) {
-    case EVENT_TYPES.NEW_INVOICE: return config.notifyNewInvoice;
+    case EVENT_TYPES.NEW_INVOICE: return recipient.notifyNewInvoice;
     case EVENT_TYPES.DAILY_CLOSE:
-    case EVENT_TYPES.SHIFT_CLOSE: return config.notifyDailyClose; // grouped with daily close
+    case EVENT_TYPES.SHIFT_CLOSE: return recipient.notifyDailyClose;
     case EVENT_TYPES.LARGE_INVOICE:
-    case EVENT_TYPES.LARGE_DISCOUNT: return config.notifyLargeAmounts;
+    case EVENT_TYPES.LARGE_DISCOUNT: return recipient.notifyLargeAmounts;
     case EVENT_TYPES.SALES_RETURN:
-    case EVENT_TYPES.INVOICE_VOIDED: return config.notifyReturnsVoids;
+    case EVENT_TYPES.INVOICE_VOIDED:
+    case EVENT_TYPES.RETURN_PAYMENT: return recipient.notifyReturnsVoids;
     case EVENT_TYPES.PURCHASE_CREATED:
-    case EVENT_TYPES.CUSTOMER_PAYMENT: return config.notifyPurchasesPayments;
-    case EVENT_TYPES.LOW_STOCK: return config.notifyLowStock;
+    case EVENT_TYPES.CUSTOMER_PAYMENT: return recipient.notifyPurchasesPayments;
+    case EVENT_TYPES.CUSTOMER_CREATED: return recipient.notifyCustomerCreated;
+    case EVENT_TYPES.SUPPLIER_CREATED: return recipient.notifySupplierCreated;
+    case EVENT_TYPES.EXPENSE_CREATED: return recipient.notifyExpenseCreated;
+    case EVENT_TYPES.LOW_STOCK: return recipient.notifyLowStock;
     case EVENT_TYPES.BACKUP_RESULT:
-    case EVENT_TYPES.FAILED_LOGIN: return config.notifySystem;
+    case EVENT_TYPES.FAILED_LOGIN: return recipient.notifySystem;
+    // Extended events (migration 194)
+    case EVENT_TYPES.STOCK_TRANSFERRED: return recipient.notifyStockTransfer;
+    case EVENT_TYPES.INVENTORY_ADJUSTED: return recipient.notifyInventoryAdjustment;
+    case EVENT_TYPES.NEW_PRODUCT: return recipient.notifyNewProduct;
+    case EVENT_TYPES.PRICE_CHANGED: return recipient.notifyPriceChange;
+    case EVENT_TYPES.BATCH_EXPIRY_WARNING: return recipient.notifyBatchExpiry;
+    case EVENT_TYPES.PHYSICAL_COUNT_CONFIRMED: return recipient.notifyPhysicalCount;
+    case EVENT_TYPES.SUPPLIER_PAYMENT: return recipient.notifySupplierPayment;
+    case EVENT_TYPES.DEBT_PAYMENT_RECEIVED: return recipient.notifyDebtPayment;
+    case EVENT_TYPES.INSTALLMENT_PAID: return recipient.notifyInstallmentPaid;
+    case EVENT_TYPES.PURCHASE_VOIDED: return recipient.notifyPurchaseVoided;
+    case EVENT_TYPES.PURCHASE_RETURN: return recipient.notifyPurchaseReturn;
+    case EVENT_TYPES.BRANCH_TRANSFER: return recipient.notifyBranchTransfer;
+    case EVENT_TYPES.PASSWORD_CHANGED: return recipient.notifyPasswordChanged;
+    case EVENT_TYPES.PERMISSION_CHANGED: return recipient.notifyPermissionChanged;
+    case EVENT_TYPES.SUPERVISOR_OVERRIDE: return recipient.notifySupervisorOverride;
+    case EVENT_TYPES.REPAIR_ORDER_CREATED: return recipient.notifyRepairCreated;
+    case EVENT_TYPES.REPAIR_ORDER_READY: return recipient.notifyRepairReady;
+    case EVENT_TYPES.REPAIR_ORDER_DELIVERED: return recipient.notifyRepairDelivered;
+    case EVENT_TYPES.REVENUE_CREATED: return recipient.notifyRevenueCreated;
+    case EVENT_TYPES.WITHDRAWAL_CREATED: return recipient.notifyWithdrawalCreated;
+    case EVENT_TYPES.EMPLOYEE_CREATED: return recipient.notifyEmployeeCreated;
+    case EVENT_TYPES.SALARY_SETTLED: return recipient.notifySalarySettled;
+    case EVENT_TYPES.ADVANCE_CREATED: return recipient.notifyAdvanceCreated;
+    case EVENT_TYPES.DEDUCTION_CREATED: return recipient.notifyDeductionCreated;
+    case EVENT_TYPES.BONUS_CREATED: return recipient.notifyBonusCreated;
     case EVENT_TYPES.TEST: return true;
-    default: return config.notifyImportantActions;
+    default: return false;
+  }
+}
+
+function isDigestEnabledForRecipient(recipient, periodType) {
+  if (!recipient || !recipient.enabled) return false;
+  switch (periodType) {
+    case "weekly": return recipient.notifyWeekly;
+    case "monthly": return recipient.notifyMonthly;
+    case "yearly": return recipient.notifyYearly;
+    default: return false;
   }
 }
 
 function formatMoney(amount, currencySymbol = "ج") {
   const value = Number(amount || 0);
   return `${value.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+}
+
+function formatQty(qty) {
+  const value = Number(qty || 0);
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function buildItemsTable(items, currency) {
+  if (!Array.isArray(items) || items.length === 0) return "لا توجد أصناف";
+  const rows = items.map((it, i) => {
+    const name = it.item_name_ar || it.item_name || it.name || "—";
+    const qty = formatQty(it.quantity || it.qty);
+    const price = formatMoney(it.unit_price || it.price || 0, currency);
+    const total = formatMoney(it.line_total || (it.quantity * it.unit_price) || 0, currency);
+    return `${i + 1}. ${name} | الكمية: ${qty} | السعر: ${price} | الإجمالي: ${total}`;
+  });
+  return rows.join("\n");
+}
+
+function buildPaymentBreakdown(payments, currency) {
+  if (!Array.isArray(payments) || payments.length === 0) return "—";
+  const rows = payments.map((p) => {
+    const method = p.method || p.method_name || p.type || "غير محدد";
+    const amount = formatMoney(p.amount, currency);
+    return `• ${method}: ${amount}`;
+  });
+  return rows.join("\n");
 }
 
 // Maps each event type to the message_templates category an owner can
@@ -103,19 +288,65 @@ const EVENT_CATEGORY = {
   [EVENT_TYPES.INVOICE_VOIDED]: "telegram_invoice_voided",
   [EVENT_TYPES.PURCHASE_CREATED]: "telegram_purchase_created",
   [EVENT_TYPES.CUSTOMER_PAYMENT]: "telegram_customer_payment",
+  [EVENT_TYPES.RETURN_PAYMENT]: "telegram_return_payment",
   [EVENT_TYPES.LOW_STOCK]: "telegram_low_stock",
   [EVENT_TYPES.BACKUP_RESULT]: "telegram_backup_result",
   [EVENT_TYPES.FAILED_LOGIN]: "telegram_failed_login",
+  [EVENT_TYPES.CUSTOMER_CREATED]: "telegram_customer_created",
+  [EVENT_TYPES.SUPPLIER_CREATED]: "telegram_supplier_created",
+  [EVENT_TYPES.EXPENSE_CREATED]: "telegram_expense_created",
+  // Extended events (migration 194)
+  [EVENT_TYPES.STOCK_TRANSFERRED]: "telegram_stock_transfer",
+  [EVENT_TYPES.INVENTORY_ADJUSTED]: "telegram_inventory_adjustment",
+  [EVENT_TYPES.NEW_PRODUCT]: "telegram_new_product",
+  [EVENT_TYPES.PRICE_CHANGED]: "telegram_price_change",
+  [EVENT_TYPES.BATCH_EXPIRY_WARNING]: "telegram_batch_expiry",
+  [EVENT_TYPES.PHYSICAL_COUNT_CONFIRMED]: "telegram_physical_count",
+  [EVENT_TYPES.SUPPLIER_PAYMENT]: "telegram_supplier_payment",
+  [EVENT_TYPES.DEBT_PAYMENT_RECEIVED]: "telegram_debt_payment",
+  [EVENT_TYPES.INSTALLMENT_PAID]: "telegram_installment_paid",
+  [EVENT_TYPES.PURCHASE_VOIDED]: "telegram_purchase_voided",
+  [EVENT_TYPES.PURCHASE_RETURN]: "telegram_purchase_return",
+  [EVENT_TYPES.BRANCH_TRANSFER]: "telegram_branch_transfer",
+  [EVENT_TYPES.PASSWORD_CHANGED]: "telegram_password_changed",
+  [EVENT_TYPES.PERMISSION_CHANGED]: "telegram_permission_changed",
+  [EVENT_TYPES.SUPERVISOR_OVERRIDE]: "telegram_supervisor_override",
+  [EVENT_TYPES.REPAIR_ORDER_CREATED]: "telegram_repair_created",
+  [EVENT_TYPES.REPAIR_ORDER_READY]: "telegram_repair_ready",
+  [EVENT_TYPES.REPAIR_ORDER_DELIVERED]: "telegram_repair_delivered",
+  [EVENT_TYPES.REVENUE_CREATED]: "telegram_revenue_created",
+  [EVENT_TYPES.WITHDRAWAL_CREATED]: "telegram_withdrawal_created",
+  [EVENT_TYPES.EMPLOYEE_CREATED]: "telegram_employee_created",
+  [EVENT_TYPES.SALARY_SETTLED]: "telegram_salary_settled",
+  [EVENT_TYPES.ADVANCE_CREATED]: "telegram_advance_created",
+  [EVENT_TYPES.DEDUCTION_CREATED]: "telegram_deduction_created",
+  [EVENT_TYPES.BONUS_CREATED]: "telegram_bonus_created",
 };
 
 function buildTemplateVars(eventType, data, currency) {
   switch (eventType) {
-    case EVENT_TYPES.NEW_INVOICE:
+    case EVENT_TYPES.NEW_INVOICE: {
+      const items = Array.isArray(data.lines) ? data.lines : Array.isArray(data.items) ? data.items : [];
+      const payments = Array.isArray(data.payments) ? data.payments : [];
+      const total = Number(data.total || 0);
+      const paid = Number(data.paid ?? data.amount_received ?? total);
+      const balance = Number(data.balance ?? data.remaining_amount ?? 0);
       return {
-        invoice_no: data.invoiceNo || data.id, customer_name: data.customerName || "غير محدد",
-        total: formatMoney(data.total, currency), payment_type: data.paymentType || "غير محدد",
-        created_at: formatDateTime(data.createdAt),
+        invoice_no: data.invoiceNo || data.id,
+        customer_name: data.customerName || data.customer_name || "غير محدد",
+        total: formatMoney(total, currency),
+        subtotal: formatMoney(data.subtotal || total, currency),
+        tax: formatMoney(data.tax || 0, currency),
+        discount: formatMoney(data.discount || 0, currency),
+        paid: formatMoney(paid, currency),
+        balance: formatMoney(balance, currency),
+        payment_type: data.paymentType || data.payment_type || "غير محدد",
+        created_at: formatDateTime(data.createdAt || data.created_at),
+        items_count: items.length,
+        items_table: buildItemsTable(items, currency),
+        payment_breakdown: buildPaymentBreakdown(payments, currency),
       };
+    }
     case EVENT_TYPES.DAILY_CLOSE:
       return {
         date: data.date, opening_balance: formatMoney(data.openingBalance, currency),
@@ -144,6 +375,26 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.CUSTOMER_PAYMENT:
       return { customer_name: data.customerName || "غير محدد", amount: formatMoney(data.amount, currency), method: data.method || "غير محدد" };
+    case EVENT_TYPES.RETURN_PAYMENT:
+      return {
+        customer_name: data.customerName || "غير محدد", amount: formatMoney(data.amount, currency),
+        method: data.method || "غير محدد", date: data.date || formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.CUSTOMER_CREATED:
+      return {
+        customer_name: data.customerName || data.name || "غير محدد", phone: data.phone || "—",
+        city: data.city || "—", opening_balance: formatMoney(data.openingBalance || 0, currency),
+      };
+    case EVENT_TYPES.SUPPLIER_CREATED:
+      return {
+        supplier_name: data.supplierName || data.name || "غير محدد", phone: data.phone || "—",
+        opening_balance: formatMoney(data.openingBalance || 0, currency),
+      };
+    case EVENT_TYPES.EXPENSE_CREATED:
+      return {
+        category: data.category || "غير محدد", amount: formatMoney(data.amount, currency),
+        date: data.date || formatDateTime(data.createdAt), notes: data.notes || "—",
+      };
     case EVENT_TYPES.LOW_STOCK:
       return {
         product_name: data.productName || data.sku || "غير محدد", current_quantity: data.currentQuantity,
@@ -157,6 +408,243 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.FAILED_LOGIN:
       return { username: data.username || "غير محدد", time: formatDateTime(data.time), ip: data.ip || "غير معروف" };
+    // Extended events (migration 194)
+    case EVENT_TYPES.STOCK_TRANSFERRED:
+      return {
+        from_warehouse: data.fromWarehouse || "غير محدد",
+        to_warehouse: data.toWarehouse || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        items_table: buildItemsTable(data.items || [], currency),
+        items_count: (data.items || []).length,
+        total_units: (data.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0),
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.INVENTORY_ADJUSTED:
+      return {
+        item_name: data.itemName || "غير محدد",
+        old_qty: data.oldQuantity ?? "—",
+        new_qty: data.newQuantity ?? "—",
+        reason: data.reason || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.NEW_PRODUCT:
+      return {
+        item_name: data.itemName || "غير محدد",
+        item_code: data.itemCode || "—",
+        price: formatMoney(data.price || 0, currency),
+        quantity: data.quantity ?? "—",
+        category: data.category || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.PRICE_CHANGED:
+      return {
+        item_name: data.itemName || "غير محدد",
+        item_code: data.itemCode || "—",
+        old_price: formatMoney(data.oldPrice || 0, currency),
+        new_price: formatMoney(data.newPrice || 0, currency),
+        change_percent: data.changePercent ?? "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.BATCH_EXPIRY_WARNING:
+      return {
+        item_name: data.itemName || "غير محدد",
+        batch_no: data.batchNo || "—",
+        expiry_date: data.expiryDate || "—",
+        quantity: data.quantity ?? "—",
+        warehouse: data.warehouse || "غير محدد",
+      };
+    case EVENT_TYPES.PHYSICAL_COUNT_CONFIRMED:
+      return {
+        warehouse: data.warehouse || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        items_count: data.itemsCount ?? 0,
+        matched: data.matched ?? 0,
+        discrepancies: data.discrepancies ?? 0,
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.SUPPLIER_PAYMENT:
+      return {
+        supplier_name: data.supplierName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        method: data.method || "غير محدد",
+        reference: data.reference || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.DEBT_PAYMENT_RECEIVED:
+      return {
+        customer_name: data.customerName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        method: data.method || "غير محدد",
+        invoice_no: data.invoiceNo || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.INSTALLMENT_PAID:
+      return {
+        customer_name: data.customerName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        installment_no: data.installmentNo ?? "—",
+        total_installments: data.totalInstallments ?? "—",
+        method: data.method || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.PURCHASE_VOIDED:
+      return {
+        invoice_no: data.invoiceNo || data.id || "—",
+        supplier_name: data.supplierName || "غير محدد",
+        total: formatMoney(data.total || 0, currency),
+        reason: data.reason || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.PURCHASE_RETURN:
+      return {
+        original_invoice: data.originalInvoice || "—",
+        supplier_name: data.supplierName || "غير محدد",
+        items_table: buildItemsTable(data.items || [], currency),
+        total: formatMoney(data.total || 0, currency),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.BRANCH_TRANSFER:
+      return {
+        reference_no: data.referenceNo || "—",
+        from_branch: data.fromBranch || "غير محدد",
+        to_branch: data.toBranch || "غير محدد",
+        user_name: data.userName || "غير محدد",
+        transfer_type: data.transferType === "send" ? "إرسال" : "استلام",
+        notes: data.notes || "—",
+        items_table: buildItemsTable(data.items || [], currency),
+        items_count: (data.items || []).length,
+        total_units: (data.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0),
+        total_cost: formatMoney((data.items || []).reduce((sum, it) => sum + (it.line_total || (it.quantity || 0) * (it.unit_cost || 0)), 0), currency),
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.PASSWORD_CHANGED:
+      return {
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+        ip_address: data.ipAddress || "غير معروف",
+      };
+    case EVENT_TYPES.PERMISSION_CHANGED:
+      return {
+        target_user: data.targetUser || "غير محدد",
+        admin_user: data.adminUser || "غير محدد",
+        changes: data.changes || "—",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.SUPERVISOR_OVERRIDE:
+      return {
+        user_name: data.userName || "غير محدد",
+        action: data.action || "غير محدد",
+        amount: data.amount ? formatMoney(data.amount, currency) : "—",
+        reason: data.reason || "—",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.REPAIR_ORDER_CREATED:
+      return {
+        order_no: data.orderNo || data.id || "—",
+        customer_name: data.customerName || "غير محدد",
+        device_type: data.deviceType || "—",
+        problem: data.problem || "—",
+        estimated_cost: formatMoney(data.estimatedCost || 0, currency),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.REPAIR_ORDER_READY:
+      return {
+        order_no: data.orderNo || data.id || "—",
+        customer_name: data.customerName || "غير محدد",
+        device_type: data.deviceType || "—",
+        final_cost: formatMoney(data.finalCost || 0, currency),
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.REPAIR_ORDER_DELIVERED:
+      return {
+        order_no: data.orderNo || data.id || "—",
+        customer_name: data.customerName || "غير محدد",
+        device_type: data.deviceType || "—",
+        amount_paid: formatMoney(data.amountPaid || 0, currency),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.REVENUE_CREATED:
+      return {
+        doc_no: data.docNo || "—",
+        amount: formatMoney(data.amount || 0, currency),
+        category: data.category || "غير مصنف",
+        description: data.description || "—",
+        method: data.paymentMethod || "نقداً",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.WITHDRAWAL_CREATED:
+      return {
+        doc_no: data.docNo || "—",
+        amount: formatMoney(data.amount || 0, currency),
+        category: data.category || "غير مصنف",
+        note: data.note || "—",
+        method: data.paymentMethod || "نقداً",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.EMPLOYEE_CREATED:
+      return {
+        employee_name: data.employeeName || "غير محدد",
+        job_title: data.jobTitle || "—",
+        salary: formatMoney(data.salary || 0, currency),
+        phone: data.phone || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.SALARY_SETTLED:
+      return {
+        employee_name: data.employeeName || "غير محدد",
+        period: data.period || "—",
+        base_salary: formatMoney(data.baseSalary || 0, currency),
+        bonuses: formatMoney(data.bonuses || 0, currency),
+        deductions: formatMoney(data.deductions || 0, currency),
+        advance_deductions: formatMoney(data.advanceDeductions || 0, currency),
+        net_salary: formatMoney(data.netSalary || 0, currency),
+        paid_amount: formatMoney(data.paidAmount || 0, currency),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.ADVANCE_CREATED:
+      return {
+        employee_name: data.employeeName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        installment_count: data.installmentCount ?? "—",
+        installment_amount: formatMoney(data.installmentAmount || 0, currency),
+        notes: data.notes || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.DEDUCTION_CREATED:
+      return {
+        employee_name: data.employeeName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        deduction_type: data.deductionType || "غير محدد",
+        is_recurring: data.isRecurring ? "نعم" : "لا",
+        notes: data.notes || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.BONUS_CREATED:
+      return {
+        employee_name: data.employeeName || "غير محدد",
+        amount: formatMoney(data.amount || 0, currency),
+        bonus_type: data.bonusType || "غير محدد",
+        is_recurring: data.isRecurring ? "نعم" : "لا",
+        notes: data.notes || "—",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
     default:
       return {};
   }
@@ -310,11 +798,11 @@ function buildMessage(eventType, data = {}, db = null) {
   }
 }
 
-async function sendTelegramMessage(config, text) {
-  const token = encodeURIComponent(config.botToken);
-  const url = `${config.apiBase.replace(/\/$/, "")}/bot${token}/sendMessage`;
+async function sendTelegramMessage(botConfig, chatId, text) {
+  const token = encodeURIComponent(botConfig.botToken);
+  const url = `${botConfig.apiBase.replace(/\/$/, "")}/bot${token}/sendMessage`;
   const body = JSON.stringify({
-    chat_id: config.chatId,
+    chat_id: chatId,
     text,
     parse_mode: "Markdown",
   });
@@ -364,12 +852,12 @@ async function getBotInfo(botToken, apiBase = "https://api.telegram.org") {
   return data?.result || null; // { id, is_bot, first_name, username, ... }
 }
 
-function enqueueNotification(db, eventType, text, payload = {}) {
+function enqueueNotification(db, eventType, chatId, text, payload = {}) {
   try {
     db.prepare(
-      `INSERT INTO pending_notifications (event_type, text, payload_json, status, next_retry_at)
-       VALUES (?, ?, ?, 'pending', datetime('now', '+2 minutes'))`
-    ).run(eventType, text, JSON.stringify(payload));
+      `INSERT INTO pending_notifications (event_type, chat_id, text, payload_json, status, next_retry_at)
+       VALUES (?, ?, ?, ?, 'pending', datetime('now', '+2 minutes'))`
+    ).run(eventType, chatId || null, text, JSON.stringify(payload));
   } catch (err) {
     logger.error({ message: "Failed to enqueue Telegram notification", error: err.message });
   }
@@ -396,14 +884,56 @@ function markFailed(db, id, retryCount, error) {
 async function notifyOwner(eventType, data = {}, dbArg) {
   const db = dbArg || getDb();
   const config = getTelegramConfig(db);
-  if (!config || !isEventEnabled(config, eventType)) return;
+  if (!config || !config.enabled) return;
 
+  const recipients = getTelegramRecipients(db);
   const text = buildMessage(eventType, data, db);
+
+  // Multi-recipient path.
+  if (recipients.length > 0) {
+    for (const recipient of recipients) {
+      if (!isEventEnabledForRecipient(recipient, eventType)) continue;
+      try {
+        await sendTelegramMessage(config, recipient.chatId, text);
+      } catch (err) {
+        logger.warn({ message: "Telegram send failed, enqueueing", eventType, chatId: recipient.chatId, error: err.message });
+        enqueueNotification(db, eventType, recipient.chatId, text, data);
+      }
+    }
+    return;
+  }
+
+  // Legacy fallback for un-migrated DBs or single-recipient setups.
+  const legacy = getLegacyTelegramConfig(db);
+  if (!legacy) return;
+  const legacyEnabled = (() => {
+    switch (eventType) {
+      case EVENT_TYPES.NEW_INVOICE: return legacy.notifyNewInvoice;
+      case EVENT_TYPES.DAILY_CLOSE:
+      case EVENT_TYPES.SHIFT_CLOSE: return legacy.notifyDailyClose;
+      case EVENT_TYPES.LARGE_INVOICE:
+      case EVENT_TYPES.LARGE_DISCOUNT: return legacy.notifyLargeAmounts;
+      case EVENT_TYPES.SALES_RETURN:
+      case EVENT_TYPES.INVOICE_VOIDED:
+      case EVENT_TYPES.RETURN_PAYMENT: return legacy.notifyReturnsVoids;
+      case EVENT_TYPES.PURCHASE_CREATED:
+      case EVENT_TYPES.CUSTOMER_PAYMENT: return legacy.notifyPurchasesPayments;
+      case EVENT_TYPES.CUSTOMER_CREATED:
+      case EVENT_TYPES.SUPPLIER_CREATED:
+      case EVENT_TYPES.EXPENSE_CREATED: return legacy.notifyImportantActions;
+      case EVENT_TYPES.LOW_STOCK: return legacy.notifyLowStock;
+      case EVENT_TYPES.BACKUP_RESULT:
+      case EVENT_TYPES.FAILED_LOGIN: return legacy.notifySystem;
+      case EVENT_TYPES.TEST: return true;
+      default: return legacy.notifyImportantActions;
+    }
+  })();
+  if (!legacyEnabled) return;
   try {
-    await sendTelegramMessage(config, text);
+    await sendTelegramMessage(legacy, legacy.chatId, text);
   } catch (err) {
     logger.warn({ message: "Telegram send failed, enqueueing", eventType, error: err.message });
-    enqueueNotification(db, eventType, text, data);
+    enqueueNotification(db, eventType, legacy.chatId, text, data);
   }
 }
 
@@ -438,8 +968,14 @@ async function processQueue(dbArg) {
   }
 
   for (const row of rows) {
+    const chatId = row.chat_id;
+    if (!chatId) {
+      // Old row without recipient; cannot retry reliably.
+      markFailed(db, row.id, MAX_RETRIES, "Missing recipient chat_id");
+      continue;
+    }
     try {
-      await sendTelegramMessage(config, row.text);
+      await sendTelegramMessage(config, chatId, row.text);
       markSent(db, row.id);
     } catch (err) {
       const retryCount = (row.retry_count || 0) + 1;
@@ -463,7 +999,10 @@ function startTelegramRetryJob() {
 module.exports = {
   EVENT_TYPES,
   getTelegramConfig,
-  isEventEnabled,
+  getTelegramRecipients,
+  getLegacyTelegramConfig,
+  isEventEnabledForRecipient,
+  isDigestEnabledForRecipient,
   buildMessage,
   sendTelegramMessage,
   detectChatId,

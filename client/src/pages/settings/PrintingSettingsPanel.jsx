@@ -3,12 +3,14 @@ import {
   Ruler, Receipt, FileText, FileBarChart2, Wrench, Download, Upload,
   Trash2, CheckCircle2, XCircle, History, ChevronDown, ChevronUp, RefreshCw,
   Paintbrush, Maximize2, Printer as PrinterIcon, Copy, Palette, Eye, ExternalLink,
+  Zap,
 } from "lucide-react";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import CalibrationWizard from "../../components/print/calibration/CalibrationWizard";
+import PrinterSetupWizard from "../../components/print/PrinterSetupWizard";
 import PrintStudio from "../../components/print/studio/PrintStudio";
 import DocPreviewModal from "../../components/print/studio/DocPreviewModal";
 import DocPreviewGallery, { MiniPreview } from "../../components/print/studio/DocPreviewGallery";
@@ -159,6 +161,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [preview, setPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [fullPreview, setFullPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
+  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   const importFileRef = useRef(null);
 
   const visibleDocTypes = useMemo(
@@ -287,7 +290,13 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
 
       {/* ── Printer assignment per paper size ── */}
       <section>
-        <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
+        <div className="flex items-center justify-between mb-1">
+          <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
+          <button type="button" onClick={() => setSetupWizardOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[11px] font-black text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]">
+            <Zap size={13} /> تأسيس سريع
+          </button>
+        </div>
         {!isElectronPrint() ? (
           <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3 py-2 text-[11px] font-bold text-[var(--warning-text)]">
             <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
@@ -721,6 +730,11 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         onClose={closeCalibrationWizard}
         printerName={calWizard.printerName}
         sizeKey={calWizard.sizeKey}
+      />
+
+      <PrinterSetupWizard
+        open={setupWizardOpen}
+        onClose={() => setSetupWizardOpen(false)}
       />
 
       {studio.open && (

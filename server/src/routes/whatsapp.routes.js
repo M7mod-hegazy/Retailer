@@ -208,6 +208,81 @@ router.post("/broadcast", requirePagePermission("settings", "edit"), (req, res) 
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// Check if a phone number is registered on WhatsApp
+router.post("/check-exists", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), async (req, res) => {
+  try {
+    if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
+    const normalized = normalizePhone(req.body?.phone);
+    if (!normalized) return res.status(400).json({ success: false, message: "invalid phone" });
+    const es = engine.getStatus();
+    if (es.status !== "connected") return res.status(503).json({ success: false, message: "WhatsApp not connected" });
+    const exists = await engine.checkExists(normalized);
+    res.json({ success: true, data: { exists } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Send a WhatsApp message directly (bypass outbox) with confirmation
+router.post("/send-direct", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), async (req, res) => {
+  try {
+    if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
+    const { recipient_phone, customer_id, kind = "receipt", payload = {} } = req.body;
+    const normalized = normalizePhone(recipient_phone);
+    if (!normalized) return res.status(400).json({ success: false, message: "invalid phone" });
+    const es = engine.getStatus();
+    if (es.status !== "connected") return res.status(400).json({ success: false, message: "WhatsApp not connected" });
+
+    const jid = normalized + "@s.whatsapp.net";
+    if (payload.image) {
+      const buf = Buffer.from(payload.image, "base64");
+      await engine.sendImage(jid, buf, payload.caption || "");
+    } else {
+      await engine.sendText(jid, payload.text || "");
+    }
+
+    // Record in outbox for history
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO wa_outbox (recipient_phone, customer_id, kind, payload, status, sent_at)
+      VALUES (?,?,?,?, 'sent', datetime('now'))
+    `).run(normalized, customer_id || null, kind, JSON.stringify(payload));
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Send an SMS message directly (bypass outbox) with confirmation
+router.post("/send-sms-direct", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), async (req, res) => {
+  try {
+    const db = getDb();
+    const { sendSms, getSmsConfig } = require("../services/smsService");
+    const config = getSmsConfig(db);
+    if (!config) return res.status(400).json({ success: false, message: "خدمة SMS غير مفعّلة — فعّلها من الإعدادات أولاً" });
+    const { recipient_phone, text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ success: false, message: "text required" });
+    const normalized = normalizePhone(recipient_phone);
+    if (!normalized) return res.status(400).json({ success: false, message: "invalid phone" });
+    await sendSms(config, normalized, text.trim());
+
+    // Record in outbox for history
+    db.prepare(`
+      INSERT INTO wa_outbox (recipient_phone, kind, payload, channel, status, sent_at)
+      VALUES (?, 'receipt', ?, 'sms', 'sent', datetime('now'))
+    `).run(normalized, JSON.stringify({ text: text.trim() }));
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Check if SMS is enabled
+router.get("/sms-status", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns", "settings"], "view"), (_req, res) => {
+  try {
+    const db = getDb();
+    const { getSmsConfig } = require("../services/smsService");
+    const config = getSmsConfig(db);
+    res.json({ success: true, data: { enabled: Boolean(config) } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // Resolve a template body with variables
 function resolveTemplate(body, vars = {}) {
   return body.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);

@@ -5,6 +5,7 @@ const { auditMutation } = require("../middleware/audit");
 const { partyTxnSum } = require("../services/partyBalanceService");
 const { countSafe, hasAnyRelated, buildImpact } = require("../utils/relatedRecords");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -89,6 +90,14 @@ router.post("/", requirePagePermission("suppliers", "add"), (req, res) => {
       payload.is_active === false ? 0 : 1,
     );
   req.audit("create", "suppliers", { id: info.lastInsertRowid }, `👤 تم إضافة مورد: ${payload.name || ''}`, `/definitions/suppliers/${info.lastInsertRowid}`);
+  try {
+    notifyOwner(TG.SUPPLIER_CREATED, {
+      supplierName: payload.name,
+      name: payload.name,
+      phone: payload.phone || null,
+      openingBalance: Number(payload.opening_balance || 0),
+    });
+  } catch (_) {}
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM suppliers WHERE id = ?").get(info.lastInsertRowid),

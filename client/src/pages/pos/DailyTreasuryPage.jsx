@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
-  CheckCircle2, X, ArrowDownRight, Calculator,
+  CheckCircle2, X, ArrowDownRight, ArrowLeft, Calculator, Users,
   Calendar, ChevronRight, ChevronDown, ChevronUp, Flag, ExternalLink, TrendingUp,
   TrendingDown, Search, Clock, ArrowUpDown, Filter,
   FileText, Coins, Banknote, History, Info,
@@ -23,6 +23,7 @@ import { formatNumber } from "../../utils/currency";
 import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
 import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 import ConceptCard from "../../components/ui/ConceptCard";
+import EmployeesQuickModal from "../../components/modals/EmployeesQuickModal";
 
 const fmt = (n) => formatNumber(n);
 const todayStr = () => todayCairo();
@@ -394,6 +395,9 @@ export default function DailyTreasuryPage() {
   const [newNoteText, setNewNoteText] = useState("");
   const [dayNoteSaving, setDayNoteSaving] = useState(false);
   const [showAllNotes, setShowAllNotes] = useState(false);
+
+  // Employees Quick Modal
+  const [empQuickOpen, setEmpQuickOpen] = useState(false);
 
   // Calculator
   const [calcOpen, setCalcOpen] = useState(false);
@@ -1106,106 +1110,115 @@ export default function DailyTreasuryPage() {
                 </motion.div>
               )}
 
-              {/* Quick Actions (If open and today) */}
+              {/* Quick Actions (Bold Visible Buttons) */}
               {isToday && !isClosed && (
-                <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex rounded-3xl bg-rose-600 border border-rose-500 shadow-lg shadow-rose-600/20 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => setQuickModal("expense")}
-                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-rose-700 transition-colors"
-                    >
-                      <div className="bg-white/20 p-1.5 rounded-xl"><TrendingDown className="h-4 w-4" /></div>
-                      تسجيل مصروف سريع
-                    </button>
-                    <div className="w-px bg-rose-500/50 self-stretch" />
-                    <button
-                      onClick={() => navigate('/expenses')}
-                      title="عرض قائمة المصروفات"
-                      className="shrink-0 flex items-center justify-center w-11 hover:bg-rose-700 transition-colors text-white/70 hover:text-white"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex rounded-3xl bg-emerald-600 border border-emerald-500 shadow-lg shadow-emerald-600/20 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => setQuickModal("revenue")}
-                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-emerald-700 transition-colors"
-                    >
-                      <div className="bg-white/20 p-1.5 rounded-xl"><TrendingUp className="h-4 w-4" /></div>
-                      تسجيل إيراد سريع
-                    </button>
-                    <div className="w-px bg-emerald-500/50 self-stretch" />
-                    <button
-                      onClick={() => navigate('/revenues')}
-                      title="عرض قائمة الإيرادات"
-                      className="shrink-0 flex items-center justify-center w-11 hover:bg-emerald-700 transition-colors text-white/70 hover:text-white"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex rounded-3xl bg-primary border border-slate-800 shadow-lg shadow-slate-900/20 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => setWithdrawalOpen(true)}
-                      className="flex flex-1 items-center justify-center gap-3 py-4 text-sm font-black text-white hover:bg-primary-600 transition-colors"
-                    >
-                      <div className="bg-white/20 p-1.5 rounded-xl"><Banknote className="h-4 w-4" /></div>
-                      تسجيل مسحوبات سريع
-                    </button>
-                    <div className="w-px bg-slate-700/50 self-stretch" />
-                    <button
-                      onClick={() => navigate('/withdrawals')}
-                      title="عرض قائمة المسحوبات"
-                      className="shrink-0 flex items-center justify-center w-11 hover:bg-primary-600 transition-colors text-white/70 hover:text-white"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </motion.div>
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setMoneyOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-blue-600 py-4 text-sm font-black text-white hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 border border-blue-500"
-                  >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><Coins className="h-4 w-4" /></div>
-                    عد العملة (جرد الخزينة)
-                  </motion.button>
+                <motion.div variants={fadeInUp} className="space-y-3">
+                  {/* Primary row: Expense, Revenue, Withdrawals */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Expense */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-danger/10 border-2 border-danger/25 overflow-hidden transition-all hover:bg-danger/20 hover:border-danger/40">
+                      <div className="h-1 bg-danger" />
+                      <div className="flex items-stretch">
+                        <button onClick={() => setQuickModal("expense")} className="flex flex-1 items-center gap-3 px-5 py-4">
+                          <div className="bg-danger/15 p-2.5 rounded-xl"><TrendingDown className="h-6 w-6 text-danger" /></div>
+                          <div className="text-right">
+                            <span className="block text-sm font-black text-danger">تسجيل مصروف سريع</span>
+                            <span className="block text-[11px] text-danger/60 font-bold mt-0.5">مصروفات يومية</span>
+                          </div>
+                        </button>
+                        <button onClick={() => navigate('/expenses')} title="عرض قائمة المصروفات" className="w-11 flex items-center justify-center text-danger/40 hover:text-danger hover:bg-danger/10 transition-all border-e border-danger/20 group-hover:border-danger/40">
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </motion.div>
 
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setCalcOpen(true)}
-                    className="flex items-center justify-center gap-3 rounded-3xl bg-indigo-600 py-4 text-sm font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 border border-indigo-500"
-                  >
-                    <div className="bg-white/20 p-1.5 rounded-xl"><Calculator className="h-4 w-4" /></div>
-                    آلة حاسبة
-                  </motion.button>
+                    {/* Revenue */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-success/10 border-2 border-success/25 overflow-hidden transition-all hover:bg-success/20 hover:border-success/40">
+                      <div className="h-1 bg-success" />
+                      <div className="flex items-stretch">
+                        <button onClick={() => setQuickModal("revenue")} className="flex flex-1 items-center gap-3 px-5 py-4">
+                          <div className="bg-success/15 p-2.5 rounded-xl"><TrendingUp className="h-6 w-6 text-success" /></div>
+                          <div className="text-right">
+                            <span className="block text-sm font-black text-success">تسجيل إيراد سريع</span>
+                            <span className="block text-[11px] text-success/60 font-bold mt-0.5">إيرادات يومية</span>
+                          </div>
+                        </button>
+                        <button onClick={() => navigate('/revenues')} title="عرض قائمة الإيرادات" className="w-11 flex items-center justify-center text-success/40 hover:text-success hover:bg-success/10 transition-all border-e border-success/20 group-hover:border-success/40">
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+
+                    {/* Withdrawals */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-primary/10 border-2 border-primary/25 overflow-hidden transition-all hover:bg-primary/20 hover:border-primary/40">
+                      <div className="h-1 bg-primary" />
+                      <div className="flex items-stretch">
+                        <button onClick={() => setWithdrawalOpen(true)} className="flex flex-1 items-center gap-3 px-5 py-4">
+                          <div className="bg-primary/15 p-2.5 rounded-xl"><Banknote className="h-6 w-6 text-primary" /></div>
+                          <div className="text-right">
+                            <span className="block text-sm font-black text-primary">تسجيل مسحوبات سريع</span>
+                            <span className="block text-[11px] text-primary/60 font-bold mt-0.5">مسحوبات الخزينة</span>
+                          </div>
+                        </button>
+                        <button onClick={() => navigate('/withdrawals')} title="عرض قائمة المسحوبات" className="w-11 flex items-center justify-center text-primary/40 hover:text-primary hover:bg-primary/10 transition-all border-e border-primary/20 group-hover:border-primary/40">
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Utility row: Money Count, Calculator, Employees */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Money Count */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-info/40">
+                      <button onClick={() => setMoneyOpen(true)} className="w-full flex items-center gap-3 px-5 py-4">
+                        <div className="bg-info/10 p-2 rounded-xl"><Coins className="h-5 w-5 text-info" /></div>
+                        <div className="text-right flex-1">
+                          <span className="block text-xs font-black text-text-primary">عد العملة (جرد الخزينة)</span>
+                          <span className="block text-[10px] text-text-muted font-bold mt-0.5">جرد العملات المعدنية</span>
+                        </div>
+                      </button>
+                    </motion.div>
+
+                    {/* Calculator */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-warning/40">
+                      <button onClick={() => setCalcOpen(true)} className="w-full flex items-center gap-3 px-5 py-4">
+                        <div className="bg-warning/10 p-2 rounded-xl"><Calculator className="h-5 w-5 text-warning" /></div>
+                        <div className="text-right flex-1">
+                          <span className="block text-xs font-black text-text-primary">آلة حاسبة</span>
+                          <span className="block text-[10px] text-text-muted font-bold mt-0.5">حسابات سريعة</span>
+                        </div>
+                      </button>
+                    </motion.div>
+
+                    {/* Employees */}
+                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group relative rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-primary/40">
+                      <div className="flex items-stretch">
+                        <button onClick={() => setEmpQuickOpen(true)} className="flex flex-1 items-center gap-3 px-5 py-4">
+                          <div className="bg-primary/10 p-2 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
+                          <div className="text-right flex-1">
+                            <span className="block text-xs font-black text-text-primary">الموظفين</span>
+                            <span className="block text-[10px] text-text-muted font-bold mt-0.5">سندات، بونصات، عقوبات</span>
+                          </div>
+                        </button>
+                        <button onClick={() => navigate('/definitions/employees')} title="قائمة الموظفين" className="w-10 flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-all border-e border-border-normal group-hover:border-primary/30">
+                          <ArrowLeft className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
                 </motion.div>
               )}
 
               {/* Calculator button for closed/historical days */}
               {(isClosed || !isToday) && (
                 <motion.div variants={fadeInUp} className="flex justify-end">
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setCalcOpen(true)}
-                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-2sm font-black text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
-                  >
-                    <Calculator className="h-4 w-4" />
-                    آلة حاسبة
-                  </motion.button>
+                  <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} className="group rounded-2xl bg-bg-overlay border-2 border-border-normal overflow-hidden transition-all hover:border-warning/40">
+                    <button onClick={() => setCalcOpen(true)} className="flex items-center gap-3 px-5 py-3">
+                      <div className="bg-warning/10 p-2 rounded-xl"><Calculator className="h-5 w-5 text-warning" /></div>
+                      <span className="text-xs font-black text-text-primary">آلة حاسبة</span>
+                    </button>
+                  </motion.div>
                 </motion.div>
               )}
 
@@ -2816,6 +2829,8 @@ export default function DailyTreasuryPage() {
           )}
         />
       )}
+
+      <EmployeesQuickModal open={empQuickOpen} onClose={() => setEmpQuickOpen(false)} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ const { auditMutation } = require("../middleware/audit");
 const { countSafe, buildImpact } = require("../utils/relatedRecords");
 const { recordBankMovement } = require("../services/bankService");
 const { toSql, nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -120,6 +121,23 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
     })();
 
   req.audit("create", "revenues", { id: result.lastInsertRowid }, `💰 تم إضافة إيراد بمبلغ ${Number(payload.amount || 0).toLocaleString('en-US')}${payload.description || payload.notes ? ` — ${payload.description || payload.notes}` : ''}`);
+
+  // Telegram notification
+  try {
+    const db2 = getDb();
+    const catRow = payload.category_id ? db2.prepare("SELECT name FROM revenue_categories WHERE id = ?").get(payload.category_id) : null;
+    const userRow = req.user?.id ? db2.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.REVENUE_CREATED, {
+      docNo,
+      amount: Number(payload.amount || 0),
+      category: catRow?.name || null,
+      description: payload.description || payload.notes || null,
+      paymentMethod: payload.payment_method || "cash",
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db2);
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(result.lastInsertRowid),

@@ -5,9 +5,11 @@ import { resolvePlaceholders } from "./placeholders";
 const DEFAULT_TEXT = "أهلاً وسهلاً — نرحب بكم في متجرنا";
 
 export default function ReceiptHeaderTextBlock({ invoice = {}, settings: s, props = {}, family, editing }) {
+  // Real configured text always wins — the editing sample is only for the
+  // empty state, otherwise the Studio canvas shows text that never prints.
   const rawText = props.text != null && props.text !== ""
     ? props.text
-    : (editing ? DEFAULT_TEXT : (g(s, "receipt_header") || DEFAULTS.receipt_header));
+    : (g(s, "receipt_header") || (editing ? DEFAULT_TEXT : DEFAULTS.receipt_header));
   const text = resolvePlaceholders(rawText, invoice, s) || (editing ? DEFAULT_TEXT : "");
   const variant = props.variant || "standard";
   const align = props.align || (variant === "centered" ? "center" : "center");

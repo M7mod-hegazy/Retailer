@@ -13,18 +13,26 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 
 describe("useTelegramConnect", () => {
   beforeEach(() => {
-    mockApiGet.mockReset().mockResolvedValue({ data: { data: {} } });
+    mockApiGet.mockReset().mockImplementation((url) => {
+      if (url === "/api/telegram/recipients") return Promise.resolve({ data: { data: [] } });
+      return Promise.resolve({ data: { data: {} } });
+    });
     mockApiPost.mockReset();
     mockApiPut.mockReset().mockResolvedValue({});
     mockToast.success.mockReset();
     mockToast.error.mockReset();
   });
 
-  it("loads settings on mount and marks saved when already configured", async () => {
-    mockApiGet.mockResolvedValue({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok", telegram_chat_id: "123" } } });
+  it("loads settings and recipients on mount and marks saved when configured", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/api/settings") return Promise.resolve({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok" } } });
+      if (url === "/api/telegram/recipients") return Promise.resolve({ data: { data: [{ id: 1, chat_id: "123", enabled: true, notify_new_invoice: true }] } });
+      return Promise.resolve({ data: { data: {} } });
+    });
     const { result } = renderHook(() => useTelegramConnect());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.config.telegram_bot_token).toBe("tok");
+    expect(result.current.recipients).toHaveLength(1);
     expect(result.current.saved).toBe(true);
   });
 
@@ -62,7 +70,7 @@ describe("useTelegramConnect", () => {
     expect(result.current.qrData).toEqual({ qr: "data:image/png;base64,x", url: "https://t.me/x" });
   });
 
-  it("save rejects enabling without a token and chat id", async () => {
+  it("save rejects enabling without a token and recipients", async () => {
     const { result } = renderHook(() => useTelegramConnect());
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => { result.current.setConfig((c) => ({ ...c, telegram_enabled: true })); });
@@ -70,30 +78,53 @@ describe("useTelegramConnect", () => {
     expect(mockApiPut).not.toHaveBeenCalled();
   });
 
-  it("save persists settings and marks saved when fully configured", async () => {
+  it("save persists bot settings and marks saved when fully configured", async () => {
     const { result } = renderHook(() => useTelegramConnect());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    act(() => { result.current.setConfig((c) => ({ ...c, telegram_enabled: true, telegram_bot_token: "tok", telegram_chat_id: "1" })); });
+    act(() => { result.current.setConfig((c) => ({ ...c, telegram_enabled: true, telegram_bot_token: "tok" })); });
+    act(() => { result.current.setRecipients([{ id: 1, chatId: "1", enabled: true, notifyNewInvoice: true }]); });
     await act(async () => { await result.current.save(); });
     expect(result.current.saved).toBe(true);
-    expect(mockApiPut).toHaveBeenCalledWith("/api/settings", expect.objectContaining({ telegram_enabled: true, telegram_bot_token: "tok", telegram_chat_id: "1" }));
+    expect(mockApiPut).toHaveBeenCalledWith("/api/settings", expect.objectContaining({ telegram_enabled: true, telegram_bot_token: "tok" }));
   });
 
   it("calls the onSaved callback after a successful save", async () => {
     const onSaved = vi.fn();
     const { result } = renderHook(() => useTelegramConnect(onSaved));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    act(() => { result.current.setConfig((c) => ({ ...c, telegram_enabled: true, telegram_bot_token: "tok", telegram_chat_id: "1" })); });
+    act(() => { result.current.setConfig((c) => ({ ...c, telegram_enabled: true, telegram_bot_token: "tok" })); });
+    act(() => { result.current.setRecipients([{ id: 1, chatId: "1", enabled: true, notifyNewInvoice: true }]); });
     await act(async () => { await result.current.save(); });
     expect(onSaved).toHaveBeenCalled();
   });
 
-  it("sendTest calls the telegram test endpoint", async () => {
+  it("sendTest calls the telegram test endpoint with chat_id", async () => {
     const { result } = renderHook(() => useTelegramConnect());
     await waitFor(() => expect(result.current.loading).toBe(false));
     mockApiPost.mockResolvedValue({});
-    await act(async () => { await result.current.sendTest(); });
-    expect(mockApiPost).toHaveBeenCalledWith("/api/telegram/test");
+    await act(async () => { await result.current.sendTest("123"); });
+    expect(mockApiPost).toHaveBeenCalledWith("/api/telegram/test", { chat_id: "123" });
     expect(mockToast.success).toHaveBeenCalledWith("telegram.testSuccess");
+  });
+
+  it("startPairing creates a pairing session", async () => {
+    const { result } = renderHook(() => useTelegramConnect());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    mockApiPost.mockResolvedValue({ data: { data: { code: "ABC123", url: "http://x/pairing/ABC123", qr: "data:image/png;base64,x" } } });
+    await act(async () => { await result.current.startPairing(); });
+    expect(mockApiPost).toHaveBeenCalledWith("/api/telegram/pairing/start");
+    expect(result.current.pairing?.code).toBe("ABC123");
+  });
+
+  it("receives token from pairing poll and fills config", async () => {
+    const { result } = renderHook(() => useTelegramConnect());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    mockApiPost.mockResolvedValueOnce({ data: { data: { code: "ABC123", url: "http://x/pairing/ABC123", qr: "data:image/png;base64,x" } } });
+    await act(async () => { await result.current.startPairing(); });
+    mockApiGet.mockResolvedValue({ data: { found: true, data: { token: "tok-from-phone" } } });
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 2200));
+    });
+    expect(result.current.config.telegram_bot_token).toBe("tok-from-phone");
   });
 });

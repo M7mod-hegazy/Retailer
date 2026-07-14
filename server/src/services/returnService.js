@@ -9,6 +9,7 @@ const { isFeatureEnabled } = require("../utils/features");
 const { validateAndReturnSerials } = require("../utils/serialValidation");
 const { nowSql, toSql } = require("../utils/datetime");
 const { recordBankMovement } = require("./bankService");
+const { notifyOwner, EVENT_TYPES: TG } = require("./telegramService");
 
 function isCreditMethod(pm) {
   return !!pm && (pm.type === "credit" || pm.category === "credit");
@@ -357,6 +358,18 @@ function createReturn(invoiceId, payload) {
       invoiceId,
     );
 
+    try {
+      const payments = JSON.parse(paymentsJson || '[]');
+      const customerRow = invoice.customer_id ? db.prepare("SELECT name FROM customers WHERE id=?").get(invoice.customer_id) : null;
+      notifyOwner(TG.RETURN_PAYMENT, {
+        customerName: customerRow?.name || invoice.customer_name || wName || "غير محدد",
+        amount: finalTotal,
+        method: refundMethod,
+        date: `${createdDate} ${toSql(new Date()).slice(11)}`,
+        payments,
+      });
+    } catch (_) {}
+
     return db.prepare("SELECT * FROM sales_returns WHERE id = ?").get(returnId);
   })();
 }
@@ -456,6 +469,18 @@ function createGeneralReturn(payload) {
       }
     }
     captureSalesReturnLineOverrides(genReturnLines, db);
+
+    try {
+      const payments = JSON.parse(genPaymentsJson || '[]');
+      const customerRow = customer_id ? db.prepare("SELECT name FROM customers WHERE id=?").get(customer_id) : null;
+      notifyOwner(TG.RETURN_PAYMENT, {
+        customerName: customerRow?.name || walk_in_name || "غير محدد",
+        amount: finalTotal,
+        method: genRefundMethod,
+        date: nowSql(),
+        payments,
+      });
+    } catch (_) {}
 
     return db.prepare("SELECT * FROM sales_returns WHERE id = ?").get(returnId);
   })();

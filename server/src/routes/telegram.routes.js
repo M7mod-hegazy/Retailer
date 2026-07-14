@@ -1,7 +1,7 @@
 const express = require("express");
 const { authRequired } = require("../middleware/auth");
 const { requireAnyPagePermission } = require("../middleware/permission");
-const { getTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES } = require("../services/telegramService");
 const { getDb } = require("../config/database");
 const QRCode = require("qrcode");
 
@@ -11,17 +11,295 @@ router.use(authRequired);
 // Read current Telegram configuration status (no secrets returned).
 router.get("/config", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
   try {
-    const config = getTelegramConfig(getDb());
+    const db = getDb();
+    const config = getTelegramConfig(db);
+    const recipients = getTelegramRecipients(db);
     res.json({
       success: true,
       data: {
         configured: Boolean(config),
         enabled: Boolean(config?.enabled),
-        notify_new_invoice: Boolean(config?.notifyNewInvoice),
-        notify_daily_close: Boolean(config?.notifyDailyClose),
-        notify_important_actions: Boolean(config?.notifyImportantActions),
+        recipients_count: recipients.length,
+        recipients_enabled: recipients.filter((r) => r.enabled).length,
       },
     });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── Recipients CRUD ────────────────────────────────────────────────────────
+function recipientFromBody(body) {
+  const asBool = (v) => v === true || v === 1 || v === "1" || v === "true";
+  return {
+    name: String(body?.name || "").trim(),
+    chat_id: String(body?.chat_id || "").trim(),
+    enabled: asBool(body?.enabled),
+    notify_new_invoice: asBool(body?.notify_new_invoice),
+    notify_daily_close: asBool(body?.notify_daily_close),
+    notify_large_amounts: asBool(body?.notify_large_amounts),
+    notify_returns_voids: asBool(body?.notify_returns_voids),
+    notify_purchases_payments: asBool(body?.notify_purchases_payments),
+    notify_customer_created: asBool(body?.notify_customer_created),
+    notify_supplier_created: asBool(body?.notify_supplier_created),
+    notify_expense_created: asBool(body?.notify_expense_created),
+    notify_return_payment: asBool(body?.notify_return_payment),
+    notify_low_stock: asBool(body?.notify_low_stock),
+    notify_system: asBool(body?.notify_system),
+    notify_weekly: asBool(body?.notify_weekly),
+    notify_monthly: asBool(body?.notify_monthly),
+    notify_yearly: asBool(body?.notify_yearly),
+    // Extended events (migration 194)
+    notify_stock_transfer: asBool(body?.notify_stock_transfer),
+    notify_inventory_adjustment: asBool(body?.notify_inventory_adjustment),
+    notify_new_product: asBool(body?.notify_new_product),
+    notify_price_change: asBool(body?.notify_price_change),
+    notify_batch_expiry: asBool(body?.notify_batch_expiry),
+    notify_physical_count: asBool(body?.notify_physical_count),
+    notify_supplier_payment: asBool(body?.notify_supplier_payment),
+    notify_debt_payment: asBool(body?.notify_debt_payment),
+    notify_installment_paid: asBool(body?.notify_installment_paid),
+    notify_purchase_voided: asBool(body?.notify_purchase_voided),
+    notify_purchase_return: asBool(body?.notify_purchase_return),
+    notify_branch_transfer: asBool(body?.notify_branch_transfer),
+    notify_password_changed: asBool(body?.notify_password_changed),
+    notify_permission_changed: asBool(body?.notify_permission_changed),
+    notify_supervisor_override: asBool(body?.notify_supervisor_override),
+    notify_repair_created: asBool(body?.notify_repair_created),
+    notify_repair_ready: asBool(body?.notify_repair_ready),
+    notify_repair_delivered: asBool(body?.notify_repair_delivered),
+    notify_revenue_created: asBool(body?.notify_revenue_created),
+    notify_withdrawal_created: asBool(body?.notify_withdrawal_created),
+    notify_employee_created: asBool(body?.notify_employee_created),
+    notify_salary_settled: asBool(body?.notify_salary_settled),
+    notify_advance_created: asBool(body?.notify_advance_created),
+    notify_deduction_created: asBool(body?.notify_deduction_created),
+    notify_bonus_created: asBool(body?.notify_bonus_created),
+    event_presets: parseEventPresets(body?.event_presets),
+  };
+}
+
+function parseEventPresets(v) {
+  if (!v) return "{}";
+  if (typeof v === "string") {
+    try {
+      const parsed = JSON.parse(v);
+      return JSON.stringify(parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {});
+    } catch (_) {
+      return "{}";
+    }
+  }
+  if (typeof v === "object" && !Array.isArray(v)) return JSON.stringify(v);
+  return "{}";
+}
+
+router.get("/recipients", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
+  try {
+    const recipients = getTelegramRecipients(getDb());
+    res.json({ success: true, data: recipients });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+router.post("/recipients", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    const r = recipientFromBody(req.body);
+    if (!r.chat_id) {
+      return res.status(400).json({ success: false, message: "Chat ID مطلوب" });
+    }
+    const result = db.prepare(`
+      INSERT INTO telegram_recipients (
+        name, chat_id, enabled,
+        notify_new_invoice, notify_daily_close, notify_large_amounts,
+        notify_returns_voids, notify_purchases_payments,
+        notify_customer_created, notify_supplier_created, notify_expense_created, notify_return_payment,
+        notify_low_stock, notify_system, notify_weekly, notify_monthly, notify_yearly,
+        notify_stock_transfer, notify_inventory_adjustment, notify_new_product, notify_price_change,
+        notify_batch_expiry, notify_physical_count,
+        notify_supplier_payment, notify_debt_payment, notify_installment_paid,
+        notify_purchase_voided, notify_purchase_return, notify_branch_transfer,
+        notify_password_changed, notify_permission_changed, notify_supervisor_override,
+        notify_repair_created, notify_repair_ready, notify_repair_delivered,
+        notify_revenue_created, notify_withdrawal_created,
+        notify_employee_created, notify_salary_settled, notify_advance_created,
+        notify_deduction_created, notify_bonus_created, event_presets
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      r.name || "مستلم Telegram",
+      r.chat_id,
+      r.enabled ? 1 : 0,
+      r.notify_new_invoice ? 1 : 0,
+      r.notify_daily_close ? 1 : 0,
+      r.notify_large_amounts ? 1 : 0,
+      r.notify_returns_voids ? 1 : 0,
+      r.notify_purchases_payments ? 1 : 0,
+      r.notify_customer_created ? 1 : 0,
+      r.notify_supplier_created ? 1 : 0,
+      r.notify_expense_created ? 1 : 0,
+      r.notify_return_payment ? 1 : 0,
+      r.notify_low_stock ? 1 : 0,
+      r.notify_system ? 1 : 0,
+      r.notify_weekly ? 1 : 0,
+      r.notify_monthly ? 1 : 0,
+      r.notify_yearly ? 1 : 0,
+      r.notify_stock_transfer ? 1 : 0,
+      r.notify_inventory_adjustment ? 1 : 0,
+      r.notify_new_product ? 1 : 0,
+      r.notify_price_change ? 1 : 0,
+      r.notify_batch_expiry ? 1 : 0,
+      r.notify_physical_count ? 1 : 0,
+      r.notify_supplier_payment ? 1 : 0,
+      r.notify_debt_payment ? 1 : 0,
+      r.notify_installment_paid ? 1 : 0,
+      r.notify_purchase_voided ? 1 : 0,
+      r.notify_purchase_return ? 1 : 0,
+      r.notify_branch_transfer ? 1 : 0,
+      r.notify_password_changed ? 1 : 0,
+      r.notify_permission_changed ? 1 : 0,
+      r.notify_supervisor_override ? 1 : 0,
+      r.notify_repair_created ? 1 : 0,
+      r.notify_repair_ready ? 1 : 0,
+      r.notify_repair_delivered ? 1 : 0,
+      r.notify_revenue_created ? 1 : 0,
+      r.notify_withdrawal_created ? 1 : 0,
+      r.notify_employee_created ? 1 : 0,
+      r.notify_salary_settled ? 1 : 0,
+      r.notify_advance_created ? 1 : 0,
+      r.notify_deduction_created ? 1 : 0,
+      r.notify_bonus_created ? 1 : 0,
+      r.event_presets
+    );
+    res.json({ success: true, data: { id: result.lastInsertRowid, ...r } });
+  } catch (e) {
+    const message = e.message || "";
+    const isSchemaError = /no such column|has no column|NOT NULL constraint failed/.test(message);
+    res.status(500).json({
+      success: false,
+      message: isSchemaError
+        ? `خطأ في هيكل قاعدة البيانات: ${message}. أعد تشغيل السيرفر لتطبيق التحديثات.`
+        : message,
+    });
+  }
+});
+
+router.put("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    const r = recipientFromBody(req.body);
+    if (!r.chat_id) {
+      return res.status(400).json({ success: false, message: "Chat ID مطلوب" });
+    }
+    db.prepare(`
+      UPDATE telegram_recipients SET
+        name = ?,
+        chat_id = ?,
+        enabled = ?,
+        notify_new_invoice = ?,
+        notify_daily_close = ?,
+        notify_large_amounts = ?,
+        notify_returns_voids = ?,
+        notify_purchases_payments = ?,
+        notify_customer_created = ?,
+        notify_supplier_created = ?,
+        notify_expense_created = ?,
+        notify_return_payment = ?,
+        notify_low_stock = ?,
+        notify_system = ?,
+        notify_weekly = ?,
+        notify_monthly = ?,
+        notify_yearly = ?,
+        notify_stock_transfer = ?,
+        notify_inventory_adjustment = ?,
+        notify_new_product = ?,
+        notify_price_change = ?,
+        notify_batch_expiry = ?,
+        notify_physical_count = ?,
+        notify_supplier_payment = ?,
+        notify_debt_payment = ?,
+        notify_installment_paid = ?,
+        notify_purchase_voided = ?,
+        notify_purchase_return = ?,
+        notify_branch_transfer = ?,
+        notify_password_changed = ?,
+        notify_permission_changed = ?,
+        notify_supervisor_override = ?,
+        notify_repair_created = ?,
+        notify_repair_ready = ?,
+        notify_repair_delivered = ?,
+        notify_revenue_created = ?,
+        notify_withdrawal_created = ?,
+        notify_employee_created = ?,
+        notify_salary_settled = ?,
+        notify_advance_created = ?,
+        notify_deduction_created = ?,
+        notify_bonus_created = ?,
+        event_presets = ?
+      WHERE id = ?
+    `).run(
+      r.name || "مستلم Telegram",
+      r.chat_id,
+      r.enabled ? 1 : 0,
+      r.notify_new_invoice ? 1 : 0,
+      r.notify_daily_close ? 1 : 0,
+      r.notify_large_amounts ? 1 : 0,
+      r.notify_returns_voids ? 1 : 0,
+      r.notify_purchases_payments ? 1 : 0,
+      r.notify_customer_created ? 1 : 0,
+      r.notify_supplier_created ? 1 : 0,
+      r.notify_expense_created ? 1 : 0,
+      r.notify_return_payment ? 1 : 0,
+      r.notify_low_stock ? 1 : 0,
+      r.notify_system ? 1 : 0,
+      r.notify_weekly ? 1 : 0,
+      r.notify_monthly ? 1 : 0,
+      r.notify_yearly ? 1 : 0,
+      r.notify_stock_transfer ? 1 : 0,
+      r.notify_inventory_adjustment ? 1 : 0,
+      r.notify_new_product ? 1 : 0,
+      r.notify_price_change ? 1 : 0,
+      r.notify_batch_expiry ? 1 : 0,
+      r.notify_physical_count ? 1 : 0,
+      r.notify_supplier_payment ? 1 : 0,
+      r.notify_debt_payment ? 1 : 0,
+      r.notify_installment_paid ? 1 : 0,
+      r.notify_purchase_voided ? 1 : 0,
+      r.notify_purchase_return ? 1 : 0,
+      r.notify_branch_transfer ? 1 : 0,
+      r.notify_password_changed ? 1 : 0,
+      r.notify_permission_changed ? 1 : 0,
+      r.notify_supervisor_override ? 1 : 0,
+      r.notify_repair_created ? 1 : 0,
+      r.notify_repair_ready ? 1 : 0,
+      r.notify_repair_delivered ? 1 : 0,
+      r.notify_revenue_created ? 1 : 0,
+      r.notify_withdrawal_created ? 1 : 0,
+      r.notify_employee_created ? 1 : 0,
+      r.notify_salary_settled ? 1 : 0,
+      r.notify_advance_created ? 1 : 0,
+      r.notify_deduction_created ? 1 : 0,
+      r.notify_bonus_created ? 1 : 0,
+      r.event_presets,
+      req.params.id
+    );
+    res.json({ success: true, data: { id: Number(req.params.id), ...r } });
+  } catch (e) {
+    const message = e.message || "";
+    const isSchemaError = /no such column|has no column|NOT NULL constraint failed/.test(message);
+    res.status(500).json({
+      success: false,
+      message: isSchemaError
+        ? `خطأ في هيكل قاعدة البيانات: ${message}. أعد تشغيل السيرفر لتطبيق التحديثات.`
+        : message,
+    });
+  }
+});
+
+router.delete("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  try {
+    getDb().prepare("DELETE FROM telegram_recipients WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -33,11 +311,32 @@ router.post("/test", requireAnyPagePermission(["settings", "whatsapp_crm"], "edi
     const db = getDb();
     const config = getTelegramConfig(db);
     if (!config) {
-      return res.status(400).json({ success: false, message: "إعدادات Telegram غير مكتملة — أدخل التوكن ومعرّف الدردشة ثم فعّل الإشعارات" });
+      return res.status(400).json({ success: false, message: "إعدادات Telegram غير مكتملة — أدخل التوكن وفعّل الإشعارات" });
     }
+    const recipients = getTelegramRecipients(db);
+    const targetChatId = req.body?.chat_id;
     const text = buildMessage(EVENT_TYPES.TEST, { branch: req.body?.branch });
-    await sendTelegramMessage(config, text);
-    res.json({ success: true, message: "تم إرسال رسالة الاختبار بنجاح" });
+
+    if (targetChatId) {
+      await sendTelegramMessage(config, targetChatId, text);
+      return res.json({ success: true, message: "تم إرسال رسالة الاختبار بنجاح" });
+    }
+
+    if (recipients.length === 0) {
+      // Legacy fallback.
+      const legacy = getLegacyTelegramConfig(db);
+      if (!legacy) {
+        return res.status(400).json({ success: false, message: "لا يوجد مستلم — أضف Chat ID أولاً" });
+      }
+      await sendTelegramMessage(legacy, legacy.chatId, text);
+      return res.json({ success: true, message: "تم إرسال رسالة الاختبار بنجاح" });
+    }
+
+    for (const recipient of recipients) {
+      if (!recipient.enabled) continue;
+      await sendTelegramMessage(config, recipient.chatId, text);
+    }
+    res.json({ success: true, message: "تم إرسال رسالة الاختبار للمستلمين" });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -45,6 +344,8 @@ router.post("/test", requireAnyPagePermission(["settings", "whatsapp_crm"], "edi
 
 // Auto-detect chat_id from the bot's recent messages — lets the owner paste
 // only the bot token and click a button instead of reading raw getUpdates JSON.
+// Returns 200 with { found: false } when no chat is available yet (instead of
+// 404) so the client-side polling interval doesn't spam the browser console.
 router.post("/detect-chat-id", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
   try {
     const { bot_token, api_base } = req.body || {};
@@ -53,9 +354,9 @@ router.post("/detect-chat-id", requireAnyPagePermission(["settings", "whatsapp_c
     }
     const chat = await detectChatId(bot_token.trim(), api_base?.trim() || undefined);
     if (!chat) {
-      return res.status(404).json({ success: false, message: "لسه مفيش رسائل — ابدأ محادثة مع البوت بدوسة Start وجرّب تاني" });
+      return res.json({ success: true, found: false, message: "لسه مفيش رسائل — ابدأ محادثة مع البوت بدوسة Start وجرّب تاني" });
     }
-    res.json({ success: true, data: chat });
+    res.json({ success: true, found: true, data: chat });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -82,4 +383,195 @@ router.post("/deep-link", requireAnyPagePermission(["settings", "whatsapp_crm"],
   }
 });
 
+// Validate a bot token by calling getMe — returns bot name/username so the
+// client can auto-verify and auto-generate QR without an extra click.
+router.post("/bot-info", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
+  try {
+    const { bot_token, api_base } = req.body || {};
+    if (!bot_token || !bot_token.trim()) {
+      return res.status(400).json({ success: false, message: "أدخل Bot Token أولاً" });
+    }
+    const info = await getBotInfo(bot_token.trim(), api_base?.trim() || undefined);
+    if (!info) {
+      return res.status(404).json({ success: false, found: false });
+    }
+    const name = [info.first_name, info.last_name].filter(Boolean).join(" ");
+    res.json({
+      success: true, found: true,
+      data: { username: info.username, name: name || info.username, id: info.id },
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── Phone pairing ──────────────────────────────────────────────────────────
+// In-memory store for pending pairing sessions. Each entry expires after 5 min.
+const pairingSessions = new Map();
+const PAIRING_TTL_MS = 5 * 60 * 1000;
+
+function gcPairing() {
+  const now = Date.now();
+  for (const [code, session] of pairingSessions) {
+    if (now - session.createdAt > PAIRING_TTL_MS) pairingSessions.delete(code);
+  }
+}
+setInterval(gcPairing, 60_000);
+
+function generateCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// Start a pairing session — returns code + URL for the phone to open.
+router.post("/pairing/start", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
+  gcPairing();
+  const code = generateCode();
+  pairingSessions.set(code, { token: null, createdAt: Date.now() });
+  const port = process.env.ACTUAL_PORT || process.env.PORT || "5000";
+  const lanIP = req.ip || req.socket?.remoteAddress || "127.0.0.1";
+  const cleanIP = String(lanIP).replace(/^::ffff:/, "");
+  const baseUrl = `http://${cleanIP === "::1" || cleanIP === "127.0.0.1" ? "127.0.0.1" : cleanIP}:${port}`;
+  const url = `${baseUrl}/pairing/${code}`;
+  const qr = await QRCode.toDataURL(url, { width: 256, margin: 1 });
+  res.json({
+    success: true,
+    data: { code, url, qr },
+  });
+});
+
+// Poll for pairing result — the client calls this until a token arrives.
+router.get("/pairing/:code/status", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  const session = pairingSessions.get(req.params.code);
+  if (!session) return res.json({ success: true, found: false });
+  if (session.token) {
+    pairingSessions.delete(req.params.code);
+    return res.json({ success: true, found: true, data: { token: session.token } });
+  }
+  res.json({ success: true, found: false });
+});
+
+// Cancel a pairing session
+router.delete("/pairing/:code", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  pairingSessions.delete(req.params.code);
+  res.json({ success: true });
+});
+
+// Disconnect Telegram: clear local credentials and retry queue.
+// Note: Telegram has no API to revoke the bot token itself;
+// the user must revoke it via @BotFather if desired.
+router.post("/disconnect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+  try {
+    const db = getDb();
+    db.prepare(`
+      UPDATE settings SET
+        telegram_enabled = 0,
+        telegram_bot_token = '',
+        telegram_chat_id = ''
+      WHERE id = 1
+    `).run();
+    db.prepare("DELETE FROM telegram_recipients").run();
+    db.prepare("DELETE FROM pending_notifications").run();
+    res.json({ success: true, message: "تم فصل Telegram بنجاح" });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// History of sent/failed Telegram owner notifications.
+router.get("/history", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const rows = db.prepare(`
+      SELECT id, event_type, text, status, retry_count, error, created_at, sent_at
+      FROM pending_notifications
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;
+
+// ── Public pairing page (no auth) ──────────────────────────────────────────
+// Exported separately so app.js can mount it outside the auth middleware.
+module.exports.pairingPageRouter = (() => {
+  const r = express.Router();
+
+  r.get("/pairing/:code", (req, res) => {
+    const session = pairingSessions.get(req.params.code);
+    if (!session) {
+      return res.status(404).send(`
+        <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>منتهي</title><style>body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;color:#666}</style>
+        </head><body><div style="text-align:center"><h2>هذا الرابط منتهي أو غير صالح</h2><p>ارجع للتطبيق وأعد المحاولة</p></div></body></html>`);
+    }
+    res.send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <title>ربط Telegram</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:16px}
+      .card{background:#1e293b;border-radius:16px;padding:32px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+      h1{font-size:20px;font-weight:800;text-align:center;margin-bottom:6px}
+      p{font-size:13px;color:#94a3b8;text-align:center;margin-bottom:24px;line-height:1.6}
+      input{width:100%;padding:14px 16px;border-radius:12px;border:2px solid #334155;background:#0f172a;color:#e2e8f0;font-size:15px;font-family:monospace;direction:ltr;text-align:center;letter-spacing:1px;outline:none;transition:border-color .2s}
+      input:focus{border-color:#6366f1}input::placeholder{color:#475569;letter-spacing:0}
+      button{width:100%;padding:14px;border-radius:12px;border:none;background:#6366f1;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;transition:all .2s}
+      button:disabled{opacity:.4;cursor:not-allowed}button:not(:disabled):hover{background:#818cf8}
+      .ok{background:#22c55e;text-align:center;padding:16px;border-radius:12px;margin-top:16px;font-weight:700;display:none}
+      .err{background:rgba(239,68,68,.15);color:#fca5a5;text-align:center;padding:12px;border-radius:10px;margin-top:12px;font-size:13px;display:none}
+      .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:8px}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style></head><body>
+    <div class="card">
+      <h1>🤖 ربط Telegram</h1>
+      <p>الصق Bot Token هنا — هتلاقيه في محادثة @BotFather على تليجرام</p>
+      <form id="f">
+        <input id="tok" type="text" placeholder="123456789:ABCdefGHI..." autocomplete="off" spellcheck="false" autofocus />
+        <button type="submit" id="btn">إرسال للجهاز</button>
+      </form>
+      <div class="ok" id="ok">✅ تم الإرسال — رجع للتطبيق على الكمبيوتر</div>
+      <div class="err" id="err"></div>
+    </div>
+    <script>
+      const code = "${req.params.code}";
+      document.getElementById("f").onsubmit = async (e) => {
+        e.preventDefault();
+        const token = document.getElementById("tok").value.trim();
+        if (!token) return;
+        const btn = document.getElementById("btn");
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جاري الإرسال...';
+        try {
+          const r = await fetch("/pairing/" + code, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ token }) });
+          const d = await r.json();
+          if (d.success) {
+            document.getElementById("ok").style.display = "block";
+            document.getElementById("f").style.display = "none";
+          } else {
+            throw new Error(d.message || "فشل");
+          }
+        } catch (err) {
+          const el = document.getElementById("err");
+          el.textContent = "❌ " + err.message; el.style.display = "block";
+          btn.disabled = false; btn.textContent = "إرسال للجهاز";
+        }
+      };
+    </script></body></html>`);
+  });
+
+  r.post("/pairing/:code", express.json(), (req, res) => {
+    const session = pairingSessions.get(req.params.code);
+    if (!session) return res.status(404).json({ success: false, message: "هذا الرابط منتهي" });
+    const { token } = req.body || {};
+    if (!token || !token.trim()) return res.status(400).json({ success: false, message: "الصق التوكن أولاً" });
+    session.token = token.trim();
+    res.json({ success: true });
+  });
+
+  return r;
+})();

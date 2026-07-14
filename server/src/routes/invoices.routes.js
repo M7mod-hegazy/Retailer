@@ -477,9 +477,16 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
       id: invoice?.id,
       invoiceNo: invoice?.invoice_no,
       total: invoice?.total,
+      subtotal: invoice?.subtotal,
+      tax: invoice?.tax,
+      discount: invoice?.discount,
+      paid: invoice?.paid,
+      balance: invoice?.remaining_amount,
       customerName: invoice?.customer_name || req.body?.customer_name,
       paymentType: invoice?.payment_type,
       createdAt: invoice?.created_at,
+      lines: invoice?.lines,
+      payments: invoice?.payments,
     });
   } catch (_) {}
   if (payload.quotation_id) {

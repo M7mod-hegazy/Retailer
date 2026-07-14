@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize, XCircle, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
@@ -14,25 +14,30 @@ import { withCalibration } from "../../services/printCalibration";
 import { getPrinterSizeMap } from "../../services/printService";
 import html2canvas from "html2canvas";
 
-function ConnectionBadge({ wa }) {
+function PhoneValidationIndicator({ checking, exists }) {
   const { t } = useTranslation();
-  if (wa.status === "loading") return null;
-  const map = {
-    connected: { icon: Wifi, cls: "bg-success-bg border-success-border text-success-text", label: t("whatsapp.connected") || "متصل" },
-    qr: { icon: Smartphone, cls: "bg-warning-bg border-warning-border text-warning-text animate-pulse", label: t("whatsapp.waitingScan") || "انتظار المسح" },
-    connecting: { icon: RefreshCw, cls: "bg-bg-surface border-border-normal text-text-muted", label: t("whatsapp.connecting") || "جاري الاتصال..." },
-    error: { icon: WifiOff, cls: "bg-danger-bg border-danger-border text-danger", label: t("whatsapp.connectFailed") || "خطأ" },
-  };
-  const fallback = { icon: WifiOff, cls: "bg-bg-surface border-border-normal text-text-muted", label: t("whatsapp.disconnected") || "غير متصل" };
-  const { icon: Icon, cls, label } = map[wa.status] || fallback;
-  return (
-    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-black ${cls}`}>
-      <Icon className={`h-3.5 w-3.5 shrink-0 ${wa.status === "connecting" ? "animate-spin" : ""}`} />
-      <span>{label}</span>
-      {wa.status === "connected" && wa.phone && <span dir="ltr" className="text-[11px] font-mono opacity-70">{wa.phone}</span>}
-      {wa.error && <span className="text-[11px] font-bold opacity-70 truncate max-w-[180px]">{wa.error}</span>}
-    </div>
-  );
+  if (checking) {
+    return (
+      <p className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-text-muted">
+        <RefreshCw className="h-3 w-3 animate-spin" /> {t("whatsapp.checking") || "جاري التحقق..."}
+      </p>
+    );
+  }
+  if (exists === true) {
+    return (
+      <p className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-success-text">
+        <Check className="h-3 w-3" /> {t("whatsapp.existsOnWhatsApp") || "موجود على واتساب"}
+      </p>
+    );
+  }
+  if (exists === false) {
+    return (
+      <p className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-danger">
+        <XCircle className="h-3 w-3" /> {t("whatsapp.notOnWhatsApp") || "غير موجود على واتساب"}
+      </p>
+    );
+  }
+  return null;
 }
 
 const ZOOM_STEP = 0.08;
@@ -109,6 +114,12 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const [phone, setPhone] = useState("");
   const [shopName, setShopName] = useState("");
   const [sendMode, setSendMode] = useState("text");
+  const [waExists, setWaExists] = useState(null); // null = unknown, true = exists, false = not found
+  const [waChecking, setWaChecking] = useState(false);
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [sendChannel, setSendChannel] = useState("whatsapp"); // "whatsapp" | "sms"
+  const existsCacheRef = useRef(new Map());
+  const existsTimerRef = useRef(null);
   const captureRef = useRef(null);
 
   const docType = KIND_DOC_TYPE[kind] || null;
@@ -142,8 +153,43 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       setPhone(normalizeEgyptPhone(rawPhone));
       setSendMode("text");
       setActivePaperSize(printTemplate || "80mm");
+      setWaExists(null);
+      setWaChecking(false);
+      setSendChannel("whatsapp");
+      if (existsTimerRef.current) clearTimeout(existsTimerRef.current);
     }
   }, [open, rawPhone, printTemplate]);
+
+  // Force text mode when SMS channel is selected (SMS does not support images)
+  useEffect(() => {
+    if (sendChannel === "sms" && sendMode === "image") setSendMode("text");
+  }, [sendChannel, sendMode]);
+
+  // Debounced WhatsApp existence check (skip for SMS channel)
+  useEffect(() => {
+    if (!open || sendChannel === "sms" || !wa.isConnected) { setWaExists(null); setWaChecking(false); return; }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 12) { setWaExists(null); return; }
+    if (existsCacheRef.current.has(digits)) {
+      setWaExists(existsCacheRef.current.get(digits));
+      setWaChecking(false);
+      return;
+    }
+    setWaChecking(true);
+    setWaExists(null);
+    if (existsTimerRef.current) clearTimeout(existsTimerRef.current);
+    existsTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await api.post("/api/whatsapp/check-exists", { phone: digits });
+        const exists = res.data?.data?.exists ?? false;
+        existsCacheRef.current.set(digits, exists);
+        setWaExists(exists);
+      } catch {
+        setWaExists(null);
+      } finally { setWaChecking(false); }
+    }, 800);
+    return () => { if (existsTimerRef.current) clearTimeout(existsTimerRef.current); };
+  }, [phone, open, wa.isConnected, sendChannel]);
 
   useEffect(() => {
     if (!open) return;
@@ -152,7 +198,8 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       api.get("/api/whatsapp/templates").catch(() => ({ data: { data: [] } })),
       api.get("/api/whatsapp/crm/template-variants").catch(() => ({ data: { data: [] } })),
       api.get("/api/settings").catch(() => ({ data: { data: {} } })),
-    ]).then(([templatesRes, variantsRes, settingsRes]) => {
+      api.get("/api/whatsapp/sms-status").catch(() => ({ data: { data: { enabled: false } } })),
+    ]).then(([templatesRes, variantsRes, settingsRes, smsStatusRes]) => {
       const rows = templatesRes.data?.data || [];
       const matched = rows.find((x) => x.kind === kind) || rows.find((x) => x.kind === "receipt");
       setTemplate(matched?.body || "");
@@ -161,10 +208,12 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       setVariants(allVariants.filter(v => v.category === kind));
 
       setShopName(settingsRes.data?.data?.company_name || "");
+      setSmsEnabled(Boolean(smsStatusRes.data?.data?.enabled));
     }).catch(() => {
       setTemplate("");
       setVariants([]);
       setShopName("");
+      setSmsEnabled(false);
     }).finally(() => setLoading(false));
   }, [open, kind]);
 
@@ -290,19 +339,32 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     if (viewportRef.current) viewportRef.current.style.cursor = "grab";
   }, []);
 
-  // Wheel = zoom in/out, no ctrl needed
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setViewZoom(prev => {
-      const cur = prev === ZOOM_FIT ? fitScale : prev;
-      return clampZoom(cur + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP));
-    });
+  // Wheel = zoom in/out — attached via ref with { passive: false } so preventDefault works
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setViewZoom(prev => {
+        const cur = prev === ZOOM_FIT ? fitScale : prev;
+        return clampZoom(cur + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP));
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
   }, [fitScale]);
 
   async function handleSend() {
     if (!phone) { toast.error(t("whatsapp.noPhone")); return; }
-    if (!wa.isConnected) { toast.error(t("whatsapp.notConnected") || "واتساب غير متصل — تأكد من الاتصال أولاً"); return; }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 11) { toast.error(t("whatsapp.invalidPhone") || "رقم الهاتف غير صالح"); return; }
+
+    if (sendChannel === "whatsapp") {
+      if (!wa.isConnected) { toast.error(t("whatsapp.notConnected") || "واتساب غير متصل — تأكد من الاتصال أولاً"); return; }
+      if (waExists === false) { toast.error(t("whatsapp.notOnWhatsApp") || "الرقم غير موجود على واتساب"); return; }
+    }
+
     if (onBeforeSend) {
       setSavingFirst(true);
       try { await onBeforeSend(); } catch { setSavingFirst(false); return; }
@@ -310,6 +372,14 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     }
     setSending(true);
     try {
+      if (sendChannel === "sms") {
+        if (sendMode === "image") { toast.error(t("whatsapp.smsNoImage") || "لا يمكن إرسال صورة عبر SMS"); return; }
+        await api.post("/api/whatsapp/send-sms-direct", { recipient_phone: phone, text: message });
+        toast.success(t("whatsapp.sentSuccessfully") || "تم الإرسال بنجاح");
+        onClose?.();
+        return;
+      }
+
       let payload;
       if (sendMode === "image") {
         const canvas = await html2canvas(captureRef.current, { useCORS: true, scale: 2, backgroundColor: "#ffffff" });
@@ -317,9 +387,23 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       } else {
         payload = { text: message };
       }
-      await api.post("/api/whatsapp/enqueue", { recipient_phone: phone, customer_id: invoice?.customer_id || null, kind, payload });
-      toast.success(t("whatsapp.queued"));
-      onClose?.();
+
+      // Try direct send first (returns only after message is actually delivered)
+      try {
+        await api.post("/api/whatsapp/send-direct", { recipient_phone: phone, customer_id: invoice?.customer_id || null, kind, payload });
+        toast.success(t("whatsapp.sentSuccessfully") || "تم الإرسال بنجاح");
+        onClose?.();
+        return;
+      } catch (directErr) {
+        // Fallback: enqueue if direct send fails (e.g. engine busy, timeout)
+        if (directErr?.response?.status === 503 || directErr?.code === "ECONNABORTED" || directErr?.message?.includes("timeout")) {
+          await api.post("/api/whatsapp/enqueue", { recipient_phone: phone, customer_id: invoice?.customer_id || null, kind, payload });
+          toast.success(t("whatsapp.sentQueued") || "تمت الإضافة للقائمة — سيتم الإرسال تلقائياً");
+          onClose?.();
+          return;
+        }
+        throw directErr;
+      }
     } catch (e) {
       toast.error(e.response?.data?.message || t("whatsapp.sendFailed"));
     } finally { setSending(false); }
@@ -365,9 +449,58 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   return (
     <Modal open={open} onClose={onClose} title={title || t("whatsapp.sendReceipt")} showDetach={false} maxWidth="max-w-lg">
       <div className="space-y-4" dir="rtl" style={{ overscrollBehavior: "contain" }}>
-        <ConnectionBadge wa={wa} />
+        {/* Channel selector — always visible, clear status per channel */}
+        <div className="rounded-xl border border-border-normal bg-bg-surface p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-black text-text-secondary">{t("whatsapp.sendChannel") || "قناة الإرسال"}</p>
+            {sendChannel === "whatsapp" ? (
+              wa.isConnected ? (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-success-text">
+                  <Wifi className="h-3 w-3" /> {t("whatsapp.connected") || "متصل"}
+                </span>
+              ) : wa.status === "loading" ? (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-text-muted">
+                  <RefreshCw className="h-3 w-3 animate-spin" /> {t("whatsapp.checking") || "جاري التحقق..."}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-danger">
+                  <WifiOff className="h-3 w-3" /> {t("whatsapp.disconnected") || "غير متصل"}
+                </span>
+              )
+            ) : (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-success-text">
+                <Check className="h-3 w-3" /> {t("whatsapp.smsReady") || "SMS جاهز"}
+              </span>
+            )}
+          </div>
 
-        {!wa.isConnected && wa.status !== "loading" && wa.status !== "qr" && (
+          {smsEnabled ? (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-bg-base border border-border-subtle">
+              <button type="button" onClick={() => setSendChannel("whatsapp")}
+                className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-black transition-all active:scale-95 ${sendChannel === "whatsapp" ? "bg-bg-surface text-primary shadow-sm border border-border-normal" : "text-text-secondary hover:text-text-primary"}`}>
+                <Smartphone className="h-3.5 w-3.5" /> WhatsApp
+              </button>
+              <button type="button" onClick={() => setSendChannel("sms")}
+                className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-black transition-all active:scale-95 ${sendChannel === "sms" ? "bg-bg-surface text-primary shadow-sm border border-border-normal" : "text-text-secondary hover:text-text-primary"}`}>
+                <MessageSquare className="h-3.5 w-3.5" /> SMS
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-bg-base border border-border-subtle px-3 py-2.5">
+              <Smartphone className="h-4 w-4 text-text-muted" />
+              <span className="text-xs font-bold text-text-secondary">WhatsApp</span>
+              <span className="mr-auto text-[11px] font-bold text-text-muted">{t("whatsapp.smsDisabledHint") || "تفعيل SMS متاح من الإعدادات"}</span>
+            </div>
+          )}
+
+          <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+            {sendChannel === "whatsapp"
+              ? (t("whatsapp.whatsappChannelHint") || "سيتم إرسال الرسالة عبر واتساب — يجب أن يكون لدى العميل حساب واتساب على نفس الرقم.")
+              : (t("whatsapp.smsChannelHint") || "سيتم إرسال الرسالة كـ SMS نصي — تصل لأي رقم حتى لو لم يكن لديه واتساب.")}
+          </p>
+        </div>
+
+        {sendChannel === "whatsapp" && !wa.isConnected && wa.status !== "loading" && wa.status !== "qr" && (
           <div className="flex items-start gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2.5">
             <AlertCircle className="h-4 w-4 text-warning-text shrink-0 mt-0.5" />
             <div>
@@ -377,7 +510,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
           </div>
         )}
 
-        {wa.status === "qr" && (
+        {sendChannel === "whatsapp" && wa.status === "qr" && (
           <div className="flex items-start gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2.5">
             <Smartphone className="h-4 w-4 text-warning-text shrink-0 mt-0.5 animate-pulse" />
             <div>
@@ -393,7 +526,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
           </div>
         ) : (
           <>
-            {showImageOption && (
+            {showImageOption && sendChannel !== "sms" && (
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => setSendMode("text")}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${sendMode === "text" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"}`}>
@@ -432,6 +565,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                     <input dir="ltr" type="tel" value={phone} onChange={(e) => setPhone(normalizeEgyptPhone(e.target.value))}
                       placeholder="2010xxxxxxxx"
                       className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold font-mono outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                    {sendChannel === "whatsapp" && <PhoneValidationIndicator checking={waChecking} exists={waExists} />}
                   </div>
 
                   {/* Zoom + page controls row */}
@@ -473,7 +607,6 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
                       onMouseLeave={handleMouseUp}
-                      onWheel={handleWheel}
                       className="rounded-lg border border-border-normal bg-[#ececec] overflow-hidden select-none touch-none"
                       style={{ height: "420px", cursor: "grab", position: "relative" }}
                     >
@@ -536,6 +669,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                 <input dir="ltr" type="tel" value={phone} onChange={(e) => setPhone(normalizeEgyptPhone(e.target.value))}
                   placeholder="2010xxxxxxxx"
                   className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold font-mono outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                {sendChannel === "whatsapp" && <PhoneValidationIndicator checking={waChecking} exists={waExists} />}
               </div>
             )}
             {sendMode === "text" && variants.length > 1 && (
@@ -563,11 +697,16 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
 
             <div className={`grid gap-2 pt-1 ${sendMode === "image" ? "grid-cols-2" : "grid-cols-3"}`}>
               <button onClick={handleSend}
-                disabled={savingFirst || sending || !phone || (sendMode === "text" ? !message : printSettingsLoading) || !wa.isConnected}
+                disabled={(() => {
+                  if (savingFirst || sending || !phone) return true;
+                  if (sendMode === "text" ? !message : printSettingsLoading) return true;
+                  if (sendChannel === "sms") return sendMode === "image";
+                  return !wa.isConnected || waExists === false || waChecking;
+                })()}
                 className="col-span-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
-                title={!wa.isConnected ? (t("whatsapp.notConnected") || "واتساب غير متصل") : undefined}>
+                title={sendChannel === "whatsapp" ? (!wa.isConnected ? (t("whatsapp.notConnected") || "واتساب غير متصل") : waExists === false ? (t("whatsapp.notOnWhatsApp") || "الرقم غير موجود على واتساب") : undefined) : undefined}>
                 {(sending || savingFirst) ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                {savingFirst ? "جاري الحفظ..." : sending ? t("whatsapp.sending") : t("whatsapp.send")}
+                {savingFirst ? "جاري الحفظ..." : sending ? t("whatsapp.sending") : sendChannel === "sms" ? (t("whatsapp.sendSms") || "إرسال SMS") : t("whatsapp.send")}
               </button>
               {sendMode === "image" ? (
                 <button onClick={handleDownloadImage} disabled={printSettingsLoading}

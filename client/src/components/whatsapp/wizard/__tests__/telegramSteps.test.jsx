@@ -8,6 +8,7 @@ const mockConnect = vi.hoisted(() => ({
   qrData: null,
   generatingQr: false,
   scanConnected: false,
+  pollStatus: "idle",
   generateDeepLink: vi.fn(),
   save: vi.fn(),
   saving: false,

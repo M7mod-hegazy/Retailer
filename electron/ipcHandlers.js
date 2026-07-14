@@ -284,9 +284,9 @@ function setupIpc(window) {
       // top gap when handed a foreign custom page size; the calibration wizard
       // lets the user pick whichever mode their driver handles cleanly.
       if (paperMode !== "driver") {
-        // Round height UP to whole millimetres plus a 1mm tail so driver
-        // rounding never clips the last printed line.
-        const heightMm = Math.ceil((contentHeightPx * PX) / MM) + 1;
+        // Round height UP to whole millimetres plus a 2mm tail so driver
+        // rounding and measurement drift never clip the last printed line.
+        const heightMm = Math.ceil((contentHeightPx * PX) / MM) + 2;
         printOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
       }
     } else if (pageSizeStr) {
@@ -485,7 +485,7 @@ if (-not [RawPrinter]::Send($env:RETAILER_ESC_PRINTER, $bytes)) { exit 1 }
       const PX = 25400 / 96;
       const pdfOptions = { printBackground: true, margins: { top: 0, bottom: 0, left: 0, right: 0 } };
       if (rollWidthMm) {
-        const heightMm = Math.ceil((loaded.contentHeightPx * PX) / MM) + 1;
+        const heightMm = Math.ceil((loaded.contentHeightPx * PX) / MM) + 2;
         pdfOptions.pageSize = { width: rollWidthMm * MM, height: heightMm * MM };
       } else {
         // Mirror buildPrintOptions: dims + orientation, not a prefix guess.

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, DollarSign, CheckCircle, AlertTriangle, Tag, FileText } from "lucide-react";
 import toast from "react-hot-toast";
@@ -6,6 +7,7 @@ import api from "../../../services/api";
 import PermissionGate from "../../../components/ui/PermissionGate";
 import { usePermission } from "../../../hooks/usePermission";
 import { formatDateTime } from "../../../utils/dateHelpers";
+import SmartTooltip from "../../../components/ui/SmartTooltip";
 
 const STATUS_MAP = {
   active: { label: "نشط", class: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -26,6 +28,9 @@ export default function AdvancesTab({ employee }) {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [categories, setCategories] = useState([]);
   const [expenseForm, setExpenseForm] = useState({ create_expense: false, description: "", category_id: "" });
+  const [showRepayExpenseConfirm, setShowRepayExpenseConfirm] = useState(false);
+  const [repayAdvanceId, setRepayAdvanceId] = useState(null);
+  const [repayExpenseForm, setRepayExpenseForm] = useState({ create_expense: false, description: "", category_id: "" });
 
   useEffect(() => {
     if (employee) loadAdvances();
@@ -102,12 +107,36 @@ export default function AdvancesTab({ employee }) {
     try {
       const res = await api.post(`/api/employees/${employee.id}/advances/${advanceId}/pay`, { amount: Number(payAmount) });
       if (res.data?.success) {
+        if (repayExpenseForm.create_expense && repayExpenseForm.category_id) {
+          const adv = advances.find(a => a.id === advanceId);
+          await api.post("/api/expenses", {
+            amount: Number(payAmount),
+            category_id: Number(repayExpenseForm.category_id),
+            description: repayExpenseForm.description || `تسديد سلفة للموظف: ${employee.name} — بمبلغ ${Number(payAmount).toLocaleString()} ج.م`,
+            payment_method: "cash",
+            employee_id: employee.id,
+            notes: "تسديد سلفة موظف",
+          });
+        }
         toast.success("تم التسديد");
         setPaying(null);
         setPayAmount("");
+        setShowRepayExpenseConfirm(false);
+        setRepayAdvanceId(null);
+        setRepayExpenseForm({ create_expense: false, description: "", category_id: "" });
         loadAdvances();
       }
     } catch (err) { toast.error(err?.response?.data?.message || "فشل التسديد"); }
+  }
+
+  function openRepayConfirm(advanceId) {
+    setRepayAdvanceId(advanceId);
+    setRepayExpenseForm({
+      create_expense: false,
+      description: `تسديد سلفة للموظف: ${employee.name} — بمبلغ ${Number(payAmount).toLocaleString()} ج.م`,
+      category_id: "",
+    });
+    setShowRepayExpenseConfirm(true);
   }
 
   if (!employee) return null;
@@ -121,20 +150,44 @@ export default function AdvancesTab({ employee }) {
 
   return (
     <div className="p-6">
+      {/* Info Panel */}
+      {(() => {
+        const dismissed = typeof window !== 'undefined' && localStorage.getItem('emp-tab-info-advances');
+        if (dismissed) return null;
+        return (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-4 relative mb-6">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-amber-800">السلفيات</p>
+              <p className="text-xs font-bold text-amber-600 mt-1 leading-relaxed">
+                سجّل كل سلفة يحصل عليها الموظف وتابع أقساطها. يمكنك تحديد عدد الأقساط أو تركه بدون أقساط محددة. عند التسديد، يمكنك اختيار تسجيل المصروف مباشرة. السلف النشطة بتظهر في صرف الراتب كخصم اختياري.
+              </p>
+            </div>
+            <button onClick={() => localStorage.setItem('emp-tab-info-advances', '1')}
+              className="text-amber-400 hover:text-amber-600 text-xs font-black shrink-0">فهمت</button>
+          </motion.div>
+        );
+      })()}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-black text-slate-800">السلفيات</h3>
           <p className="text-xs text-slate-500 mt-0.5">إدارة السلف واقساطها</p>
         </div>
         {canManage && (
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowForm(true)}
-            className="h-10 px-5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg flex items-center gap-2 transition-all"
-          >
-            <Plus className="h-4 w-4" /> إضافة سلفة
-          </motion.button>
+          <SmartTooltip content={"أضف سلفة جديدة للموظف — حدد المبلغ وعدد الأقساط (اختياري). عند التأكيد، هتختار إذا كنت عايز تسجل مصروف لهذه السلفة."} wide>
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowForm(true)}
+              className="h-10 px-5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg flex items-center gap-2 transition-all"
+            >
+              <Plus className="h-4 w-4" /> إضافة سلفة
+            </motion.button>
+          </SmartTooltip>
         )}
       </div>
 
@@ -272,9 +325,9 @@ export default function AdvancesTab({ employee }) {
                         كل المبلغ
                       </button>
                     </div>
-                    <div className="flex gap-2 justify-end">
+                      <div className="flex gap-2 justify-end">
                       <button
-                        onClick={() => { handlePay(adv.id); }}
+                        onClick={() => openRepayConfirm(adv.id)}
                         disabled={!payAmount || Number(payAmount) <= 0}
                         className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all disabled:opacity-50"
                       >
@@ -326,91 +379,181 @@ export default function AdvancesTab({ employee }) {
         )}
       </div>
 
-      {/* expense warning modal */}
-      <AnimatePresence>
-        {showExpenseModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setShowExpenseModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">تسجيل مصروف؟</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">هل تريد تسجيل مصروف لهذه السلفة؟</p>
-                </div>
-              </div>
-
-              <label className="flex items-center gap-3 bg-amber-50/60 border border-amber-200 rounded-xl px-4 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={expenseForm.create_expense}
-                  onChange={e => setExpenseForm({ ...expenseForm, create_expense: e.target.checked })}
-                  className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                />
-                <span className="text-sm font-bold text-slate-700">نعم، تسجيل مصروف للسلفة</span>
-              </label>
-
-              {expenseForm.create_expense && (
-                <div className="space-y-4 pr-2 border-r-2 border-amber-200">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">الوصف</label>
-                    <div className="relative">
-                      <FileText className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        value={expenseForm.description}
-                        onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                        className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-amber-400 transition-all"
-                      />
+      {createPortal(
+        <>
+          {/* expense warning modal */}
+          <AnimatePresence>
+            {showExpenseModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                onClick={() => setShowExpenseModal(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800">تسجيل مصروف؟</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">هل تريد تسجيل مصروف لهذه السلفة؟</p>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف</label>
-                    <div className="relative">
-                      <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <select
-                        value={expenseForm.category_id}
-                        onChange={e => setExpenseForm({ ...expenseForm, category_id: e.target.value })}
-                        className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-amber-400 transition-all appearance-none"
-                      >
-                        <option value="">اختيار التصنيف...</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+
+                  <label className="flex items-center gap-3 bg-amber-50/60 border border-amber-200 rounded-xl px-4 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={expenseForm.create_expense}
+                      onChange={e => setExpenseForm({ ...expenseForm, create_expense: e.target.checked })}
+                      className="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span className="text-sm font-bold text-slate-700">نعم، تسجيل مصروف للسلفة</span>
+                  </label>
+
+                  {expenseForm.create_expense && (
+                    <div className="space-y-4 pr-2 border-r-2 border-amber-200">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">الوصف</label>
+                        <div className="relative">
+                          <FileText className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <input
+                            value={expenseForm.description}
+                            onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                            className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-amber-400 transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف</label>
+                        <div className="relative">
+                          <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <select
+                            value={expenseForm.category_id}
+                            onChange={e => setExpenseForm({ ...expenseForm, category_id: e.target.value })}
+                            className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-amber-400 transition-all appearance-none"
+                          >
+                            <option value="">اختيار التصنيف...</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setShowExpenseModal(false)}
+                      className="flex-1 h-11 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={handleConfirmAdvance}
+                      className="flex-1 h-11 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-black shadow-lg transition-all"
+                    >
+                      تأكيد
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* expense warning modal — تسجيل مصروف عند التسديد */}
+          <AnimatePresence>
+            {showRepayExpenseConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                onClick={() => setShowRepayExpenseConfirm(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800">هل تريد تسجيل مصروف؟</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">تسديد سلفة بمبلغ {Number(payAmount).toLocaleString()} ج.م</p>
                     </div>
                   </div>
-                </div>
-              )}
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowExpenseModal(false)}
-                  className="flex-1 h-11 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
-                >
-                  إلغاء
-                </button>
-                <button
-                  onClick={handleConfirmAdvance}
-                  className="flex-1 h-11 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-black shadow-lg transition-all"
-                >
-                  تأكيد
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  <label className="flex items-center gap-3 bg-emerald-50/60 border border-emerald-200 rounded-xl px-4 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={repayExpenseForm.create_expense}
+                      onChange={e => setRepayExpenseForm({ ...repayExpenseForm, create_expense: e.target.checked })}
+                      className="w-5 h-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm font-bold text-slate-700">نعم، تسجيل مصروف لهذا التسديد</span>
+                  </label>
+
+                  {repayExpenseForm.create_expense && (
+                    <div className="space-y-4 pr-2 border-r-2 border-emerald-200">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">الوصف</label>
+                        <div className="relative">
+                          <FileText className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <input
+                            value={repayExpenseForm.description}
+                            onChange={e => setRepayExpenseForm({ ...repayExpenseForm, description: e.target.value })}
+                            className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-emerald-400 transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">تصنيف المصروف</label>
+                        <div className="relative">
+                          <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <select
+                            value={repayExpenseForm.category_id}
+                            onChange={e => setRepayExpenseForm({ ...repayExpenseForm, category_id: e.target.value })}
+                            className="w-full h-11 rounded-xl pr-10 px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-emerald-400 transition-all appearance-none"
+                          >
+                            <option value="">اختيار التصنيف...</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setShowRepayExpenseConfirm(false)}
+                      className="flex-1 h-11 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={() => handlePay(repayAdvanceId)}
+                      className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg transition-all"
+                    >
+                      تأكيد التسديد
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

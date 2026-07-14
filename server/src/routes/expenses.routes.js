@@ -8,6 +8,7 @@ const { countSafe, buildImpact } = require("../utils/relatedRecords");
 const { recordBankMovement } = require("../services/bankService");
 const NotificationModel = require("../models/notification.model");
 const { toSql, nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -132,6 +133,13 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
         link: expenseAuditId ? `/history?log_id=${expenseAuditId}` : `/expenses`,
       });
     }
+    const categoryRow = db.prepare("SELECT name FROM expense_categories WHERE id=?").get(payload.category_id || null);
+    notifyOwner(TG.EXPENSE_CREATED, {
+      category: categoryRow?.name || "غير مصنف",
+      amount: expenseAmount,
+      date: createdDate,
+      notes: payload.description || payload.notes || null,
+    });
   } catch (_) {}
   res.status(201).json({
     success: true,

@@ -84,6 +84,28 @@ export default function BasicInfoTab({ employee, onUpdate }) {
 
   return (
     <div className="p-6 space-y-8">
+      {/* Info Panel */}
+      {(() => {
+        const dismissed = typeof window !== 'undefined' && localStorage.getItem('emp-tab-info-basic');
+        if (dismissed) return null;
+        return (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 flex items-start gap-4 relative">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black text-blue-800">البيانات الأساسية</p>
+              <p className="text-xs font-bold text-blue-600 mt-1 leading-relaxed">
+                هنا تُدخل بيانات الموظف الأساسية مثل الاسم والراتب وفترة الدفع. يتم حساب الراتب اليومي تلقائياً بناءً على عدد أيام العمل. غيّر فترة الدفع (شهري/أسبوعي/يومي) حسب عقد الموظف.
+              </p>
+            </div>
+            <button onClick={() => { localStorage.setItem('emp-tab-info-basic', '1'); }}
+              className="text-blue-400 hover:text-blue-600 text-xs font-black shrink-0">فهمت</button>
+          </motion.div>
+        );
+      })()}
+
       {/* عرض البيانات الأساسية */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">

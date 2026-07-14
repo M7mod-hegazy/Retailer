@@ -2,13 +2,17 @@
  * printService.js — centralized print path for the whole app.
  *
  * Two ways a document reaches a printer:
- *  1. Silent (no dialog): when the user has chosen a printer for this document
- *     type in settings AND we're running inside Electron. The HTML is sent to the
- *     main process, rendered in a hidden window, and printed straight to the
- *     configured device.
- *  2. Dialog fallback: a hidden iframe + window.print(). Used when no printer is
- *     configured, when not running in Electron (browser dev), or when the silent
- *     path fails for any reason. This preserves the original behavior exactly.
+ *  1. Silent (no dialog): when we're running inside Electron and a printer is
+ *     available (either explicitly mapped per-size OR the system default). The
+ *     HTML is sent to the main process, rendered in a hidden window, and printed
+ *     straight to the configured device with correct roll/page dimensions.
+ *  2. Dialog fallback: a hidden iframe + window.print(). Used only when not
+ *     running in Electron (browser dev) or when the silent path fails.
+ *
+ * Roll-paper safety: when no printer is explicitly mapped for a page size, the
+ * system automatically falls back to the default printer via the silent path.
+ * This prevents the browser dialog from misinterpreting roll paper dimensions
+ * and cutting off content.
  *
  * All callers should funnel through printContent() or printFullHtml() so silent
  * printing works consistently across POS receipts, invoices, statements, etc.
@@ -53,10 +57,30 @@ export function sizeKeyForPageSize(pageSizeStr) {
 /**
  * Given a CSS page-size string (e.g. "80mm auto", "210mm 297mm"),
  * return the printer name assigned to that size, or "" if none.
+ * This is the SYNC version — use getPrinterForPageSizeAsync for the
+ * auto-fallback-to-default path.
  */
 export function getPrinterForPageSize(pageSizeStr) {
   const map = getPrinterSizeMap();
   return map[sizeKeyForPageSize(pageSizeStr)] || "";
+}
+
+/**
+ * Async version that falls back to the system default printer when no explicit
+ * mapping exists. This is critical for roll paper: without a mapped printer the
+ * old code fell back to the browser dialog which misinterprets roll dimensions
+ * and clips content. By routing through the silent path with the default
+ * printer, Electron handles page sizing correctly.
+ */
+let _printerCache = null;
+let _printerCacheTs = 0;
+const PRINTER_CACHE_TTL = 15000;
+
+export async function getPrinterForPageSizeAsync(pageSizeStr) {
+  const explicit = getPrinterForPageSize(pageSizeStr);
+  if (explicit) return explicit;
+  const def = await getDefaultPrinter();
+  return def ? def.name : "";
 }
 
 /** Return the list of installed printers (Electron only); [] in the browser. */
@@ -64,10 +88,26 @@ export async function listPrinters() {
   if (!isElectronPrint()) return [];
   try {
     const res = await window.electronAPI.invoke("print:list-printers");
-    return res && res.printers ? res.printers : [];
+    const list = res && res.printers ? res.printers : [];
+    _printerCache = list;
+    _printerCacheTs = Date.now();
+    return list;
   } catch {
     return [];
   }
+}
+
+/**
+ * Get the system default printer. Uses a short-lived cache to avoid hammering
+ * the IPC bridge on every print call. Returns null in the browser.
+ */
+export async function getDefaultPrinter() {
+  if (!isElectronPrint()) return null;
+  let printers = _printerCache;
+  if (!printers || (Date.now() - _printerCacheTs) > PRINTER_CACHE_TTL) {
+    printers = await listPrinters();
+  }
+  return printers.find((p) => p.isDefault) || printers[0] || null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,17 +186,26 @@ function printViaIframe(fullHtml, afterPrint) {
 
 /**
  * Attempt silent print to a configured device.
+ * When no deviceName is given but we're in Electron, automatically falls back
+ * to the system default printer so roll paper content is never clipped by the
+ * browser dialog's incorrect page size interpretation.
  * Resolves { ok, reason } — reason explains a false `ok`.
  */
 async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
   if (!isElectronPrint()) return { ok: false, reason: "not_electron" };
-  if (!deviceName) return { ok: false, reason: "no_printer_mapped" };
+  // Auto-detect: use explicitly mapped printer, or fall back to system default.
+  let printer = deviceName;
+  if (!printer) {
+    const def = await getDefaultPrinter();
+    if (def) printer = def.name;
+  }
+  if (!printer) return { ok: false, reason: "no_printer_mapped" };
   try {
     const sizeKey = sizeKeyForPageSize(pageSizeStr);
-    const cal = resolveCalibration(deviceName, sizeKey);
+    const cal = resolveCalibration(printer, sizeKey);
     const res = await window.electronAPI.invoke("print:silent", {
       html: fullHtml,
-      deviceName,
+      deviceName: printer,
       copies: Math.max(1, Number(copies) || 1),
       // The main process needs the paper size to pass an explicit pageSize to
       // webContents.print — CSS @page is ignored there and thermal jobs print blank.
@@ -181,12 +230,18 @@ async function printSilently(fullHtml, deviceName, copies, pageSizeStr) {
  */
 export async function printFullHtml(fullHtml, { deviceName = "", copies = 1, afterPrint, pageSizeStr = "", docType = "", docLabel = "", docId = "" } = {}) {
   const silent = await printSilently(fullHtml, deviceName, copies, pageSizeStr);
+  // Resolve the actual printer used (may be auto-detected default) for logging.
+  let resolvedPrinter = deviceName;
+  if (!resolvedPrinter && silent.ok && isElectronPrint()) {
+    const def = await getDefaultPrinter();
+    if (def) resolvedPrinter = def.name;
+  }
   appendJobLog({
     at: new Date().toISOString(),
     doc_type: docType || "",
     doc_label: docLabel || "",
     doc_id: docId ? String(docId) : "",
-    printer: deviceName || "",
+    printer: resolvedPrinter || "",
     size: sizeKeyForPageSize(pageSizeStr),
     copies: Math.max(1, Number(copies) || 1),
     mode: silent.ok ? "silent" : "dialog",
@@ -236,19 +291,25 @@ export async function printMultipart({ parts = [], pageSizeStr, deviceName = "",
     pageSizeStr, deviceName: "", afterPrint, title, docType, docLabel, printFont,
   });
 
-  if (!isElectronPrint() || !deviceName) {
+  // Resolve printer: explicit mapping → auto-detect default → dialog fallback.
+  let printer = deviceName;
+  if (!printer && isElectronPrint()) {
+    const def = await getDefaultPrinter();
+    if (def) printer = def.name;
+  }
+  if (!isElectronPrint() || !printer) {
     const res = await joinedFallback();
     return { mode: "dialog", reason: res.reason || "no_printer_mapped" };
   }
 
   for (let i = 0; i < usable.length; i++) {
     const fullHtml = buildDoc(usable[i].contentHtml, pageSizeStr, title, { printFont });
-    const silent = await printSilently(fullHtml, deviceName, usable[i].copies || 1, pageSizeStr);
+    const silent = await printSilently(fullHtml, printer, usable[i].copies || 1, pageSizeStr);
     appendJobLog({
       at: new Date().toISOString(),
       doc_type: docType || "",
       doc_label: docLabel ? `${docLabel} (${i + 1}/${usable.length})` : `part ${i + 1}/${usable.length}`,
-      printer: deviceName,
+      printer,
       size: sizeKeyForPageSize(pageSizeStr),
       copies: usable[i].copies || 1,
       mode: silent.ok ? "silent" : "dialog",

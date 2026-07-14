@@ -5,6 +5,7 @@ const CAIRO_TZ = "Africa/Cairo";
 const DISPLAY_LOCALE = "ar-EG-u-nu-latn";
 const REFETCH_MS = 5 * 60 * 1000;
 const TICK_MS = 1000;
+const INITIAL_TIMEOUT_MS = 10000;
 
 export function useServerClock() {
   const [clock, setClock] = useState(() => new Date());
@@ -13,17 +14,22 @@ export function useServerClock() {
     let delta = 0;
     let synced = false;
     let mounted = true;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     const sync = async () => {
       try {
-        const res = await api.get("/api/time", { timeout: 5000 });
+        const timeout = retryCount === 0 ? INITIAL_TIMEOUT_MS : 5000;
+        const res = await api.get("/api/time", { timeout });
         if (!mounted) return;
         const serverNow = res.data.server_time_ms;
         delta = serverNow - Date.now();
         synced = true;
+        retryCount = 0; // reset on success
         setClock(new Date(Date.now() + delta));
       } catch {
-        // keep local time if server unreachable
+        // keep local time if server unreachable; retry with backoff on next interval
+        if (mounted && retryCount < MAX_RETRIES) retryCount++;
       }
     };
 

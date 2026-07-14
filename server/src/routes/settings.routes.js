@@ -91,7 +91,7 @@ function normalizeBoolean(value) {
 
 // Column-type metadata: only the columns that need special coercion.
 // Everything else is treated as a plain string.
-const BOOLEAN_PREFIXES = ["show_", "logo_on_", "feature_"];
+const BOOLEAN_PREFIXES = ["show_", "logo_on_", "feature_", "telegram_notify_"];
 const COLUMN_META = {
   decimal_places: "int", tax_rate: "int", max_discount_percent: "int",
   header_font_size: "int", body_font_size: "int", footer_font_size: "int",
@@ -110,6 +110,7 @@ const COLUMN_META = {
   serials_strict_mode: "bool",
   scale_item_code_length: "int",
   scale_value_decimals: "int",
+  telegram_enabled: "bool",
 };
 
 function isBoolCol(name) {
@@ -176,17 +177,25 @@ router.get("/", authRequired, requirePagePermission("settings", "view"), (_req, 
 });
 
 router.put("/", authRequired, requirePagePermission("settings", "edit"), requireRole("admin"), (req, res) => {
-  ensurePrintColumnsSafe();
-  const current = getSettings();
-  const updates = req.body || {};
+  try {
+    ensurePrintColumnsSafe();
+    const current = getSettings();
+    if (!current) {
+      return res.status(500).json({ success: false, message: "لا توجد إعدادات — أعد تشغيل الخادم" });
+    }
+    const updates = req.body || {};
 
-  const blocked = guardFeatureChanges(req, current, updates);
-  if (blocked) return res.status(blocked.status).json({ success: false, message: blocked.message });
+    const blocked = guardFeatureChanges(req, current, updates);
+    if (blocked) return res.status(blocked.status).json({ success: false, message: blocked.message });
 
-  const { sql, params } = buildUpdate(current, updates);
-  getDb().prepare(sql).run(...params);
-  req.audit("edit", "settings", { keys_updated: Object.keys(updates).length }, `⚙️ تم تحديث الإعدادات`);
-  res.json({ success: true, data: getSettings() });
+    const { sql, params } = buildUpdate(current, updates);
+    getDb().prepare(sql).run(...params);
+    req.audit("edit", "settings", { keys_updated: Object.keys(updates).length }, `⚙️ تم تحديث الإعدادات`);
+    res.json({ success: true, data: getSettings() });
+  } catch (e) {
+    console.error("[settings] PUT / failed:", e.message);
+    res.status(500).json({ success: false, message: "خطأ في حفظ الإعدادات: " + e.message });
+  }
 });
 
 // Bulk update settings - accepts array of { setting_key, setting_value }

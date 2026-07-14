@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { CanceledError } from "axios";
 import {
   classifyConnectionError,
   createDisconnectTracker,
@@ -23,6 +24,12 @@ describe("classifyConnectionError", () => {
     expect(classifyConnectionError({ code: "ECONNREFUSED" })).toBe("disconnect");
     expect(classifyConnectionError({})).toBe("disconnect");
   });
+
+  it("treats a request WE aborted (typing in a debounced search) as 'canceled', never 'disconnect'", () => {
+    // Real axios cancellation object — what an AbortController abort actually produces.
+    expect(classifyConnectionError(new CanceledError())).toBe("canceled");
+    expect(classifyConnectionError({ code: "ERR_CANCELED", message: "canceled" })).toBe("canceled");
+  });
 });
 
 describe("createDisconnectTracker", () => {
@@ -45,6 +52,22 @@ describe("createDisconnectTracker", () => {
     t.record({ code: "ECONNABORTED" });
     t.record({ code: "ECONNABORTED" });
     expect(t.record({ code: "ECONNABORTED" }).offline).toBe(false);
+  });
+
+  it("ignores canceled requests — aborting our own request never counts toward offline", () => {
+    const t = createDisconnectTracker({ threshold: 2 });
+    t.record(new CanceledError());
+    t.record(new CanceledError());
+    expect(t.record(new CanceledError()).offline).toBe(false);
+  });
+
+  it("a canceled request leaves the consecutive-failure counter untouched (neither counts nor resets)", () => {
+    const t = createDisconnectTracker({ threshold: 3 });
+    t.record({ code: "ERR_NETWORK" });
+    t.record({ code: "ERR_NETWORK" });
+    expect(t.record(new CanceledError()).offline).toBe(false);
+    // still needs the third REAL failure to trip
+    expect(t.record({ code: "ERR_NETWORK" }).offline).toBe(true);
   });
 
   it("a single success immediately clears offline state and resets the counter", () => {

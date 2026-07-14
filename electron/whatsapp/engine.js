@@ -580,6 +580,18 @@ async function sendAudio(jid, audioBuffer, ptt = true) {
   return sent;
 }
 
+async function checkExists(phone) {
+  if (!sock || waStatus !== "connected") throw new Error("WhatsApp not connected");
+  const jid = normalizePhone(phone);
+  if (!jid) throw new Error("invalid phone");
+  const number = jid.replace("@s.whatsapp.net", "");
+  const result = await withTimeout(
+    sock.onWhatsApp(number),
+    10000, "check-exists timed out"
+  );
+  return result?.[0]?.exists ?? false;
+}
+
 function normalizePhone(raw) {
   return toJid(raw);
 }
@@ -674,6 +686,23 @@ async function drainNext() {
     if (payload.image) {
       const buf = Buffer.from(payload.image, "base64");
       await sendImage(jid, buf, payload.caption || "");
+    } else if (payload.image_url) {
+      // Contain the read to the uploads tree — the payload comes from the DB
+      // and a traversal path here would exfiltrate arbitrary files to the
+      // recipient. Also honors UPLOADS_DIR so packaged builds read the real
+      // per-user uploads folder instead of the read-only install dir.
+      const uploadsRoot = path.resolve(
+        process.env.UPLOADS_DIR
+          ? path.join(process.env.UPLOADS_DIR, "uploads")
+          : path.join(__dirname, "../../uploads")
+      );
+      const rel = String(payload.image_url).replace(/^[/\\]+uploads[/\\]+/i, "");
+      const filePath = path.resolve(uploadsRoot, rel);
+      if (!filePath.startsWith(uploadsRoot + path.sep) || !/\.(jpe?g|png|webp|gif)$/i.test(filePath)) {
+        throw new Error(`invalid image path: ${payload.image_url}`);
+      }
+      const buf = fs.readFileSync(filePath);
+      await sendImage(jid, buf, payload.text || "");
     } else {
       await sendText(jid, payload.text || "");
     }
@@ -727,7 +756,7 @@ setTimeout(() => {
 
 module.exports = {
   connect, disconnect, sendText, sendImage, sendDocument, sendAudio, normalizePhone,
-  onStatusChange, setDbProvider, listenForOptOut, resolveContactName,
+  checkExists, onStatusChange, setDbProvider, listenForOptOut, resolveContactName,
   hasSavedSession,
   getStatus: () => ({
     status: waStatus,

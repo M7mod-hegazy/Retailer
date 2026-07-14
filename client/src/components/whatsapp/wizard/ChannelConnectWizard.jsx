@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, X, Check } from "lucide-react";
 
-export default function ChannelConnectWizard({ onClose, icon: Icon, title, subtitle, accent = "var(--primary)", steps, forceIndex }) {
+export default function ChannelConnectWizard({ open = true, onClose, onComplete, nextDisabled, onCancel, cancelLabel, icon: Icon, title, subtitle, accent = "var(--primary)", steps, forceIndex }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -11,13 +11,19 @@ export default function ChannelConnectWizard({ onClose, icon: Icon, title, subti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forceIndex]);
 
+  if (!open) return null;
+
   const step = steps[index];
   const isFirst = index === 0;
   const isLast = index === steps.length - 1;
-  const canGoNext = step.canGoNext !== false;
+  const canGoNext = step.canGoNext !== false && !nextDisabled;
 
   function goNext() {
-    if (isLast) { onClose?.(); return; }
+    if (isLast) {
+      if (onComplete) { onComplete(); }
+      else { onClose?.(); }
+      return;
+    }
     if (!canGoNext) return;
     setIndex((i) => Math.min(i + 1, steps.length - 1));
   }
@@ -66,6 +72,12 @@ export default function ChannelConnectWizard({ onClose, icon: Icon, title, subti
             className="flex items-center gap-1.5 text-sm font-bold text-text-muted hover:text-text-primary disabled:opacity-0 transition-colors">
             <ChevronRight className="h-4 w-4" /> السابق
           </button>
+          {cancelLabel && (
+            <button onClick={() => (onCancel || onClose)?.()}
+              className="flex items-center gap-1.5 rounded-2xl px-5 py-2.5 text-sm font-bold border border-border-normal text-text-secondary hover:bg-bg-overlay transition-all active:scale-95">
+              {cancelLabel}
+            </button>
+          )}
           <button onClick={goNext} disabled={!canGoNext}
             className="flex items-center gap-1.5 rounded-2xl px-5 py-2.5 text-sm font-black text-white shadow transition-all active:scale-95 disabled:opacity-40"
             style={{ background: accent }}>

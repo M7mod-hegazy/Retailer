@@ -7,19 +7,23 @@ import {
   Bot, Check, Loader2, Image, Settings,
   Pause, Play, Trash2, Plus, Paperclip, Camera, Mic, MicOff,
   Download, Eye, File, FileType, Headphones, Maximize, Minimize,
-  Upload, Reply, Smile, Copy,
+  Upload, Reply, Smile, Copy, QrCode,
+  Receipt, DollarSign, RotateCcw, CreditCard, Wallet, Building2, AlertTriangle,
+  Monitor, CalendarDays, CalendarRange, Calendar, User,
+  Package, Tags, ShoppingCart, Wrench, Shield, Key, Lock, UserCog,
+  ArrowRightLeft, Banknote, CircleDollarSign, Timer, PackageCheck,
+  ClipboardList, Landmark, BadgeAlert, HandCoins, Scan,
 } from "lucide-react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import html2canvas from "html2canvas";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
-import ConnectGuide from "../../components/whatsapp/ConnectGuide";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 import { useTelegramConnect } from "../../hooks/useTelegramConnect";
 import { useSmsConnect } from "../../hooks/useSmsConnect";
 import WhatsAppConnectWizard from "../../components/whatsapp/wizard/whatsappSteps";
-import TelegramConnectWizard from "../../components/whatsapp/wizard/telegramSteps";
+import TelegramConnectWizard, { AddRecipientWizard } from "../../components/whatsapp/wizard/telegramSteps";
 import SmsConnectWizard from "../../components/whatsapp/wizard/smsSteps";
 
 // ─── Shared components ───────────────────────────────────────────────────
@@ -1561,6 +1565,8 @@ function MarketingTab({ smsEnabled }) {
   const [campaigns, setCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [waStatusMap, setWaStatusMap] = useState({});
+  const [waChecking, setWaChecking] = useState(false);
 
   const keyOf = (c) => `${c.type}-${c.id}`;
 
@@ -1586,10 +1592,10 @@ function MarketingTab({ smsEnabled }) {
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
   useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
 
-  // Poll campaign progress while any campaign is still sending
+  // Poll campaign progress more frequently while any campaign is still sending
   useEffect(() => {
     if (!campaigns.some(c => c.status === "active" && Number(c.sent_count) < Number(c.total))) return;
-    const t = setInterval(fetchCampaigns, 10000);
+    const t = setInterval(fetchCampaigns, 3000);
     return () => clearInterval(t);
   }, [campaigns, fetchCampaigns]);
 
@@ -1602,6 +1608,20 @@ function MarketingTab({ smsEnabled }) {
   const allVisibleSelected = selectableContacts.length > 0 && selectableContacts.every(c => selected.has(keyOf(c)));
   const toggleSelectAll = () => setSelected(allVisibleSelected ? new Set() : new Set(selectableContacts.map(keyOf)));
   const selectedRows = contacts.filter(c => selected.has(keyOf(c)));
+
+  async function checkSelectedWhatsApp() {
+    const toCheck = selectedRows.filter(c => c.phone && !waStatusMap[c.phone]);
+    if (!toCheck.length) return;
+    setWaChecking(true);
+    try {
+      const phones = toCheck.map(c => c.phone);
+      const res = await api.post("/api/whatsapp/crm/check-whatsapp-batch", { phones });
+      const data = res.data?.data || {};
+      setWaStatusMap(prev => ({ ...prev, ...data }));
+    } catch (e) {
+      toast.error(e.response?.data?.message || "فشل التحقق من واتساب");
+    } finally { setWaChecking(false); }
+  }
 
   async function setCampaignStatus(camp, status) {
     try {
@@ -1655,6 +1675,11 @@ function MarketingTab({ smsEnabled }) {
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary-50 px-4 py-2.5">
           <p className="text-xs font-black text-primary">تم تحديد {selected.size} جهة — الحملة القادمة ستُرسل لهم فقط</p>
+          <button onClick={checkSelectedWhatsApp} disabled={waChecking}
+            className="flex items-center gap-1.5 rounded-lg bg-success-bg px-3 py-1.5 text-[11px] font-black text-success-text hover:opacity-80 disabled:opacity-50 transition-all active:scale-95">
+            {waChecking ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+            التحقق من واتساب
+          </button>
           <button onClick={() => setSelected(new Set())}
             className="text-[11px] font-black text-text-muted hover:text-text-primary underline underline-offset-2 transition-colors">
             مسح التحديد
@@ -1677,6 +1702,7 @@ function MarketingTab({ smsEnabled }) {
                 const total = Number(camp.total) || 0;
                 const sent = Number(camp.sent_count) || 0;
                 const pct = total > 0 ? Math.round((sent / total) * 100) : 0;
+                const isSending = camp.status === "active" && sent < total;
                 return (
                   <div key={camp.id} className="rounded-xl border border-border-normal bg-bg-surface p-4 shadow-card hover:shadow-elevated transition-shadow">
                     <div className="flex items-start justify-between gap-2 mb-2.5">
@@ -1693,20 +1719,31 @@ function MarketingTab({ smsEnabled }) {
                         </p>
                       </div>
                       <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black ${camp.status === "done" ? "bg-success-bg text-success-text"
-                          : camp.status === "active" ? "bg-info-bg text-info-text"
+                          : isSending ? "bg-info-bg text-info-text animate-pulse"
                             : "bg-warning-bg text-warning-text"
                         }`}>
-                        {camp.status === "done" ? "اكتملت" : camp.status === "active" ? "جارية" : "متوقفة"}
+                        {camp.status === "done" ? "اكتملت" : isSending ? "جاري الإرسال..." : "متوقفة"}
                       </span>
                     </div>
+                    {camp.image_url && (
+                      <div className="mb-2.5 rounded-lg overflow-hidden border border-border-subtle">
+                        <img src={camp.image_url.startsWith("http") ? camp.image_url : `${api.defaults?.baseURL || ""}${camp.image_url}`} alt="" className="w-full h-24 object-cover" />
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px] font-bold text-text-secondary">
                         <span>أُرسل {sent} من {total}</span>
                         <span>{pct}%</span>
                       </div>
                       <div className="h-2 rounded-full bg-bg-base overflow-hidden">
-                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                        <div className={`h-full rounded-full transition-all duration-1000 ${isSending ? "bg-primary animate-pulse" : "bg-primary"}`} style={{ width: `${pct}%` }} />
                       </div>
+                      {isSending && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                          <span className="text-[10px] font-bold text-primary">جارٍ الإرسال — {total - sent} متبقي</span>
+                        </div>
+                      )}
                     </div>
                     <p className="text-[11px] text-text-secondary mt-2 line-clamp-1 leading-relaxed">
                       {camp.body?.slice(0, 80)}{camp.body?.length > 80 ? "..." : ""}
@@ -1766,6 +1803,7 @@ function MarketingTab({ smsEnabled }) {
                     </th>
                     <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">الاسم</th>
                     <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">الهاتف</th>
+                    <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">واتساب</th>
                     <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">النوع</th>
                     <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">التسويق</th>
                     <th className="text-right px-4 py-3 text-[11px] font-black text-text-secondary">المصدر</th>
@@ -1790,6 +1828,19 @@ function MarketingTab({ smsEnabled }) {
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-bold text-text-muted font-mono" dir="ltr">{c.phone}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {c.phone && waStatusMap[c.phone] === true ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-bg text-success-text text-[11px] font-black">
+                              <CheckCircle className="h-3 w-3" /> موجود
+                            </span>
+                          ) : c.phone && waStatusMap[c.phone] === false ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-bg text-danger text-[11px] font-black">
+                              <X className="h-3 w-3" /> غير موجود
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-text-muted">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black ${c.type === "customer" ? "bg-info-bg text-info-text" : "bg-warning-bg text-warning-text"
@@ -1989,7 +2040,39 @@ function CreateCampaignModal({ onClose, smsEnabled = false, preselected = [] }) 
   const [templates, setTemplates] = useState([]);
   const [templateKind, setTemplateKind] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const bodyRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  async function uploadCampaignImage(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    setImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await api.post("/api/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (res.data?.url) setImageUrl(res.data.url);
+      else toast.error("فشل رفع الصورة");
+    } catch (e) { toast.error(e.response?.data?.message || "فشل رفع الصورة"); }
+    finally { setImageUploading(false); }
+  }
+
+  function handleCampaignDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadCampaignImage(file);
+  }
+
+  function handleCampaignFileChange(e) {
+    const file = e.target.files?.[0];
+    if (file) uploadCampaignImage(file);
+    e.target.value = "";
+  }
 
   useEffect(() => {
     api.get("/api/whatsapp/crm/templates").then(r => setTemplates(r.data?.data || [])).catch(() => { });
@@ -2033,6 +2116,7 @@ function CreateCampaignModal({ onClose, smsEnabled = false, preselected = [] }) 
         body: body.trim(),
         channel,
         filters: { include: audienceMode },
+        image_url: imageUrl || undefined,
       };
       if (audienceMode === "custom") {
         payload.recipients = preselected.map(c => ({
@@ -2151,6 +2235,44 @@ function CreateCampaignModal({ onClose, smsEnabled = false, preselected = [] }) 
                 placeholder="اكتب رسالتك... استخدم أزرار الإدراج بالأسفل لتخصيصها باسم كل عميل تلقائياً"
                 className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-sm font-bold outline-none focus:border-primary focus:bg-bg-surface resize-none transition-colors" />
               <VariableChips onInsert={insertVar} />
+
+              {/* Image upload with drag-and-drop */}
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCampaignFileChange} />
+              {imageUrl ? (
+                <div className="relative rounded-xl border border-border-normal overflow-hidden">
+                  <img src={imageUrl.startsWith("http") ? imageUrl : `${api.defaults?.baseURL || ""}${imageUrl}`} alt="" className="w-full max-h-48 object-contain bg-bg-base" />
+                  <button type="button" onClick={() => setImageUrl(null)}
+                    className="absolute top-2 left-2 flex h-7 w-7 items-center justify-center rounded-full bg-danger text-white shadow-lg hover:opacity-90 transition-all active:scale-90">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  {imageUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <RefreshCw className="h-6 w-6 animate-spin text-white" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleCampaignDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 cursor-pointer transition-all
+                    ${dragOver ? "border-primary bg-primary-50" : "border-border-normal bg-bg-base hover:border-primary hover:bg-primary-50/50"}
+                    ${imageUploading ? "pointer-events-none opacity-60" : ""}`}
+                >
+                  {imageUploading ? (
+                    <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                  ) : (
+                    <Image className="h-6 w-6 text-text-muted" />
+                  )}
+                  <p className="text-xs font-bold text-text-secondary">
+                    {imageUploading ? "جارٍ رفع الصورة..." : "اسحب صورة هنا أو اضغط للاختيار"}
+                  </p>
+                  <p className="text-[10px] font-bold text-text-muted">اختياري — صورة مع الرسالة (JPEG, PNG, WebP)</p>
+                </div>
+              )}
+
               {body.trim() && (
                 <div>
                   <p className="text-[10px] font-black text-text-muted mb-1">معاينة كما ستصل {recipients[0]?.name ? `لـ«${recipients[0].name}»` : "للعميل"}:</p>
@@ -2356,26 +2478,587 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
   const { t } = useTranslation();
   const {
     config, setConfig, loading, loadError, saving, saved, testing, detecting,
-    qrData, generatingQr, scanConnected, detectChatId, generateDeepLink, save, sendTest,
+    disconnecting,
+    recipients, updateRecipientLocal, addRecipient, deleteRecipient, saveSingleRecipient,
+    qrData, generatingQr, scanConnected, pollStatus,
+    botInfo, validating,
+    history, loadingHistory, fetchHistory,
+    detectChatId, generateDeepLink, save, sendTest, disconnect,
   } = useTelegramConnect(onConfigChanged);
 
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [showAddWizard, setShowAddWizard] = useState(false);
+  const [showConnectWizard, setShowConnectWizard] = useState(false);
+  const [expandedToken, setExpandedToken] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [savingRecipientIdx, setSavingRecipientIdx] = useState(null);
+  const [savedRecipientIdx, setSavedRecipientIdx] = useState(null);
+  const HISTORY_LIMIT = 30;
+
+  useEffect(() => {
+    if (saved) fetchHistory(HISTORY_LIMIT);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved]);
+
   const StepBadge = ({ n, done }) => (
-    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-success-text text-white" : "bg-primary text-white"
-      }`}>
+    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-success-text text-white" : "bg-primary text-white"}`}>
       {done ? <Check className="h-3.5 w-3.5" /> : n}
     </span>
   );
 
-  function Toggle({ label, hint, checked, onChange, disabled }) {
+  const isBotConnected = Boolean(config.telegram_bot_token.trim());
+  const hasEnabledRecipient = recipients.some(r => r.enabled && r.chatId);
+
+  const EVENT_CATEGORIES = [
+    {
+      key: "sales", label: t("telegram.catSales"), icon: Receipt,
+      events: [
+        { field: "notifyNewInvoice", label: t("telegram.toggleNewInvoice"), hint: t("telegram.hintNewInvoice") },
+        { field: "notifyDailyClose", label: t("telegram.toggleDailyClose"), hint: t("telegram.hintDailyClose") },
+        { field: "notifyLargeAmounts", label: t("telegram.toggleLargeAmounts"), hint: t("telegram.hintLargeAmounts") },
+        { field: "notifyReturnsVoids", label: t("telegram.toggleReturnsVoids"), hint: t("telegram.hintReturnsVoids") },
+      ],
+    },
+    {
+      key: "financial", label: t("telegram.catFinancial"), icon: CreditCard,
+      events: [
+        { field: "notifyPurchasesPayments", label: t("telegram.togglePurchasesPayments"), hint: t("telegram.hintPurchasesPayments") },
+        { field: "notifyReturnPayment", label: t("telegram.toggleReturnPayment"), hint: t("telegram.hintReturnPayment") },
+        { field: "notifySupplierPayment", label: t("telegram.toggleSupplierPayment"), hint: t("telegram.hintSupplierPayment") },
+        { field: "notifyDebtPayment", label: t("telegram.toggleDebtPayment"), hint: t("telegram.hintDebtPayment") },
+        { field: "notifyInstallmentPaid", label: t("telegram.toggleInstallmentPaid"), hint: t("telegram.hintInstallmentPaid") },
+        { field: "notifyExpenseCreated", label: t("telegram.toggleExpenseCreated"), hint: t("telegram.hintExpenseCreated") },
+        { field: "notifyRevenueCreated", label: t("telegram.toggleRevenueCreated"), hint: t("telegram.hintRevenueCreated") },
+        { field: "notifyWithdrawalCreated", label: t("telegram.toggleWithdrawalCreated"), hint: t("telegram.hintWithdrawalCreated") },
+      ],
+    },
+    {
+      key: "inventory", label: t("telegram.catInventory"), icon: Package,
+      events: [
+        { field: "notifyStockTransfer", label: t("telegram.toggleStockTransfer"), hint: t("telegram.hintStockTransfer") },
+        { field: "notifyInventoryAdjustment", label: t("telegram.toggleInventoryAdjustment"), hint: t("telegram.hintInventoryAdjustment") },
+        { field: "notifyNewProduct", label: t("telegram.toggleNewProduct"), hint: t("telegram.hintNewProduct") },
+        { field: "notifyPriceChange", label: t("telegram.togglePriceChange"), hint: t("telegram.hintPriceChange") },
+        { field: "notifyBatchExpiry", label: t("telegram.toggleBatchExpiry"), hint: t("telegram.hintBatchExpiry") },
+        { field: "notifyPhysicalCount", label: t("telegram.togglePhysicalCount"), hint: t("telegram.hintPhysicalCount") },
+      ],
+    },
+    {
+      key: "purchases", label: t("telegram.catPurchases"), icon: ShoppingCart,
+      events: [
+        { field: "notifyPurchaseVoided", label: t("telegram.togglePurchaseVoided"), hint: t("telegram.hintPurchaseVoided") },
+        { field: "notifyPurchaseReturn", label: t("telegram.togglePurchaseReturn"), hint: t("telegram.hintPurchaseReturn") },
+        { field: "notifyBranchTransfer", label: t("telegram.toggleBranchTransfer"), hint: t("telegram.hintBranchTransfer") },
+      ],
+    },
+    {
+      key: "people", label: t("telegram.catPeople"), icon: Users,
+      events: [
+        { field: "notifyCustomerCreated", label: t("telegram.toggleCustomerCreated"), hint: t("telegram.hintCustomerCreated") },
+        { field: "notifySupplierCreated", label: t("telegram.toggleSupplierCreated"), hint: t("telegram.hintSupplierCreated") },
+      ],
+    },
+    {
+      key: "employees", label: t("telegram.catEmployees"), icon: UserCog,
+      events: [
+        { field: "notifyEmployeeCreated", label: t("telegram.toggleEmployeeCreated"), hint: t("telegram.hintEmployeeCreated") },
+        { field: "notifySalarySettled", label: t("telegram.toggleSalarySettled"), hint: t("telegram.hintSalarySettled") },
+        { field: "notifyAdvanceCreated", label: t("telegram.toggleAdvanceCreated"), hint: t("telegram.hintAdvanceCreated") },
+        { field: "notifyDeductionCreated", label: t("telegram.toggleDeductionCreated"), hint: t("telegram.hintDeductionCreated") },
+        { field: "notifyBonusCreated", label: t("telegram.toggleBonusCreated"), hint: t("telegram.hintBonusCreated") },
+      ],
+    },
+    {
+      key: "security", label: t("telegram.catSecurity"), icon: Shield,
+      events: [
+        { field: "notifyPasswordChanged", label: t("telegram.togglePasswordChanged"), hint: t("telegram.hintPasswordChanged") },
+        { field: "notifyPermissionChanged", label: t("telegram.togglePermissionChanged"), hint: t("telegram.hintPermissionChanged") },
+        { field: "notifySupervisorOverride", label: t("telegram.toggleSupervisorOverride"), hint: t("telegram.hintSupervisorOverride") },
+      ],
+    },
+    {
+      key: "repair", label: t("telegram.catRepair"), icon: Wrench,
+      events: [
+        { field: "notifyRepairOrder", label: t("telegram.toggleRepairOrder"), hint: t("telegram.hintRepairOrder") },
+      ],
+    },
+    {
+      key: "system", label: t("telegram.catSystem"), icon: Monitor,
+      events: [
+        { field: "notifyLowStock", label: t("telegram.toggleLowStock"), hint: t("telegram.hintLowStock") },
+        { field: "notifySystem", label: t("telegram.toggleSystem"), hint: t("telegram.hintSystem") },
+      ],
+    },
+    {
+      key: "reports", label: t("telegram.catReports"), icon: CalendarDays,
+      events: [
+        { field: "notifyWeekly", label: t("telegram.toggleWeekly"), hint: t("telegram.hintWeekly") },
+        { field: "notifyMonthly", label: t("telegram.toggleMonthly"), hint: t("telegram.hintMonthly") },
+        { field: "notifyYearly", label: t("telegram.toggleYearly"), hint: t("telegram.hintYearly") },
+      ],
+    },
+  ];
+
+  const EVENT_TYPE_MAP = {
+    NEW_INVOICE: { icon: Receipt, label: t("telegram.toggleNewInvoice") },
+    DAILY_CLOSE: { icon: BarChart3, label: t("telegram.toggleDailyClose") },
+    SHIFT_CLOSE: { icon: BarChart3, label: t("telegram.toggleDailyClose") },
+    LARGE_INVOICE: { icon: DollarSign, label: t("telegram.toggleLargeAmounts") },
+    LARGE_DISCOUNT: { icon: DollarSign, label: t("telegram.toggleLargeAmounts") },
+    SALES_RETURN: { icon: RotateCcw, label: t("telegram.toggleReturnsVoids") },
+    INVOICE_VOIDED: { icon: RotateCcw, label: t("telegram.toggleReturnsVoids") },
+    PURCHASE_CREATED: { icon: CreditCard, label: t("telegram.togglePurchasesPayments") },
+    CUSTOMER_PAYMENT: { icon: Wallet, label: t("telegram.togglePurchasesPayments") },
+    RETURN_PAYMENT: { icon: Wallet, label: t("telegram.toggleReturnPayment") },
+    CUSTOMER_CREATED: { icon: UserPlus, label: t("telegram.toggleCustomerCreated") },
+    SUPPLIER_CREATED: { icon: Building2, label: t("telegram.toggleSupplierCreated") },
+    EXPENSE_CREATED: { icon: FileText, label: t("telegram.toggleExpenseCreated") },
+    LOW_STOCK: { icon: AlertTriangle, label: t("telegram.toggleLowStock") },
+    BACKUP_RESULT: { icon: Monitor, label: t("telegram.toggleSystem") },
+    FAILED_LOGIN: { icon: Monitor, label: t("telegram.toggleSystem") },
+    TEST: { icon: Send, label: t("telegram.test") },
+    // Extended events
+    STOCK_TRANSFERRED: { icon: Package, label: t("telegram.toggleStockTransfer") },
+    INVENTORY_ADJUSTED: { icon: ClipboardList, label: t("telegram.toggleInventoryAdjustment") },
+    NEW_PRODUCT: { icon: Tags, label: t("telegram.toggleNewProduct") },
+    PRICE_CHANGED: { icon: CircleDollarSign, label: t("telegram.togglePriceChange") },
+    BATCH_EXPIRY_WARNING: { icon: Timer, label: t("telegram.toggleBatchExpiry") },
+    PHYSICAL_COUNT_CONFIRMED: { icon: PackageCheck, label: t("telegram.togglePhysicalCount") },
+    SUPPLIER_PAYMENT: { icon: Banknote, label: t("telegram.toggleSupplierPayment") },
+    DEBT_PAYMENT_RECEIVED: { icon: HandCoins, label: t("telegram.toggleDebtPayment") },
+    INSTALLMENT_PAID: { icon: BadgeAlert, label: t("telegram.toggleInstallmentPaid") },
+    PURCHASE_VOIDED: { icon: ShoppingCart, label: t("telegram.togglePurchaseVoided") },
+    PURCHASE_RETURN: { icon: RotateCcw, label: t("telegram.togglePurchaseReturn") },
+    BRANCH_TRANSFER: { icon: ArrowRightLeft, label: t("telegram.toggleBranchTransfer") },
+    PASSWORD_CHANGED: { icon: Key, label: t("telegram.togglePasswordChanged") },
+    PERMISSION_CHANGED: { icon: UserCog, label: t("telegram.togglePermissionChanged") },
+    SUPERVISOR_OVERRIDE: { icon: Lock, label: t("telegram.toggleSupervisorOverride") },
+    REPAIR_ORDER_CREATED: { icon: Wrench, label: t("telegram.toggleRepairOrder") },
+    REPAIR_ORDER_READY: { icon: Wrench, label: t("telegram.toggleRepairOrder") },
+    REPAIR_ORDER_DELIVERED: { icon: Wrench, label: t("telegram.toggleRepairOrder") },
+    REVENUE_CREATED: { icon: Banknote, label: t("telegram.toggleRevenueCreated") },
+    WITHDRAWAL_CREATED: { icon: Landmark, label: t("telegram.toggleWithdrawalCreated") },
+    EMPLOYEE_CREATED: { icon: UserCog, label: t("telegram.toggleEmployeeCreated") },
+    SALARY_SETTLED: { icon: HandCoins, label: t("telegram.toggleSalarySettled") },
+    ADVANCE_CREATED: { icon: Banknote, label: t("telegram.toggleAdvanceCreated") },
+    DEDUCTION_CREATED: { icon: BadgeAlert, label: t("telegram.toggleDeductionCreated") },
+    BONUS_CREATED: { icon: BadgeAlert, label: t("telegram.toggleBonusCreated") },
+  };
+
+  const STATUS_MAP = {
+    sent: { label: t("telegram.statusSent"), cls: "bg-success-bg text-success-text" },
+    failed: { label: t("telegram.statusFailed"), cls: "bg-danger-bg text-danger-text" },
+    pending: { label: t("telegram.statusPending"), cls: "bg-warning-bg text-warning-text" },
+  };
+
+  // Template category mapping for preview (each event maps to its template kind)
+  const EVENT_TEMPLATE_MAP = {
+    notifyNewInvoice: "telegram_new_invoice",
+    notifyDailyClose: "telegram_daily_close",
+    notifyLargeAmounts: "telegram_large_invoice",
+    notifyReturnsVoids: "telegram_sales_return",
+    notifyPurchasesPayments: "telegram_purchase_created",
+    notifyReturnPayment: "telegram_return_payment",
+    notifyCustomerCreated: "telegram_customer_created",
+    notifySupplierCreated: "telegram_supplier_created",
+    notifyExpenseCreated: "telegram_expense_created",
+    notifyLowStock: "telegram_low_stock",
+    notifySystem: "telegram_backup_result",
+    notifyWeekly: "telegram_weekly_digest",
+    notifyMonthly: "telegram_monthly_digest",
+    notifyYearly: "telegram_yearly_digest",
+    notifyStockTransfer: "telegram_stock_transfer",
+    notifyInventoryAdjustment: "telegram_inventory_adjustment",
+    notifyNewProduct: "telegram_new_product",
+    notifyPriceChange: "telegram_price_change",
+    notifyBatchExpiry: "telegram_batch_expiry",
+    notifyPhysicalCount: "telegram_physical_count",
+    notifySupplierPayment: "telegram_supplier_payment",
+    notifyDebtPayment: "telegram_debt_payment",
+    notifyInstallmentPaid: "telegram_installment_paid",
+    notifyPurchaseVoided: "telegram_purchase_voided",
+    notifyPurchaseReturn: "telegram_purchase_return",
+    notifyBranchTransfer: "telegram_branch_transfer",
+    notifyPasswordChanged: "telegram_password_changed",
+    notifyPermissionChanged: "telegram_permission_changed",
+    notifySupervisorOverride: "telegram_supervisor_override",
+    notifyRepairOrder: "telegram_repair_created",
+    notifyRevenueCreated: "telegram_revenue_created",
+    notifyWithdrawalCreated: "telegram_withdrawal_created",
+    notifyEmployeeCreated: "telegram_employee_created",
+    notifySalarySettled: "telegram_salary_settled",
+    notifyAdvanceCreated: "telegram_advance_created",
+    notifyDeductionCreated: "telegram_deduction_created",
+    notifyBonusCreated: "telegram_bonus_created",
+  };
+
+  // Sample data for template preview
+  const SAMPLE_DATA = {
+    telegram_new_invoice: { invoice_no: "12345", customer_name: "أحمد محمد", total: "1,500.00 ج", items_count: 5, items_table: "1. سماعة بلوتوث | الكمية: 2 | السعر: 250.00 | الإجمالي: 500.00", payment_breakdown: "• نقداً: 800.00 ج\n• شبكة: 700.00 ج" },
+    telegram_customer_payment: { customer_name: "سعيد علي", amount: "500.00 ج", method: "نقداً" },
+    telegram_stock_transfer: { from_warehouse: "المستودع الرئيسي", to_warehouse: "فرع القاهرة", items_table: "1. لابتوب HP | الكمية: 10 | السعر: 15,000.00 | الإجمالي: 150,000.00", items_count: 3, total_units: 25, time: new Date().toLocaleString("ar-EG") },
+    telegram_branch_transfer: { reference_no: "BT-S-2024-001", from_branch: "الفرع الأول", to_warehouse: "الفرع الثاني", transfer_type: "إرسال", items_table: "1. هاتف Samsung | الكمية: 5 | السعر: 8,000.00 | الإجمالي: 40,000.00", items_count: 2, total_units: 8, total_cost: "48,000.00 ج", time: new Date().toLocaleString("ar-EG") },
+    telegram_customer_created: { customer_name: "خالد عبدالله", phone: "01234567890", city: "القاهرة", opening_balance: "0.00 ج" },
+    telegram_password_changed: { user_name: "محمد أحمد", time: new Date().toLocaleString("ar-EG"), ip_address: "192.168.1.100" },
+    telegram_repair_created: { order_no: "RPR-001", customer_name: "فاطمة حسن", device_type: "لابتوب", problem: "لا يشتعل الشاشة", estimated_cost: "300.00 ج", time: new Date().toLocaleString("ar-EG") },
+    telegram_low_stock: { product_name: "سماعة بلوتوث", current_quantity: 3, min_quantity: 10 },
+    telegram_revenue_created: { doc_no: "REV-001", amount: "5,000.00 ج", category: "إيراد مبيعات", description: "مبيعات يوم الجمعة", method: "نقداً", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_withdrawal_created: { doc_no: "WD-001", amount: "2,000.00 ج", category: "مصروفات تشغيل", note: "دفع فاتورة كهرباء", method: "نقداً", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_expense_created: { category: "إيجار", amount: "10,000.00 ج", date: "2024-07-01", notes: "إيجار شهر يوليو" },
+    telegram_employee_created: { employee_name: "محمد علي", job_title: "محاسب", salary: "8,000.00 ج", phone: "01012345678", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
+    telegram_salary_settled: { employee_name: "محمد علي", period: "2024-06-01 → 2024-06-30", base_salary: "8,000.00 ج", bonuses: "500.00 ج", deductions: "200.00 ج", advance_deductions: "300.00 ج", net_salary: "8,000.00 ج", paid_amount: "8,000.00 ج", user_name: "المحاسب", time: new Date().toLocaleString("ar-EG") },
+    telegram_advance_created: { employee_name: "محمد علي", amount: "3,000.00 ج", installment_count: 3, installment_amount: "1,000.00 ج", notes: "سلفة شخصية", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
+    telegram_deduction_created: { employee_name: "محمد علي", amount: "200.00 ج", deduction_type: "تأخير", is_recurring: "لا", notes: "تأخير عن العمل", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
+    telegram_bonus_created: { employee_name: "محمد علي", amount: "500.00 ج", bonus_type: "أداء", is_recurring: "لا", notes: "أداء ممتاز", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
+    telegram_daily_close: { date: "2024-07-01", opening_balance: "1,000.00 ج", cash_sales: "5,000.00 ج", credit_sales: "2,000.00 ج", expected_cash: "6,000.00 ج", actual_cash: "5,950.00 ج", discrepancy: "-50.00 ج", invoices_count: 25 },
+    telegram_shift_close: { shift_id: "VR-042", opening_cash: "500.00 ج", expected_cash: "3,500.00 ج", closing_cash: "3,480.00 ج", discrepancy: "-20.00 ج", invoices_count: 15 },
+    telegram_large_invoice: { invoice_no: "12399", customer_name: "محمد سعيد", total: "50,000.00 ج" },
+    telegram_large_discount: { invoice_no: "12400", discount_percent: "35%" },
+    telegram_invoice_voided: { invoice_no: "12350", reason: "خطأ في الإدخال", user_name: "أحمد" },
+    telegram_return_payment: { customer_name: "خالد عبدالله", amount: "300.00 ج", method: "نقداً", date: "2024-07-01" },
+    telegram_supplier_created: { supplier_name: "شركة飐قة مصر", phone: "0221234567", opening_balance: "0.00 ج" },
+    telegram_purchase_voided: { reference_no: "PO-2024-001", supplier_name: "شركة飐قة مصر", total: "25,000.00 ج", reason: "خطأ في الكمية", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_purchase_return: { reference_no: "PR-2024-001", supplier_name: "شركة飐قة مصر", total: "5,000.00 ج", items_table: "1. لابتوب HP | الكمية: 1 | السعر: 5,000.00 | الإجمالي: 5,000.00", items_count: 1, user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_supplier_payment: { supplier_name: "شركة飐قة مصر", amount: "10,000.00 ج", method: "شيك", reference: " CHK-001", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_debt_payment: { customer_name: "سعيد علي", amount: "2,000.00 ج", method: "نقداً", remaining_debt: "3,000.00 ج", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_inventory_adjustment: { product_name: "سماعة بلوتوث", warehouse: "المستودع الرئيسي", old_quantity: 50, new_quantity: 48, difference: -2, reason: "تلف", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_new_product: { product_name: "شاحن لاسلكي", sku: "CHG-WL-001", price: "250.00 ج", warehouse: "المستودع الرئيسي", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_price_change: { product_name: "سماعة بلوتوث", old_price: "300.00 ج", new_price: "250.00 ج", change_percent: "-16.7%", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_batch_expiry: { product_name: "شاحن لاسلكي", batch_no: "BATCH-001", expiry_date: "2024-12-31", remaining_quantity: 25, warehouse: "المستودع الرئيسي" },
+    telegram_physical_count: { warehouse: "المستودع الرئيسي", matched_count: 150, mismatched_count: 5, total_items: 155, user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
+    telegram_permission_changed: { user_name: "محمد أحمد", action: "تم تغيير الصلاحيات", details: "إضافة صلاحية إدارة المخزون", changed_by: "المدير", time: new Date().toLocaleString("ar-EG") },
+    telegram_supervisor_override: { user_name: "محمد أحمد", action: "تجاوز صلاحيات", details: "إلغاء فاتورة بقيمة 5,000.00 ج", supervisor: "المدير العام", time: new Date().toLocaleString("ar-EG") },
+  };
+
+  function EventPreviewModal({ eventField, preset, onClose }) {
+    const [template, setTemplate] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    const templateKind = EVENT_TEMPLATE_MAP[eventField];
+    const activePreset = preset || "قياسي — مفصل";
+
+    React.useEffect(() => {
+      if (!templateKind) { setLoading(false); return; }
+      const fetchTemplate = async () => {
+        try {
+          const res = await api.get("/api/whatsapp/crm/templates");
+          const templates = res.data?.data || [];
+          const tpl = templates.find(t => t.kind === templateKind);
+          if (!tpl) { setTemplate(null); return; }
+          try {
+            const vr = await api.get("/api/whatsapp/crm/template-variants", { params: { category: templateKind, label: activePreset } });
+            const variants = vr.data?.data || [];
+            const variant = variants.find(v => v.label === activePreset && v.is_active);
+            if (variant && variant.body) {
+              setTemplate({ ...tpl, body: variant.body });
+            } else {
+              setTemplate(tpl);
+            }
+          } catch {
+            setTemplate(tpl);
+          }
+        } catch { /* silent */ }
+        finally { setLoading(false); }
+      };
+      fetchTemplate();
+    }, [templateKind, activePreset]);
+
+    const sampleVars = SAMPLE_DATA[templateKind] || {};
+    const renderedBody = template?.body
+      ? Object.entries(sampleVars).reduce((acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), val), template.body)
+      : "";
+
     return (
-      <label className={`block rounded-lg border border-border-normal bg-bg-input px-4 py-3 ${disabled ? "opacity-60" : "cursor-pointer"}`}>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-text-primary">{label}</span>
-          <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled}
-            className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+        <div className="bg-bg-surface rounded-2xl shadow-modal w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-normal">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-text-primary">{t("telegram.sampleMessage")}</h3>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{activePreset}</span>
+            </div>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-bg-overlay"><X className="h-4 w-4 text-text-muted" /></button>
+          </div>
+          <div className="p-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : template ? (
+              <div className="space-y-3">
+                <div className="bg-bg-base rounded-xl p-4 border border-border-normal">
+                  <pre className="text-xs font-bold text-text-primary whitespace-pre-wrap font-sans leading-relaxed">{renderedBody}</pre>
+                </div>
+                <div className="text-[10px] font-bold text-text-muted text-center">{t("telegram.templatePreviewNote")}</div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-text-muted text-xs">{t("telegram.templateNotFound")}</div>
+            )}
+          </div>
         </div>
-        {hint && <p className="mt-1 text-[11px] font-bold text-text-muted">{hint}</p>}
-      </label>
+      </div>
+    );
+  }
+
+  function EventToggleGroup({ category, recipient, onUpdate }) {
+    const [previewField, setPreviewField] = React.useState(null);
+    const [openPresetDropdown, setOpenPresetDropdown] = React.useState(null);
+    const PRESET_OPTIONS = ["قياسي — مفصل", "مختصر — سريع"];
+    const allChecked = category.events.every(e => recipient[e.field]);
+    const someChecked = category.events.some(e => recipient[e.field]);
+    const toggleAll = () => {
+      const val = !allChecked;
+      const patch = {};
+      category.events.forEach(e => { patch[e.field] = val; });
+      onUpdate(patch);
+    };
+    const getPreset = (field) => recipient.eventPresets?.[field] || PRESET_OPTIONS[0];
+    const setPreset = (field, preset) => {
+      onUpdate({ eventPresets: { ...recipient.eventPresets, [field]: preset } });
+    };
+    return (
+      <>
+        <div className="rounded-xl border border-border-normal bg-bg-base overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-normal bg-bg-surface/50">
+            <div className="flex items-center gap-2">
+              <category.icon className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[11px] font-black text-text-primary">{category.label}</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${allChecked ? "bg-success-bg text-success-text" : someChecked ? "bg-warning-bg text-warning-text" : "bg-bg-base text-text-muted"}`}>
+                {category.events.filter(e => recipient[e.field]).length}/{category.events.length}
+              </span>
+            </div>
+            <button type="button" onClick={toggleAll}
+              className="text-[10px] font-black text-primary hover:underline">
+              {allChecked ? t("telegram.deselectAll") : t("telegram.toggleAll")}
+            </button>
+          </div>
+          <div className="px-3 py-2 space-y-1">
+            {category.events.map(e => (
+              <div key={e.field} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-bg-surface transition-colors">
+                <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                  <input type="checkbox" checked={recipient[e.field]}
+                    onChange={ev => onUpdate({ [e.field]: ev.target.checked })}
+                    className="h-3.5 w-3.5 rounded border-border-normal text-primary focus:ring-primary shrink-0" />
+                  <span className="text-[11px] font-black text-text-primary truncate">{e.label}</span>
+                  <span className="text-[10px] font-bold text-text-muted hidden sm:inline truncate">— {e.hint}</span>
+                </label>
+                <div className="relative shrink-0">
+                  <button type="button" onClick={() => setOpenPresetDropdown(openPresetDropdown === e.field ? null : e.field)}
+                    className="flex items-center gap-1 text-[10px] font-bold text-text-muted hover:text-primary px-1.5 py-0.5 rounded hover:bg-bg-overlay transition-colors"
+                    title={t("telegram.seeSample")}>
+                    <Eye className="h-3 w-3" />
+                    <span className="hidden md:inline max-w-[60px] truncate">{getPreset(e.field) === "قياسي — مفصل" ? "مفصل" : "مختصر"}</span>
+                  </button>
+                  {openPresetDropdown === e.field && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setOpenPresetDropdown(null)} />
+                      <div className="absolute z-50 mt-1 end-0 w-44 rounded-xl border border-border-normal bg-bg-surface shadow-elevated overflow-hidden">
+                        <div className="px-2.5 py-1.5 border-b border-border-subtle">
+                          <span className="text-[10px] font-black text-text-muted">{t("telegram.presetChoice")}</span>
+                        </div>
+                        {PRESET_OPTIONS.map(p => (
+                          <div key={p} className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer transition-colors ${getPreset(e.field) === p ? "bg-primary-50" : "hover:bg-bg-overlay"}`}
+                            onClick={() => { setPreset(e.field, p); setOpenPresetDropdown(null); }}>
+                            <span className={`text-[11px] font-bold flex-1 ${getPreset(e.field) === p ? "text-primary" : "text-text-primary"}`}>{p}</span>
+                            <button type="button" onClick={ev => { ev.stopPropagation(); setPreviewField(e.field); setOpenPresetDropdown(null); }}
+                              className="p-1 rounded hover:bg-bg-base transition-colors" title={t("telegram.seeSample")}>
+                              <Eye className="h-3 w-3 text-text-muted hover:text-primary" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {previewField && <EventPreviewModal eventField={previewField} preset={getPreset(previewField)} onClose={() => setPreviewField(null)} />}
+      </>
+    );
+  }
+
+  function RecipientCard({ recipient, index }) {
+    const [detectingRecipient, setDetectingRecipient] = useState(null);
+    const update = (patch) => updateRecipientLocal(index, patch);
+
+    async function detectRecipientChatId() {
+      if (!config.telegram_bot_token.trim()) { toast.error(t("telegram.detectNeedsToken")); return; }
+      setDetectingRecipient(index);
+      try {
+        const r = await api.post("/api/telegram/detect-chat-id", {
+          bot_token: config.telegram_bot_token.trim(),
+          api_base: config.telegram_api_base?.trim() || undefined,
+        }, { validateStatus: s => s < 500 });
+        const body = r.data;
+        if (body?.found === false) {
+          toast.error(t("telegram.detectNothing"), { duration: 4000 });
+        } else if (body?.data?.chatId) {
+          update({ chatId: body.data.chatId, name: recipient.name || body.data.chatName || "" });
+          toast.success(body.data.chatName ? t("telegram.detectFound", { name: body.data.chatName }) : t("telegram.detectFoundNoName"));
+        } else if (body?.success === false) {
+          toast.error(body.message || t("telegram.detectError"));
+        }
+      } catch (e) { toast.error(e.response?.data?.message || t("telegram.detectError")); }
+      finally { setDetectingRecipient(null); }
+    }
+
+    const isFirst = index === 0;
+    return (
+      <div className={`rounded-xl border bg-bg-surface p-4 space-y-3 ${isFirst ? "border-primary/40 shadow-card" : "border-border-normal"}`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-black text-text-secondary mb-1 block">{t("telegram.recipientName")}</label>
+              <input type="text" value={recipient.name}
+                onChange={e => update({ name: e.target.value })}
+                placeholder={t("telegram.recipientNamePlaceholder")}
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="text-[11px] font-black text-text-secondary">{t("telegram.chatId")} *</label>
+                {isFirst && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-primary text-white">{t("telegram.defaultRecipient")}</span>}
+              </div>
+              <div className="flex gap-1.5">
+                <input type="text" dir="ltr" value={recipient.chatId}
+                  onChange={e => update({ chatId: e.target.value })}
+                  placeholder={t("telegram.chatIdPlaceholder")}
+                  className="flex-1 min-w-0 rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                <button type="button" onClick={detectRecipientChatId} disabled={detectingRecipient || !config.telegram_bot_token.trim()}
+                  className="shrink-0 flex items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-[10px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+                  title={t("telegram.chatIdDetectHint")}>
+                  {detectingRecipient === index ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Scan className="h-3 w-3" />}
+                  <span className="hidden sm:inline">{t("telegram.detectButton")}</span>
+                </button>
+              </div>
+              <details className="group mt-1">
+                <summary className="text-[10px] font-black text-primary cursor-pointer list-none flex items-center gap-1 hover:underline">
+                  <Info className="h-3 w-3" />
+                  {t("telegram.chatIdHintSummary")}
+                </summary>
+                <div className="mt-1.5 rounded-lg bg-bg-base p-2.5 text-[10px] font-bold text-text-secondary leading-relaxed whitespace-pre-line">
+                  {t("telegram.chatIdHintDetailed")}
+                </div>
+              </details>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <label className="flex items-center gap-1.5 text-[11px] font-black text-text-secondary cursor-pointer">
+              <input type="checkbox" checked={recipient.enabled} onChange={e => update({ enabled: e.target.checked })}
+                className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
+              {recipient.enabled ? t("telegram.enabled") : t("telegram.disabled")}
+            </label>
+            <button type="button" onClick={() => sendTest(recipient.chatId)} disabled={testing || !recipient.enabled || !recipient.chatId}
+              className="text-[11px] font-black text-primary hover:underline flex items-center gap-1 disabled:opacity-50">
+              <Send className="h-3 w-3" /> {t("telegram.test")}
+            </button>
+            <button type="button" onClick={() => deleteRecipient(index)}
+              className="text-[11px] font-black text-danger-text hover:underline flex items-center gap-1">
+              <Trash2 className="h-3 w-3" /> {t("common.delete")}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-black text-text-muted">{t("telegram.recipientEvents")}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {EVENT_CATEGORIES.map(cat => (
+              <EventToggleGroup key={cat.key} category={cat} recipient={recipient} onUpdate={update} />
+            ))}
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            {!recipient.chatId && recipient.name && (
+              <span className="text-[10px] font-bold text-warning-text flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> أدخل Chat ID للحفظ
+              </span>
+            )}
+            {savedRecipientIdx === index && (
+              <span className="text-[11px] font-bold text-success-text flex items-center gap-1 animate-pulse">
+                <CheckCircle className="h-3.5 w-3.5" /> {t("telegram.saved")}
+              </span>
+            )}
+            <button type="button" onClick={async () => {
+              setSavingRecipientIdx(index);
+              setSavedRecipientIdx(null);
+              try {
+                await saveSingleRecipient(index);
+                setSavedRecipientIdx(index);
+                setTimeout(() => setSavedRecipientIdx(null), 2000);
+              } catch { /* handled by hook */ }
+              finally { setSavingRecipientIdx(null); }
+            }} disabled={savingRecipientIdx === index || !recipient.chatId}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+              {savingRecipientIdx === index ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              {t("telegram.save")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function HistorySection() {
+    return (
+      <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+        <div className="flex items-center justify-between gap-2.5 mb-4">
+          <div className="flex items-center gap-2.5">
+            <StepBadge n="٤" done={false} />
+            <div>
+              <p className="text-sm font-black text-text-primary">{t("telegram.historyTitle")}</p>
+              <p className="text-[11px] font-bold text-text-muted">
+                {saved ? `${history.length} ${t("telegram.historyTitle").toLowerCase()}` : t("telegram.historyNotConnected")}
+              </p>
+            </div>
+          </div>
+          {saved && (
+            <button type="button" onClick={() => { setHistoryPage(0); fetchHistory(HISTORY_LIMIT); }}
+              disabled={loadingHistory}
+              className="flex items-center gap-1 text-[11px] font-black text-primary hover:underline disabled:opacity-50">
+              <RefreshCw className={`h-3 w-3 ${loadingHistory ? "animate-spin" : ""}`} />
+              {t("telegram.historyRefresh")}
+            </button>
+          )}
+        </div>
+        {!saved ? (
+          <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
+            <Clock className="h-8 w-8 text-text-muted mx-auto mb-2" />
+            <p className="text-xs font-black text-text-secondary">{t("telegram.historyNotConnected")}</p>
+          </div>
+        ) : history.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
+            <Clock className="h-8 w-8 text-text-muted mx-auto mb-2" />
+            <p className="text-xs font-black text-text-secondary">{t("telegram.historyEmpty")}</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5 max-h-80 overflow-y-auto">
+            {history.map((row) => {
+              const meta = EVENT_TYPE_MAP[row.event_type] || { icon: Send, label: row.event_type };
+              const IconComp = meta.icon;
+              const status = STATUS_MAP[row.status] || STATUS_MAP.pending;
+              return (
+                <div key={row.id} className="flex items-center gap-2.5 rounded-lg border border-border-normal bg-bg-base px-3 py-2">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg-surface">
+                    <IconComp className="h-3.5 w-3.5 text-text-secondary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-black text-text-primary">{meta.label}</span>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${status.cls}`}>{status.label}</span>
+                    </div>
+                    {row.text && <p className="text-[10px] font-bold text-text-muted truncate mt-0.5">{row.text.slice(0, 80)}</p>}
+                  </div>
+                  <span className="text-[10px] font-bold text-text-muted shrink-0">{row.created_at?.slice(0, 16)?.replace("T", " ")}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {saved && history.length >= HISTORY_LIMIT && (
+          <button type="button" onClick={() => { setHistoryPage(p => p + 1); fetchHistory(HISTORY_LIMIT * (historyPage + 2)); }}
+            disabled={loadingHistory}
+            className="w-full mt-3 text-[11px] font-black text-primary hover:underline disabled:opacity-50">
+            {t("telegram.historyLoadMore")}
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -2384,6 +3067,9 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
 
   return (
     <div className="space-y-5">
+      {showAddWizard && <AddRecipientWizard onClose={() => setShowAddWizard(false)} onAdded={() => { setShowAddWizard(false); toast.success(t("telegram.recipientAdded")); }} />}
+      {showConnectWizard && <TelegramConnectWizard onClose={() => setShowConnectWizard(false)} onSaved={onConfigChanged} />}
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
         <div className="flex items-center gap-3">
@@ -2400,180 +3086,186 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
             <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("telegram.subtitle")}</p>
           </div>
         </div>
+        {saved && (
+          <button type="button" onClick={() => setShowDisconnectConfirm(true)} disabled={disconnecting}
+            className="flex items-center gap-1.5 rounded-lg border border-danger-border bg-danger-bg px-4 py-2 text-xs font-black text-danger-text hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+            {disconnecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+            {t("telegram.disconnect")}
+          </button>
+        )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* Left column — settings */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Step 1 — bot credentials */}
-          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-            <div className="flex items-center gap-2.5 mb-4">
-              <StepBadge n="١" done={Boolean(config.telegram_bot_token.trim()) && Boolean(config.telegram_chat_id.trim())} />
-              <div>
-                <p className="text-sm font-black text-text-primary">{t("telegram.step1")}</p>
-                <p className="text-[11px] font-bold text-text-muted">{t("telegram.step1Hint")}</p>
-              </div>
+      {showDisconnectConfirm && (
+        <div className="rounded-xl border border-danger-border bg-danger-bg p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Unlink className="h-4 w-4 text-danger-text shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-black text-danger-text">{t("telegram.disconnectConfirmTitle")}</p>
+              <p className="text-[11px] font-bold text-text-secondary mt-1 leading-relaxed">{t("telegram.disconnectConfirmMessage")}</p>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.botToken")} *</label>
-                <input type="password" dir="ltr" value={config.telegram_bot_token}
-                  onChange={e => setConfig(c => ({ ...c, telegram_bot_token: e.target.value }))}
-                  placeholder={t("telegram.botTokenPlaceholder")}
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-              </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={() => setShowDisconnectConfirm(false)} disabled={disconnecting}
+              className="rounded-lg border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-base transition-all active:scale-95">
+              {t("common.cancel")}
+            </button>
+            <button type="button" onClick={async () => { await disconnect(); setShowDisconnectConfirm(false); }} disabled={disconnecting}
+              className="rounded-lg bg-danger-text px-4 py-2 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+              {disconnecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin inline ml-1" /> : null}
+              {t("telegram.disconnectConfirm")}
+            </button>
+          </div>
+        </div>
+      )}
 
-              {/* Easy connect — generate a QR the owner scans from their phone */}
-              <div className={`rounded-xl border p-4 ${scanConnected ? "border-success-border bg-success-bg" : "border-primary/40 bg-bg-base"}`}>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-xs font-black text-text-primary flex items-center gap-1.5">
-                    <Smartphone className="h-3.5 w-3.5 text-primary" /> {t("telegram.easyConnectTitle")}
-                  </p>
-                  <button type="button" onClick={generateDeepLink} disabled={generatingQr || !config.telegram_bot_token.trim()}
-                    className="shrink-0 flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-                    {generatingQr ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
-                    {qrData ? t("telegram.regenerateQr") : t("telegram.generateQr")}
-                  </button>
+      {/* Step 1 — Bot Connection */}
+      <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+        <div className="flex items-center gap-2.5 mb-4">
+          <StepBadge n="١" done={isBotConnected && saved} />
+          <div>
+            <p className="text-sm font-black text-text-primary">{t("telegram.step1")}</p>
+            <p className="text-[11px] font-bold text-text-muted">{t("telegram.step1Hint")}</p>
+          </div>
+        </div>
+
+        {!isBotConnected ? (
+          <div className="space-y-3">
+            <button type="button" onClick={() => setShowConnectWizard(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-sm font-black text-white shadow-card hover:opacity-90 transition-all active:scale-[0.98]">
+              <QrCode className="h-5 w-5" />
+              <div className="text-right">
+                <p>{t("telegram.connectCta")}</p>
+                <p className="text-[10px] font-bold opacity-80">{t("telegram.connectCtaHint")}</p>
+              </div>
+            </button>
+            <button type="button" onClick={() => setExpandedToken(!expandedToken)}
+              className="w-full text-[11px] font-black text-text-muted hover:text-text-secondary transition-colors flex items-center justify-center gap-1">
+              <ChevronDown className={`h-3 w-3 transition-transform ${expandedToken ? "rotate-180" : ""}`} />
+              {t("telegram.hasTokenPaste")}
+            </button>
+            {expandedToken && (
+              <div className="space-y-2 animate-fade-in">
+                <div className="relative">
+                  <input type="password" dir="ltr" value={config.telegram_bot_token}
+                    onChange={e => setConfig(c => ({ ...c, telegram_bot_token: e.target.value }))}
+                    placeholder={t("telegram.botTokenPlaceholder")}
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+                  {validating && <RefreshCw className="absolute left-3 top-2.5 h-4 w-4 animate-spin text-text-muted" />}
                 </div>
-                {!qrData && <p className="text-[11px] font-bold text-text-muted">{t("telegram.easyConnectHint")}</p>}
+                {botInfo && (
+                  <p className="text-[11px] font-black text-success-text flex items-center gap-1">
+                    <Check className="h-3 w-3" /> {t("telegram.botInfoValid", { name: botInfo.name || botInfo.username })}
+                  </p>
+                )}
+                {botInfo && !qrData && (
+                  <button type="button" onClick={generateDeepLink} disabled={generatingQr}
+                    className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+                    {generatingQr ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                    {t("telegram.generateQr")}
+                  </button>
+                )}
                 {qrData && (
-                  scanConnected ? (
-                    <div className="flex items-center gap-2 text-success-text">
-                      <Check className="h-5 w-5" />
-                      <span className="text-xs font-black">{t("telegram.scanConnected")}</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2.5">
-                      <img src={qrData.qr} alt="QR" className="h-44 w-44 rounded-xl border-2 border-primary/40" />
-                      <p className="text-[11px] font-black text-text-primary text-center max-w-xs">{t("telegram.scanHint")}</p>
-                      <p className="text-[10px] font-bold text-text-muted text-center">{t("telegram.groupHint")}</p>
-                      <a href={qrData.url} target="_blank" rel="noreferrer" dir="ltr"
-                        className="text-[11px] font-black text-primary underline break-all text-center">{t("telegram.fallbackLink")}</a>
-                    </div>
-                  )
+                  <div className="flex flex-col items-center gap-2">
+                    <img src={qrData.qr} alt="QR" className="h-36 w-36 rounded-xl border-2 border-primary/40" />
+                    {pollStatus === "polling" && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                        </span>
+                        <span className="text-[11px] font-black text-primary">{t("telegram.pollingStatus")}</span>
+                      </div>
+                    )}
+                    <a href={qrData.url} target="_blank" rel="noreferrer" dir="ltr" className="text-[11px] font-black text-primary underline break-all text-center">{t("telegram.fallbackLink")}</a>
+                  </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.chatId")} *</label>
-                  <div className="flex gap-1.5">
-                    <input type="text" dir="ltr" value={config.telegram_chat_id}
-                      onChange={e => setConfig(c => ({ ...c, telegram_chat_id: e.target.value }))}
-                      placeholder={t("telegram.chatIdPlaceholder")}
-                      className="flex-1 min-w-0 rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-                    <button type="button" onClick={detectChatId} disabled={detecting || !config.telegram_bot_token.trim()}
-                      title={t("telegram.detectHint")}
-                      className="shrink-0 flex items-center gap-1 rounded-lg border border-border-normal bg-bg-surface px-3 py-2.5 text-[11px] font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95">
-                      {detecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                      {t("telegram.detectButton")}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.apiBase")}</label>
-                  <input type="url" dir="ltr" value={config.telegram_api_base}
-                    onChange={e => setConfig(c => ({ ...c, telegram_api_base: e.target.value }))}
-                    placeholder={t("telegram.apiBasePlaceholder")}
-                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-                </div>
-              </div>
-              <details className="group">
-                <summary className="text-[11px] font-black text-text-muted cursor-pointer hover:text-text-secondary transition-colors list-none flex items-center gap-1">
-                  <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
-                  {t("telegram.guideTitle")}
-                </summary>
-                <div className="mt-2 rounded-lg bg-bg-base p-3">
-                  <ConnectGuide channel="telegram" />
-                </div>
-              </details>
-            </div>
-          </div>
-
-          {/* Step 2 — event toggles */}
-          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-            <div className="flex items-center gap-2.5 mb-4">
-              <StepBadge n="٢" done={saved} />
-              <p className="text-sm font-black text-text-primary">{t("telegram.step2")}</p>
-            </div>
-            <div className="space-y-2">
-              <Toggle label={t("telegram.toggleNewInvoice")} checked={config.telegram_notify_new_invoice} onChange={e => setConfig(c => ({ ...c, telegram_notify_new_invoice: e.target.checked }))} />
-              <Toggle label={t("telegram.toggleDailyClose")} checked={config.telegram_notify_daily_close} onChange={e => setConfig(c => ({ ...c, telegram_notify_daily_close: e.target.checked }))} />
-              <Toggle label={t("telegram.toggleLargeAmounts")} checked={config.telegram_notify_large_amounts} onChange={e => setConfig(c => ({ ...c, telegram_notify_large_amounts: e.target.checked }))} />
-              <Toggle label={t("telegram.toggleReturnsVoids")} checked={config.telegram_notify_returns_voids} onChange={e => setConfig(c => ({ ...c, telegram_notify_returns_voids: e.target.checked }))} />
-              <Toggle label={t("telegram.togglePurchasesPayments")} checked={config.telegram_notify_purchases_payments} onChange={e => setConfig(c => ({ ...c, telegram_notify_purchases_payments: e.target.checked }))} />
-              <Toggle label={t("telegram.toggleLowStock")} checked={config.telegram_notify_low_stock} onChange={e => setConfig(c => ({ ...c, telegram_notify_low_stock: e.target.checked }))} />
-              <Toggle label={t("telegram.toggleSystem")} hint={t("telegram.toggleSystemHint")} checked={config.telegram_notify_system} onChange={e => setConfig(c => ({ ...c, telegram_notify_system: e.target.checked }))} />
-            </div>
-            {/* Scheduled analytics digests */}
-            <div className="mt-4 pt-4 border-t border-border-normal">
-              <p className="text-xs font-black text-text-primary mb-1">{t("telegram.digestsTitle")}</p>
-              <p className="text-[11px] font-bold text-text-muted mb-2.5">{t("telegram.digestsHint")}</p>
-              <div className="space-y-2">
-                <Toggle label={t("telegram.toggleWeekly")} checked={config.telegram_notify_weekly} onChange={e => setConfig(c => ({ ...c, telegram_notify_weekly: e.target.checked }))} />
-                <Toggle label={t("telegram.toggleMonthly")} checked={config.telegram_notify_monthly} onChange={e => setConfig(c => ({ ...c, telegram_notify_monthly: e.target.checked }))} />
-                <Toggle label={t("telegram.toggleYearly")} checked={config.telegram_notify_yearly} onChange={e => setConfig(c => ({ ...c, telegram_notify_yearly: e.target.checked }))} />
-              </div>
-            </div>
-          </div>
-
-          {/* Step 3 — enable + save + test */}
-          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-            <div className="flex items-center gap-2.5 mb-4">
-              <StepBadge n="٣" done={saved} />
-              <p className="text-sm font-black text-text-primary">{t("telegram.step3")}</p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <label className="flex flex-1 items-center justify-between rounded-lg border border-border-normal bg-bg-input px-4 py-3 cursor-pointer">
-                <span className="text-xs font-black text-text-primary">{t("telegram.enable")}</span>
-                <input type="checkbox" checked={config.telegram_enabled}
-                  onChange={e => setConfig(c => ({ ...c, telegram_enabled: e.target.checked }))}
-                  className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
-              </label>
-              <button onClick={save} disabled={saving}
-                className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-                {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {t("telegram.save")}
-              </button>
-              <button onClick={sendTest} disabled={testing || !saved}
-                title={!saved ? t("telegram.testTooltip") : t("telegram.step4")}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-6 py-3 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95">
-                {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {t("telegram.test")}
-              </button>
-            </div>
-            {!saved && (
-              <p className="mt-3 text-[11px] font-bold text-text-muted">{t("telegram.step4Hint")}</p>
             )}
           </div>
+        ) : (
+          <div className="rounded-xl border border-success-border bg-success-bg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-success-text" />
+                <div>
+                  <p className="text-xs font-black text-success-text">{t("telegram.botConnected")}</p>
+                  {botInfo && <p className="text-[11px] font-bold text-text-secondary mt-0.5">@{botInfo.username || botInfo.name}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={generateDeepLink} disabled={generatingQr}
+                  className="text-[11px] font-black text-primary hover:underline flex items-center gap-1 disabled:opacity-50">
+                  <RefreshCw className={`h-3 w-3 ${generatingQr ? "animate-spin" : ""}`} />
+                  {t("telegram.revalidate")}
+                </button>
+                <button type="button" onClick={async () => { await disconnect(); setShowConnectWizard(true); }}
+                  className="text-[11px] font-black text-danger-text hover:underline flex items-center gap-1">
+                  <Unlink className="h-3 w-3" />
+                  {t("telegram.reconnect")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Step 2 — Recipients */}
+      <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+        <div className="flex items-center justify-between gap-2.5 mb-4">
+          <div className="flex items-center gap-2.5">
+            <StepBadge n="٢" done={hasEnabledRecipient} />
+            <div>
+              <p className="text-sm font-black text-text-primary">{t("telegram.step2")}</p>
+              <p className="text-[11px] font-bold text-text-muted">{t("telegram.recipientsHint")}</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setShowAddWizard(true)}
+            disabled={!isBotConnected}
+            className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+            <Plus className="h-3.5 w-3.5" /> {t("telegram.addRecipient")}
+          </button>
         </div>
-
-        {/* Right column — info */}
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-            <h3 className="text-sm font-black text-text-primary mb-3 flex items-center gap-2">
-              <Info className="h-4 w-4 text-primary" /> {t("telegram.infoTitle")}
-            </h3>
-            <ul className="space-y-2 text-[11px] font-bold text-text-secondary leading-relaxed">
-              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info1")}</span></li>
-              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info2")}</span></li>
-              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info3")}</span></li>
-              <li className="flex items-start gap-2"><span className="text-primary">•</span><span>{t("telegram.info4")}</span></li>
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-            <h3 className="text-sm font-black text-text-primary mb-3 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-warning-text" /> {t("telegram.eventsTitle")}
-            </h3>
-            <ul className="space-y-2 text-[11px] font-bold text-text-secondary leading-relaxed">
-              {t("telegram.eventsList").split("|").map((item, i) => (
-                <li key={i} className="flex items-start gap-2"><Check className="h-3 w-3 text-success-text shrink-0 mt-0.5" /><span>{item}</span></li>
-              ))}
-            </ul>
-          </div>
+        <div className="space-y-3">
+          {recipients.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
+              <Users className="h-8 w-8 text-text-muted mx-auto mb-2" />
+              <p className="text-xs font-black text-text-secondary">{t("telegram.noRecipients")}</p>
+              <p className="text-[11px] font-bold text-text-muted mt-1">{t("telegram.noRecipientsHint")}</p>
+            </div>
+          ) : (
+            recipients.map((recipient, index) => (
+              <RecipientCard key={index} recipient={recipient} index={index} />
+            ))
+          )}
         </div>
       </div>
+
+      {/* Step 3 — Enable + Save */}
+      <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+        <div className="flex items-center gap-2.5 mb-4">
+          <StepBadge n="٣" done={saved} />
+          <p className="text-sm font-black text-text-primary">{t("telegram.step3")}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <label className="flex flex-1 items-center justify-between rounded-lg border border-border-normal bg-bg-input px-4 py-3 cursor-pointer">
+            <span className="text-xs font-black text-text-primary">{t("telegram.enable")}</span>
+            <input type="checkbox" checked={config.telegram_enabled}
+              onChange={e => setConfig(c => ({ ...c, telegram_enabled: e.target.checked }))}
+              className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
+          </label>
+          <button onClick={save} disabled={saving}
+            className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {t("telegram.save")}
+          </button>
+        </div>
+        {!saved && isBotConnected && (
+          <p className="mt-3 text-[11px] font-bold text-text-muted">{t("telegram.step4Hint")}</p>
+        )}
+      </div>
+
+      {/* Step 4 — History */}
+      <HistorySection />
     </div>
   );
 }
@@ -2660,7 +3352,12 @@ const CATEGORY_META = {
   telegram_new_invoice: {
     label: "فاتورة مبيعات جديدة", hint: "تنبيه فوري بكل فاتورة بيع", vars: [
       { token: "{invoice_no}", label: "رقم الفاتورة" }, { token: "{customer_name}", label: "اسم العميل" },
-      { token: "{total}", label: "الإجمالي" }, { token: "{payment_type}", label: "طريقة الدفع" }, { token: "{created_at}", label: "التوقيت" },
+      { token: "{total}", label: "الإجمالي" }, { token: "{subtotal}", label: "الصافي" },
+      { token: "{tax}", label: "الضريبة" }, { token: "{discount}", label: "الخصم" },
+      { token: "{paid}", label: "المدفوع" }, { token: "{balance}", label: "الباقي" },
+      { token: "{payment_type}", label: "طريقة الدفع" }, { token: "{created_at}", label: "التوقيت" },
+      { token: "{items_count}", label: "عدد الأصناف" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{payment_breakdown}", label: "تفصيل الدفع" },
     ]
   },
   telegram_daily_close: {
@@ -2725,12 +3422,251 @@ const CATEGORY_META = {
       { token: "{username}", label: "اسم المستخدم" }, { token: "{time}", label: "التوقيت" }, { token: "{ip}", label: "IP" },
     ]
   },
+  telegram_customer_created: {
+    label: "عميل جديد", hint: "تنبيه عند إضافة عميل جديد", vars: [
+      { token: "{customer_name}", label: "اسم العميل" }, { token: "{phone}", label: "الهاتف" },
+      { token: "{city}", label: "المدينة" }, { token: "{opening_balance}", label: "الرصيد الافتتاحي" },
+    ]
+  },
+  telegram_supplier_created: {
+    label: "مورد جديد", hint: "تنبيه عند إضافة مورد جديد", vars: [
+      { token: "{supplier_name}", label: "اسم المورد" }, { token: "{phone}", label: "الهاتف" },
+      { token: "{opening_balance}", label: "الرصيد الافتتاحي" },
+    ]
+  },
+  telegram_expense_created: {
+    label: "مصروف جديد", hint: "تنبيه عند تسجيل مصروف", vars: [
+      { token: "{category}", label: "الفئة" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{date}", label: "التاريخ" }, { token: "{notes}", label: "ملاحظات" },
+    ]
+  },
+  telegram_return_payment: {
+    label: "دفعة مرتجعة", hint: "تنبيه عند إرجاع دفعة لعميل", vars: [
+      { token: "{customer_name}", label: "اسم العميل" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{method}", label: "طريقة الدفع" }, { token: "{date}", label: "التاريخ" },
+    ]
+  },
+  telegram_stock_transfer: {
+    label: "تحويل مخزون", hint: "تنبيه عند نقل مخزون بين المستودعات", vars: [
+      { token: "{from_warehouse}", label: "من مستودع" }, { token: "{to_warehouse}", label: "إلى مستودع" },
+      { token: "{items_table}", label: "جدول الأصناف" }, { token: "{items_count}", label: "عدد الأصناف" },
+      { token: "{total_units}", label: "إجمالي الوحدات" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_inventory_adjustment: {
+    label: "تعديل مخزون", hint: "تنبيه عند تعديل كمية صنف يدوياً", vars: [
+      { token: "{product_name}", label: "اسم المنتج" }, { token: "{warehouse}", label: "المستودع" },
+      { token: "{old_quantity}", label: "الكمية القديمة" }, { token: "{new_quantity}", label: "الكمية الجديدة" },
+      { token: "{difference}", label: "الفرق" }, { token: "{reason}", label: "السبب" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_new_product: {
+    label: "منتج جديد", hint: "تنبيه عند إضافة منتج جديد", vars: [
+      { token: "{product_name}", label: "اسم المنتج" }, { token: "{sku}", label: "الكود" },
+      { token: "{price}", label: "السعر" }, { token: "{warehouse}", label: "المستودع" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_price_change: {
+    label: "تغيير سعر", hint: "تنبيه عند تغيير سعر صنف", vars: [
+      { token: "{product_name}", label: "اسم المنتج" }, { token: "{old_price}", label: "السعر القديم" },
+      { token: "{new_price}", label: "السعر الجديد" }, { token: "{change_percent}", label: "نسبة التغيير" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_batch_expiry: {
+    label: "انتهاء صلاحية دفعة", hint: "تنبيه عند اقتراب انتهاء صلاحية دفعة", vars: [
+      { token: "{product_name}", label: "اسم المنتج" }, { token: "{batch_no}", label: "رقم الدفعة" },
+      { token: "{expiry_date}", label: "تاريخ الانتهاء" }, { token: "{remaining_quantity}", label: "الكمية المتبقية" },
+      { token: "{warehouse}", label: "المستودع" },
+    ]
+  },
+  telegram_physical_count: {
+    label: "جرد فعلي", hint: "تنبيه عند تأكيد الجرد الفعلي", vars: [
+      { token: "{warehouse}", label: "المستودع" }, { token: "{matched_count}", label: "أصناف مطابقة" },
+      { token: "{mismatched_count}", label: "أصناف غير مطابقة" }, { token: "{total_items}", label: "إجمالي الأصناف" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_supplier_payment: {
+    label: "دفعة مورد", hint: "تنبيه عند دفع مبلغ للمورد", vars: [
+      { token: "{supplier_name}", label: "اسم المورد" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{method}", label: "طريقة الدفع" }, { token: "{reference}", label: "المرجع" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_debt_payment: {
+    label: "دفعة دين", hint: "تنبيه عند تحصيل دفعة من عميل مدين", vars: [
+      { token: "{customer_name}", label: "اسم العميل" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{method}", label: "طريقة الدفع" }, { token: "{remaining_debt}", label: "الدين المتبقي" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_installment_paid: {
+    label: "دفعة قسط", hint: "تنبيه عند سداد قسط من عميل", vars: [
+      { token: "{customer_name}", label: "اسم العميل" }, { token: "{installment_no}", label: "رقم القسط" },
+      { token: "{total_installments}", label: "إجمالي الأقساط" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{remaining}", label: "المتبقي" },
+    ]
+  },
+  telegram_purchase_voided: {
+    label: "شراء ملغي", hint: "تنبيه عند إلغاء فاتورة شراء", vars: [
+      { token: "{reference_no}", label: "رقم المرجع" }, { token: "{supplier_name}", label: "اسم المورد" },
+      { token: "{total}", label: "الإجمالي" }, { token: "{reason}", label: "السبب" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_purchase_return: {
+    label: "مرتجع شراء", hint: "تنبيه عند تسجيل مرتجع مشتريات", vars: [
+      { token: "{reference_no}", label: "رقم المرجع" }, { token: "{supplier_name}", label: "اسم المورد" },
+      { token: "{total}", label: "الإجمالي" }, { token: "{items_table}", label: "جدول الأصناف" },
+      { token: "{items_count}", label: "عدد الأصناف" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_branch_transfer: {
+    label: "تحويل فرع", hint: "تنبيه عند إرسال أو استلام بضاعة بين الفروع", vars: [
+      { token: "{reference_no}", label: "رقم المرجع" }, { token: "{from_branch}", label: "الفرع المُرسل" },
+      { token: "{to_warehouse}", label: "الفرع المُستلم" }, { token: "{transfer_type}", label: "نوع التحويل" },
+      { token: "{items_table}", label: "جدول الأصناف" }, { token: "{items_count}", label: "عدد الأصناف" },
+      { token: "{total_units}", label: "إجمالي الوحدات" }, { token: "{total_cost}", label: "إجمالي التكلفة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_password_changed: {
+    label: "تغيير كلمة مرور", hint: "تنبيه أمني عند تغيير كلمة مرور مستخدم", vars: [
+      { token: "{user_name}", label: "اسم المستخدم" }, { token: "{time}", label: "التوقيت" },
+      { token: "{ip_address}", label: "عنوان IP" },
+    ]
+  },
+  telegram_permission_changed: {
+    label: "تغيير صلاحيات", hint: "تنبيه أمني عند تغيير صلاحيات مستخدم", vars: [
+      { token: "{user_name}", label: "اسم المستخدم" }, { token: "{action}", label: "الإجراء" },
+      { token: "{details}", label: "التفاصيل" }, { token: "{changed_by}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_supervisor_override: {
+    label: "تجاوز صلاحيات", hint: "تنبيه أمني عند تجاوز صلاحيات بواسطة المشرف", vars: [
+      { token: "{user_name}", label: "اسم المستخدم" }, { token: "{action}", label: "الإجراء" },
+      { token: "{details}", label: "التفاصيل" }, { token: "{supervisor}", label: "المشرف" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_repair_created: {
+    label: "طلب صيانة جديد", hint: "تنبيه عند إنشاء طلب صيانة", vars: [
+      { token: "{order_no}", label: "رقم الطلب" }, { token: "{customer_name}", label: "اسم العميل" },
+      { token: "{device_type}", label: "نوع الجهاز" }, { token: "{problem}", label: "المشكلة" },
+      { token: "{estimated_cost}", label: "التكلفة التقديرية" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_revenue_created: {
+    label: "إيراد جديد", hint: "تنبيه عند تسجيل إيراد", vars: [
+      { token: "{doc_no}", label: "رقم المستند" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{category}", label: "الفئة" }, { token: "{description}", label: "الوصف" },
+      { token: "{method}", label: "طريقة الدفع" }, { token: "{user_name}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_withdrawal_created: {
+    label: "سحب نقدي", hint: "تنبيه عند سحب نقدي من الخزنة", vars: [
+      { token: "{doc_no}", label: "رقم المستند" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{category}", label: "الفئة" }, { token: "{note}", label: "الملاحظة" },
+      { token: "{method}", label: "طريقة الدفع" }, { token: "{user_name}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_employee_created: {
+    label: "موظف جديد", hint: "تنبيه عند إضافة موظف جديد", vars: [
+      { token: "{employee_name}", label: "اسم الموظف" }, { token: "{job_title}", label: "المسمى الوظيفي" },
+      { token: "{salary}", label: "الراتب" }, { token: "{phone}", label: "الهاتف" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_salary_settled: {
+    label: "تسويات راتب", hint: "تنبيه عند تسويية راتب موظف", vars: [
+      { token: "{employee_name}", label: "اسم الموظف" }, { token: "{period}", label: "الفترة" },
+      { token: "{base_salary}", label: "الراتب الأساسي" }, { token: "{bonuses}", label: "المكافآت" },
+      { token: "{deductions}", label: "الخصومات" }, { token: "{advance_deductions}", label: "خصم السلف" },
+      { token: "{net_salary}", label: "الراتب الصافي" }, { token: "{paid_amount}", label: "المبلغ المدفوع" },
+      { token: "{user_name}", label: "بواسطة" }, { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_advance_created: {
+    label: "سلفة جديدة", hint: "تنبيه عند منح موظف سلفة", vars: [
+      { token: "{employee_name}", label: "اسم الموظف" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{installment_count}", label: "عدد الأقساط" }, { token: "{installment_amount}", label: "قيمة القسط" },
+      { token: "{notes}", label: "ملاحظات" }, { token: "{user_name}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_deduction_created: {
+    label: "خصم جديد", hint: "تنبيه عند تسجيل خصم على موظف", vars: [
+      { token: "{employee_name}", label: "اسم الموظف" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{deduction_type}", label: "نوع الخصم" }, { token: "{is_recurring}", label: "دوري" },
+      { token: "{notes}", label: "ملاحظات" }, { token: "{user_name}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_bonus_created: {
+    label: "مكافأة جديدة", hint: "تنبيه عند منح موظف مكافأة", vars: [
+      { token: "{employee_name}", label: "اسم الموظف" }, { token: "{amount}", label: "المبلغ" },
+      { token: "{bonus_type}", label: "نوع المكافأة" }, { token: "{is_recurring}", label: "دوري" },
+      { token: "{notes}", label: "ملاحظات" }, { token: "{user_name}", label: "بواسطة" },
+      { token: "{time}", label: "التوقيت" },
+    ]
+  },
+  telegram_weekly_digest: {
+    label: "ملخص أسبوعي", hint: "تقرير دوري يرسل تلقائياً بنهاية كل أسبوع", vars: [
+      { token: "{title}", label: "عنوان التقرير" }, { token: "{period_label}", label: "فترة التقرير" },
+      { token: "{sales_total}", label: "إجمالي المبيعات" }, { token: "{sales_count}", label: "عدد الفواتير" },
+      { token: "{sales_delta}", label: "نسبة التغير" }, { token: "{avg_invoice}", label: "متوسط الفاتورة" },
+      { token: "{profit}", label: "صافي الربح" }, { token: "{products_table}", label: "أكثر المنتجات" },
+      { token: "{customers_table}", label: "أفضل العملاء" }, { token: "{liquidity}", label: "السيولة الحالية" },
+      { token: "{treasury_balance}", label: "رصيد الخزنة" }, { token: "{bank_balance}", label: "رصيد البنك" },
+      { token: "{debts}", label: "مديونيات العملاء" }, { token: "{low_stock_count}", label: "أصناف تحت الحد" },
+    ]
+  },
+  telegram_monthly_digest: {
+    label: "ملخص شهري", hint: "تقرير دوري يرسل تلقائياً بنهاية كل شهر", vars: [
+      { token: "{title}", label: "عنوان التقرير" }, { token: "{period_label}", label: "فترة التقرير" },
+      { token: "{sales_total}", label: "إجمالي المبيعات" }, { token: "{sales_count}", label: "عدد الفواتير" },
+      { token: "{sales_delta}", label: "نسبة التغير" }, { token: "{avg_invoice}", label: "متوسط الفاتورة" },
+      { token: "{profit}", label: "صافي الربح" }, { token: "{products_table}", label: "أكثر المنتجات" },
+      { token: "{customers_table}", label: "أفضل العملاء" }, { token: "{liquidity}", label: "السيولة الحالية" },
+      { token: "{treasury_balance}", label: "رصيد الخزنة" }, { token: "{bank_balance}", label: "رصيد البنك" },
+      { token: "{debts}", label: "مديونيات العملاء" }, { token: "{low_stock_count}", label: "أصناف تحت الحد" },
+    ]
+  },
+  telegram_yearly_digest: {
+    label: "ملخص سنوي", hint: "تقرير دوري يرسل تلقائياً بنهاية كل سنة", vars: [
+      { token: "{title}", label: "عنوان التقرير" }, { token: "{period_label}", label: "فترة التقرير" },
+      { token: "{sales_total}", label: "إجمالي المبيعات" }, { token: "{sales_count}", label: "عدد الفواتير" },
+      { token: "{sales_delta}", label: "نسبة التغير" }, { token: "{avg_invoice}", label: "متوسط الفاتورة" },
+      { token: "{profit}", label: "صافي الربح" }, { token: "{products_table}", label: "أكثر المنتجات" },
+      { token: "{customers_table}", label: "أفضل العملاء" }, { token: "{liquidity}", label: "السيولة الحالية" },
+      { token: "{treasury_balance}", label: "رصيد الخزنة" }, { token: "{bank_balance}", label: "رصيد البنك" },
+      { token: "{debts}", label: "مديونيات العملاء" }, { token: "{low_stock_count}", label: "أصناف تحت الحد" },
+    ]
+  },
 };
 const WHATSAPP_CATEGORIES = ["receipt", "return_receipt", "birthday", "debt", "purchase_receipt", "purchase_return_receipt", "transfer_send", "transfer_receive"];
 const TELEGRAM_CATEGORIES = [
   "telegram_new_invoice", "telegram_daily_close", "telegram_shift_close", "telegram_large_invoice",
   "telegram_large_discount", "telegram_sales_return", "telegram_invoice_voided", "telegram_purchase_created",
   "telegram_customer_payment", "telegram_low_stock", "telegram_backup_result", "telegram_failed_login",
+  "telegram_customer_created", "telegram_supplier_created", "telegram_expense_created", "telegram_return_payment",
+  "telegram_stock_transfer", "telegram_inventory_adjustment", "telegram_new_product", "telegram_price_change",
+  "telegram_batch_expiry", "telegram_physical_count",
+  "telegram_supplier_payment", "telegram_debt_payment", "telegram_installment_paid",
+  "telegram_purchase_voided", "telegram_purchase_return", "telegram_branch_transfer",
+  "telegram_password_changed", "telegram_permission_changed", "telegram_supervisor_override",
+  "telegram_repair_created",
+  "telegram_revenue_created", "telegram_withdrawal_created",
+  "telegram_employee_created", "telegram_salary_settled", "telegram_advance_created",
+  "telegram_deduction_created", "telegram_bonus_created",
+  "telegram_weekly_digest", "telegram_monthly_digest", "telegram_yearly_digest",
 ];
 
 const DEFAULT_BODIES = {
@@ -3020,6 +3956,399 @@ const DEFAULT_BODIES = {
 
 تم الاستلام بنجاح ✅
 {shop}`,
+  // ── Telegram owner-alert presets ─────────────────────────────────
+  "telegram_new_invoice|قياسي — مفصل": `🧾 *فاتورة جديدة* #{invoice_no}
+━━━━━━━━━━━━━━
+👤 العميل: {customer_name}
+💰 الإجمالي: *{total}*
+📊 الصافي: {subtotal} | الضريبة: {tax} | الخصم: {discount}
+💳 الدفع: {payment_type} | المدفوع: {paid} | الباقي: {balance}
+🕐 {created_at}
+
+🛒 *الأصناف ({items_count})*
+{items_table}
+
+💳 *تفاصيل الدفع*
+{payment_breakdown}`,
+  "telegram_new_invoice|مختصر — سريع": `🧾 فاتورة جديدة #{invoice_no}
+👤 {customer_name}
+💰 {total}
+🕐 {created_at}`,
+  "telegram_daily_close|قياسي — مفصل": `📅 إغلاق يومية — {date}
+━━━━━━━━━━━━━━
+💰 الرصيد الافتتاحي: {opening_balance}
+💵 المبيعات النقدية: {cash_sales}
+💳 المبيعات الآجلة: {credit_sales}
+📊 المتوقع: {expected_cash} | الفعلي: {actual_cash}
+⚠️ الفرق: {discrepancy}
+🧾 عدد الفواتير: {invoices_count}`,
+  "telegram_daily_close|مختصر — سريع": `📅 إغلاق يومية {date}
+💵 نقداً: {cash_sales} | آجل: {credit_sales}
+⚠️ فرق: {discrepancy}`,
+  "telegram_shift_close|قياسي — مفصل": `📋 إغلاق وردية #{shift_id}
+━━━━━━━━━━━━━━
+💰 الافتتاحي: {opening_cash}
+📊 المتوقع: {expected_cash} | الفعلي: {closing_cash}
+⚠️ الفرق: {discrepancy}
+🧾 عدد الفواتير: {invoices_count}`,
+  "telegram_shift_close|مختصر — سريع": `📋 إغلاق وردية #{shift_id}
+⚠️ فرق: {discrepancy}
+🧾 فواتير: {invoices_count}`,
+  "telegram_large_invoice|قياسي — مفصل": `🚨 *فاتورة بمبلغ كبير*
+━━━━━━━━━━━━━━
+📋 رقم: #{invoice_no}
+👤 العميل: {customer_name}
+💰 المجموع: *{total}*`,
+  "telegram_large_invoice|مختصر — سريع": `🚨 فاتورة كبيرة #{invoice_no} | {customer_name} | {total}`,
+  "telegram_large_discount|قياسي — مفصل": `💸 *خصم كبير مطبق*
+━━━━━━━━━━━━━━
+📋 الفاتورة: #{invoice_no}
+📉 نسبة الخصم: *{discount_percent}*`,
+  "telegram_large_discount|مختصر — سريع": `💸 خصم كبير #{invoice_no} | {discount_percent}`,
+  "telegram_sales_return|قياسي — مفصل": `↩️ *مرتجع مبيعات*
+━━━━━━━━━━━━━━
+📋 الفاتورة الأصلية: #{original_invoice_id}
+💰 مبلغ المرتجع: *{total}*`,
+  "telegram_sales_return|مختصر — سريع": `↩️ مرتجع #{original_invoice_id} | {total}`,
+  "telegram_invoice_voided|قياسي — مفصل": `⛔ *فاتورة ملغاة*
+━━━━━━━━━━━━━━
+📋 الفاتورة: #{invoice_no}
+⚠️ السبب: {reason}
+👤 بواسطة: {user_name}`,
+  "telegram_invoice_voided|مختصر — سريع": `⛔ فاتورة ملغاة #{invoice_no} | {reason}`,
+  "telegram_purchase_created|قياسي — مفصل": `📦 *عملية شراء جديدة*
+━━━━━━━━━━━━━━
+📝 النوع: {kind_label}
+📋 الرقم: #{reference}
+🏭 المورد: {supplier_name}
+💰 المجموع: *{total}*`,
+  "telegram_purchase_created|مختصر — سريع": `📦 {kind_label} #{reference} | {supplier_name} | {total}`,
+  "telegram_customer_payment|قياسي — مفصل": `💰 *دفع من عميل*
+━━━━━━━━━━━━━━
+👤 العميل: {customer_name}
+💰 المبلغ: *{amount}*
+💳 الطريقة: {method}`,
+  "telegram_customer_payment|مختصر — سريع": `💰 دفع من {customer_name} | {amount} | {method}`,
+  "telegram_low_stock|قياسي — مفصل": `⚠️ *تنبيه مخزون منخفض*
+━━━━━━━━━━━━━━
+📦 المنتج: {product_name}
+📊 الكمية الحالية: {current_quantity}
+📉 الحد الأدنى: {min_quantity}`,
+  "telegram_low_stock|مختصر — سريع": `⚠️ مخزون منخفض: {product_name} | {current_quantity}/{min_quantity}`,
+  "telegram_backup_result|قياسي — مفصل": `{success_text}
+━━━━━━━━━━━━━━
+📝 السبب: {reason}
+📁 الملف: {file_path}
+❌ الخطأ: {error}`,
+  "telegram_backup_result|مختصر — سريع": `{success_text} | {reason}`,
+  "telegram_failed_login|قياسي — مفصل": `🔒 *محاولة دخول فاشلة*
+━━━━━━━━━━━━━━
+👤 المستخدم: {username}
+🕐 الوقت: {time}
+🌐 IP: {ip}`,
+  "telegram_failed_login|مختصر — سريع": `🔒 دخول فاشل: {username} | {ip}`,
+  "telegram_customer_created|قياسي — مفصل": `👤 *عميل جديد*
+━━━━━━━━━━━━━━
+🏷️ الاسم: {customer_name}
+📞 الهاتف: {phone}
+🏙️ المدينة: {city}
+💰 الرصيد الافتتاحي: {opening_balance}`,
+  "telegram_customer_created|مختصر — سريع": `👤 عميل جديد: {customer_name} | {phone}`,
+  "telegram_supplier_created|قياسي — مفصل": `🏭 *مورد جديد*
+━━━━━━━━━━━━━━
+🏷️ الاسم: {supplier_name}
+📞 الهاتف: {phone}
+💰 الرصيد الافتتاحي: {opening_balance}`,
+  "telegram_supplier_created|مختصر — سريع": `🏭 مورد جديد: {supplier_name} | {phone}`,
+  "telegram_expense_created|قياسي — مفصل": `💸 *مصروف جديد*
+━━━━━━━━━━━━━━
+📂 الفئة: {category}
+💰 المبلغ: *{amount}*
+📅 التاريخ: {date}
+📝 ملاحظات: {notes}`,
+  "telegram_expense_created|مختصر — سريع": `💸 مصروف: {category} | {amount} | {date}`,
+  "telegram_return_payment|قياسي — مفصل": `↩️ *دفعة مرتجعة*
+━━━━━━━━━━━━━━
+👤 العميل: {customer_name}
+💰 المبلغ: *{amount}*
+💳 الطريقة: {method}
+📅 التاريخ: {date}`,
+  "telegram_return_payment|مختصر — سريع": `↩️ دفعة مرتجعة: {customer_name} | {amount} | {method}`,
+  // ── Telegram periodic digest presets ─────────────────────────────
+  "telegram_weekly_digest|قياسي — مفصل": `{title} — {period_label}
+
+💰 المبيعات: *{sales_total}*  {sales_delta}
+🧾 عدد الفواتير: *{sales_count}*  (متوسط {avg_invoice})
+📊 صافي الربح: *{profit}*
+
+🏆 *أكثر المنتجات مبيعاً:*
+{products_table}
+
+⭐ *أفضل العملاء:*
+{customers_table}
+
+🏦 السيولة الحالية: *{liquidity}* (خزنة {treasury_balance} + بنك {bank_balance})
+📌 مديونيات العملاء: *{debts}*
+⚠️ أصناف تحت الحد الأدنى: *{low_stock_count}*`,
+  "telegram_weekly_digest|مختصر — سريع": `{title} | {period_label}
+💰 {sales_total} ({sales_delta}) | 🧾 {sales_count} | 📊 ربح {profit}`,
+  "telegram_monthly_digest|قياسي — مفصل": `{title} — {period_label}
+
+💰 المبيعات: *{sales_total}*  {sales_delta}
+🧾 عدد الفواتير: *{sales_count}*  (متوسط {avg_invoice})
+📊 صافي الربح: *{profit}*
+
+🏆 *أكثر المنتجات مبيعاً:*
+{products_table}
+
+⭐ *أفضل العملاء:*
+{customers_table}
+
+🏦 السيولة الحالية: *{liquidity}* (خزنة {treasury_balance} + بنك {bank_balance})
+📌 مديونيات العملاء: *{debts}*
+⚠️ أصناف تحت الحد الأدنى: *{low_stock_count}*`,
+  "telegram_monthly_digest|مختصر — سريع": `{title} | {period_label}
+💰 {sales_total} ({sales_delta}) | 🧾 {sales_count} | 📊 ربح {profit}`,
+  "telegram_yearly_digest|قياسي — مفصل": `{title} — {period_label}
+
+💰 المبيعات: *{sales_total}*  {sales_delta}
+🧾 عدد الفواتير: *{sales_count}*  (متوسط {avg_invoice})
+📊 صافي الربح: *{profit}*
+
+🏆 *أكثر المنتجات مبيعاً:*
+{products_table}
+
+⭐ *أفضل العملاء:*
+{customers_table}
+
+🏦 السيولة الحالية: *{liquidity}* (خزنة {treasury_balance} + بنك {bank_balance})
+📌 مديونيات العملاء: *{debts}*
+⚠️ أصناف تحت الحد الأدنى: *{low_stock_count}*`,
+  "telegram_yearly_digest|مختصر — سريع": `{title} | {period_label}
+💰 {sales_total} ({sales_delta}) | 🧾 {sales_count} | 📊 ربح {profit}`,
+  "telegram_stock_transfer|قياسي — مفصل": `📦 *تم نقل مخزون*
+
+📤 من: {from_warehouse}
+📥 إلى: {to_warehouse}
+⏰ {time}
+
+📋 *الأصناف:*
+{items_table}
+
+📊 عدد الأصناف: *{items_count}* | إجمالي الوحدات: *{total_units}*`,
+  "telegram_stock_transfer|مختصر — سريع": `📦 نقل مخزون: {from_warehouse} → {to_warehouse}
+📊 {items_count} أصناف | {total_units} وحدة | ⏰ {time}`,
+  "telegram_inventory_adjustment|قياسي — مفصل": `📋 *تم تعديل المخزون*
+
+🏷️ المنتج: *{product_name}*
+🏢 المستودع: {warehouse}
+📦 الكمية: {old_quantity} → {new_quantity} (فرق: {difference})
+📝 السبب: {reason}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_inventory_adjustment|مختصر — سريع": `📋 تعديل مخزون: {product_name} | {old_quantity}→{new_quantity} ({difference}) | {reason}`,
+  "telegram_new_product|قياسي — مفصل": `🆕 *تم إضافة منتج جديد*
+
+🏷️ المنتج: *{product_name}*
+🔖 الكود: {sku}
+💰 السعر: {price}
+🏢 المستودع: {warehouse}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_new_product|مختصر — سريع": `🆕 منتج جديد: {product_name} ({sku}) | {price} | {warehouse}`,
+  "telegram_price_change|قياسي — مفصل": `💲 *تم تغيير سعر منتج*
+
+🏷️ المنتج: *{product_name}*
+📉 السعر القديم: {old_price}
+📈 السعر الجديد: *{new_price}*
+📊 نسبة التغيير: {change_percent}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_price_change|مختصر — سريع": `💲 تغيير سعر: {product_name} | {old_price} → {new_price} ({change_percent})`,
+  "telegram_batch_expiry|قياسي — مفصل": `⚠️ *انتهاء صلاحية دفعة قادم*
+
+🏷️ المنتج: *{product_name}*
+🔢 رقم الدفعة: {batch_no}
+📅 تاريخ الانتهاء: *{expiry_date}*
+📦 الكمية المتبقية: {remaining_quantity}
+🏢 المستودع: {warehouse}`,
+  "telegram_batch_expiry|مختصر — سريع": `⚠️ انتهاء صلاحية: {product_name} | دفعة {batch_no} | تنتهي {expiry_date} | كمية {remaining_quantity}`,
+  "telegram_physical_count|قياسي — مفصل": `📊 *تأكيد جرد فعلي*
+
+🏢 المستودع: {warehouse}
+✅ أصناف مطابقة: *{matched_count}*
+❌ أصناف غير مطابقة: *{mismatched_count}*
+📦 إجمالي الأصناف: {total_items}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_physical_count|مختصر — سريع": `📊 جرد {warehouse}: {matched_count} مطابق | {mismatched_count} غير مطابق | {total_items} إجمالي`,
+  "telegram_supplier_payment|قياسي — مفصل": `💸 *دفعة مورد*
+
+🏢 المورد: *{supplier_name}*
+💰 المبلغ: *{amount}*
+💳 الطريقة: {method}
+🔖 المرجع: {reference}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_supplier_payment|مختصر — سريع": `💸 دفعة مورد: {supplier_name} | {amount} | {method}`,
+  "telegram_debt_payment|قياسي — مفصل": `💰 *تحصيل دفعة دين*
+
+👤 العميل: *{customer_name}*
+💵 المبلغ: *{amount}*
+💳 الطريقة: {method}
+📊 الدين المتبقي: {remaining_debt}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_debt_payment|مختصر — سريع": `💰 تحصيل دين: {customer_name} | {amount} | متبقي {remaining_debt}`,
+  "telegram_installment_paid|قياسي — مفصل": `📋 *تسديد قسط*
+
+👤 العميل: *{customer_name}*
+🔢 القسط رقم: {installment_no} / {total_installments}
+💵 المبلغ: *{amount}*
+📊 المتبقي: {remaining}`,
+  "telegram_installment_paid|مختصر — سريع": `📋 قسط مسدّد: {customer_name} | قسط {installment_no}/{total_installments} | {amount}`,
+  "telegram_purchase_voided|قياسي — مفصل": `🚫 *تم إلغاء فاتورة شراء*
+
+🔖 المرجع: {reference_no}
+🏢 المورد: *{supplier_name}*
+💰 الإجمالي: {total}
+📝 السبب: {reason}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_purchase_voided|مختصر — سريع": `🚫 شراء ملغي: {reference_no} | {supplier_name} | {total} | {reason}`,
+  "telegram_purchase_return|قياسي — مفصل": `↩️ *مرتجع مشتريات*
+
+🔖 المرجع: {reference_no}
+🏢 المورد: *{supplier_name}*
+💰 الإجمالي: *{total}*
+
+📋 *الأصناف:*
+{items_table}
+
+📊 عدد الأصناف: {items_count}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_purchase_return|مختصر — سريع": `↩️ مرتجع شراء: {reference_no} | {supplier_name} | {total} | {items_count} أصناف`,
+  "telegram_branch_transfer|قياسي — مفصل": `🔄 *تحويل بين الفروع*
+
+🔖 المرجع: {reference_no}
+📤 من: {from_branch}
+📥 إلى: {to_warehouse}
+🔀 النوع: {transfer_type}
+⏰ {time}
+
+📋 *الأصناف:*
+{items_table}
+
+📊 عدد الأصناف: {items_count} | إجمالي الوحدات: {total_units}
+💰 إجمالي التكلفة: *{total_cost}*`,
+  "telegram_branch_transfer|مختصر — سريع": `🔄 تحويل فرع: {reference_no} | {from_branch}→{to_warehouse} | {items_count} أصناف | {total_cost}`,
+  "telegram_password_changed|قياسي — مفصل": `🔐 *تم تغيير كلمة المرور*
+
+👤 المستخدم: *{user_name}*
+⏰ التوقيت: {time}
+🌐 عنوان IP: {ip_address}`,
+  "telegram_password_changed|مختصر — سريع": `🔐 تغيير كلمة مرور: {user_name} | {time} | IP: {ip_address}`,
+  "telegram_permission_changed|قياسي — مفصل": `🛡️ *تم تغيير صلاحيات*
+
+👤 المستخدم: *{user_name}*
+📝 الإجراء: {action}
+📋 التفاصيل: {details}
+👤 بواسطة: {changed_by}
+⏰ {time}`,
+  "telegram_permission_changed|مختصر — سريع": `🛡️ تغيير صلاحيات: {user_name} | {action} | بواسطة {changed_by}`,
+  "telegram_supervisor_override|قياسي — مفصل": `⚠️ *تجاوز صلاحيات*
+
+👤 المستخدم: *{user_name}*
+📝 الإجراء: {action}
+📋 التفاصيل: {details}
+👨‍💼 المشرف: {supervisor}
+⏰ {time}`,
+  "telegram_supervisor_override|مختصر — سريع": `⚠️ تجاوز صلاحيات: {user_name} | {action} | مشرف: {supervisor}`,
+  "telegram_repair_created|قياسي — مفصل": `🔧 *طلب صيانة جديد*
+
+🔖 رقم الطلب: *{order_no}*
+👤 العميل: *{customer_name}*
+📱 الجهاز: {device_type}
+📝 المشكلة: {problem}
+💰 التكلفة التقديرية: {estimated_cost}
+⏰ {time}`,
+  "telegram_repair_created|مختصر — سريع": `🔧 صيانة جديدة: {order_no} | {customer_name} | {device_type} | {estimated_cost}`,
+  "telegram_revenue_created|قياسي — مفصل": `💵 *تم تسجيل إيراد*
+
+🔖 المستند: *{doc_no}*
+💰 المبلغ: *{amount}*
+📂 الفئة: {category}
+📝 الوصف: {description}
+💳 الطريقة: {method}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_revenue_created|مختصر — سريع": `💵 إيراد جديد: {doc_no} | {amount} | {category}`,
+  "telegram_withdrawal_created|قياسي — مفصل": `🏦 *تم سحب نقدي*
+
+🔖 المستند: *{doc_no}*
+💰 المبلغ: *{amount}*
+📂 الفئة: {category}
+📝 الملاحظة: {note}
+💳 الطريقة: {method}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_withdrawal_created|مختصر — سريع": `🏦 سحب نقدي: {doc_no} | {amount} | {category}`,
+  "telegram_employee_created|قياسي — مفصل": `👤 *تم إضافة موظف جديد*
+
+🏷️ اسم الموظف: *{employee_name}*
+💼 المسمى: {job_title}
+💰 الراتب: {salary}
+📞 الهاتف: {phone}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_employee_created|مختصر — سريع": `👤 موظف جديد: {employee_name} | {job_title} | {salary}`,
+  "telegram_salary_settled|قياسي — مفصل": `💰 *تسويات راتب*
+
+👤 الموظف: *{employee_name}*
+📅 الفترة: {period}
+
+💵 الراتب الأساسي: {base_salary}
+🏆 المكافآت: {bonuses}
+📉 الخصومات: {deductions}
+💳 خصم السلف: {advance_deductions}
+━━━━━━━━━━━━━━━
+✅ الصافي: *{net_salary}*
+💰 المدفوع: *{paid_amount}*
+
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_salary_settled|مختصر — سريع": `💰 تسويات راتب: {employee_name} | صافي {net_salary} | مدفوع {paid_amount}`,
+  "telegram_advance_created|قياسي — مفصل": `💳 *تم منح سلفة*
+
+👤 الموظف: *{employee_name}*
+💰 المبلغ: *{amount}*
+🔢 عدد الأقساط: {installment_count}
+📊 قيمة القسط: {installment_amount}
+📝 ملاحظات: {notes}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_advance_created|مختصر — سريع": `💳 سلفة جديدة: {employee_name} | {amount} | {installment_count} أقساط × {installment_amount}`,
+  "telegram_deduction_created|قياسي — مفصل": `📉 *تم تسجيل خصم*
+
+👤 الموظف: *{employee_name}*
+💰 المبلغ: *{amount}*
+📋 نوع الخصم: {deduction_type}
+🔄 دوري: {is_recurring}
+📝 ملاحظات: {notes}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_deduction_created|مختصر — سريع": `📉 خصم جديد: {employee_name} | {amount} | {deduction_type}`,
+  "telegram_bonus_created|قياسي — مفصل": `🏆 *تم منح مكافأة*
+
+👤 الموظف: *{employee_name}*
+💰 المبلغ: *{amount}*
+📋 نوع المكافأة: {bonus_type}
+🔄 دوري: {is_recurring}
+📝 ملاحظات: {notes}
+👤 بواسطة: {user_name}
+⏰ {time}`,
+  "telegram_bonus_created|مختصر — سريع": `🏆 مكافأة جديدة: {employee_name} | {amount} | {bonus_type}`,
 };
 
 function renderCategoryPreview(body, vars) {
@@ -3039,6 +4368,10 @@ function renderFakePreview(body) {
     "{name}": "أحمد محمد",
     "{invoice_no}": "INV-20260710-0001",
     "{total}": "٢٥٠",
+    "{subtotal}": "٢٢٥",
+    "{tax}": "٠",
+    "{paid}": "٢٥٠",
+    "{balance}": "٠",
     "{shop}": "متجر النخبة",
     "{date}": "١٠ يوليو ٢٠٢٦",
     "{payment_type}": "نقداً",
@@ -3078,6 +4411,23 @@ function renderFakePreview(body) {
     "{username}": "أحمد",
     "{ip}": "192.168.1.100",
     "{partner_branch}": "الفرع الثاني",
+    "{phone}": "٠١٠٠٠٠٠٠٠٠٠",
+    "{city}": "القاهرة",
+    "{success_text}": "✅ نسخة احتياطية ناجحة",
+    "{error}": "لا يوجد",
+    "{notes}": "مصروف تشغيلي",
+    "{title}": "📊 الملخص الأسبوعي",
+    "{period_label}": "أسبوع ٢٠٢٦-W28",
+    "{sales_total}": "١٥٬٠٠٠ جنيه",
+    "{sales_count}": "٤٥",
+    "{sales_delta}": "📈 +١٢٪",
+    "{avg_invoice}": "٣٣٣ جنيه",
+    "{profit}": "٤٬٥٠٠ جنيه",
+    "{products_table}": "1. منتج ١ — ١٠ قطع (٥٬٠٠٠ جنيه)\n2. منتج ٢ — ٥ قطع (٢٬٥٠٠ جنيه)",
+    "{customers_table}": "1. أحمد محمد — ٣٬٠٠٠ جنيه\n2. محمد علي — ٢٬٠٠٠ جنيه",
+    "{liquidity}": "٢٥٬٠٠٠ جنيه",
+    "{treasury_balance}": "١٥٬٠٠٠ جنيه",
+    "{bank_balance}": "١٠٬٠٠٠ جنيه",
   };
   return body.replace(/\{(\w+)\}/g, (_, key) => fakeMap[`{${key}}`] || `{${key}}`);
 }
@@ -3112,6 +4462,8 @@ function TemplatesTab() {
     const catVariants = variants.filter(v => v.category === category);
     const active = catVariants.find(v => v.is_active);
     const [activatingId, setActivatingId] = useState(null);
+    const isTelegram = category.startsWith("telegram_");
+    const DEFAULT_PRESETS = ["قياسي — مفصل", "مختصر — سريع"];
 
     async function activateVariant(variant) {
       setActivatingId(variant.id);
@@ -3125,6 +4477,23 @@ function TemplatesTab() {
       }
     }
 
+    async function ensureDefaultVariants() {
+      try {
+        for (const preset of DEFAULT_PRESETS) {
+          const exists = catVariants.find(v => v.label === preset);
+          if (!exists) {
+            const body = DEFAULT_BODIES[`${category}|${preset}`] || `— ${meta.label} — ${preset}`;
+            await api.post("/api/whatsapp/crm/template-variants", { category, label: preset, body });
+          }
+        }
+        await fetchVariants();
+      } catch (e) {
+        toast.error(e.response?.data?.message || "فشل إنشاء القوالب الافتراضية");
+      }
+    }
+
+    const showPresetChooser = isTelegram && catVariants.length >= 1;
+
     return (
       <div className="rounded-xl border border-border-normal bg-bg-surface p-5 shadow-card">
         <div className="flex items-center gap-2 mb-3">
@@ -3134,7 +4503,7 @@ function TemplatesTab() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-black text-text-primary">{meta.label}</p>
-              <ChannelBadge channel={category.startsWith("telegram_") ? "telegram" : "whatsapp"} />
+              <ChannelBadge channel={isTelegram ? "telegram" : "whatsapp"} />
             </div>
             <p className="text-[11px] font-bold text-text-muted">{meta.hint}</p>
           </div>
@@ -3142,7 +4511,7 @@ function TemplatesTab() {
         <div className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap rounded-lg bg-bg-base p-3 font-mono mb-3 max-h-36 overflow-y-auto">
           {active ? renderFakePreview(active.body) : "—"}
         </div>
-        {catVariants.length > 1 && (
+        {showPresetChooser && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {catVariants.map(v => (
               <button key={v.id} onClick={() => activateVariant(v)} disabled={activatingId === v.id}
@@ -3153,6 +4522,14 @@ function TemplatesTab() {
                 {activatingId === v.id ? "..." : v.label || "بدون اسم"}
               </button>
             ))}
+          </div>
+        )}
+        {isTelegram && catVariants.length === 0 && (
+          <div className="mb-3">
+            <button onClick={ensureDefaultVariants}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-primary bg-primary/5 text-primary text-[11px] font-black hover:bg-primary/10 transition-all active:scale-95">
+              <Plus className="h-3 w-3" /> إنشاء القوالب الافتراضية (تفصيلي + مختصر)
+            </button>
           </div>
         )}
         <div className="flex items-center justify-between gap-2">

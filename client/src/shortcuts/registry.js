@@ -58,7 +58,6 @@ export const SHORTCUTS = [
   { id: "items.calculator", defaultKeys: ["F2"],        scope: SCOPES.ITEMS, group: "الأصناف", label: "فتح الحاسبة للسعر", pages: ["الأصناف"] },
   { id: "items.new",        defaultKeys: ["Alt", "N"],  scope: SCOPES.ITEMS, group: "الأصناف", label: "إضافة صنف جديد", allowInInput: true, pages: ["الأصناف"] },
   { id: "items.search",     defaultKeys: ["/"],         scope: SCOPES.ITEMS, group: "الأصناف", label: "تركيز البحث", pages: ["الأصناف"] },
-  { id: "items.refresh",    defaultKeys: ["Alt", "R"],  scope: SCOPES.ITEMS, group: "الأصناف", label: "تحديث القائمة", allowInInput: true, pages: ["الأصناف"] },
 
   // ── Quotation form / list ──────────────────────────────────────────────────
   { id: "quotation.save",  defaultKeys: ["Ctrl", "S"], scope: SCOPES.QUOTATION,      group: "عروض الأسعار", label: "حفظ عرض السعر", allowInInput: true, pages: ["عرض سعر"] },
@@ -93,7 +92,6 @@ export const SHORTCUT_DESC = {
   "items.calculator": "يفتح حاسبة هامش الربح لخانة سعر البيع المحددة.",
   "items.new": "يفتح نافذة إضافة صنف جديد (بعد اختيار فئة).",
   "items.search": "ينقل المؤشر إلى خانة البحث في قائمة الأصناف.",
-  "items.refresh": "يعيد تحميل قائمة الأصناف من قاعدة البيانات.",
   "quotation.save": "يحفظ عرض السعر الحالي.",
   "quotation.print": "يطبع عرض السعر الحالي.",
   "quotation.new": "ينشئ عرض سعر جديد من قائمة العروض.",

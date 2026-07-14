@@ -5,6 +5,7 @@ const { normalizeDate } = require("../services/dailySessionService");
 const { requirePagePermission, userHasPagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { toSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -95,6 +96,22 @@ router.post("/", requirePagePermission("withdrawals", "add"), (req, res) => {
       req.user?.id || 1,
     );
     req.audit("create", "withdrawals", { id: result.lastInsertRowid }, `💰 تم تسجيل سحب بمبلغ: ${payload.amount}`);
+
+    // Telegram notification
+    try {
+      const catRow = payload.category_id ? db.prepare("SELECT name FROM withdrawal_categories WHERE id = ?").get(payload.category_id) : null;
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.WITHDRAWAL_CREATED, {
+        docNo,
+        amount: Number(payload.amount),
+        category: catRow?.name || null,
+        note: payload.note || null,
+        paymentMethod: payload.payment_method || "cash",
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
+
     res.status(201).json({ success: true, data: db.prepare("SELECT * FROM withdrawals WHERE id = ?").get(result.lastInsertRowid) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

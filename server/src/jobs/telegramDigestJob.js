@@ -6,7 +6,7 @@
 // digest is delivered exactly once.
 const logger = require("../config/logger");
 const { getDb } = require("../config/database");
-const { getTelegramConfig, sendTelegramMessage, enqueueNotification } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, isDigestEnabledForRecipient, sendTelegramMessage, enqueueNotification } = require("../services/telegramService");
 const { completedPeriodBounds, buildDigest } = require("../services/telegramDigest");
 
 const PERIODS = [
@@ -31,6 +31,38 @@ function markSent(db, type, key) {
   } catch (_) {}
 }
 
+function sendDigestToRecipients(db, config, text, periodType) {
+  const recipients = getTelegramRecipients(db);
+  if (recipients.length > 0) {
+    for (const recipient of recipients) {
+      if (!isDigestEnabledForRecipient(recipient, periodType)) continue;
+      sendTelegramMessage(config, recipient.chatId, text).catch((err) => {
+        logger.warn({ message: "Telegram digest send failed, enqueued for retry", chatId: recipient.chatId, type: periodType, error: err.message });
+        try { enqueueNotification(db, `digest_${periodType}`, recipient.chatId, text, {}); } catch (_) {}
+      });
+    }
+    return;
+  }
+
+  // Legacy fallback.
+  const legacy = getLegacyTelegramConfig(db);
+  if (legacy && legacy.enabled && rowForPeriod(legacy, periodType)) {
+    sendTelegramMessage(legacy, legacy.chatId, text).catch((err) => {
+      logger.warn({ message: "Telegram digest send failed, enqueued for retry", type: periodType, error: err.message });
+      try { enqueueNotification(db, `digest_${periodType}`, legacy.chatId, text, {}); } catch (_) {}
+    });
+  }
+}
+
+function rowForPeriod(legacy, periodType) {
+  switch (periodType) {
+    case "weekly": return legacy.notifyWeekly;
+    case "monthly": return legacy.notifyMonthly;
+    case "yearly": return legacy.notifyYearly;
+    default: return false;
+  }
+}
+
 // For each enabled period, send the completed-period digest once. Exported for tests.
 function runDueDigests(dbArg) {
   const db = dbArg || getDb();
@@ -44,23 +76,34 @@ function runDueDigests(dbArg) {
   const branch = row.store_name || row.shop_name || row.company_name || "";
 
   for (const p of PERIODS) {
-    if (!row[p.col]) continue;
+    // With recipients table, period enablement is per-recipient; if no recipients
+    // yet, fall back to the settings toggle.
+    const recipients = getTelegramRecipients(db);
+    const legacyEnabled = row[p.col];
+    const anyEnabled = recipients.length > 0
+      ? recipients.some((r) => r.enabled && isDigestEnabledForRecipient(r, p.type))
+      : legacyEnabled;
+    if (!anyEnabled) continue;
 
     let bounds;
     try { bounds = completedPeriodBounds(p.type); } catch (_) { continue; }
     if (alreadySent(db, p.type, bounds.key)) continue;
 
+    const category = `telegram_${p.type}_digest`;
+    let templateBody = "";
+    try {
+      const row = db.prepare("SELECT body FROM message_templates WHERE kind=?").get(category);
+      templateBody = row?.body || "";
+    } catch (_) {}
+
     let text;
-    try { text = buildDigest(db, p.type, bounds, { currencySymbol: currency, branch }); }
+    try { text = buildDigest(db, p.type, bounds, { currencySymbol: currency, branch, templateBody }); }
     catch (e) { logger.warn({ message: "Telegram digest build failed", type: p.type, error: e.message }); continue; }
 
     // Mark sent immediately so a slow/failed send can't cause a duplicate on the
     // next tick; on failure we hand the message to the existing retry queue.
     markSent(db, p.type, bounds.key);
-    sendTelegramMessage(config, text).catch((err) => {
-      logger.warn({ message: "Telegram digest send failed, enqueued for retry", type: p.type, error: err.message });
-      try { enqueueNotification(db, `digest_${p.type}`, text, {}); } catch (_) {}
-    });
+    sendDigestToRecipients(db, config, text, p.type);
   }
 }
 
