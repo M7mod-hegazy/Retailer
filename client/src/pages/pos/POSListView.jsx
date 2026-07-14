@@ -22,6 +22,8 @@ import EntryItemThumb from "../../components/ui/EntryItemThumb";
 import WarehouseSelect from "../../components/ui/WarehouseSelect";
 import Modal from "../../components/ui/Modal";
 import PermissionGate from "../../components/ui/PermissionGate";
+import PriceHealthHint from "../../components/ui/PriceHealthHint";
+import { getMarginHealth, ENTRY_HEALTH_CLASSES, HEALTH_BORDER_CLASSES } from "../../utils/priceHealth";
 import { useAuthStore } from "../../stores/authStore";
 import DataGrid from "../../components/ui/DataGrid";
 import PanelEdgeRail from "./parts/PanelEdgeRail";
@@ -1196,14 +1198,24 @@ export default function POSListView({ vm }) {
                     {selectedItem && Number(selectedItem.wholesale_price) > 0 && <option value="wholesale">جملة</option>}
                   </select>
                 </div>
-                <input ref={listPriceRef} type="number" step="any" value={staging.unitPrice}
-                  onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
-                  onFocus={e => canOverridePrice && e.target.select()}
-                  onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
-                  readOnly={!canOverridePrice}
-                  title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : (lastSalePrice !== null ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}` : undefined)}
-                  className={`entry-control text-center ${selectedItem && Number(staging.unitPrice) > 0 && Number(staging.unitPrice) < Number(selectedItem.purchase_price || 0) ? "entry-control--error" : ""}`}
-                />
+                {(() => {
+                  const priceHealth = getMarginHealth(staging.unitPrice, selectedItem?.purchase_price, selectedItem?.sale_price);
+                  const hintLabel = canViewProfit && priceHealth.diffFlat != null
+                    ? `ت ${Number(selectedItem?.purchase_price || 0).toFixed(2)} · ${priceHealth.diffFlat >= 0 ? "+" : ""}${priceHealth.diffFlat.toFixed(2)}`
+                    : null;
+                  return (
+                    <PriceHealthHint label={hintLabel}>
+                      <input ref={listPriceRef} type="number" step="any" value={staging.unitPrice}
+                        onChange={(e) => canOverridePrice && setStaging(s => ({ ...s, unitPrice: e.target.value }))}
+                        onFocus={e => canOverridePrice && e.target.select()}
+                        onKeyDown={(e) => handleListFieldKeyDown(e, listDiscRef, listQtyRef)}
+                        readOnly={!canOverridePrice}
+                        title={!canOverridePrice ? "لا تملك صلاحية تعديل السعر" : (lastSalePrice !== null ? `آخر بيع: ${Number(lastSalePrice).toFixed(2)}` : undefined)}
+                        className={`entry-control text-center ${ENTRY_HEALTH_CLASSES[priceHealth.level] || ""}`}
+                      />
+                    </PriceHealthHint>
+                  );
+                })()}
               </div>
 
               {/* خصم */}
