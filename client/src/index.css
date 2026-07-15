@@ -3843,3 +3843,73 @@ html[data-theme="dark"] {
 .animate-sync-float { animation: sync-float 6s ease-in-out infinite; }
 .animate-sync-orb { animation: sync-orb 8s ease-in-out infinite; }
 .animate-sync-circle { animation: sync-circle 2.5s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TELEGRAM STATUS CHIP — Non-blocking notification feedback pill
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes tg-chip-in {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.94); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tg-chip {
+  position: fixed;
+  bottom: 1.5rem;
+  /* RTL-aware: centre via left 50% + translateX */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 1rem 0.42rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.12);
+  animation: tg-chip-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tg-chip:hover {
+  transform: translateX(-50%) scale(1.04);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14);
+}
+.tg-chip__icon { font-size: 1rem; line-height: 1; }
+.tg-chip__text { direction: rtl; }
+
+/* ── State variants ── */
+.tg-chip--sent {
+  background: linear-gradient(135deg, rgba(16,185,129,0.92), rgba(5,150,105,0.88));
+  border-color: rgba(16,185,129,0.35);
+  color: #fff;
+}
+.tg-chip--queued {
+  background: linear-gradient(135deg, rgba(245,158,11,0.92), rgba(217,119,6,0.88));
+  border-color: rgba(245,158,11,0.35);
+  color: #fff;
+}
+.tg-chip--skipped {
+  background: rgba(var(--bg-surface-rgb, 241,245,249), 0.92);
+  border-color: var(--border-normal);
+  color: var(--text-secondary);
+}
+.tg-chip--error {
+  background: linear-gradient(135deg, rgba(239,68,68,0.92), rgba(220,38,38,0.88));
+  border-color: rgba(239,68,68,0.35);
+  color: #fff;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .tg-chip--skipped {
+  background: rgba(30,41,59,0.92);
+  border-color: var(--border-normal);
+}

@@ -7,6 +7,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { recordBankMovement } = require("../services/bankService");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -362,6 +363,22 @@ router.post("/:id/pay", requirePagePermission("installments", "add"), (req, res)
         type: "info",
         link: `/ajal`,
       });
+      if (normalizePartyType(debt.party_type) === "customer") {
+        const updatedDebt = db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(debt.id);
+        const customerRow = db.prepare("SELECT name FROM customers WHERE id = ?").get(debt.customer_id);
+        const methodNames = paymentLines
+          .map((line) => db.prepare("SELECT name FROM payment_methods WHERE id = ?").get(line.method_id || 1)?.name)
+          .filter(Boolean)
+          .join("، ");
+        notifyOwner(TG.DEBT_PAYMENT_RECEIVED, {
+          customerName: customerRow?.name || "غير محدد",
+          amount: totalAmount,
+          method: methodNames || "غير محدد",
+          remainingDebt: Math.max(0, (updatedDebt?.original_amount || 0) - (updatedDebt?.paid_amount || 0)),
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: nowSql(),
+        });
+      }
     } catch (_) {}
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -544,6 +561,24 @@ router.post("/schedules/:id/pay", requirePagePermission("installments", "add"), 
     })();
 
     req.audit("update", "ajalSchedules", { id: req.params.id }, `💰 تم سداد قسط بقيمة: ${payAmount}`);
+    try {
+      if (normalizePartyType(debt.party_type) === "customer") {
+        const updatedDebt = db.prepare("SELECT * FROM ajal_debts WHERE id = ?").get(debt.id);
+        const customerRow = db.prepare("SELECT name FROM customers WHERE id = ?").get(debt.customer_id);
+        const totalInstallments = db.prepare("SELECT COUNT(*) AS n FROM ajal_schedules WHERE debt_id = ?").get(debt.id)?.n || 0;
+        const methodRow = db.prepare("SELECT name FROM payment_methods WHERE id = ?").get(payment_method_id || 1);
+        notifyOwner(TG.INSTALLMENT_PAID, {
+          customerName: customerRow?.name || "غير محدد",
+          amount: payAmount,
+          installmentNo: schedule.installment_no,
+          totalInstallments,
+          remaining: Math.max(0, (updatedDebt?.original_amount || 0) - (updatedDebt?.paid_amount || 0)),
+          method: methodRow?.name || "غير محدد",
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: nowSql(),
+        });
+      }
+    } catch (_) {}
     res.json({ success: true, data: db.prepare("SELECT * FROM ajal_schedules WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -222,6 +222,15 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
           amount: payment?.amount || 0,
           method: payment?.method,
         });
+      } else if (pType === "supplier") {
+        notifyOwner(TG.SUPPLIER_PAYMENT, {
+          supplierName: partyName,
+          amount: payment?.amount || 0,
+          method: payment?.method,
+          reference: payment?.reference_number,
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: payment?.created_at,
+        });
       }
     } catch (_) {}
     res.status(201).json({ success: true, data: payment });

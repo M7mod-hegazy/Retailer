@@ -140,7 +140,7 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
     );
   }
   return (
-    <RollWrapper settings={settings} overlay={absBlocks.length ? absBlocks : null}>
+    <RollWrapper settings={settings} designer={designer} overlay={absBlocks.length ? absBlocks : null}>
       <RollZoneLayout items={items} settings={settings} />
     </RollWrapper>
   );

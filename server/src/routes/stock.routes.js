@@ -6,6 +6,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -250,6 +251,27 @@ router.post("/transfer", requirePagePermission("stock_transfer", "add"), (req, r
     const { item_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body || {};
     const result = transferStock({ item_id, from_warehouse_id, to_warehouse_id, quantity, notes });
     req.audit("transfer", "stock", { item_id, from_warehouse_id, to_warehouse_id, quantity }, `🔄 تم نقل مخزون: صنف #${item_id} (${quantity} وحدة) من مستودع #${from_warehouse_id} إلى #${to_warehouse_id}`);
+    try {
+      const db = getDb();
+      const item = db.prepare("SELECT name, code, purchase_price FROM items WHERE id = ?").get(item_id);
+      const fromWh = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(from_warehouse_id);
+      const toWh = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(to_warehouse_id);
+      const unitPrice = Number(item?.purchase_price || 0);
+      const qty = Number(quantity || 0);
+      notifyOwner(TG.STOCK_TRANSFERRED, {
+        fromWarehouse: fromWh?.name || `#${from_warehouse_id}`,
+        toWarehouse: toWh?.name || `#${to_warehouse_id}`,
+        userName: req.user?.full_name || req.user?.username,
+        items: [{
+          item_name: item?.name || `صنف #${item_id}`,
+          item_code: item?.code || "",
+          quantity: qty,
+          unit_price: unitPrice,
+          line_total: unitPrice * qty,
+        }],
+        createdAt: nowSql(),
+      });
+    } catch (_) {}
     res.json({ success: true, data: result });
   } catch (error) {
     next(error);
@@ -274,6 +296,31 @@ router.post("/transfer/bulk", requirePagePermission("stock_transfer", "add"), (r
       }
     }
     req.audit("bulk_transfer", "stock", { from_warehouse_id, to_warehouse_id, count: results.length }, `🔄 تم نقل مخزون مجمّع (${results.length} صنف) من مستودع #${from_warehouse_id} إلى #${to_warehouse_id}`);
+    try {
+      if (results.length) {
+        const db = getDb();
+        const fromWh = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(from_warehouse_id);
+        const toWh = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(to_warehouse_id);
+        const itemsPayload = results.map((r) => {
+          const item = db.prepare("SELECT name, code, purchase_price FROM items WHERE id = ?").get(r.item_id);
+          const unitPrice = Number(item?.purchase_price || 0);
+          return {
+            item_name: item?.name || `صنف #${r.item_id}`,
+            item_code: item?.code || "",
+            quantity: Number(r.quantity || 0),
+            unit_price: unitPrice,
+            line_total: unitPrice * Number(r.quantity || 0),
+          };
+        });
+        notifyOwner(TG.STOCK_TRANSFERRED, {
+          fromWarehouse: fromWh?.name || `#${from_warehouse_id}`,
+          toWarehouse: toWh?.name || `#${to_warehouse_id}`,
+          userName: req.user?.full_name || req.user?.username,
+          items: itemsPayload,
+          createdAt: nowSql(),
+        });
+      }
+    } catch (_) {}
     res.json({ success: true, transferred: results.length, errors });
   } catch (error) {
     next(error);
@@ -325,6 +372,17 @@ router.post("/adjust", requirePagePermission("stock_transfer", "add"), (req, res
         body: `تسوية مخزون للصنف: ${itemName} — الكمية: ${nextQty}`,
         type: "info",
         link: stockAuditId ? `/history?log_id=${stockAuditId}` : `/stock`,
+      });
+      const whRow = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(warehouseId);
+      notifyOwner(TG.INVENTORY_ADJUSTED, {
+        productName: itemName,
+        warehouse: whRow?.name || `#${warehouseId}`,
+        oldQuantity: currentQty,
+        newQuantity: nextQty,
+        difference: variance,
+        reason: payload.notes || "تسوية يدوية",
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: nowSql(),
       });
     } catch (_) {}
     res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, quantity: nextQty } });
@@ -579,6 +637,20 @@ router.post("/physical-count/sessions/:id/confirm", requirePagePermission("stock
 
       return getSessionWithLines(db, sessionId);
     })();
+
+    try {
+      const totalItems = (result?.lines || []).length;
+      const mismatchedCount = (result?.lines || []).filter((l) => l.variance !== 0).length;
+      const matchedCount = totalItems - mismatchedCount;
+      notifyOwner(TG.PHYSICAL_COUNT_CONFIRMED, {
+        warehouse: result?.warehouse_name || "غير محدد",
+        totalItems,
+        matchedCount,
+        mismatchedCount,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: nowSql(),
+      });
+    } catch (_) {}
 
     res.json({ success: true, data: result });
   } catch (error) {

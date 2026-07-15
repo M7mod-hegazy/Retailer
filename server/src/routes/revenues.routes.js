@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
@@ -148,7 +148,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
   try {
     const db = getDb();
     const payload = req.body || {};
-    const existing = db.prepare("SELECT created_at FROM revenues WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT r.*, c.name AS category_name FROM revenues r LEFT JOIN revenue_categories c ON c.id = r.category_id WHERE r.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "revenues", "backdate_records")) {
@@ -158,6 +158,23 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
     db.prepare(`UPDATE revenues SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = ? WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, nowSql(), req.params.id);
     req.audit("update", "revenues", { id: req.params.id }, `💰 تم تعديل إيراد #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const catRow = (payload.category_id || existing?.category_id) ? db.prepare("SELECT name FROM revenue_categories WHERE id = ?").get(payload.category_id || existing?.category_id) : null;
+      notifyOwner(TG.REVENUE_EDITED, {
+        revenueId: req.params.id,
+        docNo: existing?.doc_no || null,
+        category: catRow?.name || existing?.category_name || null,
+        oldAmount: existing ? Number(existing.amount || 0) : null,
+        newAmount: payload.amount != null ? Number(payload.amount) : (existing ? Number(existing.amount || 0) : null),
+        oldDescription: existing?.description || existing?.notes || null,
+        newDescription: payload.description || payload.notes || null,
+        paymentMethod: payload.payment_method || existing?.payment_method || "cash",
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: db.prepare("SELECT * FROM revenues WHERE id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -165,7 +182,7 @@ router.put("/:id", requirePagePermission("revenues", "edit"), (req, res) => {
 router.delete("/:id", requirePagePermission("revenues", "delete"), (req, res) => {
   try {
     const db = getDb();
-    const existing = db.prepare("SELECT created_at FROM revenues WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT r.*, c.name AS category_name FROM revenues r LEFT JOIN revenue_categories c ON c.id = r.category_id WHERE r.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "revenues", "backdate_records")) {
@@ -174,6 +191,21 @@ router.delete("/:id", requirePagePermission("revenues", "delete"), (req, res) =>
     }
     db.prepare("DELETE FROM revenues WHERE id = ?").run(req.params.id);
     req.audit("delete", "revenues", { id: req.params.id }, `💰 تم حذف إيراد`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.REVENUE_DELETED, {
+        revenueId: req.params.id,
+        docNo: existing?.doc_no || null,
+        category: existing?.category_name || null,
+        amount: existing ? Number(existing.amount || 0) : null,
+        description: existing?.description || existing?.notes || null,
+        paymentMethod: existing?.payment_method || "cash",
+        date: (existing?.created_at || "").slice(0, 10),
+        userName: userRow?.name || null,
+        deletedAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
     return res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -120,7 +120,7 @@ router.put("/:id", requirePagePermission("withdrawals", "edit"), (req, res) => {
   const payload = req.body || {};
   const db = getDb();
   try {
-    const existing = db.prepare("SELECT created_at FROM withdrawals WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT w.*, wc.name AS category_name FROM withdrawals w LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id WHERE w.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "withdrawals", "backdate_records")) {
@@ -130,6 +130,21 @@ router.put("/:id", requirePagePermission("withdrawals", "edit"), (req, res) => {
     db.prepare(`UPDATE withdrawals SET amount = ?, category_id = ?, note = ?, payment_method = ? WHERE id = ?`)
       .run(Number(payload.amount), payload.category_id || null, payload.note || null, payload.payment_method || "cash", req.params.id);
     req.audit("update", "withdrawals", { id: req.params.id }, `💰 تم تعديل سحب`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const catRow = (payload.category_id || existing?.category_id) ? db.prepare("SELECT name FROM withdrawal_categories WHERE id = ?").get(payload.category_id || existing?.category_id) : null;
+      notifyOwner(TG.WITHDRAWAL_EDITED, {
+        docNo: existing?.doc_no || null,
+        oldAmount: existing ? Number(existing.amount || 0) : null,
+        newAmount: Number(payload.amount),
+        category: catRow?.name || existing?.category_name || null,
+        note: payload.note || existing?.note || null,
+        paymentMethod: payload.payment_method || existing?.payment_method || "cash",
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: db.prepare("SELECT w.*, wc.name AS category_name FROM withdrawals w LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id WHERE w.id = ?").get(req.params.id) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -137,7 +152,7 @@ router.put("/:id", requirePagePermission("withdrawals", "edit"), (req, res) => {
 router.delete("/:id", requirePagePermission("withdrawals", "delete"), (req, res) => {
   try {
     const db = getDb();
-    const existing = db.prepare("SELECT created_at FROM withdrawals WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT w.*, wc.name AS category_name FROM withdrawals w LEFT JOIN withdrawal_categories wc ON wc.id = w.category_id WHERE w.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "withdrawals", "backdate_records")) {
@@ -146,6 +161,20 @@ router.delete("/:id", requirePagePermission("withdrawals", "delete"), (req, res)
     }
     db.prepare("DELETE FROM withdrawals WHERE id = ?").run(req.params.id);
     req.audit("delete", "withdrawals", { id: req.params.id }, `💰 تم حذف سحب`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.WITHDRAWAL_DELETED, {
+        docNo: existing?.doc_no || null,
+        amount: existing ? Number(existing.amount || 0) : null,
+        category: existing?.category_name || null,
+        note: existing?.note || null,
+        paymentMethod: existing?.payment_method || "cash",
+        date: (existing?.created_at || "").slice(0, 10),
+        userName: userRow?.name || null,
+        deletedAt: new Date().toISOString(),
+      });
+    } catch (_) { /* non-critical */ }
     return res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -11,6 +11,7 @@ const { applyLinePriceUpdates, revertLinePriceUpdates } = require("../services/p
 const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 const { nowSql, dayStamp } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 const { authRequired } = require('../middleware/auth');
@@ -352,6 +353,27 @@ router.post("/", requirePagePermission("branch_transfer", "add"), (req, res, nex
     const { priceUpdateCount, ...savedDoc } = result;
     const priceNote = priceUpdateCount > 0 ? ` — تحديث ${priceUpdateCount} سعر` : "";
     req.audit("create", "branchTransfers", { id: savedDoc.id }, `📦 تم تسجيل حركة فرع: ${savedDoc.reference_no || ''}${priceNote}`);
+    try {
+      const whRow = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(savedDoc.warehouse_id);
+      const localBranch = whRow?.name || "الفرع الحالي";
+      const partnerBranch = partner_branch || "فرع آخر";
+      const itemsPayload = db.prepare(`
+        SELECT COALESCE(i.name, 'صنف #' || btl.item_id) AS item_name, i.code AS item_code,
+               btl.quantity, btl.unit_cost AS unit_price, (btl.quantity * btl.unit_cost) AS line_total
+        FROM branch_transfer_lines btl
+        LEFT JOIN items i ON i.id = btl.item_id
+        WHERE btl.transfer_id = ?
+      `).all(savedDoc.id);
+      notifyOwner(TG.BRANCH_TRANSFER, {
+        referenceNo: savedDoc.reference_no,
+        fromBranch: type === "send" ? localBranch : partnerBranch,
+        toBranch: type === "send" ? partnerBranch : localBranch,
+        transferType: type,
+        items: itemsPayload,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: savedDoc.created_at,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: savedDoc });
   } catch (err) {
     next(err);
@@ -533,6 +555,19 @@ router.put("/:id", requirePagePermission("branch_transfer", "edit"), (req, res, 
     const { priceUpdateCount, ...updatedDoc } = result;
     const priceNote = priceUpdateCount > 0 ? ` — تحديث ${priceUpdateCount} سعر` : "";
     req.audit("update", "branchTransfers", { id }, `✏️ تم تعديل حركة فرع: ${existing.reference_no}${priceNote}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const newLines = db.prepare(`SELECT COALESCE(i.name, 'صنف #' || btl.item_id) AS item_name, btl.quantity FROM branch_transfer_lines btl LEFT JOIN items i ON i.id = btl.item_id WHERE btl.transfer_id = ?`).all(id);
+      notifyOwner(TG.BRANCH_TRANSFER_EDITED, {
+        referenceNo: existing.reference_no,
+        transferType: existing.type,
+        partnerBranch: req.body?.partner_branch || existing.partner_branch || null,
+        lines: newLines,
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.json({ success: true, data: updatedDoc });
   } catch (err) {
     next(err);
@@ -613,6 +648,18 @@ router.delete("/:id", requirePagePermission("branch_transfer", "delete"), (req, 
     } catch (_) {}
 
     req.audit("delete", "branchTransfers", { id }, `🗑️ تم إلغاء حركة فرع: ${transfer.reference_no}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.BRANCH_TRANSFER_CANCELLED, {
+        referenceNo: transfer.reference_no,
+        transferType: transfer.type,
+        partnerBranch: transfer.partner_branch || null,
+        reason: reason,
+        userName: userRow?.name || null,
+        cancelledAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.json({ success: true });
   } catch (err) {
     next(err);

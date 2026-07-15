@@ -37,6 +37,7 @@ import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from "../..
 import { printContent, getPrinterForPageSize } from "../../services/printService";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
 import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
+import { useTelegramStatus } from "../../components/ui/TelegramStatusChip";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
@@ -79,6 +80,7 @@ const pickVisaMethod = (methods = []) => {
 
 export default function POSPage() {
   usePageTour("pos");
+  const { showTelegramStatus, TelegramStatusChip } = useTelegramStatus();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -1637,6 +1639,8 @@ export default function POSPage() {
       let response;
       if (amendInvoiceId) {
         response = await api.put(`/api/invoices/${amendInvoiceId}`, payload);
+        // Show Telegram chip for amend
+        showTelegramStatus(response.data?.telegramStatus);
         const savedData = response.data?.data;
         const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
@@ -1675,6 +1679,8 @@ export default function POSPage() {
         return;
       } else {
         response = await api.post("/api/invoices", payload);
+        // Show Telegram chip for new invoice
+        showTelegramStatus(response.data?.telegramStatus);
       }
       const savedInvoiceNo = response.data?.data?.invoice_no || response.data?.data?.new_invoice?.invoice_no || invoiceNumber;
       const buildPaymentsSnap = () => {
@@ -2084,6 +2090,7 @@ export default function POSPage() {
           </div>
         </div>
       )}
+      <TelegramStatusChip />
     </>
   );
 }

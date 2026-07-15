@@ -455,16 +455,30 @@ router.get("/:id", requirePagePermission("pos", "view"), (req, res, next) => {
   }
 });
 
-router.put("/:id", requirePagePermission("pos", "edit"), (req, res, next) => {
+router.put("/:id", requirePagePermission("pos", "edit"), async (req, res, next) => {
   try {
+    const db = getDb();
     const userId = req.user?.id ? Number(req.user.id) : null;
     const result = editInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, userId);
     req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      _tgStatus = await notifyOwner(TG.INVOICE_EDITED, {
+        invoiceNo: result?.invoice_no,
+        customerName: result?.customer_name,
+        total: result?.total,
+        lines: result?.lines,
+        paymentType: result?.payment_type,
+        userName: userRow?.name || req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.post("/", requirePagePermission("pos", "add"), (req, res) => {
+router.post("/", requirePagePermission("pos", "add"), async (req, res) => {
   const rawUserId = req.user?.id;
   const resolvedUserId = rawUserId && Number.isInteger(Number(rawUserId))
     ? Number(rawUserId)
@@ -472,8 +486,9 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
   const payload = { ...(req.body || {}), user_id: resolvedUserId, _user: req.user };
   const invoice = createInvoice(payload);
   const invoiceAuditId = req.audit("create", "invoice", { id: invoice?.id, invoice_no: invoice?.invoice_no, total: invoice?.total }, `🧾 تم إنشاء فاتورة #${invoice?.invoice_no || invoice?.id}`, invoice?.id ? `/invoices/${invoice.id}` : null);
+  let _tgStatus = null;
   try {
-    notifyOwner(TG.NEW_INVOICE, {
+    _tgStatus = await notifyOwner(TG.NEW_INVOICE, {
       id: invoice?.id,
       invoiceNo: invoice?.invoice_no,
       total: invoice?.total,
@@ -533,10 +548,10 @@ router.post("/", requirePagePermission("pos", "add"), (req, res) => {
       }
     }
   } catch (_) {}
-  res.status(201).json({ success: true, data: invoice });
+  res.status(201).json({ success: true, data: invoice, telegramStatus: _tgStatus });
 });
 
-router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
+router.post("/:id/return", requirePagePermission("sales_returns", "add"), async (req, res, next) => {
   try {
     const salesReturn = createReturn(Number(req.params.id), {
       ...(req.body || {}),
@@ -544,6 +559,7 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, 
     });
     const returnAuditId = req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
     try {
+      const db = getDb();
       const invoiceId = req.params.id;
       const returnTotal = salesReturn?.total ?? 0;
       NotificationModel.create({
@@ -552,10 +568,20 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, 
         type: "info",
         link: returnAuditId ? `/history?log_id=${returnAuditId}` : `/invoices`,
       });
+      // Fetch original invoice for enriched data
+      const originalInvoice = db.prepare("SELECT invoice_no, customer_id FROM invoices WHERE id = ?").get(invoiceId);
+      const customerRow = originalInvoice?.customer_id ? db.prepare("SELECT name FROM customers WHERE id = ?").get(originalInvoice.customer_id) : null;
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
       notifyOwner(TG.SALES_RETURN, {
         originalInvoiceId: invoiceId,
+        originalInvoiceNo: originalInvoice?.invoice_no || invoiceId,
         id: salesReturn?.id,
         total: returnTotal,
+        customerName: customerRow?.name || null,
+        lines: salesReturn?.lines || [],
+        refundMethod: salesReturn?.refund_method || req.body?.refund_method || null,
+        userName: userRow?.name || req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
       });
     } catch (_) {}
     res.status(201).json({ success: true, data: salesReturn });
@@ -564,13 +590,16 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), (req, 
   }
 });
 
-router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) => {
+router.post("/:id/void", requirePagePermission("pos", "void"), async (req, res, next) => {
   try {
     if (!req.body.reason) {
       const error = new Error("Void reason is required");
       error.status = 400;
       throw error;
     }
+    const db = getDb();
+    // Fetch full invoice BEFORE voiding
+    const invoiceBefore = getInvoiceWithLines(Number(req.params.id));
     const { voidInvoice } = require("../services/invoiceService");
     const voided = voidInvoice(Number(req.params.id), req.body.reason, req.user?.id || 1);
     const voidAuditId = req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
@@ -581,10 +610,14 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
         type: "warning",
         link: voidAuditId ? `/history?log_id=${voidAuditId}` : `/invoices/${req.params.id}`,
       });
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
       notifyOwner(TG.INVOICE_VOIDED, {
         id: Number(req.params.id),
+        invoiceNo: invoiceBefore?.invoice_no,
+        total: invoiceBefore?.total,
+        customerName: invoiceBefore?.customer_name,
         reason: req.body.reason,
-        userName: req.user?.full_name || req.user?.username,
+        userName: userRow?.name || req.user?.full_name || req.user?.username,
       });
     } catch (_) {}
     res.json({ success: true, data: voided });
@@ -593,15 +626,21 @@ router.post("/:id/void", requirePagePermission("pos", "void"), (req, res, next) 
   }
 });
 
-router.delete("/:id", requirePagePermission("pos", "void"), (req, res, next) => {
+router.delete("/:id", requirePagePermission("pos", "void"), async (req, res, next) => {
   try {
+    const db = getDb();
+    const invoiceBefore = getInvoiceWithLines(Number(req.params.id));
     const result = cancelInvoice(Number(req.params.id), req.body?.reason, req.user?.id);
     req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
     try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
       notifyOwner(TG.INVOICE_VOIDED, {
         id: Number(req.params.id),
+        invoiceNo: invoiceBefore?.invoice_no,
+        total: invoiceBefore?.total,
+        customerName: invoiceBefore?.customer_name,
         reason: req.body?.reason,
-        userName: req.user?.full_name || req.user?.username,
+        userName: userRow?.name || req.user?.full_name || req.user?.username,
       });
     } catch (_) {}
     res.json({ success: true, data: result });
@@ -610,10 +649,28 @@ router.delete("/:id", requirePagePermission("pos", "void"), (req, res, next) => 
   }
 });
 
-router.put("/:id/amend", requirePagePermission("pos", "edit"), (req, res, next) => {
+router.put("/:id/amend", requirePagePermission("pos", "edit"), async (req, res, next) => {
   try {
+    const db = getDb();
+    // Fetch old invoice_no BEFORE amend (amend voids the original)
+    const originalInvoice = db.prepare("SELECT invoice_no FROM invoices WHERE id = ?").get(Number(req.params.id));
     const result = amendInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, req.user?.id);
     req.audit("amend", "invoice", { original_id: Number(req.params.id), new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.INVOICE_AMENDED, {
+        originalId: req.params.id,
+        oldInvoiceNo: originalInvoice?.invoice_no,
+        invoiceNo: result?.invoice_no,
+        id: result?.id,
+        customerName: result?.customer_name,
+        total: result?.total,
+        lines: result?.lines,
+        userName: userRow?.name || req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

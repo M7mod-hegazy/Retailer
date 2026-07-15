@@ -215,16 +215,13 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
   
   settings.forEach(({ setting_key, setting_value }) => {
     if (allowedKeys.includes(setting_key)) {
-      // Handle boolean-like values
-      if (setting_value === 'true') {
-        updates[setting_key] = true;
-      } else if (setting_value === 'false') {
-        updates[setting_key] = false;
-      } else if (!isNaN(Number(setting_value)) && setting_value !== '') {
-        updates[setting_key] = Number(setting_value);
-      } else {
-        updates[setting_key] = setting_value;
-      }
+      // Pass the raw value through untouched. Per-column typing is applied by
+      // coerceVal()/buildUpdate() using COLUMN_META, so numeric/boolean columns
+      // are still coerced correctly. Blanket Number() coercion here USED to
+      // corrupt free-text columns that happen to look numeric — a phone like
+      // "01025109080" became 1025109080, and SQLite's TEXT-affinity conversion
+      // stored it as "1025109080.0" (leading zero lost, ".0" appended).
+      updates[setting_key] = setting_value;
     }
   });
 

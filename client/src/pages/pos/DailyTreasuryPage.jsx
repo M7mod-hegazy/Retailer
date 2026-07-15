@@ -165,9 +165,9 @@ function AmountCell({ t }) {
 
   const splits = t.payment_splits
     ? t.payment_splits.split("|||").map(s => {
-        const idx = s.lastIndexOf(":");
-        return { key: s.slice(0, idx), amt: Number(s.slice(idx + 1)) };
-      })
+      const idx = s.lastIndexOf(":");
+      return { key: s.slice(0, idx), amt: Number(s.slice(idx + 1)) };
+    })
     : [];
   const splitsTotal = splits.reduce((s, x) => s + x.amt, 0);
 
@@ -1265,7 +1265,7 @@ export default function DailyTreasuryPage() {
                         </div>
                         <div className="flex flex-col items-start leading-none">
                           <span className="text-sm font-black text-slate-800 transition-colors group-hover:text-teal-700">شؤون الموظفين</span>
-                          <span className="text-[9px] font-bold text-teal-500/80 mt-1">سندات وحسابات</span>
+                          <span className="text-[9px] font-bold text-teal-500/80 mt-1">خصم او سلفه</span>
                         </div>
                       </div>
                       <div className="w-full bg-teal-100/50 border-t border-teal-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
@@ -1408,8 +1408,8 @@ export default function DailyTreasuryPage() {
                                       ref={el => { equationRowRefs.current[row.id] = el; }}
                                       onClick={() => handleEquationRowClick(row)}
                                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right transition-all border ${isActive
-                                          ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
-                                          : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
+                                        ? "bg-emerald-100 ring-2 ring-emerald-400 border-emerald-300 scale-[1.01]"
+                                        : txAffects ? "bg-white/40 border-emerald-100/30 opacity-40" : "bg-white/60 border-emerald-100/50 hover:bg-emerald-100/60"
                                         }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
@@ -1454,8 +1454,8 @@ export default function DailyTreasuryPage() {
                                       ref={el => { equationRowRefs.current[row.id] = el; }}
                                       onClick={() => handleEquationRowClick(row)}
                                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right transition-all border ${isActive
-                                          ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
-                                          : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
+                                        ? "bg-rose-100 ring-2 ring-rose-400 border-rose-300 scale-[1.01]"
+                                        : txAffects ? "bg-white/40 border-rose-100/30 opacity-40" : "bg-white/60 border-rose-100/50 hover:bg-rose-100/60"
                                         }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
@@ -1494,8 +1494,8 @@ export default function DailyTreasuryPage() {
                                       ref={el => { equationRowRefs.current[row.id] = el; }}
                                       onClick={() => handleEquationRowClick(row)}
                                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-right transition-all ${isActive
-                                          ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
-                                          : txAffects ? "opacity-40" : "hover:bg-[var(--bg-surface)]"
+                                        ? "bg-slate-200 ring-2 ring-slate-400 scale-[1.01]"
+                                        : txAffects ? "opacity-40" : "hover:bg-[var(--bg-surface)]"
                                         }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
@@ -1716,7 +1716,7 @@ export default function DailyTreasuryPage() {
                             </div>
                           </div>
 
-                        {/* Bottom Half: Payment Methods (The Rest) */}
+                          {/* Bottom Half: Payment Methods (The Rest) */}
                           <div className="flex flex-col gap-5">
                             {/* Daily movement per payment method (wallets / bank) */}
                             <div className="rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-normal)] shadow-sm overflow-hidden flex flex-col">
@@ -1751,7 +1751,7 @@ export default function DailyTreasuryPage() {
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-[18px] leading-none shrink-0">{m.icon || "💳"}</span>
-                                             <span className="text-sm font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{m.name}</span>
+                                            <span className="text-sm font-black text-[var(--text-primary)] whitespace-normal break-words leading-tight">{m.name}</span>
                                           </div>
                                           <div className="flex flex-col items-end shrink-0">
                                             <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">الصافي</span>
@@ -1876,28 +1876,28 @@ export default function DailyTreasuryPage() {
                         </div>
                       ) : (
                         <>
-                        <table className="w-full text-center border-collapse [&_td]:align-middle">
-                          <thead className="sticky top-0 z-10 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
-                            <tr className="border-b border-[var(--border-normal)]">
-                              {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
-                                <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
-                                  {h}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200/70">
-                            <AnimatePresence>
-                              {paginatedTransactions.map((t) => (
-                                <motion.tr
-                                  key={t.id}
-                                  layout
-                                  initial={{ opacity: 0, x: 20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  exit={{ opacity: 0, scale: 0.95 }}
-                                  whileHover={{ x: -2 }}
-                                  onClick={() => handleTransactionClick(t)}
-                                  className={`group transition-all relative cursor-pointer ${clickedTxId === t.id
+                          <table className="w-full text-center border-collapse [&_td]:align-middle">
+                            <thead className="sticky top-0 z-10 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_1px_0_0_#f1f5f9]">
+                              <tr className="border-b border-[var(--border-normal)]">
+                                {["الكود", "النوع", "المبلغ", "الطرف / الوصف", "المستخدم", "الوقت", "إجراءات"].map((h, i) => (
+                                  <th key={h} className={`px-3 py-3 text-[11px] font-black uppercase text-[var(--text-muted)] tracking-widest select-none text-center border-r border-slate-200/70 last:border-r-0 ${i === 0 ? 'rounded-tr-xl' : ''} ${i === 6 ? 'rounded-tl-xl' : ''}`}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200/70">
+                              <AnimatePresence>
+                                {paginatedTransactions.map((t) => (
+                                  <motion.tr
+                                    key={t.id}
+                                    layout
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    whileHover={{ x: -2 }}
+                                    onClick={() => handleTransactionClick(t)}
+                                    className={`group transition-all relative cursor-pointer ${clickedTxId === t.id
                                       ? "bg-blue-50 ring-1 ring-inset ring-blue-300"
                                       : methodFilter
                                         ? txMatchesMethod(t, methodFilter)
@@ -1910,126 +1910,125 @@ export default function DailyTreasuryPage() {
                                               ? "bg-indigo-50 ring-1 ring-inset ring-indigo-300"
                                               : "opacity-30"
                                             : ""
-                                    }`}
-                                >
-                                  <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-[var(--text-muted)] line-through" : "text-[var(--text-secondary)]"}`}>{t.doc_no || `#${t.id}`}</td>
-                                  <td className="px-3 py-3.5 border-r border-slate-200/70">
-                                    <div className="flex items-center justify-center gap-1 flex-wrap">
-                                      <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${
-                                        (t.is_cancelled || t.doc_type === 'cancelled_invoice')
-                                          ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
-                                          : t.doc_type === "purchase"
-                                            ? ({ cash: "text-emerald-700 bg-emerald-50 border-emerald-200", credit: "text-amber-700 bg-amber-50 border-amber-200", future_due: "text-amber-700 bg-amber-50 border-amber-200", multi: "text-indigo-700 bg-indigo-50 border-indigo-200", bank_transfer: "text-blue-700 bg-blue-50 border-blue-200" }[t.payment_type] || "text-orange-700 bg-orange-50 border-orange-200")
-                                            : (DOC_TYPE_COLOR[t.doc_type] || "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]")
-                                      }`}>
-                                        {t.doc_type === "purchase"
-                                          ? ({ cash: "مشتريات نقدية", credit: "مشتريات آجلة", future_due: "مشتريات آجلة", multi: "مشتريات متعددة", bank_transfer: "مشتريات تحويل" }[t.payment_type] || "مشتريات")
-                                          : (DOC_TYPE_LABEL[t.doc_type] || t.doc_type)}
-                                      </span>
-                                      {(t.is_cancelled || t.doc_type === 'cancelled_invoice') && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">ملغي</span>
-                                      )}
-                                      {t.amended_by && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200" title={`عُدِّلت بواسطة: ${t.amended_by_no || t.amended_by}`}>
-                                          مُعدَّلة {t.amended_by_no ? `← ${t.amended_by_no}` : ""}
+                                      }`}
+                                  >
+                                    <td className={`px-3 py-3.5 font-black text-[11px] tracking-wider text-center border-r border-slate-200/70 ${t.is_cancelled ? "text-[var(--text-muted)] line-through" : "text-[var(--text-secondary)]"}`}>{t.doc_no || `#${t.id}`}</td>
+                                    <td className="px-3 py-3.5 border-r border-slate-200/70">
+                                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                                        <span className={`inline-flex items-center justify-center rounded-lg border px-2 py-0.5 text-[9px] font-black ${(t.is_cancelled || t.doc_type === 'cancelled_invoice')
+                                            ? "text-rose-700 bg-rose-50 border-rose-200 line-through opacity-60"
+                                            : t.doc_type === "purchase"
+                                              ? ({ cash: "text-emerald-700 bg-emerald-50 border-emerald-200", credit: "text-amber-700 bg-amber-50 border-amber-200", future_due: "text-amber-700 bg-amber-50 border-amber-200", multi: "text-indigo-700 bg-indigo-50 border-indigo-200", bank_transfer: "text-blue-700 bg-blue-50 border-blue-200" }[t.payment_type] || "text-orange-700 bg-orange-50 border-orange-200")
+                                              : (DOC_TYPE_COLOR[t.doc_type] || "text-[var(--text-secondary)] bg-[var(--bg-overlay)] border-[var(--border-normal)]")
+                                          }`}>
+                                          {t.doc_type === "purchase"
+                                            ? ({ cash: "مشتريات نقدية", credit: "مشتريات آجلة", future_due: "مشتريات آجلة", multi: "مشتريات متعددة", bank_transfer: "مشتريات تحويل" }[t.payment_type] || "مشتريات")
+                                            : (DOC_TYPE_LABEL[t.doc_type] || t.doc_type)}
                                         </span>
-                                      )}
-                                      {t.amendment_of && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200" title={`تعديل على: ${t.amendment_of_no || t.amendment_of}`}>
-                                          تعديل {t.amendment_of_no ? `↑ ${t.amendment_of_no}` : "↑"}
-                                        </span>
-                                      )}
-                                      {t.payment_type === "installments" && !t.is_cancelled && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-violet-100 text-violet-700 border border-violet-200 animate-pulse">مقدم + قسط</span>
-                                      )}
-                                      {t.payment_type === "credit" && !t.is_cancelled && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200">كامل آجل</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-2 py-2 min-w-[260px] w-[280px] border-r border-slate-200/70">
-                                    <div className="flex justify-center">
-                                      <div className="w-full max-w-[270px]">
-                                        <AmountCell t={t} />
+                                        {(t.is_cancelled || t.doc_type === 'cancelled_invoice') && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-200">ملغي</span>
+                                        )}
+                                        {t.amended_by && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200" title={`عُدِّلت بواسطة: ${t.amended_by_no || t.amended_by}`}>
+                                            مُعدَّلة {t.amended_by_no ? `← ${t.amended_by_no}` : ""}
+                                          </span>
+                                        )}
+                                        {t.amendment_of && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200" title={`تعديل على: ${t.amendment_of_no || t.amendment_of}`}>
+                                            تعديل {t.amendment_of_no ? `↑ ${t.amendment_of_no}` : "↑"}
+                                          </span>
+                                        )}
+                                        {t.payment_type === "installments" && !t.is_cancelled && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-violet-100 text-violet-700 border border-violet-200 animate-pulse">مقدم + قسط</span>
+                                        )}
+                                        {t.payment_type === "credit" && !t.is_cancelled && (
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 border border-amber-200">كامل آجل</span>
+                                        )}
                                       </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
-                                    {t.party || t.description || "—"}
-                                  </td>
-                                  <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
-                                    {t.seller_name || t.cancelled_by_name || "—"}
-                                  </td>
-                                  <td className="px-3 py-3.5 text-[var(--text-muted)] text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
-                                    {t.created_at
-                                      ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })
-                                      : "—"}
-                                  </td>
-                                  <td className="px-3 py-3.5 text-center">
-                                    <div className="flex items-center justify-center gap-1.5 opacity-100 transition-opacity">
-                                      <button
-                                        onClick={() => setSlideOver(t)}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] shadow-sm transition-all"
-                                        title="عرض التفاصيل"
-                                      >
-                                        <Eye className="h-3 w-3" />
-                                      </button>
-                                      <button
-                                        onClick={handlePrint}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 shadow-sm transition-all"
-                                        title="طباعة"
-                                      >
-                                        <Printer className="h-3 w-3" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </motion.tr>
-                              ))}
-                            </AnimatePresence>
-                          </tbody>
-                          <tfoot className="sticky bottom-0 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
-                            <tr>
-                              <td className="px-3 py-3 font-black text-[var(--text-secondary)] uppercase tracking-widest text-[11px]" colSpan={2}>
-                                الإجمالي للتبويب الحالي
-                              </td>
-                              <td className="number-fmt-primary text-zinc-950 text-sm">
-                                {fmt(txTotal)} ج.م
-                              </td>
-                              <td colSpan={3} />
-                            </tr>
-                          </tfoot>
-                        </table>
-                        {totalPages > 1 && (
-                          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)] bg-slate-50/50" dir="ltr">
-                            <div className="text-[11px] font-bold text-[var(--text-muted)]">
-                              {startIdx + 1}–{Math.min(startIdx + ITEMS_PER_PAGE, sortedTransactions.length)} من {sortedTransactions.length}
+                                    </td>
+                                    <td className="px-2 py-2 min-w-[260px] w-[280px] border-r border-slate-200/70">
+                                      <div className="flex justify-center">
+                                        <div className="w-full max-w-[270px]">
+                                          <AmountCell t={t} />
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] font-bold text-center max-w-[180px] truncate border-r border-slate-200/70">
+                                      {t.party || t.description || "—"}
+                                    </td>
+                                    <td className="px-3 py-3.5 text-[var(--text-secondary)] text-[11px] whitespace-nowrap text-center font-bold border-r border-slate-200/70">
+                                      {t.seller_name || t.cancelled_by_name || "—"}
+                                    </td>
+                                    <td className="px-3 py-3.5 text-[var(--text-muted)] text-[11px] whitespace-nowrap text-center font-medium border-r border-slate-200/70">
+                                      {t.created_at
+                                        ? new Date(t.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })
+                                        : "—"}
+                                    </td>
+                                    <td className="px-3 py-3.5 text-center">
+                                      <div className="flex items-center justify-center gap-1.5 opacity-100 transition-opacity">
+                                        <button
+                                          onClick={() => setSlideOver(t)}
+                                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)] shadow-sm transition-all"
+                                          title="عرض التفاصيل"
+                                        >
+                                          <Eye className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          onClick={handlePrint}
+                                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-50 shadow-sm transition-all"
+                                          title="طباعة"
+                                        >
+                                          <Printer className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </motion.tr>
+                                ))}
+                              </AnimatePresence>
+                            </tbody>
+                            <tfoot className="sticky bottom-0 bg-[var(--bg-surface)] backdrop-blur-xl shadow-[0_-1px_0_0_#f1f5f9]">
+                              <tr>
+                                <td className="px-3 py-3 font-black text-[var(--text-secondary)] uppercase tracking-widest text-[11px]" colSpan={2}>
+                                  الإجمالي للتبويب الحالي
+                                </td>
+                                <td className="number-fmt-primary text-zinc-950 text-sm">
+                                  {fmt(txTotal)} ج.م
+                                </td>
+                                <td colSpan={3} />
+                              </tr>
+                            </tfoot>
+                          </table>
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)] bg-slate-50/50" dir="ltr">
+                              <div className="text-[11px] font-bold text-[var(--text-muted)]">
+                                {startIdx + 1}–{Math.min(startIdx + ITEMS_PER_PAGE, sortedTransactions.length)} من {sortedTransactions.length}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                  disabled={safePage <= 1}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >‹</button>
+                                {(() => {
+                                  const pages = [];
+                                  for (let i = Math.max(1, safePage - 2); i <= Math.min(totalPages, safePage + 2); i++) pages.push(i);
+                                  return pages.map((p) => (
+                                    <button
+                                      key={p}
+                                      onClick={() => setCurrentPage(p)}
+                                      className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"}`}
+                                    >{p}</button>
+                                  ));
+                                })()}
+                                <button
+                                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={safePage >= totalPages}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >›</button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={safePage <= 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >‹</button>
-                              {(() => {
-                                const pages = [];
-                                for (let i = Math.max(1, safePage - 2); i <= Math.min(totalPages, safePage + 2); i++) pages.push(i);
-                                return pages.map((p) => (
-                                  <button
-                                    key={p}
-                                    onClick={() => setCurrentPage(p)}
-                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-[11px] font-black transition-all ${p === safePage ? "bg-primary text-white shadow-md" : "bg-[var(--bg-surface)] border border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)]"}`}
-                                  >{p}</button>
-                                ));
-                              })()}
-                              <button
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={safePage >= totalPages}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-normal)] bg-[var(--bg-surface)] text-[var(--text-secondary)] font-black text-sm hover:bg-[var(--bg-overlay)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                              >›</button>
-                            </div>
-                          </div>
-                        )}
-                      </>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -2105,9 +2104,9 @@ export default function DailyTreasuryPage() {
                   <div className="flex flex-col gap-3 mb-4">
                     {/* Payment Cockpit Widget */}
                     {(() => {
-                      const cashAmt   = Number(slideOver.cash_amount   || 0);
+                      const cashAmt = Number(slideOver.cash_amount || 0);
                       const creditAmt = Number(slideOver.credit_amount || 0);
-                      const total     = Number(slideOver.amount        || 0);
+                      const total = Number(slideOver.amount || 0);
                       const isSalesReturn = slideOver.doc_type === "sales_return";
                       return (
                         <div className="rounded-2xl bg-[var(--bg-surface)] border border-slate-200/60 shadow-sm overflow-hidden">

@@ -23,7 +23,35 @@ describe("useTelegramConnect", () => {
     mockToast.error.mockReset();
   });
 
-  it("loads settings and recipients on mount and marks saved when configured", async () => {
+  it("loads camelCase recipients from GET /api/telegram/recipients", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/api/settings") return Promise.resolve({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok" } } });
+      if (url === "/api/telegram/recipients") {
+        return Promise.resolve({
+          data: {
+            data: [{
+              id: 1,
+              chatId: "987654321",
+              enabled: true,
+              notifyNewInvoice: true,
+              notifyDailyClose: false,
+              notifyPurchasesPayments: true,
+            }],
+          },
+        });
+      }
+      return Promise.resolve({ data: { data: {} } });
+    });
+    const { result } = renderHook(() => useTelegramConnect());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.recipients[0].chatId).toBe("987654321");
+    expect(result.current.recipients[0].notifyNewInvoice).toBe(true);
+    expect(result.current.recipients[0].notifyDailyClose).toBe(false);
+    expect(result.current.recipients[0].notifyPurchasesPayments).toBe(true);
+    expect(result.current.saved).toBe(true);
+  });
+
+  it("loads snake_case recipients on mount and marks saved when configured", async () => {
     mockApiGet.mockImplementation((url) => {
       if (url === "/api/settings") return Promise.resolve({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok" } } });
       if (url === "/api/telegram/recipients") return Promise.resolve({ data: { data: [{ id: 1, chat_id: "123", enabled: true, notify_new_invoice: true }] } });
@@ -34,6 +62,33 @@ describe("useTelegramConnect", () => {
     expect(result.current.config.telegram_bot_token).toBe("tok");
     expect(result.current.recipients).toHaveLength(1);
     expect(result.current.saved).toBe(true);
+  });
+
+  it("does not synthesize an id-less recipient from legacy telegram_chat_id", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/api/settings") return Promise.resolve({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok", telegram_chat_id: "999" } } });
+      if (url === "/api/telegram/recipients") return Promise.resolve({ data: { data: [] } });
+      return Promise.resolve({ data: { data: {} } });
+    });
+    const { result } = renderHook(() => useTelegramConnect());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    // The server-side legacy migration owns this case; a client-side synthetic
+    // row had no id, so every save POSTed a duplicate.
+    expect(result.current.recipients).toHaveLength(0);
+  });
+
+  it("addRecipient replaces an existing recipient with the same chat id (server upsert)", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/api/settings") return Promise.resolve({ data: { data: { telegram_enabled: true, telegram_bot_token: "tok" } } });
+      if (url === "/api/telegram/recipients") return Promise.resolve({ data: { data: [{ id: 7, chat_id: "555", enabled: true }] } });
+      return Promise.resolve({ data: { data: {} } });
+    });
+    mockApiPost.mockResolvedValue({ data: { data: { id: 7, chat_id: "555", enabled: true, name: "Owner" } } });
+    const { result } = renderHook(() => useTelegramConnect());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => { await result.current.addRecipient({ chatId: "555", name: "Owner" }); });
+    expect(result.current.recipients).toHaveLength(1);
+    expect(result.current.recipients[0].name).toBe("Owner");
   });
 
   it("flags loadError when settings fail to load", async () => {

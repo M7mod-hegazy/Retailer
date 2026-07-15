@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const { getDb } = require("../config/database");
 const { generateDocNumber } = require("../utils/docNumber");
 const { assertCanWriteForDate, normalizeDate } = require("../services/dailySessionService");
@@ -78,7 +78,7 @@ router.get("/", requirePagePermission("expenses", "view"), (req, res) => {
   });
 });
 
-router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
+router.post("/", requirePagePermission("expenses", "add"), async (req, res) => {
   const payload = req.body || {};
   const createdDate = normalizeDate(payload.created_at);
   const todayDate = toSql(new Date()).slice(0, 10);
@@ -122,6 +122,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
     })();
 
     const expenseAuditId = req.audit("create", "expenses", { id: result.lastInsertRowid }, `💰 تم إضافة مصروف بمبلغ ${Number(payload.amount || 0).toLocaleString('en-US')} ${payload.description || payload.notes ? `— ${payload.description || payload.notes}` : ''}`.trimEnd(), `/expenses`);
+  let _tgStatus = null;
   try {
     const expenseAmount = Number(payload.amount || 0);
     if (expenseAmount > 500) {
@@ -134,7 +135,7 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
       });
     }
     const categoryRow = db.prepare("SELECT name FROM expense_categories WHERE id=?").get(payload.category_id || null);
-    notifyOwner(TG.EXPENSE_CREATED, {
+    _tgStatus = await notifyOwner(TG.EXPENSE_CREATED, {
       category: categoryRow?.name || "غير مصنف",
       amount: expenseAmount,
       date: createdDate,
@@ -144,14 +145,15 @@ router.post("/", requirePagePermission("expenses", "add"), (req, res) => {
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(result.lastInsertRowid),
+    telegramStatus: _tgStatus,
   });
 });
 
-router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
+router.put("/:id", requirePagePermission("expenses", "edit"), async (req, res) => {
   try {
     const db = getDb();
     const payload = req.body || {};
-    const existing = db.prepare("SELECT created_at FROM expenses WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT e.*, c.name AS category_name FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id WHERE e.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "expenses", "backdate_records")) {
@@ -161,14 +163,32 @@ router.put("/:id", requirePagePermission("expenses", "edit"), (req, res) => {
     db.prepare(`UPDATE expenses SET amount = COALESCE(?, amount), category_id = COALESCE(?, category_id), notes = COALESCE(?, notes), description = COALESCE(?, description), payment_method = COALESCE(?, payment_method), updated_at = ? WHERE id = ?`)
       .run(payload.amount != null ? Number(payload.amount) : null, payload.category_id || null, payload.notes || null, payload.description || null, payload.payment_method || null, nowSql(), req.params.id);
     req.audit("update", "expenses", { id: req.params.id }, `💰 تم تعديل مصروف #${req.params.id}${payload.amount != null ? ` — المبلغ: ${Number(payload.amount).toLocaleString('en-US')}` : ''}`, `/expenses`);
-    res.json({ success: true, data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(req.params.id) });
+    // Telegram notification
+    let _tgStatus = null;
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const catRow = (payload.category_id || existing?.category_id) ? db.prepare("SELECT name FROM expense_categories WHERE id = ?").get(payload.category_id || existing?.category_id) : null;
+      _tgStatus = await notifyOwner(TG.EXPENSE_EDITED, {
+        expenseId: req.params.id,
+        docNo: existing?.doc_no || null,
+        category: catRow?.name || existing?.category_name || null,
+        oldAmount: existing ? Number(existing.amount || 0) : null,
+        newAmount: payload.amount != null ? Number(payload.amount) : (existing ? Number(existing.amount || 0) : null),
+        oldDescription: existing?.description || existing?.notes || null,
+        newDescription: payload.description || payload.notes || null,
+        paymentMethod: payload.payment_method || existing?.payment_method || "cash",
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
+    res.json({ success: true, data: db.prepare("SELECT * FROM expenses WHERE id = ?").get(req.params.id), telegramStatus: _tgStatus });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.delete("/:id", requirePagePermission("expenses", "delete"), (req, res) => {
+router.delete("/:id", requirePagePermission("expenses", "delete"), async (req, res) => {
   try {
     const db = getDb();
-    const existing = db.prepare("SELECT created_at FROM expenses WHERE id = ?").get(req.params.id);
+    const existing = db.prepare("SELECT e.*, c.name AS category_name FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id WHERE e.id = ?").get(req.params.id);
     if (existing) {
       const recordDate = (existing.created_at || "").slice(0, 10);
       if (recordDate < toSql(new Date()).slice(0, 10) && !userHasPagePermission(req.user, "expenses", "backdate_records")) {
@@ -177,7 +197,23 @@ router.delete("/:id", requirePagePermission("expenses", "delete"), (req, res) =>
     }
     db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
     req.audit("delete", "expenses", { id: req.params.id }, `💰 تم حذف مصروف`, `/expenses`);
-    return res.json({ success: true });
+    // Telegram notification
+    let _tgStatus = null;
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      _tgStatus = await notifyOwner(TG.EXPENSE_DELETED, {
+        expenseId: req.params.id,
+        docNo: existing?.doc_no || null,
+        category: existing?.category_name || null,
+        amount: existing ? Number(existing.amount || 0) : null,
+        description: existing?.description || existing?.notes || null,
+        paymentMethod: existing?.payment_method || "cash",
+        date: (existing?.created_at || "").slice(0, 10),
+        userName: userRow?.name || null,
+        deletedAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
+    return res.json({ success: true, telegramStatus: _tgStatus });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

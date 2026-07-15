@@ -228,7 +228,6 @@
   "print.sendWhatsApp": "Send via WhatsApp",
   "print.doc.daily_treasury": "Daily treasury report",
   "print.doc.payment_methods_report": "Payment methods report",
-
   "print.wizard.title": "Instant Print Setup",
   "print.wizard.subtitle": "Let's set up instant print step by step",
   "print.wizard.step1.title": "What is Instant Print?",
@@ -267,7 +266,6 @@
   "print.wizard.step5.success_title": "All set!",
   "print.wizard.step5.success_desc": "From now on, printing will be fast and direct. You can change any setting anytime.",
   "print.wizard.step5.fail": "No printer connected — you can continue and adjust settings later.",
-
   "reports_center": "Reports Center",
   "reports_subtitle": "Select a report, then choose the appropriate run mode.",
   "reports_total": "Total",
@@ -585,7 +583,6 @@
   "treasury.ledger.exportPdf": "Export PDF",
   "treasury.ledger.exportPrint": "Print",
   "treasury.ledger.balanceHint": "Running balance reflects all movements",
-
   "whatsapp_crm.title": "WhatsApp Business",
   "whatsapp_crm.description": "Customer management & communication via WhatsApp",
   "whatsapp_crm.dashboard": "Dashboard",
@@ -629,7 +626,6 @@
   "whatsapp_crm.schedule": "Schedule",
   "whatsapp_crm.now": "Now",
   "whatsapp_crm.later": "Later",
-
   "sync.title": "E-commerce Sync",
   "sync.configShort": "Settings",
   "sync.refresh": "Refresh",
@@ -661,7 +657,6 @@
   "sync.notConfigured": "Sync not configured",
   "sync.notConfiguredHint": "Configure the connection to the online store to start syncing products and inventory",
   "sync.goToConfig": "Sync Settings",
-
   "sync.config.title": "Sync Settings",
   "sync.config.ecomUrl": "Website URL",
   "sync.config.storeId": "Store ID",
@@ -676,7 +671,6 @@
   "sync.config.connectedMsg": "Connection to the online store is working",
   "sync.config.connectionFailed": "Failed to connect to the online store",
   "sync.config.goToSync": "Back to Sync page",
-
   "sync.images": "Images",
   "sync.imageCount": "image",
   "sync.preview": "Preview",
@@ -778,7 +772,6 @@
   "sync.config.connectionDetails": "Connection Details",
   "sync.config.connectionSubtitle": "Connect your online store to your POS",
   "sync.config.editSubtitle": "Already configured — edit settings or test connection",
-
   "sync.review.title": "Review Changes",
   "sync.review.subtitle": "%d products to review before syncing",
   "sync.review.subtitleStore": "Connected to {{storeName}}",
@@ -821,7 +814,6 @@
   "sync.review.searchPlaceholder": "Search by name or SKU…",
   "sync.review.showing": "Showing {{start}}–{{end}} of {{total}}",
   "sync.review.noMatchingChanges": "No matching products found",
-
   "sync.impact.title": "Impact Summary",
   "sync.impact.loading": "Analyzing impact…",
   "sync.impact.pricesUp": "Price ↑",
@@ -834,7 +826,6 @@
   "sync.impact.sortDefault": "Default",
   "sync.impact.sortPriceDesc": "Biggest Price Change",
   "sync.impact.sortName": "Name",
-
   "sync.page.badge": "Store Sync",
   "sync.page.whySync": "Why is sync important?",
   "sync.page.whySyncDesc": "Sync connects your online store to your POS — ensuring inventory, prices, and products update automatically without manual work.",
@@ -850,7 +841,6 @@
   "sync.page.conflict.diffCount": "Changes",
   "sync.page.conflict.noConflicts": "No conflicts",
   "sync.page.conflict.noConflictsDesc": "All product conflicts have been resolved",
-
   "sync.page.match.match": "Match",
   "sync.page.match.mismatch": "Mismatch",
   "sync.page.match.new": "New (not in POS)",
@@ -861,12 +851,10 @@
   "sync.page.match.ecom": "Website",
   "sync.page.match.viewComparison": "View comparison",
   "sync.page.match.hideComparison": "Hide comparison",
-
   "sync.page.pagination.showingOf": "Showing {loaded} of {total}",
   "sync.page.pagination.loadMore": "Load More",
   "sync.page.pagination.loadingMore": "Loading…",
   "sync.page.pagination.allLoaded": "All products loaded ({total})",
-
   "sync.page.bulk.selectAll": "Select All",
   "sync.page.bulk.deselectAll": "Deselect All",
   "sync.page.bulk.selectWithPriceChanges": "Select with price changes",
@@ -880,12 +868,10 @@
   "sync.page.bulk.selectAllDesc": "Select all displayed products",
   "sync.page.bulk.clearSelection": "Clear selection",
   "sync.page.bulk.noSelection": "No product selected",
-
   "sync.page.fields.name": "Name",
   "sync.page.fields.price": "Price",
   "sync.page.fields.stock": "Stock",
   "sync.page.fields.images": "Images",
-
   "sync.dashboard.title": "E-commerce Sync",
   "sync.dashboard.connected": "Connected",
   "sync.dashboard.disconnected": "Disconnected",
@@ -901,7 +887,6 @@
   "sync.dashboard.settingsTooltip": "Sync settings",
   "sync.dashboard.orderAmount": "{name} — {amount} SAR ({count})",
   "sync.dashboard.orderTime": "{time} ago",
-
   "sync.polish.search.available": "Search available products…",
   "sync.polish.search.pending": "Search pending changes…",
   "sync.polish.search.logs": "Search sync logs…",
@@ -923,14 +908,12 @@
   "sync.page.empty.pending.desc": "No pending changes — all data is synced between the store and the website.",
   "sync.page.empty.logs.title": "No sync logs yet",
   "sync.page.empty.logs.desc": "Once sync starts with the online store, operation logs will appear here for tracking.",
-
   "sync.config.wizard.title": "Sync Setup",
   "sync.config.wizard.subtitle": "Connect your online store to your POS in 4 easy steps",
   "sync.config.wizard.steps.welcome": "Welcome",
   "sync.config.wizard.steps.requirements": "Prerequisites",
   "sync.config.wizard.steps.connect": "Connect",
   "sync.config.wizard.steps.test": "Test",
-
   "sync.config.wizard.welcome.title": "What is E-commerce Sync?",
   "sync.config.wizard.welcome.description": "Sync connects your online store to your POS system. Changes in either one automatically reflect on the other — products, prices, stock, and images.",
   "sync.config.wizard.welcome.diagram.pos": "POS System",
@@ -948,7 +931,6 @@
   "sync.config.wizard.welcome.trust.encrypted": "Encrypted Connection",
   "sync.config.wizard.welcome.trust.secure": "Secure Data",
   "sync.config.wizard.welcome.trust.support": "Support",
-
   "sync.config.wizard.requirements.title": "What You Need",
   "sync.config.wizard.requirements.subtitle": "Make sure you have these from your online store admin panel",
   "sync.config.wizard.requirements.storeId.title": "Store ID",
@@ -982,7 +964,6 @@
   "sync.config.wizard.requirements.instructionDesc": "All 3 items must be confirmed to unlock the Next button",
   "sync.config.wizard.requirements.nextHint": "Confirm all items first",
   "sync.config.wizard.requirements.allSet": "All requirements are ready! You may proceed",
-
   "sync.config.wizard.connect.title": "Connect Your Store",
   "sync.config.wizard.connect.subtitle": "Enter the information you prepared in the previous step",
   "sync.config.wizard.connect.ecomUrl.label": "Online store URL",
@@ -1021,7 +1002,6 @@
   "sync.config.wizard.connect.guide.warn": "The API key is shown only once when created — copy and save it immediately before closing the dialog",
   "sync.config.wizard.connect.copied": "Copied",
   "sync.config.wizard.connect.copyPaste": "Copy key",
-
   "sync.config.wizard.test.success.title": "Connected Successfully!",
   "sync.config.wizard.test.success.desc": "Your online store is now connected to your POS system",
   "sync.config.wizard.test.success.storeName": "Store Name",
@@ -1040,10 +1020,8 @@
   "sync.config.wizard.test.failure.retry": "Try Again",
   "sync.config.wizard.test.failure.support": "Contact Support",
   "sync.config.wizard.test.button.sync": "Go to Sync Page",
-
   "sync.config.wizard.info.title": "Two-Way Sync — How It Works",
   "sync.config.wizard.info.desc": "After setup, you can pull products and prices from your site to POS, and push stock and price changes from POS to your site. You can choose which fields to sync per product.",
-
   "sync.rollback.title": "Rollback",
   "sync.rollback.subtitle": "Undo any previous sync operation",
   "sync.rollback.pull": "Pull",
@@ -1067,7 +1045,6 @@
   "sync.rollback.noSnapshotsDesc": "After the first sync, a snapshot will appear here",
   "sync.rollback.empty": "Everything is stable",
   "sync.rollback.emptyDesc": "No rollbacks have been performed yet",
-
   "sync.webhook.title": "Webhook",
   "sync.webhook.config.title": "Webhook Settings",
   "sync.webhook.config.subtitle": "Receive orders from the online store in real-time",
@@ -1100,7 +1077,6 @@
   "sync.review.purchasePrice": "Purchase Price",
   "sync.review.wholesalePrice": "Wholesale Price",
   "sync.review.missingPrices": "Purchase price and sale price are required for new products (wholesale is optional)",
-
   "telegram.title": "Telegram Notifications",
   "telegram.subtitle": "Instant owner alerts for the most important system events",
   "telegram.botToken": "Bot Token",
@@ -1160,6 +1136,14 @@
   "telegram.activate": "Activate Telegram",
   "telegram.settings": "Settings",
   "telegram.save": "Save",
+  "telegram.saveAll": "Save all changes",
+  "telegram.savingChanges": "Saving...",
+  "telegram.unsavedChanges": "Unsaved changes",
+  "telegram.unsavedChangesHint": "Save your changes before leaving this page",
+  "telegram.step3Hint": "Enable notifications after configuring recipients and events",
+  "telegram.enableHint": "When enabled, alerts are sent to the selected recipients",
+  "telegram.detecting": "Detecting...",
+  "telegram.chatIdRequiredToSave": "Enter a Chat ID or use auto-detect, then save from the bottom bar",
   "telegram.test": "Send Test",
   "telegram.guideTitle": "How do I get the credentials?",
   "telegram.guideStep1": "1. Open Telegram, search for @BotFather, send /newbot and follow the steps.",
@@ -1228,7 +1212,6 @@
   "wizard.sms.step3.caption": "Tap the button to activate, then send yourself a test message to confirm it works.",
   "wizard.sms.step3.button": "Activate and save",
   "wizard.sms.step4.caption": "Done! You can now choose SMS for any campaign or reminder.",
-
   "whatsapp.title": "WhatsApp",
   "whatsapp.desc": "Free customer communication via the store's WhatsApp account",
   "whatsapp.steps": "Press Link WhatsApp to start a QR session|Open WhatsApp on your phone → Settings → Linked Devices|Scan the QR code on the screen|Use it to send receipts and marketing campaigns",
@@ -1286,12 +1269,10 @@
   "whatsapp.imagePreview": "Image preview",
   "whatsapp.fit": "Fit",
   "whatsapp.zoomHint": "Drag to pan | Scroll to zoom",
-
   "sms.title": "SMS Messages",
   "sms.desc": "Paid channel that reaches any phone — customers don't need WhatsApp",
   "sms.steps": "Subscribe to an SMS provider (e.g. SMS Misr or Cequens) and get API URL and API key|Press Activate SMS and enter provider details|Send a test message to your number|Choose SMS channel when creating campaigns",
   "sms.connectedTags": "Send text messages to any phone number|Ideal for debt reminders and offers|Works even when the customer has no internet",
-
   "telegram.channelName": "Telegram",
   "telegram.channelDesc": "Instant owner-only alerts — not sent to customers",
   "telegram.infoTitle": "How do the notifications work?",
@@ -1302,7 +1283,6 @@
   "telegram.connectedTags": "Instant alert for every new invoice|Daily closing summary on Telegram|All important event alerts in one place",
   "telegram.eventsTitle": "Supported events",
   "telegram.eventsList": "New sales invoice|Daily close and shift close|Large invoices and discounts|Sales returns|Cancelled invoices|New purchase orders/receipts|Customer payments|Low stock alert|Backup result|Failed login attempts",
-
   "telegram.catSales": "Sales",
   "telegram.catFinancial": "Financial",
   "telegram.catPeople": "People",
@@ -1347,8 +1327,22 @@
   "telegram.nameRecipient": "Recipient name",
   "telegram.nameRecipientHint": "e.g. Manager, Accountant, Store owner",
   "telegram.recipientAdded": "Recipient added successfully",
+  "telegram.deleteRecipient": "Delete",
+  "telegram.deleteRecipientConfirmTitle": "Delete recipient?",
+  "telegram.deleteRecipientConfirmMessage": "«{{name}}» will be permanently removed from your Telegram recipients.",
+  "telegram.deleteRecipientConfirmHint": "This recipient will no longer receive alerts. You can add them again later if needed.",
+  "telegram.deleteRecipientConfirmAction": "Confirm delete",
+  "telegram.deletingRecipient": "Deleting...",
+  "telegram.recipientDeleted": "Recipient deleted",
+  "telegram.deleteError": "Failed to delete recipient",
+  "telegram.testSend": "Send test",
+  "telegram.notificationsOn": "Notifications",
+  "telegram.unnamedRecipient": "Unnamed recipient",
+  "telegram.recipientChatSummary": "Chat ID: {{chatId}}",
+  "telegram.recipientChatMissing": "Chat ID not entered yet",
+  "telegram.recipientNameHint": "A label to help you identify this recipient in the list",
+  "telegram.eventsSaveHint": "After changing events, save your changes from the bottom bar.",
   "telegram.historyNotConnected": "Message history will appear here after activating the connection and sending the first notification",
-
   "telegram.wizard.chooseMethodHint": "Choose the method that works best for you to get the recipient's Chat ID",
   "telegram.wizard.qrStep1Title": "1. Generate the connect code",
   "telegram.wizard.qrStep1Desc": "Tap the button below to generate a unique QR code — the code expires after one minute and can be regenerated",
@@ -1369,13 +1363,11 @@
   "telegram.wizard.nameStepDesc": "Enter a name that identifies this recipient (e.g. Store Owner, Accountant, Manager). This name appears in the notification log only and is not sent to anyone",
   "telegram.wizard.successTitle": "Added successfully!",
   "telegram.wizard.successDesc": "This recipient will receive Telegram notifications based on the events you selected. You can modify settings at any time",
-
   "telegram.catInventory": "Inventory",
   "telegram.catPurchases": "Purchases & Transfers",
   "telegram.catSecurity": "Security",
   "telegram.catRepair": "Repair Orders",
   "telegram.catEmployees": "Employees",
-
   "telegram.toggleStockTransfer": "Stock Transfer",
   "telegram.toggleInventoryAdjustment": "Inventory Adjustment",
   "telegram.toggleNewProduct": "New Product",
@@ -1399,7 +1391,6 @@
   "telegram.toggleAdvanceCreated": "Employee Advance",
   "telegram.toggleDeductionCreated": "Employee Deduction",
   "telegram.toggleBonusCreated": "Employee Bonus",
-
   "telegram.hintStockTransfer": "Sent when items are transferred between warehouses",
   "telegram.hintInventoryAdjustment": "Sent when inventory is manually adjusted",
   "telegram.hintNewProduct": "Sent when a new product is added to the system",
@@ -1423,16 +1414,45 @@
   "telegram.hintAdvanceCreated": "Sent when an advance is created for an employee",
   "telegram.hintDeductionCreated": "Sent when a deduction is recorded for an employee",
   "telegram.hintBonusCreated": "Sent when a bonus is recorded for an employee",
-
   "telegram.sampleMessage": "Sample Message",
   "telegram.sample": "Sample",
   "telegram.seeSample": "View sample message",
   "telegram.presetChoice": "Choose template style",
+  "telegram.presetDetailed": "Detailed",
+  "telegram.presetBrief": "Brief",
+  "telegram.previewMessage": "Preview message",
+  "telegram.categoryEventsCount": "{{enabled}}/{{total}} enabled",
+  "telegram.expandCategory": "Show events",
+  "telegram.collapseCategory": "Hide events",
+  "telegram.historyCount": "{{count}} messages in history",
   "telegram.previewTemplate": "Preview template",
   "telegram.preview": "Preview",
   "telegram.templatePreview": "Template Preview",
   "telegram.templateCategory": "Category",
   "telegram.templatePreviewNote": "This is a preview with sample data. To edit, go to the Templates tab.",
   "telegram.templateNotFound": "Template not found",
-  "telegram.saved": "Saved"
+  "telegram.saved": "Saved",
+  "telegram.botPreviewName": "Store bot",
+  "telegram.previewTimeNow": "now",
+  "telegram.collapseAllCats": "Collapse all",
+  "telegram.expandAllCats": "Expand all",
+  "telegram.recipientsCountBadge": "{{count}} recipients",
+  "items.newRow.namePlaceholder": "New item name",
+  "items.newRow.barcodePlaceholder": "Barcode",
+  "items.newRow.purchasePlaceholder": "Purchase",
+  "items.newRow.salePlaceholder": "Retail",
+  "items.newRow.wholesalePlaceholder": "Wholesale",
+  "items.newRow.minStockPlaceholder": "Min stock",
+  "items.categoryModal.title": "Add new category",
+  "items.categoryModal.nameLabel": "Category name (e.g. Paints, Oils)",
+  "items.categoryModal.emptyNameLabel": "Main category name",
+  "items.categoryModal.prefixLabel": "Category number (SKU prefix)",
+  "items.categoryModal.namePlaceholder": "e.g. Paints, Plumbing tools, Oils...",
+  "items.categoryModal.prefixHint": "Leave empty to auto-generate, or enter a future number / a deleted category number to restore it.",
+  "items.categoryModal.emptyPrefixHint": "Leave empty to auto-generate or enter a deleted category number to restore it.",
+  "items.categoryModal.suggested": "Suggested: {{prefix}}",
+  "items.categoryModal.save": "Save category",
+  "items.categoryModal.created": "Category created",
+  "items.categoryModal.restored": "Deleted category restored with the selected number",
+  "items.categoryModal.error": "Could not create category"
 }

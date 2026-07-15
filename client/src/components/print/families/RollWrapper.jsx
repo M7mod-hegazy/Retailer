@@ -11,10 +11,18 @@ ensurePrintParityCss();
  * left offset. Positioning is left-based on purpose — it describes where the
  * print head sits on the paper, which does not depend on text direction.
  */
-export default function RollWrapper({ settings: s, children, overlay }) {
+export default function RollWrapper({ settings: s, children, overlay, designer }) {
   const paperMm = rollPaperWidthMm(s);
   const bandMm = rollPrintWidthMm(s);
   const bandLeftMm = rollBandLeftMm(s);
+  // On 1-bit thermal paper any non-black text (the slate greys many blocks use
+  // for labels/captions) dithers to a faint, half-printed ghost — e.g. "رقم
+  // الفاتورة" / "الكاشير" barely appear. The blocks bake those greys inline, so
+  // inheriting the band's black is not enough. When thermal_pure_black is on
+  // (default) force every descendant's text colour to solid black. Scoped to a
+  // roll-only marker so the A4/page family keeps its greys, and skipped inside
+  // the Studio designer canvas so its coloured selection chrome stays legible.
+  const pureBlack = g(s, "thermal_pure_black") !== false && !designer;
   return (
     // dir="ltr" is load-bearing: the paper div sits inside the app's RTL tree,
     // and in RTL over-constrained block layout the browser IGNORES margin-left
@@ -28,7 +36,10 @@ export default function RollWrapper({ settings: s, children, overlay }) {
       // coordinates are relative to the PAPER edge, not the printable band.
       position: "relative",
     }}>
-      <div dir="rtl" style={{
+      {pureBlack && (
+        <style>{`[data-thermal-black] *{color:#000 !important}`}</style>
+      )}
+      <div dir="rtl" {...(pureBlack ? { "data-thermal-black": "" } : {})} style={{
         fontFamily: `${g(s, "print_font")}, "Tahoma", "Segoe UI", Arial, sans-serif`,
         fontSize: `${rollClampFontPx(g(s, "body_font_size"))}px`,
         lineHeight: 1.6,

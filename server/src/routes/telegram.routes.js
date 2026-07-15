@@ -1,7 +1,7 @@
 const express = require("express");
 const { authRequired } = require("../middleware/auth");
 const { requireAnyPagePermission } = require("../middleware/permission");
-const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES, processQueue } = require("../services/telegramService");
 const { getDb } = require("../config/database");
 const QRCode = require("qrcode");
 
@@ -75,6 +75,11 @@ function recipientFromBody(body) {
     notify_advance_created: asBool(body?.notify_advance_created),
     notify_deduction_created: asBool(body?.notify_deduction_created),
     notify_bonus_created: asBool(body?.notify_bonus_created),
+    // New edit/delete events (migration 201)
+    notify_expense_edited: asBool(body?.notify_expense_edited),
+    notify_expense_deleted: asBool(body?.notify_expense_deleted),
+    notify_revenue_edited: asBool(body?.notify_revenue_edited),
+    notify_revenue_deleted: asBool(body?.notify_revenue_deleted),
     event_presets: parseEventPresets(body?.event_presets),
   };
 }
@@ -93,6 +98,64 @@ function parseEventPresets(v) {
   return "{}";
 }
 
+// All writable columns, in one place — INSERT and UPDATE are generated from
+// this list so they can never drift apart again.
+const RECIPIENT_WRITE_COLUMNS = [
+  "name", "chat_id", "enabled",
+  "notify_new_invoice", "notify_daily_close", "notify_large_amounts",
+  "notify_returns_voids", "notify_purchases_payments",
+  "notify_customer_created", "notify_supplier_created", "notify_expense_created", "notify_return_payment",
+  "notify_low_stock", "notify_system", "notify_weekly", "notify_monthly", "notify_yearly",
+  "notify_stock_transfer", "notify_inventory_adjustment", "notify_new_product", "notify_price_change",
+  "notify_batch_expiry", "notify_physical_count",
+  "notify_supplier_payment", "notify_debt_payment", "notify_installment_paid",
+  "notify_purchase_voided", "notify_purchase_return", "notify_branch_transfer",
+  "notify_password_changed", "notify_permission_changed", "notify_supervisor_override",
+  "notify_repair_created", "notify_repair_ready", "notify_repair_delivered",
+  "notify_revenue_created", "notify_withdrawal_created",
+  "notify_employee_created", "notify_salary_settled", "notify_advance_created",
+  "notify_deduction_created", "notify_bonus_created",
+  // New edit/delete events (migration 201)
+  "notify_expense_edited", "notify_expense_deleted",
+  "notify_revenue_edited", "notify_revenue_deleted",
+  "event_presets",
+];
+
+function recipientWriteValues(r) {
+  return RECIPIENT_WRITE_COLUMNS.map((col) => {
+    if (col === "name") return r.name || "مستلم Telegram";
+    if (col === "chat_id") return r.chat_id;
+    if (col === "event_presets") return r.event_presets;
+    return r[col] ? 1 : 0;
+  });
+}
+
+function insertRecipient(db, r) {
+  const placeholders = RECIPIENT_WRITE_COLUMNS.map(() => "?").join(", ");
+  const result = db.prepare(`
+    INSERT INTO telegram_recipients (${RECIPIENT_WRITE_COLUMNS.join(", ")})
+    VALUES (${placeholders})
+  `).run(...recipientWriteValues(r));
+  return result.lastInsertRowid;
+}
+
+function updateRecipient(db, id, r) {
+  const assignments = RECIPIENT_WRITE_COLUMNS.map((c) => `${c} = ?`).join(", ");
+  db.prepare(`UPDATE telegram_recipients SET ${assignments} WHERE id = ?`)
+    .run(...recipientWriteValues(r), id);
+}
+
+function schemaErrorResponse(res, e) {
+  const message = e.message || "";
+  const isSchemaError = /no such column|has no column|NOT NULL constraint failed/.test(message);
+  res.status(500).json({
+    success: false,
+    message: isSchemaError
+      ? `خطأ في هيكل قاعدة البيانات: ${message}. أعد تشغيل السيرفر لتطبيق التحديثات.`
+      : message,
+  });
+}
+
 router.get("/recipients", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
   try {
     const recipients = getTelegramRecipients(getDb());
@@ -109,78 +172,17 @@ router.post("/recipients", requireAnyPagePermission(["settings", "whatsapp_crm"]
     if (!r.chat_id) {
       return res.status(400).json({ success: false, message: "Chat ID مطلوب" });
     }
-    const result = db.prepare(`
-      INSERT INTO telegram_recipients (
-        name, chat_id, enabled,
-        notify_new_invoice, notify_daily_close, notify_large_amounts,
-        notify_returns_voids, notify_purchases_payments,
-        notify_customer_created, notify_supplier_created, notify_expense_created, notify_return_payment,
-        notify_low_stock, notify_system, notify_weekly, notify_monthly, notify_yearly,
-        notify_stock_transfer, notify_inventory_adjustment, notify_new_product, notify_price_change,
-        notify_batch_expiry, notify_physical_count,
-        notify_supplier_payment, notify_debt_payment, notify_installment_paid,
-        notify_purchase_voided, notify_purchase_return, notify_branch_transfer,
-        notify_password_changed, notify_permission_changed, notify_supervisor_override,
-        notify_repair_created, notify_repair_ready, notify_repair_delivered,
-        notify_revenue_created, notify_withdrawal_created,
-        notify_employee_created, notify_salary_settled, notify_advance_created,
-        notify_deduction_created, notify_bonus_created, event_presets
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      r.name || "مستلم Telegram",
-      r.chat_id,
-      r.enabled ? 1 : 0,
-      r.notify_new_invoice ? 1 : 0,
-      r.notify_daily_close ? 1 : 0,
-      r.notify_large_amounts ? 1 : 0,
-      r.notify_returns_voids ? 1 : 0,
-      r.notify_purchases_payments ? 1 : 0,
-      r.notify_customer_created ? 1 : 0,
-      r.notify_supplier_created ? 1 : 0,
-      r.notify_expense_created ? 1 : 0,
-      r.notify_return_payment ? 1 : 0,
-      r.notify_low_stock ? 1 : 0,
-      r.notify_system ? 1 : 0,
-      r.notify_weekly ? 1 : 0,
-      r.notify_monthly ? 1 : 0,
-      r.notify_yearly ? 1 : 0,
-      r.notify_stock_transfer ? 1 : 0,
-      r.notify_inventory_adjustment ? 1 : 0,
-      r.notify_new_product ? 1 : 0,
-      r.notify_price_change ? 1 : 0,
-      r.notify_batch_expiry ? 1 : 0,
-      r.notify_physical_count ? 1 : 0,
-      r.notify_supplier_payment ? 1 : 0,
-      r.notify_debt_payment ? 1 : 0,
-      r.notify_installment_paid ? 1 : 0,
-      r.notify_purchase_voided ? 1 : 0,
-      r.notify_purchase_return ? 1 : 0,
-      r.notify_branch_transfer ? 1 : 0,
-      r.notify_password_changed ? 1 : 0,
-      r.notify_permission_changed ? 1 : 0,
-      r.notify_supervisor_override ? 1 : 0,
-      r.notify_repair_created ? 1 : 0,
-      r.notify_repair_ready ? 1 : 0,
-      r.notify_repair_delivered ? 1 : 0,
-      r.notify_revenue_created ? 1 : 0,
-      r.notify_withdrawal_created ? 1 : 0,
-      r.notify_employee_created ? 1 : 0,
-      r.notify_salary_settled ? 1 : 0,
-      r.notify_advance_created ? 1 : 0,
-      r.notify_deduction_created ? 1 : 0,
-      r.notify_bonus_created ? 1 : 0,
-      r.event_presets
-    );
-    res.json({ success: true, data: { id: result.lastInsertRowid, ...r } });
+    // Upsert: a chat that is already registered gets updated instead of
+    // duplicated — repeated saves from the client stay idempotent.
+    const existing = db.prepare("SELECT id FROM telegram_recipients WHERE chat_id = ?").get(r.chat_id);
+    if (existing) {
+      updateRecipient(db, existing.id, r);
+      return res.json({ success: true, data: { id: existing.id, ...r } });
+    }
+    const id = insertRecipient(db, r);
+    res.json({ success: true, data: { id, ...r } });
   } catch (e) {
-    const message = e.message || "";
-    const isSchemaError = /no such column|has no column|NOT NULL constraint failed/.test(message);
-    res.status(500).json({
-      success: false,
-      message: isSchemaError
-        ? `خطأ في هيكل قاعدة البيانات: ${message}. أعد تشغيل السيرفر لتطبيق التحديثات.`
-        : message,
-    });
+    schemaErrorResponse(res, e);
   }
 });
 
@@ -191,108 +193,14 @@ router.put("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_cr
     if (!r.chat_id) {
       return res.status(400).json({ success: false, message: "Chat ID مطلوب" });
     }
-    db.prepare(`
-      UPDATE telegram_recipients SET
-        name = ?,
-        chat_id = ?,
-        enabled = ?,
-        notify_new_invoice = ?,
-        notify_daily_close = ?,
-        notify_large_amounts = ?,
-        notify_returns_voids = ?,
-        notify_purchases_payments = ?,
-        notify_customer_created = ?,
-        notify_supplier_created = ?,
-        notify_expense_created = ?,
-        notify_return_payment = ?,
-        notify_low_stock = ?,
-        notify_system = ?,
-        notify_weekly = ?,
-        notify_monthly = ?,
-        notify_yearly = ?,
-        notify_stock_transfer = ?,
-        notify_inventory_adjustment = ?,
-        notify_new_product = ?,
-        notify_price_change = ?,
-        notify_batch_expiry = ?,
-        notify_physical_count = ?,
-        notify_supplier_payment = ?,
-        notify_debt_payment = ?,
-        notify_installment_paid = ?,
-        notify_purchase_voided = ?,
-        notify_purchase_return = ?,
-        notify_branch_transfer = ?,
-        notify_password_changed = ?,
-        notify_permission_changed = ?,
-        notify_supervisor_override = ?,
-        notify_repair_created = ?,
-        notify_repair_ready = ?,
-        notify_repair_delivered = ?,
-        notify_revenue_created = ?,
-        notify_withdrawal_created = ?,
-        notify_employee_created = ?,
-        notify_salary_settled = ?,
-        notify_advance_created = ?,
-        notify_deduction_created = ?,
-        notify_bonus_created = ?,
-        event_presets = ?
-      WHERE id = ?
-    `).run(
-      r.name || "مستلم Telegram",
-      r.chat_id,
-      r.enabled ? 1 : 0,
-      r.notify_new_invoice ? 1 : 0,
-      r.notify_daily_close ? 1 : 0,
-      r.notify_large_amounts ? 1 : 0,
-      r.notify_returns_voids ? 1 : 0,
-      r.notify_purchases_payments ? 1 : 0,
-      r.notify_customer_created ? 1 : 0,
-      r.notify_supplier_created ? 1 : 0,
-      r.notify_expense_created ? 1 : 0,
-      r.notify_return_payment ? 1 : 0,
-      r.notify_low_stock ? 1 : 0,
-      r.notify_system ? 1 : 0,
-      r.notify_weekly ? 1 : 0,
-      r.notify_monthly ? 1 : 0,
-      r.notify_yearly ? 1 : 0,
-      r.notify_stock_transfer ? 1 : 0,
-      r.notify_inventory_adjustment ? 1 : 0,
-      r.notify_new_product ? 1 : 0,
-      r.notify_price_change ? 1 : 0,
-      r.notify_batch_expiry ? 1 : 0,
-      r.notify_physical_count ? 1 : 0,
-      r.notify_supplier_payment ? 1 : 0,
-      r.notify_debt_payment ? 1 : 0,
-      r.notify_installment_paid ? 1 : 0,
-      r.notify_purchase_voided ? 1 : 0,
-      r.notify_purchase_return ? 1 : 0,
-      r.notify_branch_transfer ? 1 : 0,
-      r.notify_password_changed ? 1 : 0,
-      r.notify_permission_changed ? 1 : 0,
-      r.notify_supervisor_override ? 1 : 0,
-      r.notify_repair_created ? 1 : 0,
-      r.notify_repair_ready ? 1 : 0,
-      r.notify_repair_delivered ? 1 : 0,
-      r.notify_revenue_created ? 1 : 0,
-      r.notify_withdrawal_created ? 1 : 0,
-      r.notify_employee_created ? 1 : 0,
-      r.notify_salary_settled ? 1 : 0,
-      r.notify_advance_created ? 1 : 0,
-      r.notify_deduction_created ? 1 : 0,
-      r.notify_bonus_created ? 1 : 0,
-      r.event_presets,
-      req.params.id
-    );
+    const clash = db.prepare("SELECT id FROM telegram_recipients WHERE chat_id = ? AND id != ?").get(r.chat_id, req.params.id);
+    if (clash) {
+      return res.status(400).json({ success: false, message: "يوجد مستلم آخر بنفس معرّف المحادثة" });
+    }
+    updateRecipient(db, req.params.id, r);
     res.json({ success: true, data: { id: Number(req.params.id), ...r } });
   } catch (e) {
-    const message = e.message || "";
-    const isSchemaError = /no such column|has no column|NOT NULL constraint failed/.test(message);
-    res.status(500).json({
-      success: false,
-      message: isSchemaError
-        ? `خطأ في هيكل قاعدة البيانات: ${message}. أعد تشغيل السيرفر لتطبيق التحديثات.`
-        : message,
-    });
+    schemaErrorResponse(res, e);
   }
 });
 
@@ -493,6 +401,19 @@ router.get("/history", requireAnyPagePermission(["settings", "whatsapp_crm"], "v
       LIMIT ? OFFSET ?
     `).all(limit, offset);
     res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Force-drain the pending queue immediately (owner-facing manual retry).
+router.post("/retry-queue", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
+  try {
+    await processQueue();
+    const db = getDb();
+    const pending = db.prepare("SELECT COUNT(*) AS c FROM pending_notifications WHERE status = 'pending'").get()?.c || 0;
+    const failed = db.prepare("SELECT COUNT(*) AS c FROM pending_notifications WHERE status = 'failed'").get()?.c || 0;
+    res.json({ success: true, pending, failed });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

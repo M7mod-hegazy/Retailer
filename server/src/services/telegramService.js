@@ -55,6 +55,20 @@ const EVENT_TYPES = {
   ADVANCE_CREATED: "advance_created",
   DEDUCTION_CREATED: "deduction_created",
   BONUS_CREATED: "bonus_created",
+  // New edit/delete events (migration 201)
+  EXPENSE_EDITED: "expense_edited",
+  EXPENSE_DELETED: "expense_deleted",
+  REVENUE_EDITED: "revenue_edited",
+  REVENUE_DELETED: "revenue_deleted",
+  // New edit/cancel events (migration 202)
+  INVOICE_EDITED: "invoice_edited",
+  INVOICE_AMENDED: "invoice_amended",
+  PURCHASE_EDITED: "purchase_edited",
+  PURCHASE_RETURN_CANCELLED: "purchase_return_cancelled",
+  BRANCH_TRANSFER_EDITED: "branch_transfer_edited",
+  BRANCH_TRANSFER_CANCELLED: "branch_transfer_cancelled",
+  WITHDRAWAL_EDITED: "withdrawal_edited",
+  WITHDRAWAL_DELETED: "withdrawal_deleted",
 };
 
 function getTelegramConfig(db) {
@@ -120,7 +134,10 @@ function getLegacyTelegramConfig(db) {
 
 function getTelegramRecipients(db) {
   try {
-    const rows = db.prepare("SELECT * FROM telegram_recipients ORDER BY created_at ASC").all();
+    migrateLegacyRecipientIfNeeded(db);
+    // Order by id, not created_at — rows written while the table had lost its
+    // constraints (see migration 200) have NULL created_at.
+    const rows = db.prepare("SELECT * FROM telegram_recipients ORDER BY id ASC").all();
     if (!rows || rows.length === 0) return [];
     return rows.map((r) => ({
       id: r.id,
@@ -167,6 +184,11 @@ function getTelegramRecipients(db) {
       notifyAdvanceCreated: Boolean(r.notify_advance_created),
       notifyDeductionCreated: Boolean(r.notify_deduction_created),
       notifyBonusCreated: Boolean(r.notify_bonus_created),
+      // New edit/delete events (migration 201)
+      notifyExpenseEdited: Boolean(r.notify_expense_edited),
+      notifyExpenseDeleted: Boolean(r.notify_expense_deleted),
+      notifyRevenueEdited: Boolean(r.notify_revenue_edited),
+      notifyRevenueDeleted: Boolean(r.notify_revenue_deleted),
       eventPresets: parseEventPresets(r.event_presets),
     }));
   } catch (err) {
@@ -180,6 +202,55 @@ function parseEventPresets(raw) {
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch (_) {
     return {};
+  }
+}
+
+function legacyBool(v, fallback = false) {
+  if (v === undefined || v === null) return fallback;
+  return v !== 0 && v !== false && v !== "0";
+}
+
+// Promote the legacy single settings.telegram_chat_id into telegram_recipients
+// when the recipients table exists but is still empty (migration 190 may not have run).
+function migrateLegacyRecipientIfNeeded(db) {
+  try {
+    const count = db.prepare("SELECT COUNT(*) AS n FROM telegram_recipients").get()?.n || 0;
+    if (count > 0) return false;
+
+    const settings = db.prepare("SELECT * FROM settings WHERE id = 1").get();
+    const chatId = String(settings?.telegram_chat_id || "").trim();
+    if (!chatId) return false;
+
+    const bundled = legacyBool(settings.telegram_notify_important_actions, true);
+    const granular = (col, fallback = bundled) => legacyBool(settings[col], fallback);
+
+    db.prepare(`
+      INSERT INTO telegram_recipients (
+        name, chat_id, enabled,
+        notify_new_invoice, notify_daily_close, notify_large_amounts,
+        notify_returns_voids, notify_purchases_payments, notify_low_stock,
+        notify_system, notify_weekly, notify_monthly, notify_yearly
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "المستلم الافتراضي",
+      chatId,
+      legacyBool(settings.telegram_enabled) ? 1 : 0,
+      granular("telegram_notify_new_invoice", true) ? 1 : 0,
+      granular("telegram_notify_daily_close", true) ? 1 : 0,
+      granular("telegram_notify_large_amounts", bundled) ? 1 : 0,
+      granular("telegram_notify_returns_voids", bundled) ? 1 : 0,
+      granular("telegram_notify_purchases_payments", bundled) ? 1 : 0,
+      granular("telegram_notify_low_stock", bundled) ? 1 : 0,
+      granular("telegram_notify_system", bundled) ? 1 : 0,
+      legacyBool(settings.telegram_notify_weekly, false) ? 1 : 0,
+      legacyBool(settings.telegram_notify_monthly, false) ? 1 : 0,
+      legacyBool(settings.telegram_notify_yearly, false) ? 1 : 0
+    );
+    logger.info(`Migrated legacy telegram_chat_id (${chatId}) into telegram_recipients`);
+    return true;
+  } catch (err) {
+    logger.warn(`migrateLegacyRecipientIfNeeded failed: ${err.message}`);
+    return false;
   }
 }
 
@@ -228,6 +299,20 @@ function isEventEnabledForRecipient(recipient, eventType) {
     case EVENT_TYPES.ADVANCE_CREATED: return recipient.notifyAdvanceCreated;
     case EVENT_TYPES.DEDUCTION_CREATED: return recipient.notifyDeductionCreated;
     case EVENT_TYPES.BONUS_CREATED: return recipient.notifyBonusCreated;
+    // New edit/delete events (migration 201)
+    case EVENT_TYPES.EXPENSE_EDITED: return recipient.notifyExpenseEdited;
+    case EVENT_TYPES.EXPENSE_DELETED: return recipient.notifyExpenseDeleted;
+    case EVENT_TYPES.REVENUE_EDITED: return recipient.notifyRevenueEdited;
+    case EVENT_TYPES.REVENUE_DELETED: return recipient.notifyRevenueDeleted;
+    // New edit/cancel events (migration 202) — share existing toggles
+    case EVENT_TYPES.INVOICE_EDITED: return recipient.notifyReturnsVoids; // shares with voids/returns
+    case EVENT_TYPES.INVOICE_AMENDED: return recipient.notifyReturnsVoids;
+    case EVENT_TYPES.PURCHASE_EDITED: return recipient.notifyPurchasesPayments;
+    case EVENT_TYPES.PURCHASE_RETURN_CANCELLED: return recipient.notifyPurchasesPayments;
+    case EVENT_TYPES.BRANCH_TRANSFER_EDITED: return recipient.notifyBranchTransfer;
+    case EVENT_TYPES.BRANCH_TRANSFER_CANCELLED: return recipient.notifyBranchTransfer;
+    case EVENT_TYPES.WITHDRAWAL_EDITED: return recipient.notifyWithdrawalCreated;
+    case EVENT_TYPES.WITHDRAWAL_DELETED: return recipient.notifyWithdrawalCreated;
     case EVENT_TYPES.TEST: return true;
     default: return false;
   }
@@ -257,10 +342,12 @@ function buildItemsTable(items, currency) {
   if (!Array.isArray(items) || items.length === 0) return "لا توجد أصناف";
   const rows = items.map((it, i) => {
     const name = it.item_name_ar || it.item_name || it.name || "—";
+    const sku = it.item_code || it.sku || it.code || it.barcode || "";
+    const label = sku ? `[${sku}] ${name}` : name;
     const qty = formatQty(it.quantity || it.qty);
     const price = formatMoney(it.unit_price || it.price || 0, currency);
     const total = formatMoney(it.line_total || (it.quantity * it.unit_price) || 0, currency);
-    return `${i + 1}. ${name} | الكمية: ${qty} | السعر: ${price} | الإجمالي: ${total}`;
+    return `${i + 1}. ${label} | الكمية: ${qty} | السعر: ${price} | الإجمالي: ${total}`;
   });
   return rows.join("\n");
 }
@@ -321,6 +408,81 @@ const EVENT_CATEGORY = {
   [EVENT_TYPES.ADVANCE_CREATED]: "telegram_advance_created",
   [EVENT_TYPES.DEDUCTION_CREATED]: "telegram_deduction_created",
   [EVENT_TYPES.BONUS_CREATED]: "telegram_bonus_created",
+  // New edit/delete events (migration 201)
+  [EVENT_TYPES.EXPENSE_EDITED]: "telegram_expense_edited",
+  [EVENT_TYPES.EXPENSE_DELETED]: "telegram_expense_deleted",
+  [EVENT_TYPES.REVENUE_EDITED]: "telegram_revenue_edited",
+  [EVENT_TYPES.REVENUE_DELETED]: "telegram_revenue_deleted",
+  // New edit/cancel events (migration 202)
+  [EVENT_TYPES.INVOICE_EDITED]: "telegram_invoice_edited",
+  [EVENT_TYPES.INVOICE_AMENDED]: "telegram_invoice_amended",
+  [EVENT_TYPES.PURCHASE_EDITED]: "telegram_purchase_edited",
+  [EVENT_TYPES.PURCHASE_RETURN_CANCELLED]: "telegram_purchase_return_cancelled",
+  [EVENT_TYPES.BRANCH_TRANSFER_EDITED]: "telegram_branch_transfer_edited",
+  [EVENT_TYPES.BRANCH_TRANSFER_CANCELLED]: "telegram_branch_transfer_cancelled",
+  [EVENT_TYPES.WITHDRAWAL_EDITED]: "telegram_withdrawal_edited",
+  [EVENT_TYPES.WITHDRAWAL_DELETED]: "telegram_withdrawal_deleted",
+};
+
+// Maps each event type to the recipient.eventPresets key the client stores the
+// chosen variant label under (the toggle field names in the UI). Lets each
+// recipient receive the "detailed" or "brief" variant they picked per event.
+const EVENT_PRESET_FIELD = {
+  [EVENT_TYPES.NEW_INVOICE]: "notifyNewInvoice",
+  [EVENT_TYPES.DAILY_CLOSE]: "notifyDailyClose",
+  [EVENT_TYPES.SHIFT_CLOSE]: "notifyDailyClose",
+  [EVENT_TYPES.LARGE_INVOICE]: "notifyLargeAmounts",
+  [EVENT_TYPES.LARGE_DISCOUNT]: "notifyLargeAmounts",
+  [EVENT_TYPES.SALES_RETURN]: "notifyReturnsVoids",
+  [EVENT_TYPES.INVOICE_VOIDED]: "notifyReturnsVoids",
+  [EVENT_TYPES.PURCHASE_CREATED]: "notifyPurchasesPayments",
+  [EVENT_TYPES.CUSTOMER_PAYMENT]: "notifyPurchasesPayments",
+  [EVENT_TYPES.RETURN_PAYMENT]: "notifyReturnPayment",
+  [EVENT_TYPES.CUSTOMER_CREATED]: "notifyCustomerCreated",
+  [EVENT_TYPES.SUPPLIER_CREATED]: "notifySupplierCreated",
+  [EVENT_TYPES.EXPENSE_CREATED]: "notifyExpenseCreated",
+  [EVENT_TYPES.LOW_STOCK]: "notifyLowStock",
+  [EVENT_TYPES.BACKUP_RESULT]: "notifySystem",
+  [EVENT_TYPES.FAILED_LOGIN]: "notifySystem",
+  [EVENT_TYPES.STOCK_TRANSFERRED]: "notifyStockTransfer",
+  [EVENT_TYPES.INVENTORY_ADJUSTED]: "notifyInventoryAdjustment",
+  [EVENT_TYPES.NEW_PRODUCT]: "notifyNewProduct",
+  [EVENT_TYPES.PRICE_CHANGED]: "notifyPriceChange",
+  [EVENT_TYPES.BATCH_EXPIRY_WARNING]: "notifyBatchExpiry",
+  [EVENT_TYPES.PHYSICAL_COUNT_CONFIRMED]: "notifyPhysicalCount",
+  [EVENT_TYPES.SUPPLIER_PAYMENT]: "notifySupplierPayment",
+  [EVENT_TYPES.DEBT_PAYMENT_RECEIVED]: "notifyDebtPayment",
+  [EVENT_TYPES.INSTALLMENT_PAID]: "notifyInstallmentPaid",
+  [EVENT_TYPES.PURCHASE_VOIDED]: "notifyPurchaseVoided",
+  [EVENT_TYPES.PURCHASE_RETURN]: "notifyPurchaseReturn",
+  [EVENT_TYPES.BRANCH_TRANSFER]: "notifyBranchTransfer",
+  [EVENT_TYPES.PASSWORD_CHANGED]: "notifyPasswordChanged",
+  [EVENT_TYPES.PERMISSION_CHANGED]: "notifyPermissionChanged",
+  [EVENT_TYPES.SUPERVISOR_OVERRIDE]: "notifySupervisorOverride",
+  [EVENT_TYPES.REPAIR_ORDER_CREATED]: "notifyRepairOrder",
+  [EVENT_TYPES.REPAIR_ORDER_READY]: "notifyRepairOrder",
+  [EVENT_TYPES.REPAIR_ORDER_DELIVERED]: "notifyRepairOrder",
+  [EVENT_TYPES.REVENUE_CREATED]: "notifyRevenueCreated",
+  [EVENT_TYPES.WITHDRAWAL_CREATED]: "notifyWithdrawalCreated",
+  [EVENT_TYPES.EMPLOYEE_CREATED]: "notifyEmployeeCreated",
+  [EVENT_TYPES.SALARY_SETTLED]: "notifySalarySettled",
+  [EVENT_TYPES.ADVANCE_CREATED]: "notifyAdvanceCreated",
+  [EVENT_TYPES.DEDUCTION_CREATED]: "notifyDeductionCreated",
+  [EVENT_TYPES.BONUS_CREATED]: "notifyBonusCreated",
+  // New edit/delete events (migration 201)
+  [EVENT_TYPES.EXPENSE_EDITED]: "notifyExpenseEdited",
+  [EVENT_TYPES.EXPENSE_DELETED]: "notifyExpenseDeleted",
+  [EVENT_TYPES.REVENUE_EDITED]: "notifyRevenueEdited",
+  [EVENT_TYPES.REVENUE_DELETED]: "notifyRevenueDeleted",
+  // New edit/cancel events (migration 202) — share existing toggles
+  [EVENT_TYPES.INVOICE_EDITED]: "notifyReturnsVoids",
+  [EVENT_TYPES.INVOICE_AMENDED]: "notifyReturnsVoids",
+  [EVENT_TYPES.PURCHASE_EDITED]: "notifyPurchasesPayments",
+  [EVENT_TYPES.PURCHASE_RETURN_CANCELLED]: "notifyPurchasesPayments",
+  [EVENT_TYPES.BRANCH_TRANSFER_EDITED]: "notifyBranchTransfer",
+  [EVENT_TYPES.BRANCH_TRANSFER_CANCELLED]: "notifyBranchTransfer",
+  [EVENT_TYPES.WITHDRAWAL_EDITED]: "notifyWithdrawalCreated",
+  [EVENT_TYPES.WITHDRAWAL_DELETED]: "notifyWithdrawalCreated",
 };
 
 function buildTemplateVars(eventType, data, currency) {
@@ -421,27 +583,27 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.INVENTORY_ADJUSTED:
       return {
-        item_name: data.itemName || "غير محدد",
-        old_qty: data.oldQuantity ?? "—",
-        new_qty: data.newQuantity ?? "—",
+        product_name: data.productName || data.itemName || "غير محدد",
+        warehouse: data.warehouse || "غير محدد",
+        old_quantity: data.oldQuantity ?? "—",
+        new_quantity: data.newQuantity ?? "—",
+        difference: data.difference ?? (Number(data.newQuantity ?? 0) - Number(data.oldQuantity ?? 0)),
         reason: data.reason || "غير محدد",
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.NEW_PRODUCT:
       return {
-        item_name: data.itemName || "غير محدد",
-        item_code: data.itemCode || "—",
+        product_name: data.productName || data.itemName || "غير محدد",
+        sku: data.sku || data.itemCode || "—",
         price: formatMoney(data.price || 0, currency),
-        quantity: data.quantity ?? "—",
-        category: data.category || "—",
+        warehouse: data.warehouse || "—",
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.PRICE_CHANGED:
       return {
-        item_name: data.itemName || "غير محدد",
-        item_code: data.itemCode || "—",
+        product_name: data.productName || data.itemName || "غير محدد",
         old_price: formatMoney(data.oldPrice || 0, currency),
         new_price: formatMoney(data.newPrice || 0, currency),
         change_percent: data.changePercent ?? "—",
@@ -450,19 +612,19 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.BATCH_EXPIRY_WARNING:
       return {
-        item_name: data.itemName || "غير محدد",
+        product_name: data.productName || data.itemName || "غير محدد",
         batch_no: data.batchNo || "—",
         expiry_date: data.expiryDate || "—",
-        quantity: data.quantity ?? "—",
+        remaining_quantity: data.remainingQuantity ?? data.quantity ?? "—",
         warehouse: data.warehouse || "غير محدد",
       };
     case EVENT_TYPES.PHYSICAL_COUNT_CONFIRMED:
       return {
         warehouse: data.warehouse || "غير محدد",
         user_name: data.userName || "غير محدد",
-        items_count: data.itemsCount ?? 0,
-        matched: data.matched ?? 0,
-        discrepancies: data.discrepancies ?? 0,
+        total_items: data.totalItems ?? data.itemsCount ?? 0,
+        matched_count: data.matchedCount ?? data.matched ?? 0,
+        mismatched_count: data.mismatchedCount ?? data.discrepancies ?? 0,
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.SUPPLIER_PAYMENT:
@@ -479,7 +641,7 @@ function buildTemplateVars(eventType, data, currency) {
         customer_name: data.customerName || "غير محدد",
         amount: formatMoney(data.amount || 0, currency),
         method: data.method || "غير محدد",
-        invoice_no: data.invoiceNo || "—",
+        remaining_debt: data.remainingDebt !== undefined ? formatMoney(data.remainingDebt, currency) : "—",
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
@@ -489,13 +651,14 @@ function buildTemplateVars(eventType, data, currency) {
         amount: formatMoney(data.amount || 0, currency),
         installment_no: data.installmentNo ?? "—",
         total_installments: data.totalInstallments ?? "—",
+        remaining: data.remaining !== undefined ? formatMoney(data.remaining, currency) : "—",
         method: data.method || "غير محدد",
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.PURCHASE_VOIDED:
       return {
-        invoice_no: data.invoiceNo || data.id || "—",
+        reference_no: data.referenceNo || data.invoiceNo || data.id || "—",
         supplier_name: data.supplierName || "غير محدد",
         total: formatMoney(data.total || 0, currency),
         reason: data.reason || "غير محدد",
@@ -504,9 +667,10 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.PURCHASE_RETURN:
       return {
-        original_invoice: data.originalInvoice || "—",
+        reference_no: data.referenceNo || data.originalInvoice || "—",
         supplier_name: data.supplierName || "غير محدد",
         items_table: buildItemsTable(data.items || [], currency),
+        items_count: (data.items || []).length,
         total: formatMoney(data.total || 0, currency),
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
@@ -515,6 +679,8 @@ function buildTemplateVars(eventType, data, currency) {
       return {
         reference_no: data.referenceNo || "—",
         from_branch: data.fromBranch || "غير محدد",
+        // The seeded template uses {to_warehouse} for the destination.
+        to_warehouse: data.toBranch || data.toWarehouse || "غير محدد",
         to_branch: data.toBranch || "غير محدد",
         user_name: data.userName || "غير محدد",
         transfer_type: data.transferType === "send" ? "إرسال" : "استلام",
@@ -533,17 +699,18 @@ function buildTemplateVars(eventType, data, currency) {
       };
     case EVENT_TYPES.PERMISSION_CHANGED:
       return {
-        target_user: data.targetUser || "غير محدد",
-        admin_user: data.adminUser || "غير محدد",
-        changes: data.changes || "—",
+        user_name: data.targetUser || data.userName || "غير محدد",
+        action: data.action || "تم تغيير الصلاحيات",
+        details: data.changes || data.details || "—",
+        changed_by: data.adminUser || data.changedBy || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.SUPERVISOR_OVERRIDE:
       return {
         user_name: data.userName || "غير محدد",
         action: data.action || "غير محدد",
-        amount: data.amount ? formatMoney(data.amount, currency) : "—",
-        reason: data.reason || "—",
+        details: data.details || data.reason || (data.amount ? `القيمة: ${formatMoney(data.amount, currency)}` : "—"),
+        supervisor: data.supervisor || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
     case EVENT_TYPES.REPAIR_ORDER_CREATED:
@@ -645,6 +812,153 @@ function buildTemplateVars(eventType, data, currency) {
         user_name: data.userName || "غير محدد",
         time: formatDateTime(data.createdAt),
       };
+    // ── New edit/delete events (migration 201) ─────────────────────────────
+    case EVENT_TYPES.EXPENSE_EDITED:
+      return {
+        expense_id: data.expenseId || data.id || "—",
+        doc_no: data.docNo || "—",
+        category: data.category || "غير مصنف",
+        old_amount: formatMoney(data.oldAmount || 0, currency),
+        new_amount: formatMoney(data.newAmount || 0, currency),
+        old_description: data.oldDescription || "—",
+        new_description: data.newDescription || "—",
+        payment_method: data.paymentMethod || "نقداً",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.EXPENSE_DELETED:
+      return {
+        expense_id: data.expenseId || data.id || "—",
+        doc_no: data.docNo || "—",
+        category: data.category || "غير مصنف",
+        amount: formatMoney(data.amount || 0, currency),
+        description: data.description || data.notes || "—",
+        payment_method: data.paymentMethod || "نقداً",
+        date: data.date || formatDateTime(data.createdAt),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.deletedAt || data.createdAt),
+      };
+    case EVENT_TYPES.REVENUE_EDITED:
+      return {
+        revenue_id: data.revenueId || data.id || "—",
+        doc_no: data.docNo || "—",
+        category: data.category || "غير مصنف",
+        old_amount: formatMoney(data.oldAmount || 0, currency),
+        new_amount: formatMoney(data.newAmount || 0, currency),
+        old_description: data.oldDescription || "—",
+        new_description: data.newDescription || "—",
+        payment_method: data.paymentMethod || "نقداً",
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.REVENUE_DELETED:
+      return {
+        revenue_id: data.revenueId || data.id || "—",
+        doc_no: data.docNo || "—",
+        category: data.category || "غير مصنف",
+        amount: formatMoney(data.amount || 0, currency),
+        description: data.description || data.notes || "—",
+        payment_method: data.paymentMethod || "نقداً",
+        date: data.date || formatDateTime(data.createdAt),
+        user_name: data.userName || "غير محدد",
+        time: formatDateTime(data.deletedAt || data.createdAt),
+      };
+    // ── New edit/cancel events (migration 202) ─────────────────────────────
+    case EVENT_TYPES.INVOICE_EDITED: {
+      const buildItemsTable = (lines) => (lines || []).map(l =>
+        `• ${l.item_name || l.name || '—'} ×${l.quantity} × ${formatMoney(l.unit_price || l.unit_cost || 0, currency)} = ${formatMoney((l.quantity || 0) * (l.unit_price || l.unit_cost || 0), currency)}`
+      ).join('\n');
+      return {
+        invoice_no: data.invoiceNo || data.id || '—',
+        customer_name: data.customerName || 'غير محدد',
+        total: formatMoney(data.total || 0, currency),
+        items_table: buildItemsTable(data.lines),
+        payment_breakdown: data.paymentBreakdown || data.paymentType || '—',
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    }
+    case EVENT_TYPES.INVOICE_AMENDED: {
+      const buildItemsTable = (lines) => (lines || []).map(l =>
+        `• ${l.item_name || l.name || '—'} ×${l.quantity} × ${formatMoney(l.unit_price || l.unit_cost || 0, currency)} = ${formatMoney((l.quantity || 0) * (l.unit_price || l.unit_cost || 0), currency)}`
+      ).join('\n');
+      return {
+        old_invoice_no: data.oldInvoiceNo || data.originalId || '—',
+        new_invoice_no: data.invoiceNo || data.id || '—',
+        customer_name: data.customerName || 'غير محدد',
+        total: formatMoney(data.total || 0, currency),
+        items_table: buildItemsTable(data.lines),
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    }
+    case EVENT_TYPES.PURCHASE_EDITED: {
+      const buildItemsTable = (lines) => (lines || []).map(l =>
+        `• ${l.item_name_ar || l.name || '—'} ×${l.quantity} × ${formatMoney(l.unit_cost || 0, currency)} = ${formatMoney((l.quantity || 0) * (l.unit_cost || 0), currency)}`
+      ).join('\n');
+      return {
+        reference_no: data.referenceNo || data.docNo || '—',
+        supplier_name: data.supplierName || 'غير محدد',
+        new_total: formatMoney(data.total || 0, currency),
+        items_table: buildItemsTable(data.lines),
+        payment_method: data.paymentMethod || '—',
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    }
+    case EVENT_TYPES.PURCHASE_RETURN_CANCELLED:
+      return {
+        reference_no: data.referenceNo || data.docNo || '—',
+        supplier_name: data.supplierName || 'غير محدد',
+        total: formatMoney(data.total || 0, currency),
+        reason: data.reason || '—',
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.BRANCH_TRANSFER_EDITED: {
+      const buildItemsTable = (lines) => (lines || []).map(l =>
+        `• ${l.item_name || l.name || '—'} ×${l.quantity}`
+      ).join('\n');
+      return {
+        reference_no: data.referenceNo || '—',
+        transfer_type: data.transferType === 'send' ? 'إرسال' : 'استلام',
+        partner_branch: data.partnerBranch || '—',
+        items_table: buildItemsTable(data.lines),
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    }
+    case EVENT_TYPES.BRANCH_TRANSFER_CANCELLED:
+      return {
+        reference_no: data.referenceNo || '—',
+        transfer_type: data.transferType === 'send' ? 'إرسال' : 'استلام',
+        partner_branch: data.partnerBranch || '—',
+        reason: data.reason || '—',
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.cancelledAt || data.createdAt),
+      };
+    case EVENT_TYPES.WITHDRAWAL_EDITED:
+      return {
+        doc_no: data.docNo || '—',
+        old_amount: formatMoney(data.oldAmount || 0, currency),
+        new_amount: formatMoney(data.newAmount || 0, currency),
+        category: data.category || 'غير مصنف',
+        note: data.note || '—',
+        payment_method: data.paymentMethod || 'نقداً',
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.createdAt),
+      };
+    case EVENT_TYPES.WITHDRAWAL_DELETED:
+      return {
+        doc_no: data.docNo || '—',
+        amount: formatMoney(data.amount || 0, currency),
+        category: data.category || 'غير مصنف',
+        note: data.note || '—',
+        payment_method: data.paymentMethod || 'نقداً',
+        date: data.date || formatDateTime(data.createdAt),
+        user_name: data.userName || 'غير محدد',
+        time: formatDateTime(data.deletedAt || data.createdAt),
+      };
     default:
       return {};
   }
@@ -664,22 +978,36 @@ function formatDateTime(dt) {
   return d.toLocaleString("ar-EG");
 }
 
-function buildMessage(eventType, data = {}, db = null) {
+// Finds the template body for an event. Priority:
+//   1. The variant the recipient chose per event (message_template_variants by
+//      category + label) — this is what the preset chips in the UI select.
+//   2. The globally active template (message_templates, kept in sync with the
+//      active variant row).
+//   3. null — caller falls back to the hardcoded default.
+function resolveTemplateBody(db, category, presetLabel) {
+  if (!db || !category) return null;
+  try {
+    if (presetLabel) {
+      const variant = db
+        .prepare("SELECT body FROM message_template_variants WHERE category = ? AND label = ?")
+        .get(category, presetLabel);
+      if (variant?.body) return variant.body;
+    }
+    const row = db.prepare("SELECT body FROM message_templates WHERE kind = ?").get(category);
+    if (row?.body) return row.body;
+  } catch (_) { /* un-migrated DB — hardcoded default below */ }
+  return null;
+}
+
+function buildMessage(eventType, data = {}, db = null, presetLabel = null) {
   const currency = data.currencySymbol || "ج";
   const branch = data.branch || "";
   const header = branch ? `🏪 *${branch}*\n` : "";
 
-  // Prefer the owner's saved template (message_templates, kept in sync with
-  // the active message_template_variants row) over the hardcoded default —
-  // falls through on any DB issue (un-migrated DB, no row yet).
   const category = EVENT_CATEGORY[eventType];
-  if (category && db) {
-    try {
-      const row = db.prepare("SELECT body FROM message_templates WHERE kind=?").get(category);
-      if (row?.body) {
-        return header + renderTemplate(row.body, buildTemplateVars(eventType, data, currency));
-      }
-    } catch (_) { /* fall through to hardcoded default below */ }
+  const body = resolveTemplateBody(db, category, presetLabel);
+  if (body) {
+    return header + renderTemplate(body, buildTemplateVars(eventType, data, currency));
   }
 
   switch (eventType) {
@@ -711,16 +1039,86 @@ function buildMessage(eventType, data = {}, db = null) {
 
     case EVENT_TYPES.SALES_RETURN: {
       const total = formatMoney(data.total, currency);
+      const lines = (data.lines || []).map(l =>
+        `• ${l.item_name || l.name || '—'} ×${l.quantity}`
+      ).join('\n');
       return `${header}↩️ مرتجع مبيعات\n` +
-        `الفاتورة الأصلية: *#${data.originalInvoiceId}*\n` +
-        `مبلغ المرتجع: *${total}*`;
+        `الفاتورة الأصلية: *#${data.originalInvoiceNo || data.originalInvoiceId}*\n` +
+        `العميل: *${data.customerName || 'غير محدد'}*\n` +
+        `مبلغ المرتجع: *${total}*\n` +
+        `طريقة الاسترداد: *${data.refundMethod || '—'}*\n` +
+        (lines ? `الأصناف:\n${lines}\n` : '') +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+        `بواسطة: *${data.userName || 'غير محدد'}*\n` +
+        `الوقت: ${formatDateTime(data.createdAt)}`;
     }
 
     case EVENT_TYPES.INVOICE_VOIDED:
       return `${header}⛔ فاتورة ملغاة\n` +
         `الفاتورة: *#${data.invoiceNo || data.id}*\n` +
+        `العميل: *${data.customerName || 'غير محدد'}*\n` +
+        `الإجمالي: *${formatMoney(data.total, currency)}*\n` +
         `السبب: *${data.reason || "غير محدد"}*\n` +
         `بواسطة: *${data.userName || "غير محدد"}*`;
+
+    case EVENT_TYPES.INVOICE_EDITED:
+      return `${header}✏️ تعديل فاتورة مبيعات\n` +
+        `الفاتورة: *#${data.invoiceNo || data.id}*\n` +
+        `العميل: *${data.customerName || 'غير محدد'}*\n` +
+        `الإجمالي: *${formatMoney(data.total, currency)}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*\n` +
+        `الوقت: ${formatDateTime(data.createdAt)}`;
+
+    case EVENT_TYPES.INVOICE_AMENDED:
+      return `${header}🔄 تعديل (أمندمنت) فاتورة\n` +
+        `الفاتورة القديمة: #${data.oldInvoiceNo || data.originalId || '—'} (ملغاة)\n` +
+        `الفاتورة الجديدة: *#${data.invoiceNo || data.id}*\n` +
+        `العميل: *${data.customerName || 'غير محدد'}*\n` +
+        `الإجمالي: *${formatMoney(data.total, currency)}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+
+    case EVENT_TYPES.PURCHASE_EDITED:
+      return `${header}✏️ تعديل فاتورة مشتريات\n` +
+        `المرجع: *${data.referenceNo || data.docNo || '—'}*\n` +
+        `المورد: *${data.supplierName || 'غير محدد'}*\n` +
+        `الإجمالي: *${formatMoney(data.total, currency)}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*\n` +
+        `الوقت: ${formatDateTime(data.createdAt)}`;
+
+    case EVENT_TYPES.PURCHASE_RETURN_CANCELLED:
+      return `${header}❌ إلغاء مرتجع مشتريات\n` +
+        `المرجع: *${data.referenceNo || data.docNo || '—'}*\n` +
+        `المورد: *${data.supplierName || 'غير محدد'}*\n` +
+        `السبب: *${data.reason || 'غير محدد'}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+
+    case EVENT_TYPES.BRANCH_TRANSFER_EDITED:
+      return `${header}✏️ تعديل حركة فرع\n` +
+        `المرجع: *${data.referenceNo || '—'}*\n` +
+        `النوع: ${data.transferType === 'send' ? 'إرسال' : 'استلام'}\n` +
+        `الفرع: *${data.partnerBranch || 'غير محدد'}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+
+    case EVENT_TYPES.BRANCH_TRANSFER_CANCELLED:
+      return `${header}❌ إلغاء حركة فرع\n` +
+        `المرجع: *${data.referenceNo || '—'}*\n` +
+        `النوع: ${data.transferType === 'send' ? 'إرسال' : 'استلام'}\n` +
+        `السبب: *${data.reason || 'غير محدد'}*\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+
+    case EVENT_TYPES.WITHDRAWAL_EDITED:
+      return `${header}✏️ تعديل سحب نقدي\n` +
+        `المستند: *${data.docNo || '—'}*\n` +
+        `المبلغ قبل: ${formatMoney(data.oldAmount, currency)} → بعد: *${formatMoney(data.newAmount, currency)}*\n` +
+        `الفئة: ${data.category || 'غير مصنف'}\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
+
+    case EVENT_TYPES.WITHDRAWAL_DELETED:
+      return `${header}🗑️ حذف سحب نقدي\n` +
+        `المستند: *${data.docNo || '—'}*\n` +
+        `المبلغ: *${formatMoney(data.amount, currency)}*\n` +
+        `الفئة: ${data.category || 'غير مصنف'}\n` +
+        `بواسطة: *${data.userName || 'غير محدد'}*`;
 
     case EVENT_TYPES.SHIFT_CLOSE: {
       const opening = formatMoney(data.openingCash, currency);
@@ -823,7 +1221,7 @@ async function sendTelegramMessage(botConfig, chatId, text) {
 // JSON to find their chat_id.
 async function detectChatId(botToken, apiBase = "https://api.telegram.org") {
   const token = encodeURIComponent(botToken);
-  const url = `${apiBase.replace(/\/$/, "")}/bot${token}/getUpdates?limit=5`;
+  const url = `${apiBase.replace(/\/$/, "")}/bot${token}/getUpdates?limit=20`;
   const response = await fetch(url);
   if (!response.ok) {
     const errorText = await response.text().catch(() => "unknown error");
@@ -831,8 +1229,15 @@ async function detectChatId(botToken, apiBase = "https://api.telegram.org") {
   }
   const data = await response.json();
   const updates = Array.isArray(data.result) ? data.result : [];
-  const last = [...updates].reverse().find((u) => u.message?.chat || u.channel_post?.chat || u.my_chat_member?.chat);
-  const chat = last?.message?.chat || last?.channel_post?.chat || last?.my_chat_member?.chat;
+  const chatFromUpdate = (u) =>
+    u?.message?.chat
+    || u?.edited_message?.chat
+    || u?.channel_post?.chat
+    || u?.my_chat_member?.chat
+    || u?.callback_query?.message?.chat
+    || u?.chat_member?.chat;
+  const last = [...updates].reverse().find((u) => chatFromUpdate(u));
+  const chat = chatFromUpdate(last);
   if (!chat) return null;
   const name = [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.title || chat.username || null;
   return { chatId: String(chat.id), chatName: name, chatType: chat.type };
@@ -884,28 +1289,48 @@ function markFailed(db, id, retryCount, error) {
 async function notifyOwner(eventType, data = {}, dbArg) {
   const db = dbArg || getDb();
   const config = getTelegramConfig(db);
-  if (!config || !config.enabled) return;
+  if (!config || !config.enabled) return { sent: 0, queued: 0, error: null, skipped: true };
 
   const recipients = getTelegramRecipients(db);
-  const text = buildMessage(eventType, data, db);
+
+  // Each recipient may have picked a different variant (detailed/brief) for
+  // this event — render once per distinct label.
+  const presetField = EVENT_PRESET_FIELD[eventType];
+  const textCache = new Map();
+  const textForRecipient = (recipient) => {
+    const label = (presetField && recipient?.eventPresets?.[presetField]) || "";
+    if (!textCache.has(label)) {
+      textCache.set(label, buildMessage(eventType, data, db, label || null));
+    }
+    return textCache.get(label);
+  };
+
+  let sent = 0;
+  let queued = 0;
+  let lastError = null;
 
   // Multi-recipient path.
   if (recipients.length > 0) {
     for (const recipient of recipients) {
       if (!isEventEnabledForRecipient(recipient, eventType)) continue;
+      const text = textForRecipient(recipient);
       try {
         await sendTelegramMessage(config, recipient.chatId, text);
+        sent++;
       } catch (err) {
+        lastError = err.message;
         logger.warn({ message: "Telegram send failed, enqueueing", eventType, chatId: recipient.chatId, error: err.message });
         enqueueNotification(db, eventType, recipient.chatId, text, data);
+        queued++;
       }
     }
-    return;
+    return { sent, queued, error: lastError };
   }
+  const text = buildMessage(eventType, data, db);
 
   // Legacy fallback for un-migrated DBs or single-recipient setups.
   const legacy = getLegacyTelegramConfig(db);
-  if (!legacy) return;
+  if (!legacy) return { sent: 0, queued: 0, error: null, skipped: true };
   const legacyEnabled = (() => {
     switch (eventType) {
       case EVENT_TYPES.NEW_INVOICE: return legacy.notifyNewInvoice;
@@ -928,12 +1353,14 @@ async function notifyOwner(eventType, data = {}, dbArg) {
       default: return legacy.notifyImportantActions;
     }
   })();
-  if (!legacyEnabled) return;
+  if (!legacyEnabled) return { sent: 0, queued: 0, error: null, skipped: true };
   try {
     await sendTelegramMessage(legacy, legacy.chatId, text);
+    return { sent: 1, queued: 0, error: null };
   } catch (err) {
     logger.warn({ message: "Telegram send failed, enqueueing", eventType, error: err.message });
     enqueueNotification(db, eventType, legacy.chatId, text, data);
+    return { sent: 0, queued: 1, error: err.message };
   }
 }
 
@@ -1001,9 +1428,11 @@ module.exports = {
   getTelegramConfig,
   getTelegramRecipients,
   getLegacyTelegramConfig,
+  migrateLegacyRecipientIfNeeded,
   isEventEnabledForRecipient,
   isDigestEnabledForRecipient,
   buildMessage,
+  resolveTemplateBody,
   sendTelegramMessage,
   detectChatId,
   getBotInfo,

@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useShortcut } from "../../shortcuts/useShortcut";
 import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
@@ -121,15 +122,19 @@ const ALL_CATEGORIES = "all";
 
 // ─── Cell input ───────────────────────────────────────────────────────────────
 const Cell = React.forwardRef(function Cell(
-  { value, onChange, onBlur, onFocus, onKeyDown, type = "text", placeholder = "", disabled = false, className = "", dirty = false },
+  { value, onChange, onBlur, onFocus, onKeyDown, type = "text", placeholder = "", disabled = false, className = "", dirty = false, compact = false, variant = "ghost" },
   ref,
 ) {
+  const sizeCls = compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm";
+  const variantCls = variant === "outlined"
+    ? "bg-bg-input border-border hover:border-border-strong focus:bg-bg-surface focus:border-primary focus:ring-1 focus:ring-primary"
+    : "bg-transparent border-transparent hover:border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
   return (
     <input ref={ref} type={type} value={value} onChange={onChange} onBlur={onBlur} onFocus={onFocus} onKeyDown={onKeyDown}
       placeholder={placeholder} disabled={disabled}
       min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined}
-      className={`w-full bg-transparent px-2 py-1.5 text-sm font-bold outline-none border border-transparent transition-all
-        focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-slate-300
+      className={`w-full ${sizeCls} font-bold outline-none border transition-all
+        ${variantCls}
         disabled:cursor-not-allowed disabled:text-slate-400 rounded-sm
         ${dirty ? "bg-amber-50/50" : ""}
         ${className}`}
@@ -137,13 +142,18 @@ const Cell = React.forwardRef(function Cell(
   );
 });
 
-const UnitSelect = React.forwardRef(function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = false, onKeyDown }, ref) {
+const UnitSelect = React.forwardRef(function UnitSelect({ value, onChange, onBlur, units, disabled = false, dirty = false, onKeyDown, compact = false, variant = "ghost", className = "" }, ref) {
+  const sizeCls = compact ? "px-1 py-1 text-xs" : "px-1.5 py-1.5 text-sm";
+  const variantCls = variant === "outlined"
+    ? "bg-bg-input border-border hover:border-border-strong focus:bg-bg-surface focus:border-primary focus:ring-1 focus:ring-primary"
+    : "bg-transparent border-transparent hover:border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
   return (
     <select ref={ref} value={value} onChange={onChange} onBlur={onBlur} disabled={disabled} onKeyDown={onKeyDown}
-      className={`w-full bg-transparent px-1.5 py-1.5 text-sm font-black outline-none border border-transparent transition-all rounded-sm
-        focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-slate-300
+      className={`w-full ${sizeCls} font-black outline-none border transition-all rounded-sm
+        ${variantCls}
         disabled:cursor-not-allowed
-        ${dirty ? "bg-amber-50/50" : ""}`}>
+        ${dirty ? "bg-amber-50/50" : ""}
+        ${className}`}>
       <option value="">— وحدة —</option>
       {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
     </select>
@@ -351,7 +361,7 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
   const active = sortConfig.key === sortKey;
   return (
     <th 
-      className={`relative select-none px-4 py-3 text-right text-[11px] font-black uppercase text-slate-500 hover:text-slate-900 transition-colors ${className}`}
+      className={`relative select-none px-4 py-3 text-center text-[11px] font-black uppercase text-slate-500 hover:text-slate-900 transition-colors ${className}`}
       style={{ width: width ? `${width}px` : undefined, minWidth: width ? `${width}px` : undefined, maxWidth: width ? `${width}px` : undefined }}
     >
       <div className="inline-flex items-center gap-1 cursor-pointer" onClick={() => onSort(sortKey)}>
@@ -373,6 +383,7 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ItemsListPage() {
   usePageTour("items");
+  const { t } = useTranslation();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkQuery = searchParams.get("q") || "";
@@ -414,6 +425,7 @@ export default function ItemsListPage() {
   const navigate = useNavigate();
   const [exportOpen, setExportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryPrefix, setNewCategoryPrefix] = useState("");
   // sort
   const [sortConfig, setSortConfig]   = useState({ key: null, dir: "asc" });
   // density
@@ -485,6 +497,7 @@ export default function ItemsListPage() {
   const minStockQtyRef = useRef(null);
   const addItemBtnRef = useRef(null);
   const catNameRef = useRef(null);
+  const catPrefixRef = useRef(null);
   const catSubmitRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const bottomScrollRef = useRef(null);
@@ -601,6 +614,18 @@ export default function ItemsListPage() {
     () => categories.find((c) => c.id === selectedCatId) ?? null,
     [categories, selectedCatId],
   );
+
+  const suggestedCategoryPrefix = useMemo(() => {
+    const numericPrefixes = categories
+      .map((c) => Number(c.sku_prefix))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    const max = numericPrefixes.length ? Math.max(...numericPrefixes) : 0;
+    return String(max + 1);
+  }, [categories]);
+
+  useEffect(() => {
+    if (newCategoryOpen) setNewCategoryPrefix(suggestedCategoryPrefix);
+  }, [newCategoryOpen, suggestedCategoryPrefix]);
 
   // "Show all products" view: read-only — creating items is disabled here.
   const isAllCats = selectedCatId === ALL_CATEGORIES;
@@ -792,16 +817,21 @@ export default function ItemsListPage() {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     try {
-      const res = await api.post("/api/categories", { name: newCategoryName.trim() });
+      const res = await api.post("/api/categories", { name: newCategoryName.trim(), sku_prefix: newCategoryPrefix.trim() || undefined });
       const newCat = res.data?.data;
-      toast.success("تم إنشاء الفئة");
+      if (res.data?.restored) {
+        toast.success(t("items.categoryModal.restored"));
+      } else {
+        toast.success(t("items.categoryModal.created"));
+      }
       setNewCategoryOpen(false);
       setNewCategoryName("");
+      setNewCategoryPrefix("");
       const cats = await loadCategories();
       if (newCat?.id) setSelectedCatId(newCat.id);
       else if (cats.length === 1) setSelectedCatId(cats[0].id);
     } catch (err) {
-      toast.error(err.response?.data?.message || "تعذر إنشاء الفئة");
+      toast.error(err.response?.data?.message || t("items.categoryModal.error"));
     }
   }
 
@@ -1047,17 +1077,26 @@ export default function ItemsListPage() {
              <Upload className="h-4 w-4" /> استيراد من Excel
           </button>
         </div>
-        <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
+        <Modal open={newCategoryOpen} title={t("items.categoryModal.title")} onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
           <form onSubmit={createCategory} className="space-y-4 p-4">
             <div className="space-y-2">
-              <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">اسم الفئة الرئيسية</label>
-              <input autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="مثلاً: بويات، أدوات صحية، زيوت..."
-                className="w-full rounded-sm border border-slate-200 px-4 py-3 text-sm font-bold outline-none focus:border-slate-800" required />
+              <label className="text-[11px] font-black uppercase text-text-secondary tracking-widest">{t("items.categoryModal.emptyNameLabel")}</label>
+              <input ref={catNameRef} autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: catPrefixRef })}
+                placeholder={t("items.categoryModal.namePlaceholder")}
+                className="w-full rounded-sm border border-border bg-bg-surface px-4 py-3 text-sm font-bold outline-none focus:border-primary" required />
             </div>
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-500 hover:bg-slate-50">إلغاء</button>
-              <button type="submit" className="rounded-sm bg-slate-900 px-8 py-2 text-2sm font-black text-white shadow-lg">تأكيد الحفظ</button>
+            <div className="space-y-2">
+              <label className="text-[11px] font-black uppercase text-text-secondary tracking-widest">{t("items.categoryModal.prefixLabel")}</label>
+              <input ref={catPrefixRef} type="text" inputMode="numeric" value={newCategoryPrefix} onChange={(e) => setNewCategoryPrefix(e.target.value.replace(/[^0-9]/g, ""))}
+                onKeyDown={(e) => handleKeyDown(e, { nextRef: catSubmitRef, prevRef: catNameRef })}
+                placeholder={suggestedCategoryPrefix}
+                className="w-full rounded-sm border border-border bg-bg-surface px-4 py-3 text-sm font-bold outline-none focus:border-primary font-mono" />
+              <p className="text-[10px] font-bold text-text-muted">{t("items.categoryModal.emptyPrefixHint")}</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-4 border-t border-border">
+              <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-text-secondary hover:bg-bg-overlay">{t("common.cancel")}</button>
+              <button ref={catSubmitRef} type="submit" className="rounded-sm bg-primary px-8 py-2 text-2sm font-black text-white shadow-lg">{t("items.categoryModal.save")}</button>
             </div>
           </form>
         </Modal>
@@ -1207,30 +1246,30 @@ export default function ItemsListPage() {
                     )}
                    <SortTh label="الكود" sortKey="code" sortConfig={sortConfig} onSort={toggleSort} resizableKey="code" width={colWidths.code} onResizeStart={onResizeStart} />
                    <SortTh label="الاسم / المواصفات" sortKey="name" sortConfig={sortConfig} onSort={toggleSort} resizableKey="name" width={colWidths.name} onResizeStart={onResizeStart} />
-                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
-                     الوحدة
-                     <div onMouseDown={(e) => onResizeStart(e, "unit")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
-                   </th>
+                    <th className="relative px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.unit, minWidth: colWidths.unit}}>
+                      الوحدة
+                      <div onMouseDown={(e) => onResizeStart(e, "unit")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
+                    </th>
                     <SortTh label="الباركود" sortKey="barcode" sortConfig={sortConfig} onSort={toggleSort} resizableKey="barcode" width={colWidths.barcode} onResizeStart={onResizeStart} className={!showBarcode ? "hidden" : ""} />
                    <SortTh label="شراء" sortKey="purchase_price" sortConfig={sortConfig} onSort={toggleSort} resizableKey="purchase_price" width={colWidths.purchase_price} onResizeStart={onResizeStart} />
-                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.sale_price, minWidth: colWidths.sale_price}}>
-                     <div className="flex items-center justify-between gap-2">
-                       <span>مستهلك</span>
-                       <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
-                         {profitMode === "percentage" ? "%" : "ج.م"}
-                       </button>
-                     </div>
-                     <div onMouseDown={(e) => onResizeStart(e, "sale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
-                   </th>
-                   <th className="relative px-2 py-3 text-right text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.wholesale_price, minWidth: colWidths.wholesale_price}}>
-                     <div className="flex items-center justify-between gap-2">
-                       <span>جملة</span>
-                       <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
-                         {profitMode === "percentage" ? "%" : "ج.م"}
-                       </button>
-                     </div>
-                     <div onMouseDown={(e) => onResizeStart(e, "wholesale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
-                   </th>
+                    <th className="relative px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.sale_price, minWidth: colWidths.sale_price}}>
+                      <div className="flex items-center justify-center gap-2">
+                        <span>مستهلك</span>
+                        <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
+                          {profitMode === "percentage" ? "%" : "ج.م"}
+                        </button>
+                      </div>
+                      <div onMouseDown={(e) => onResizeStart(e, "sale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
+                    </th>
+                    <th className="relative px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.wholesale_price, minWidth: colWidths.wholesale_price}}>
+                      <div className="flex items-center justify-center gap-2">
+                        <span>جملة</span>
+                        <button onClick={toggleProfitMode} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors" title="تبديل عرض الربح">
+                          {profitMode === "percentage" ? "%" : "ج.م"}
+                        </button>
+                      </div>
+                      <div onMouseDown={(e) => onResizeStart(e, "wholesale_price")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
+                    </th>
                    <th className="relative px-2 py-3 text-center text-[11px] font-black uppercase text-slate-500" style={{width: colWidths.min_stock_qty, minWidth: colWidths.min_stock_qty}}>
                      الحد الأدنى
                      <div onMouseDown={(e) => onResizeStart(e, "min_stock_qty")} className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-sky-400 z-10 transition-colors opacity-0 hover:opacity-100" />
@@ -1520,128 +1559,102 @@ export default function ItemsListPage() {
                 )}
               </tbody>
              
-             {/* New Item Creation Row */}
-             {!loading && (
-               <tfoot className="sticky bottom-0 z-20 border-t-2 border-emerald-500 shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
-                  {isAllCats ? (
-                  <tr className="bg-amber-50">
-                     <td colSpan={COLS} className="px-6 py-4">
-                       <div className="flex items-center justify-center gap-3 text-amber-800" dir="rtl">
-                         <AlertTriangle className="h-5 w-5 shrink-0" />
-                         <span className="text-2sm font-black">
-                           أنت في وضع عرض كل الأصناف — لا يمكن إضافة صنف جديد هنا. اختر فئة محددة من القائمة بالأعلى لإضافة الأصناف.
-                         </span>
-                       </div>
-                     </td>
-                  </tr>
-                  ) : (
-                  <>
-                  <tr className="bg-emerald-600">
-                     <td colSpan={COLS} className="px-4 py-2">
-                       <div className="flex items-center justify-between" dir="rtl">
-                         <div className="flex items-center gap-3">
-                           <span className="inline-flex items-center gap-1.5 rounded bg-white/20 px-2.5 py-1 text-xs font-black text-white">
-                             <Plus className="h-3.5 w-3.5" /> جديد
-                           </span>
-                           <span className="text-sm font-black text-white">إضافة صنف جديد للفئة المختارة</span>
-                         </div>
-                         <ShortcutKbd id="items.new" className="inline-flex items-center justify-center rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-mono text-white/90" />
-                       </div>
-                     </td>
-                  </tr>
-                   <tr className="bg-white">
-                      <td colSpan="3" className="px-2 text-center align-middle border border-slate-200 bg-slate-50/50">
-                        <div className="flex flex-col items-center justify-center h-full">
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2.5 py-1.5 text-[10px] font-black text-emerald-700">
-                            <Plus className="h-3 w-3" /> جديد
+              {/* New Item Creation Row */}
+              {!loading && (
+                <tfoot className="sticky bottom-0 z-20 border-t-2 border-primary shadow-glow-green">
+                   {isAllCats ? (
+                   <tr className="bg-warning-bg">
+                      <td colSpan={COLS} className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-3 text-warning-text" dir="rtl">
+                          <AlertTriangle className="h-5 w-5 shrink-0" />
+                          <span className="text-2sm font-black">
+                            أنت في وضع عرض كل الأصناف — لا يمكن إضافة صنف جديد هنا. اختر فئة محددة من القائمة بالأعلى لإضافة الأصناف.
                           </span>
                         </div>
                       </td>
-                      {expiryEnabled && (
-                      <td className="px-1 py-2 text-center align-middle border border-slate-200 bg-slate-50/50">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-black text-slate-400">انتهاء</span>
-                          <button type="button"
-                            title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
-                            onClick={() => setNewRow((prev) => ({ ...prev, track_expiry: !prev.track_expiry }))}
-                            className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
-                              ${newRow.track_expiry ? "bg-orange-50 border-orange-200 hover:bg-orange-100" : "bg-white border-slate-200 hover:bg-slate-50"}`}>
-                            <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm ${newRow.track_expiry ? "bg-orange-400" : "bg-slate-300"}`} dir="ltr">
-                              <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${newRow.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
-                            </div>
-                          </button>
-                        </div>
-                      </td>
-                      )}
-                      <td className="px-2 text-center align-middle border border-slate-200 bg-slate-50/50">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-black text-slate-400">الكود</span>
-                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">تلقائي</span>
-                          <div className="flex items-center justify-center gap-1 mt-0.5">
-                            <span className={`font-mono text-[12px] font-black tracking-tighter ${newRow.code ? "text-violet-700" : "text-slate-400 opacity-60"}`}>{nextCodePreview}</span>
-                            {newRow.code ? (
-                              <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="rounded bg-violet-100 px-1 text-[11px] font-black text-violet-700">آخر</button>
-                            ) : null}
+                   </tr>
+                   ) : (
+                   <>
+                   <tr className="bg-primary">
+                      <td colSpan={COLS} className="px-4 py-1.5">
+                        <div className="flex items-center justify-between" dir="rtl">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center gap-1.5 rounded bg-[var(--chip-on-primary)] px-2 py-0.5 text-xs font-black text-white">
+                              <Plus className="h-3.5 w-3.5" /> جديد
+                            </span>
+                            <span className="text-sm font-black text-white">إضافة صنف جديد للفئة المختارة</span>
                           </div>
+                          <ShortcutKbd id="items.new" className="inline-flex items-center justify-center rounded bg-[var(--chip-on-primary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--on-feature-muted)]" />
                         </div>
-                      </td>
-                      <td className="px-4 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">اسم الصنف <span className="text-rose-500">*</span></label>
-                        <Cell value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
-                          ref={nameInputRef} placeholder="اكتب اسم الصنف الجديد هنا..." className="border-slate-200 bg-slate-50 font-black focus:border-emerald-500 focus:ring-emerald-500/20" onKeyDown={(e) => handleKeyDown(e, { nextRef: unitSelectRef, prevRef: addItemBtnRef })} />
-                      </td>
-                      <td className="px-3 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">الوحدة</label>
-                        <UnitSelect ref={unitSelectRef} value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: showBarcode ? barcodeRef : purchasePriceRef, prevRef: nameInputRef })} />
-                      </td>
-                      <td className={`px-3 py-2 border border-slate-200 bg-white ${!showBarcode ? "hidden" : ""}`}>
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">الباركود</label>
-                        <Cell ref={barcodeRef} value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: purchasePriceRef, prevRef: unitSelectRef })} placeholder="..." className="font-mono border-slate-200 bg-slate-50 focus:border-emerald-500" />
-                      </td>
-                      <td className="px-3 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">الشراء</label>
-                        <Cell ref={purchasePriceRef} type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: salePriceRef, prevRef: showBarcode ? barcodeRef : unitSelectRef })} placeholder="0.00" className="border-slate-200 bg-slate-50 focus:border-emerald-500" />
-                      </td>
-                      <td className="px-3 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">المستهلك</label>
-                        <Cell ref={salePriceRef} type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesalePriceRef, prevRef: purchasePriceRef })} placeholder="0.00" className="text-emerald-700 border-slate-200 bg-slate-50 focus:border-emerald-500" />
-                        {(() => {
-                          const profit = profitInfo(newRow.purchase_price, newRow.sale_price);
-                          return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
-                        })()}
-                      </td>
-                      <td className="px-3 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">الجملة</label>
-                        <Cell ref={wholesalePriceRef} type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: minStockQtyRef, prevRef: salePriceRef })} placeholder="0.00" className="text-blue-700 border-slate-200 bg-slate-50 focus:border-emerald-500" />
-                        {(() => {
-                          const profit = profitInfo(newRow.purchase_price, newRow.wholesale_price);
-                          return profit && <div className={`text-center mt-0.5 text-[9px] font-black ${profit.cls} rounded px-1`}>{profit.label}</div>;
-                        })()}
-                      </td>
-                      <td className="px-3 py-2 border border-slate-200 bg-white">
-                        <label className="block text-[10px] font-black text-slate-400 mb-1">الحد</label>
-                        <Cell ref={minStockQtyRef} type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: addItemBtnRef, prevRef: wholesalePriceRef })} placeholder="0" className="border-slate-200 bg-slate-50 focus:border-emerald-500" />
-                      </td>
-                      <td colSpan="2" className="px-4 text-center align-middle border border-slate-200 bg-slate-50/30 opacity-40">
-                        <Shapes className="mx-auto h-4 w-4 text-slate-400" />
-                      </td>
-                      <td className="px-4 py-2 text-center align-middle border border-slate-200 bg-slate-50/50">
-                        <PermissionGate page="items" action="add">
-                        <button ref={addItemBtnRef}
-                            onClick={createFromNewRow}
-                            onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: createFromNewRow })}
-                            disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
-                            className="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-30 disabled:grayscale"
-                        >
-                           {savingRowId === "new" ? "جاري..." : <><Plus className="h-4 w-4" /> إضافة</>}
-                        </button>
-                        </PermissionGate>
                       </td>
                    </tr>
-                  </>
-                  )}
-               </tfoot>
-             )}
+                    <tr className="bg-success-bg">
+                       <td colSpan="3" className="px-2 py-1 text-center align-middle border border-success-border bg-success-bg">
+                         <Plus className="mx-auto h-4 w-4 text-success-text" />
+                       </td>
+                       {expiryEnabled && (
+                       <td className="px-1 py-1 text-center align-middle border border-success-border bg-success-bg">
+                         <button type="button"
+                           title={newRow.track_expiry ? "تتبع انتهاء الصلاحية مفعّل — اضغط لإيقافه" : "تتبع انتهاء الصلاحية موقف — اضغط لتفعيله"}
+                           onClick={() => setNewRow((prev) => ({ ...prev, track_expiry: !prev.track_expiry }))}
+                           className={`flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md transition-colors cursor-pointer border
+                             ${newRow.track_expiry ? "bg-warning-bg border-warning-border hover:bg-warning-bg" : "bg-bg-surface border-border hover:bg-bg-overlay"}`}>
+                           <div className={`relative inline-flex h-[18px] w-[34px] shrink-0 items-center rounded-full border-2 border-transparent transition-colors shadow-sm ${newRow.track_expiry ? "bg-warning" : "bg-text-muted"}`} dir="ltr">
+                             <span className={`inline-block h-[11px] w-[11px] transform rounded-full bg-white shadow-md transition-transform ${newRow.track_expiry ? "translate-x-[15px]" : "translate-x-0.5"}`} />
+                           </div>
+                         </button>
+                       </td>
+                       )}
+                       <td className="px-2 py-1 text-center align-middle border border-success-border bg-success-bg">
+                         <div className="flex flex-col items-center">
+                           <span className={`font-mono text-[11px] font-black tracking-tighter ${newRow.code ? "text-primary" : "text-text-muted"}`}>{nextCodePreview}</span>
+                           {newRow.code && (
+                             <button type="button" onClick={() => setNewRow((prev) => ({ ...prev, code: "" }))} className="text-[10px] font-black text-text-secondary hover:text-primary leading-none mt-0.5">إلغاء</button>
+                           )}
+                         </div>
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <Cell value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
+                           ref={nameInputRef} placeholder={t("items.newRow.namePlaceholder")} variant="outlined" compact className="font-black" onKeyDown={(e) => handleKeyDown(e, { nextRef: unitSelectRef, prevRef: addItemBtnRef })} />
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <UnitSelect ref={unitSelectRef} value={newRow.unit_id} units={units} onChange={(e) => setNewRow({ ...newRow, unit_id: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: showBarcode ? barcodeRef : purchasePriceRef, prevRef: nameInputRef })} variant="outlined" compact />
+                       </td>
+                       <td className={`px-2 py-1 border border-success-border bg-success-bg ${!showBarcode ? "hidden" : ""}`}>
+                         <Cell ref={barcodeRef} value={newRow.barcode} onChange={(e) => setNewRow({ ...newRow, barcode: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: purchasePriceRef, prevRef: unitSelectRef })} placeholder={t("items.newRow.barcodePlaceholder")} variant="outlined" compact className="font-mono" />
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <Cell ref={purchasePriceRef} type="number" value={newRow.purchase_price} onChange={(e) => setNewRow({ ...newRow, purchase_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: salePriceRef, prevRef: showBarcode ? barcodeRef : unitSelectRef })} placeholder={t("items.newRow.purchasePlaceholder")} variant="outlined" compact className="text-left font-black" />
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <Cell ref={salePriceRef} type="number" value={newRow.sale_price} onChange={(e) => setNewRow({ ...newRow, sale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: wholesalePriceRef, prevRef: purchasePriceRef })} placeholder={t("items.newRow.salePlaceholder")} variant="outlined" compact className="text-left font-black text-success-text" />
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <Cell ref={wholesalePriceRef} type="number" value={newRow.wholesale_price} onChange={(e) => setNewRow({ ...newRow, wholesale_price: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: minStockQtyRef, prevRef: salePriceRef })} placeholder={t("items.newRow.wholesalePlaceholder")} variant="outlined" compact className="text-left font-black text-info-text" />
+                       </td>
+                       <td className="px-2 py-1 border border-success-border bg-success-bg">
+                         <Cell ref={minStockQtyRef} type="number" value={newRow.min_stock_qty} onChange={(e) => setNewRow({ ...newRow, min_stock_qty: e.target.value })} onKeyDown={(e) => handleKeyDown(e, { nextRef: addItemBtnRef, prevRef: wholesalePriceRef })} placeholder={t("items.newRow.minStockPlaceholder")} variant="outlined" compact className="text-left" />
+                       </td>
+                       <td colSpan="2" className="px-4 text-center align-middle border border-success-border bg-success-bg/30 opacity-40">
+                         <Shapes className="mx-auto h-4 w-4 text-success-text" />
+                       </td>
+                       <td className="px-4 py-1 text-center align-middle border border-success-border bg-success-bg">
+                         <PermissionGate page="items" action="add">
+                         <button ref={addItemBtnRef}
+                             onClick={createFromNewRow}
+                             onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef, onEnter: createFromNewRow })}
+                             disabled={!newRow.name.trim() || savingRowId === "new" || (!selectedCatId && !newRow.category_id)}
+                             className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-1.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-30 disabled:grayscale"
+                         >
+                            {savingRowId === "new" ? "جاري..." : <><Plus className="h-4 w-4" /> إضافة</>}
+                         </button>
+                         </PermissionGate>
+                       </td>
+                    </tr>
+                   </>
+                   )}
+                </tfoot>
+              )}
             </table>
             </div>
             <div ref={bottomScrollRef}
@@ -1689,23 +1702,34 @@ export default function ItemsListPage() {
       <SaveAllBar count={dirtyRows.size} onSaveAll={saveAll} onDiscard={discardAll} />
       <BulkBar count={selectedIds.size} categories={categories} units={units} onDelete={bulkDelete} onMove={bulkMove} onPriceChange={bulkPriceChange} onUnitChange={bulkUnitChange} onClear={() => setSelectedIds(new Set())} />
 
-      <Modal open={newCategoryOpen} title="إضافة فئة جديدة" onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
+      <Modal open={newCategoryOpen} title={t("items.categoryModal.title")} onClose={() => setNewCategoryOpen(false)} maxWidth="max-w-md" showDetach={false}>
         <form onSubmit={createCategory} className="space-y-4 p-6">
            <div className="flex flex-col gap-1 mb-4">
-              <h3 className="text-[16px] font-black text-slate-900">إنشاء تصنيف رئيسي</h3>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">Catalog Management System</p>
+              <h3 className="text-[16px] font-black text-text-primary">{t("items.categoryModal.title")}</h3>
+              <p className="text-[11px] font-bold text-text-muted uppercase tracking-widest leading-none">Catalog Management System</p>
            </div>
            <div className="space-y-4">
               <div className="space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-500 tracking-widest">اسم الفئة (مثلاً: بويات، زيوت)</label>
+                 <label className="text-[11px] font-black uppercase text-text-secondary tracking-widest">{t("items.categoryModal.nameLabel")}</label>
                  <input ref={catNameRef} autoFocus value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, { nextRef: catSubmitRef })}
-                    className="w-full rounded-sm border border-slate-200 py-3 px-4 text-sm font-bold outline-none focus:border-slate-800" required />
+                    onKeyDown={(e) => handleKeyDown(e, { nextRef: catPrefixRef })}
+                    className="w-full rounded-sm border border-border bg-bg-surface py-3 px-4 text-sm font-bold outline-none focus:border-primary" required />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-[11px] font-black uppercase text-text-secondary tracking-widest">{t("items.categoryModal.prefixLabel")}</label>
+                 <div className="flex items-center gap-2">
+                   <input ref={catPrefixRef} type="text" inputMode="numeric" value={newCategoryPrefix} onChange={(e) => setNewCategoryPrefix(e.target.value.replace(/[^0-9]/g, ""))}
+                     onKeyDown={(e) => handleKeyDown(e, { nextRef: catSubmitRef, prevRef: catNameRef })}
+                     placeholder={suggestedCategoryPrefix}
+                     className="flex-1 rounded-sm border border-border bg-bg-surface py-3 px-4 text-sm font-bold outline-none focus:border-primary font-mono" />
+                   <span className="text-[11px] font-bold text-text-muted whitespace-nowrap">{t("items.categoryModal.suggested", { prefix: suggestedCategoryPrefix })}</span>
+                 </div>
+                 <p className="text-[10px] font-bold text-text-muted">{t("items.categoryModal.prefixHint")}</p>
                </div>
             </div>
-            <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-6">
-               <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-slate-400 hover:bg-slate-50">تجاهل</button>
-               <button ref={catSubmitRef} type="submit" className="rounded-sm bg-slate-900 px-10 py-2.5 text-sm font-black text-white shadow-xl active:scale-95 transition-all">إنشاء الفئة الآن</button>
+            <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
+               <button type="button" onClick={() => setNewCategoryOpen(false)} className="px-6 py-2 text-2sm font-black text-text-secondary hover:bg-bg-overlay">{t("common.cancel")}</button>
+               <button ref={catSubmitRef} type="submit" className="rounded-sm bg-primary px-10 py-2.5 text-sm font-black text-white shadow-xl active:scale-95 transition-all">{t("items.categoryModal.save")}</button>
            </div>
         </form>
       </Modal>

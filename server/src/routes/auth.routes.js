@@ -202,6 +202,13 @@ router.post("/change-password", authRequired, (req, res, next) => {
   const hash = bcrypt.hashSync(newPassword, 10);
   getDb().prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(hash, nowSql(), req.user.id);
   req.audit("change_password", "auth", { user_id: req.user.id }, `👤 تم تغيير كلمة المرور للمستخدم #${req.user.id}`);
+  try {
+    notifyOwner(TG.PASSWORD_CHANGED, {
+      userName: user?.full_name || user?.username || `#${req.user.id}`,
+      ipAddress: req.ip,
+      createdAt: nowSql(),
+    });
+  } catch (_) {}
   return res.json({ success: true, data: { changed: true } });
 });
 
@@ -269,6 +276,17 @@ router.post("/supervisor-override", authRequired, (req, res, next) => {
       supervisor.id, 'supervisor_override', action || 'override', JSON.stringify({ overridden_for: req.user.id, details })
     );
   } catch (e) {}
+
+  try {
+    const supervisorRow = getDb().prepare("SELECT full_name, username FROM users WHERE id = ?").get(supervisor.id);
+    notifyOwner(TG.SUPERVISOR_OVERRIDE, {
+      userName: req.user?.full_name || req.user?.username || `#${req.user?.id}`,
+      action: action || "override",
+      details: typeof details === "string" ? details : details ? JSON.stringify(details) : undefined,
+      supervisor: supervisorRow?.full_name || supervisorRow?.username || `#${supervisor.id}`,
+      createdAt: nowSql(),
+    });
+  } catch (_) {}
 
   return res.json({ success: true, data: { approved: true, supervisor_id: supervisor.id } });
 });

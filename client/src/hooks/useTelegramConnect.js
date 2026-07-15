@@ -10,6 +10,211 @@ function hasAnyRecipient(recipients) {
   return Array.isArray(recipients) && recipients.some((r) => r.enabled && r.chatId);
 }
 
+function readBool(r, snake, camel, defaultValue = false) {
+  if (r[snake] !== undefined && r[snake] !== null) return Boolean(r[snake]);
+  if (r[camel] !== undefined && r[camel] !== null) return Boolean(r[camel]);
+  return defaultValue;
+}
+
+function configSnapshot(config) {
+  return {
+    telegram_enabled: Boolean(config.telegram_enabled),
+    telegram_bot_token: config.telegram_bot_token || "",
+    telegram_api_base: config.telegram_api_base || "https://api.telegram.org",
+  };
+}
+
+function parseEventPresets(raw) {
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  return {};
+}
+
+export const TELEGRAM_PRESET_DETAILED = "قياسي — مفصل";
+export const TELEGRAM_PRESET_BRIEF = "مختصر — سريع";
+export const TELEGRAM_PRESET_OPTIONS = [TELEGRAM_PRESET_DETAILED, TELEGRAM_PRESET_BRIEF];
+
+const RECIPIENT_FIELD_DEFAULTS = {
+  enabled: true,
+  notifyNewInvoice: true,
+  notifyDailyClose: true,
+  notifyLargeAmounts: true,
+  notifyReturnsVoids: true,
+  notifyPurchasesPayments: true,
+  notifyCustomerCreated: true,
+  notifySupplierCreated: true,
+  notifyExpenseCreated: true,
+  notifyReturnPayment: true,
+  notifyLowStock: true,
+  notifySystem: true,
+  notifyWeekly: false,
+  notifyMonthly: false,
+  notifyYearly: false,
+  notifyStockTransfer: true,
+  notifyInventoryAdjustment: true,
+  notifyNewProduct: true,
+  notifyPriceChange: true,
+  notifyBatchExpiry: true,
+  notifyPhysicalCount: true,
+  notifySupplierPayment: true,
+  notifyDebtPayment: true,
+  notifyInstallmentPaid: true,
+  notifyPurchaseVoided: true,
+  notifyPurchaseReturn: true,
+  notifyBranchTransfer: true,
+  notifyPasswordChanged: true,
+  notifyPermissionChanged: true,
+  notifySupervisorOverride: true,
+  notifyRepairCreated: true,
+  notifyRepairReady: true,
+  notifyRepairDelivered: true,
+  notifyRevenueCreated: true,
+  notifyWithdrawalCreated: true,
+  notifyEmployeeCreated: true,
+  notifySalarySettled: true,
+  notifyAdvanceCreated: true,
+  notifyDeductionCreated: true,
+  notifyBonusCreated: true,
+  notifyRepairOrder: true,
+  // New edit/delete events (migration 201)
+  notifyExpenseEdited: true,
+  notifyExpenseDeleted: true,
+  notifyRevenueEdited: true,
+  notifyRevenueDeleted: true,
+};
+
+function pickField(r, key) {
+  const value = r?.[key];
+  if (value !== undefined && value !== null) return value;
+  return RECIPIENT_FIELD_DEFAULTS[key];
+}
+
+function recipientToApi(r) {
+  const repairOn = r.notifyRepairOrder !== undefined
+    ? r.notifyRepairOrder
+    : (pickField(r, "notifyRepairCreated") && pickField(r, "notifyRepairReady") && pickField(r, "notifyRepairDelivered"));
+  return {
+    name: r.name || "",
+    chat_id: String(r.chatId || "").trim(),
+    enabled: Boolean(pickField(r, "enabled")),
+    notify_new_invoice: Boolean(pickField(r, "notifyNewInvoice")),
+    notify_daily_close: Boolean(pickField(r, "notifyDailyClose")),
+    notify_large_amounts: Boolean(pickField(r, "notifyLargeAmounts")),
+    notify_returns_voids: Boolean(pickField(r, "notifyReturnsVoids")),
+    notify_purchases_payments: Boolean(pickField(r, "notifyPurchasesPayments")),
+    notify_customer_created: Boolean(pickField(r, "notifyCustomerCreated")),
+    notify_supplier_created: Boolean(pickField(r, "notifySupplierCreated")),
+    notify_expense_created: Boolean(pickField(r, "notifyExpenseCreated")),
+    notify_return_payment: Boolean(pickField(r, "notifyReturnPayment")),
+    notify_low_stock: Boolean(pickField(r, "notifyLowStock")),
+    notify_system: Boolean(pickField(r, "notifySystem")),
+    notify_weekly: Boolean(pickField(r, "notifyWeekly")),
+    notify_monthly: Boolean(pickField(r, "notifyMonthly")),
+    notify_yearly: Boolean(pickField(r, "notifyYearly")),
+    notify_stock_transfer: Boolean(pickField(r, "notifyStockTransfer")),
+    notify_inventory_adjustment: Boolean(pickField(r, "notifyInventoryAdjustment")),
+    notify_new_product: Boolean(pickField(r, "notifyNewProduct")),
+    notify_price_change: Boolean(pickField(r, "notifyPriceChange")),
+    notify_batch_expiry: Boolean(pickField(r, "notifyBatchExpiry")),
+    notify_physical_count: Boolean(pickField(r, "notifyPhysicalCount")),
+    notify_supplier_payment: Boolean(pickField(r, "notifySupplierPayment")),
+    notify_debt_payment: Boolean(pickField(r, "notifyDebtPayment")),
+    notify_installment_paid: Boolean(pickField(r, "notifyInstallmentPaid")),
+    notify_purchase_voided: Boolean(pickField(r, "notifyPurchaseVoided")),
+    notify_purchase_return: Boolean(pickField(r, "notifyPurchaseReturn")),
+    notify_branch_transfer: Boolean(pickField(r, "notifyBranchTransfer")),
+    notify_password_changed: Boolean(pickField(r, "notifyPasswordChanged")),
+    notify_permission_changed: Boolean(pickField(r, "notifyPermissionChanged")),
+    notify_supervisor_override: Boolean(pickField(r, "notifySupervisorOverride")),
+    notify_repair_created: Boolean(repairOn),
+    notify_repair_ready: Boolean(repairOn),
+    notify_repair_delivered: Boolean(repairOn),
+    notify_revenue_created: Boolean(pickField(r, "notifyRevenueCreated")),
+    notify_withdrawal_created: Boolean(pickField(r, "notifyWithdrawalCreated")),
+    notify_employee_created: Boolean(pickField(r, "notifyEmployeeCreated")),
+    notify_salary_settled: Boolean(pickField(r, "notifySalarySettled")),
+    notify_advance_created: Boolean(pickField(r, "notifyAdvanceCreated")),
+    notify_deduction_created: Boolean(pickField(r, "notifyDeductionCreated")),
+    notify_bonus_created: Boolean(pickField(r, "notifyBonusCreated")),
+    // New edit/delete events (migration 201)
+    notify_expense_edited: Boolean(pickField(r, "notifyExpenseEdited")),
+    notify_expense_deleted: Boolean(pickField(r, "notifyExpenseDeleted")),
+    notify_revenue_edited: Boolean(pickField(r, "notifyRevenueEdited")),
+    notify_revenue_deleted: Boolean(pickField(r, "notifyRevenueDeleted")),
+    event_presets: parseEventPresets(r.eventPresets ?? r.event_presets),
+  };
+}
+
+function recipientFromApi(r) {
+  const notifyRepairCreated = readBool(r, "notify_repair_created", "notifyRepairCreated", true);
+  const notifyRepairReady = readBool(r, "notify_repair_ready", "notifyRepairReady", true);
+  const notifyRepairDelivered = readBool(r, "notify_repair_delivered", "notifyRepairDelivered", true);
+  return {
+    id: r.id,
+    name: r.name || "",
+    chatId: r.chat_id || r.chatId || "",
+    enabled: readBool(r, "enabled", "enabled", false),
+    notifyNewInvoice: readBool(r, "notify_new_invoice", "notifyNewInvoice", true),
+    notifyDailyClose: readBool(r, "notify_daily_close", "notifyDailyClose", true),
+    notifyLargeAmounts: readBool(r, "notify_large_amounts", "notifyLargeAmounts", true),
+    notifyReturnsVoids: readBool(r, "notify_returns_voids", "notifyReturnsVoids", true),
+    notifyPurchasesPayments: readBool(r, "notify_purchases_payments", "notifyPurchasesPayments", true),
+    notifyCustomerCreated: readBool(r, "notify_customer_created", "notifyCustomerCreated", true),
+    notifySupplierCreated: readBool(r, "notify_supplier_created", "notifySupplierCreated", true),
+    notifyExpenseCreated: readBool(r, "notify_expense_created", "notifyExpenseCreated", true),
+    notifyReturnPayment: readBool(r, "notify_return_payment", "notifyReturnPayment", true),
+    notifyLowStock: readBool(r, "notify_low_stock", "notifyLowStock", true),
+    notifySystem: readBool(r, "notify_system", "notifySystem", true),
+    notifyWeekly: readBool(r, "notify_weekly", "notifyWeekly", false),
+    notifyMonthly: readBool(r, "notify_monthly", "notifyMonthly", false),
+    notifyYearly: readBool(r, "notify_yearly", "notifyYearly", false),
+    notifyStockTransfer: readBool(r, "notify_stock_transfer", "notifyStockTransfer", true),
+    notifyInventoryAdjustment: readBool(r, "notify_inventory_adjustment", "notifyInventoryAdjustment", true),
+    notifyNewProduct: readBool(r, "notify_new_product", "notifyNewProduct", true),
+    notifyPriceChange: readBool(r, "notify_price_change", "notifyPriceChange", true),
+    notifyBatchExpiry: readBool(r, "notify_batch_expiry", "notifyBatchExpiry", true),
+    notifyPhysicalCount: readBool(r, "notify_physical_count", "notifyPhysicalCount", true),
+    notifySupplierPayment: readBool(r, "notify_supplier_payment", "notifySupplierPayment", true),
+    notifyDebtPayment: readBool(r, "notify_debt_payment", "notifyDebtPayment", true),
+    notifyInstallmentPaid: readBool(r, "notify_installment_paid", "notifyInstallmentPaid", true),
+    notifyPurchaseVoided: readBool(r, "notify_purchase_voided", "notifyPurchaseVoided", true),
+    notifyPurchaseReturn: readBool(r, "notify_purchase_return", "notifyPurchaseReturn", true),
+    notifyBranchTransfer: readBool(r, "notify_branch_transfer", "notifyBranchTransfer", true),
+    notifyPasswordChanged: readBool(r, "notify_password_changed", "notifyPasswordChanged", true),
+    notifyPermissionChanged: readBool(r, "notify_permission_changed", "notifyPermissionChanged", true),
+    notifySupervisorOverride: readBool(r, "notify_supervisor_override", "notifySupervisorOverride", true),
+    notifyRepairCreated,
+    notifyRepairReady,
+    notifyRepairDelivered,
+    notifyRepairOrder: notifyRepairCreated && notifyRepairReady && notifyRepairDelivered,
+    notifyRevenueCreated: readBool(r, "notify_revenue_created", "notifyRevenueCreated", true),
+    notifyWithdrawalCreated: readBool(r, "notify_withdrawal_created", "notifyWithdrawalCreated", true),
+    notifyEmployeeCreated: readBool(r, "notify_employee_created", "notifyEmployeeCreated", true),
+    notifySalarySettled: readBool(r, "notify_salary_settled", "notifySalarySettled", true),
+    notifyAdvanceCreated: readBool(r, "notify_advance_created", "notifyAdvanceCreated", true),
+    notifyDeductionCreated: readBool(r, "notify_deduction_created", "notifyDeductionCreated", true),
+    notifyBonusCreated: readBool(r, "notify_bonus_created", "notifyBonusCreated", true),
+    // New edit/delete events (migration 201)
+    notifyExpenseEdited: readBool(r, "notify_expense_edited", "notifyExpenseEdited", true),
+    notifyExpenseDeleted: readBool(r, "notify_expense_deleted", "notifyExpenseDeleted", true),
+    notifyRevenueEdited: readBool(r, "notify_revenue_edited", "notifyRevenueEdited", true),
+    notifyRevenueDeleted: readBool(r, "notify_revenue_deleted", "notifyRevenueDeleted", true),
+    eventPresets: parseEventPresets(r.eventPresets ?? r.event_presets),
+  };
+}
+
+function recipientsSnapshot(recipients) {
+  return (recipients || []).map((r) => recipientToApi(r));
+}
+
 export function useTelegramConnect(onSaved) {
   const { t } = useTranslation();
   const [config, setConfig] = useState({
@@ -23,6 +228,7 @@ export function useTelegramConnect(onSaved) {
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [testing, setTesting] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -48,7 +254,31 @@ export function useTelegramConnect(onSaved) {
   const mountedRef = useRef(true);
   const debounceRef = useRef(null);
   const lastValidatedToken = useRef("");
+  const snapshotRef = useRef("");
+  const recipientsRef = useRef([]);
 
+  const syncSnapshot = useCallback((cfg, recs) => {
+    snapshotRef.current = JSON.stringify({
+      config: configSnapshot(cfg),
+      recipients: recipientsSnapshot(recs),
+    });
+    setDirty(false);
+  }, []);
+
+  useEffect(() => {
+    recipientsRef.current = recipients;
+  }, [recipients]);
+
+  useEffect(() => {
+    if (loading || !snapshotRef.current) return;
+    const current = JSON.stringify({
+      config: configSnapshot(config),
+      recipients: recipientsSnapshot(recipients),
+    });
+    setDirty(current !== snapshotRef.current);
+  }, [config, recipients, loading]);
+
+  // Auto-validate bot token when it changes (debounced)
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -68,12 +298,17 @@ export function useTelegramConnect(onSaved) {
         telegram_api_base: d.telegram_api_base || "https://api.telegram.org",
       };
       setConfig(loaded);
+      // Server-side migrateLegacyRecipientIfNeeded promotes a legacy
+      // settings.telegram_chat_id into the recipients table, so the list is
+      // used as-is — synthesizing an id-less recipient here caused duplicate
+      // rows (POST instead of PUT on every save).
       const loadedRecipients = (recipientsRes.data?.data || []).map(recipientFromApi);
       setRecipients(loadedRecipients);
       setSaved(loaded.telegram_enabled && Boolean(loaded.telegram_bot_token) && hasAnyRecipient(loadedRecipients));
       if (loaded.telegram_bot_token) lastValidatedToken.current = loaded.telegram_bot_token;
+      syncSnapshot(loaded, loadedRecipients);
     }).catch(() => { if (mountedRef.current) setLoadError(true); }).finally(() => { if (mountedRef.current) setLoading(false); });
-  }, []);
+  }, [syncSnapshot]);
 
   // Auto-validate bot token when it changes (debounced)
   useEffect(() => {
@@ -116,7 +351,14 @@ export function useTelegramConnect(onSaved) {
       if (body?.found === false) {
         toast.error(t("telegram.detectNothing"), { duration: 4000 });
       } else if (body?.data?.chatId) {
-        setConfig(c => ({ ...c, telegram_chat_id: body.data.chatId }));
+        const chatId = String(body.data.chatId);
+        setConfig(c => ({ ...c, telegram_chat_id: chatId }));
+        setRecipients((prev) => {
+          if (prev.length === 0) return prev;
+          return prev.map((rec, idx) => idx === 0
+            ? { ...rec, chatId, name: rec.name || body.data.chatName || rec.name }
+            : rec);
+        });
         toast.success(body.data.chatName ? t("telegram.detectFound", { name: body.data.chatName }) : t("telegram.detectFoundNoName"));
       } else if (body?.success === false) {
         toast.error(body.message || t("telegram.detectError"));
@@ -249,8 +491,10 @@ export function useTelegramConnect(onSaved) {
         telegram_api_base: config.telegram_api_base,
       });
       // Persist all recipients.
-      await saveRecipients();
-      setSaved(config.telegram_enabled && Boolean(config.telegram_bot_token.trim()) && hasAnyRecipient(recipients));
+      const savedRecipients = await saveRecipients();
+      const nextSaved = config.telegram_enabled && Boolean(config.telegram_bot_token.trim()) && hasAnyRecipient(savedRecipients);
+      setSaved(nextSaved);
+      syncSnapshot(config, savedRecipients);
       toast.success(config.telegram_enabled ? t("telegram.saveSuccessOn") : t("telegram.saveSuccessOff"));
       onSaved?.();
     } catch (e) {
@@ -315,52 +559,90 @@ export function useTelegramConnect(onSaved) {
       notifyAdvanceCreated: true,
       notifyDeductionCreated: true,
       notifyBonusCreated: true,
+      notifyRepairOrder: true,
       eventPresets: {},
     };
   }
 
   function updateRecipientLocal(index, patch) {
-    setRecipients((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    setRecipients((prev) => prev.map((r, i) => {
+      if (i !== index) return r;
+      const merged = { ...r, ...patch };
+      if (patch.eventPresets) {
+        merged.eventPresets = { ...(r.eventPresets || {}), ...patch.eventPresets };
+      }
+      return merged;
+    }));
   }
 
   async function persistRecipient(recipient) {
     const payload = recipientToApi(recipient);
-    if (recipient.id) {
-      const r = await api.put(`/api/telegram/recipients/${recipient.id}`, payload);
-      return r.data?.data ? recipientFromApi(r.data.data) : recipient;
+    try {
+      if (recipient.id) {
+        const r = await api.put(`/api/telegram/recipients/${recipient.id}`, payload);
+        if (r.data?.success === false) throw new Error(r.data?.message || t("telegram.saveError"));
+        return r.data?.data ? recipientFromApi(r.data.data) : recipient;
+      }
+      const r = await api.post("/api/telegram/recipients", payload);
+      if (r.data?.success === false) throw new Error(r.data?.message || t("telegram.saveError"));
+      return recipientFromApi(r.data?.data);
+    } catch (e) {
+      const msg = e.response?.data?.message || e.message || t("telegram.saveError");
+      toast.error(msg);
+      throw e;
     }
-    const r = await api.post("/api/telegram/recipients", payload);
-    return recipientFromApi(r.data?.data);
   }
 
   async function addRecipient(overrides = {}) {
     const newRec = { ...createRecipient(), ...overrides };
     const saved = await persistRecipient(newRec);
-    setRecipients((prev) => [...prev, saved]);
+    // The server upserts by chat_id, so adding an already-registered chat
+    // returns the existing row — replace it in place instead of appending.
+    setRecipients((prev) => {
+      const idx = prev.findIndex((p) => (saved.id && p.id === saved.id) || (saved.chatId && p.chatId === saved.chatId));
+      if (idx >= 0) return prev.map((p, i) => (i === idx ? saved : p));
+      return [...prev, saved];
+    });
     return saved;
   }
 
   async function saveRecipients() {
     const saved = [];
-    for (const recipient of recipients) {
+    for (const recipient of recipientsRef.current) {
       saved.push(await persistRecipient(recipient));
     }
     setRecipients(saved);
+    recipientsRef.current = saved;
+    return saved;
   }
 
   async function deleteRecipient(index) {
-    const recipient = recipients[index];
-    if (recipient?.id) {
-      await api.delete(`/api/telegram/recipients/${recipient.id}`);
+    const list = recipientsRef.current;
+    const recipient = list[index];
+    try {
+      if (recipient?.id) {
+        await api.delete(`/api/telegram/recipients/${recipient.id}`);
+      }
+      const next = list.filter((_, i) => i !== index);
+      setRecipients(next);
+      recipientsRef.current = next;
+      syncSnapshot(config, next);
+      setSaved(config.telegram_enabled && Boolean(config.telegram_bot_token.trim()) && hasAnyRecipient(next));
+    } catch (e) {
+      const msg = e.response?.data?.message || e.message || t("telegram.deleteError");
+      toast.error(msg);
+      throw e;
     }
-    setRecipients((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function saveSingleRecipient(index) {
-    const recipient = recipients[index];
+  async function saveSingleRecipient(index, recipientOverride) {
+    const recipient = recipientOverride || recipientsRef.current[index];
     if (!recipient) return;
     const saved = await persistRecipient(recipient);
-    setRecipients((prev) => prev.map((r, i) => i === index ? saved : r));
+    const nextRecipients = recipientsRef.current.map((r, i) => (i === index ? saved : r));
+    setRecipients(nextRecipients);
+    recipientsRef.current = nextRecipients;
+    syncSnapshot(config, nextRecipients);
     return saved;
   }
 
@@ -370,119 +652,6 @@ export function useTelegramConnect(onSaved) {
       const loadedRecipients = (r.data?.data || []).map(recipientFromApi);
       setRecipients(loadedRecipients);
     } catch { /* silent */ }
-  }
-
-  function recipientToApi(r) {
-    return {
-      name: r.name,
-      chat_id: r.chatId,
-      enabled: r.enabled,
-      notify_new_invoice: r.notifyNewInvoice,
-      notify_daily_close: r.notifyDailyClose,
-      notify_large_amounts: r.notifyLargeAmounts,
-      notify_returns_voids: r.notifyReturnsVoids,
-      notify_purchases_payments: r.notifyPurchasesPayments,
-      notify_customer_created: r.notifyCustomerCreated,
-      notify_supplier_created: r.notifySupplierCreated,
-      notify_expense_created: r.notifyExpenseCreated,
-      notify_return_payment: r.notifyReturnPayment,
-      notify_low_stock: r.notifyLowStock,
-      notify_system: r.notifySystem,
-      notify_weekly: r.notifyWeekly,
-      notify_monthly: r.notifyMonthly,
-      notify_yearly: r.notifyYearly,
-      // Extended events (migration 194)
-      notify_stock_transfer: r.notifyStockTransfer,
-      notify_inventory_adjustment: r.notifyInventoryAdjustment,
-      notify_new_product: r.notifyNewProduct,
-      notify_price_change: r.notifyPriceChange,
-      notify_batch_expiry: r.notifyBatchExpiry,
-      notify_physical_count: r.notifyPhysicalCount,
-      notify_supplier_payment: r.notifySupplierPayment,
-      notify_debt_payment: r.notifyDebtPayment,
-      notify_installment_paid: r.notifyInstallmentPaid,
-      notify_purchase_voided: r.notifyPurchaseVoided,
-      notify_purchase_return: r.notifyPurchaseReturn,
-      notify_branch_transfer: r.notifyBranchTransfer,
-      notify_password_changed: r.notifyPasswordChanged,
-      notify_permission_changed: r.notifyPermissionChanged,
-      notify_supervisor_override: r.notifySupervisorOverride,
-      notify_repair_created: r.notifyRepairCreated,
-      notify_repair_ready: r.notifyRepairReady,
-      notify_repair_delivered: r.notifyRepairDelivered,
-      notify_revenue_created: r.notifyRevenueCreated,
-      notify_withdrawal_created: r.notifyWithdrawalCreated,
-      notify_employee_created: r.notifyEmployeeCreated,
-      notify_salary_settled: r.notifySalarySettled,
-      notify_advance_created: r.notifyAdvanceCreated,
-      notify_deduction_created: r.notifyDeductionCreated,
-      notify_bonus_created: r.notifyBonusCreated,
-      event_presets: r.eventPresets || {},
-    };
-  }
-
-  function recipientFromApi(r) {
-    return {
-      id: r.id,
-      name: r.name || "",
-      chatId: r.chat_id || "",
-      enabled: Boolean(r.enabled),
-      notifyNewInvoice: Boolean(r.notify_new_invoice),
-      notifyDailyClose: Boolean(r.notify_daily_close),
-      notifyLargeAmounts: Boolean(r.notify_large_amounts),
-      notifyReturnsVoids: Boolean(r.notify_returns_voids),
-      notifyPurchasesPayments: Boolean(r.notify_purchases_payments),
-      notifyCustomerCreated: Boolean(r.notify_customer_created),
-      notifySupplierCreated: Boolean(r.notify_supplier_created),
-      notifyExpenseCreated: Boolean(r.notify_expense_created),
-      notifyReturnPayment: Boolean(r.notify_return_payment),
-      notifyLowStock: Boolean(r.notify_low_stock),
-      notifySystem: Boolean(r.notify_system),
-      notifyWeekly: Boolean(r.notify_weekly),
-      notifyMonthly: Boolean(r.notify_monthly),
-      notifyYearly: Boolean(r.notify_yearly),
-      // Extended events (migration 194)
-      notifyStockTransfer: Boolean(r.notify_stock_transfer),
-      notifyInventoryAdjustment: Boolean(r.notify_inventory_adjustment),
-      notifyNewProduct: Boolean(r.notify_new_product),
-      notifyPriceChange: Boolean(r.notify_price_change),
-      notifyBatchExpiry: Boolean(r.notify_batch_expiry),
-      notifyPhysicalCount: Boolean(r.notify_physical_count),
-      notifySupplierPayment: Boolean(r.notify_supplier_payment),
-      notifyDebtPayment: Boolean(r.notify_debt_payment),
-      notifyInstallmentPaid: Boolean(r.notify_installment_paid),
-      notifyPurchaseVoided: Boolean(r.notify_purchase_voided),
-      notifyPurchaseReturn: Boolean(r.notify_purchase_return),
-      notifyBranchTransfer: Boolean(r.notify_branch_transfer),
-      notifyPasswordChanged: Boolean(r.notify_password_changed),
-      notifyPermissionChanged: Boolean(r.notify_permission_changed),
-      notifySupervisorOverride: Boolean(r.notify_supervisor_override),
-      notifyRepairCreated: Boolean(r.notify_repair_created),
-      notifyRepairReady: Boolean(r.notify_repair_ready),
-      notifyRepairDelivered: Boolean(r.notify_repair_delivered),
-      notifyRevenueCreated: Boolean(r.notify_revenue_created),
-      notifyWithdrawalCreated: Boolean(r.notify_withdrawal_created),
-      notifyEmployeeCreated: Boolean(r.notify_employee_created),
-      notifySalarySettled: Boolean(r.notify_salary_settled),
-      notifyAdvanceCreated: Boolean(r.notify_advance_created),
-      notifyDeductionCreated: Boolean(r.notify_deduction_created),
-      notifyBonusCreated: Boolean(r.notify_bonus_created),
-      eventPresets: parseEventPresets(r.eventPresets ?? r.event_presets),
-    };
-  }
-
-  function parseEventPresets(raw) {
-    if (!raw) return {};
-    if (typeof raw === "string") {
-      try {
-        const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-      } catch (_) {
-        return {};
-      }
-    }
-    if (typeof raw === "object" && !Array.isArray(raw)) return raw;
-    return {};
   }
 
   async function fetchHistory(limit = 50) {
@@ -519,6 +688,7 @@ export function useTelegramConnect(onSaved) {
       }));
       setRecipients([]);
       setSaved(false);
+      syncSnapshot({ telegram_enabled: false, telegram_bot_token: "", telegram_api_base: config.telegram_api_base }, []);
       toast.success(t("telegram.disconnected"));
     } catch (e) {
       toast.error(e.response?.data?.message || t("telegram.disconnectError"));
@@ -526,7 +696,7 @@ export function useTelegramConnect(onSaved) {
   }
 
   return {
-    config, setConfig, loading, loadError, saving, saved, testing, detecting,
+    config, setConfig, loading, loadError, saving, saved, dirty, testing, detecting,
     disconnecting,
     recipients, setRecipients,
     createRecipient, updateRecipientLocal, addRecipient, saveRecipients, deleteRecipient, saveSingleRecipient, refreshRecipients,

@@ -7,6 +7,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 
@@ -138,6 +139,23 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
 
     const updatedUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(req.params.id);
     req.audit("edit", "user", { id: Number(req.params.id), username: updatedUser.username }, `👤 تم تعديل مستخدم: ${updatedUser.username}`);
+    try {
+      if (payload.password) {
+        notifyOwner(TG.PASSWORD_CHANGED, {
+          userName: updatedUser.full_name || updatedUser.username,
+          ipAddress: req.ip,
+          createdAt: nowSql(),
+        });
+      }
+      if (role !== existing.role) {
+        notifyOwner(TG.PERMISSION_CHANGED, {
+          targetUser: updatedUser.full_name || updatedUser.username,
+          adminUser: req.user?.full_name || req.user?.username,
+          changes: `تغيير الدور من "${existing.role}" إلى "${role}"`,
+          createdAt: nowSql(),
+        });
+      }
+    } catch (_) {}
     res.json({ success: true, data: updatedUser });
   } catch (error) {
     next(error);
@@ -368,6 +386,19 @@ router.put("/:id/permissions", (req, res, next) => {
       { target_user_id: Number(req.params.id), changed_pages: changedCount, diff },
       `👤 تم تعديل صلاحيات المستخدم #${req.params.id} (${changedCount} صفحة متأثرة)`
     );
+    try {
+      if (changedCount > 0) {
+        const targetRow = db.prepare("SELECT full_name, username FROM users WHERE id = ?").get(req.params.id);
+        const pages = Object.keys(diff).slice(0, 5).join("، ");
+        const suffix = changedCount > 5 ? ` وغيرها (${changedCount} صفحة)` : "";
+        notifyOwner(TG.PERMISSION_CHANGED, {
+          targetUser: targetRow?.full_name || targetRow?.username || `#${req.params.id}`,
+          adminUser: req.user?.full_name || req.user?.username,
+          changes: `تعديل صلاحيات ${changedCount} صفحة: ${pages}${suffix}`,
+          createdAt: nowSql(),
+        });
+      }
+    } catch (_) {}
     res.json({ success: true, data: permissions });
   } catch (error) {
     next(error);

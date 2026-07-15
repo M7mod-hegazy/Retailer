@@ -93,7 +93,7 @@ describe("Telegram Routes & Service", () => {
   });
 
   afterEach(() => {
-    fetchSpy.mockRestore();
+    fetchSpy?.mockRestore();
     closeDb();
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
   });
@@ -172,6 +172,104 @@ describe("Telegram Routes & Service", () => {
       const res = await request(app).delete(`/api/telegram/recipients/${id}`).set("Authorization", `Bearer ${token}`);
       expect(res.status).toBe(200);
       expect(getDb().prepare("SELECT COUNT(*) AS c FROM telegram_recipients").get().c).toBe(0);
+    });
+
+    it("upserts on POST when the chat_id already exists instead of duplicating", async () => {
+      const id = insertRecipient(getDb(), { name: "Old", chat_id: "999", notify_new_invoice: true });
+      const res = await request(app)
+        .post("/api/telegram/recipients")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "New Name", chat_id: "999", notify_new_invoice: false });
+      expect(res.status).toBe(200);
+      expect(res.body.data.id).toBe(id);
+      expect(getDb().prepare("SELECT COUNT(*) AS c FROM telegram_recipients").get().c).toBe(1);
+      const row = getDb().prepare("SELECT name, notify_new_invoice FROM telegram_recipients WHERE id=?").get(id);
+      expect(row.name).toBe("New Name");
+      expect(row.notify_new_invoice).toBe(0);
+    });
+
+    it("rejects PUT that would collide with another recipient's chat_id", async () => {
+      insertRecipient(getDb(), { chat_id: "111" });
+      const id2 = insertRecipient(getDb(), { chat_id: "222" });
+      const res = await request(app)
+        .put(`/api/telegram/recipients/${id2}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ chat_id: "111" });
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("persists event_presets JSON round-trip", async () => {
+      const presets = { notifyNewInvoice: "مختصر — سريع" };
+      const res = await request(app)
+        .post("/api/telegram/recipients")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "P", chat_id: "777", event_presets: presets });
+      expect(res.status).toBe(200);
+      const list = await request(app).get("/api/telegram/recipients").set("Authorization", `Bearer ${token}`);
+      expect(list.body.data[0].eventPresets).toEqual(presets);
+    });
+
+    it("auto-migrates legacy settings.telegram_chat_id when recipients table is empty", async () => {
+      seedSettings(getDb(), {
+        telegram_enabled: 1,
+        telegram_bot_token: "tok",
+        telegram_chat_id: "legacy-999",
+        notify_new_invoice: true,
+        notify_daily_close: false,
+      });
+      const res = await request(app).get("/api/telegram/recipients").set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].chatId).toBe("legacy-999");
+      expect(res.body.data[0].notifyNewInvoice).toBe(true);
+      expect(res.body.data[0].notifyDailyClose).toBe(false);
+      const row = getDb().prepare("SELECT chat_id FROM telegram_recipients").get();
+      expect(row.chat_id).toBe("legacy-999");
+    });
+  });
+
+  describe("detectChatId", () => {
+    it("reads chat id from /start deep-link message", async () => {
+      fetchSpy.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          result: [{
+            update_id: 1,
+            message: {
+              message_id: 1,
+              from: { id: 42, first_name: "Owner" },
+              chat: { id: 555001, first_name: "Owner", type: "private" },
+              text: "/start connect",
+            },
+          }],
+        }),
+      });
+      const chat = await telegramService.detectChatId("tok");
+      expect(chat).toEqual({ chatId: "555001", chatName: "Owner", chatType: "private" });
+    });
+
+    it("reads chat id from callback_query updates", async () => {
+      fetchSpy.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          result: [{
+            update_id: 2,
+            callback_query: {
+              id: "cb1",
+              from: { id: 77, first_name: "Admin" },
+              message: {
+                message_id: 9,
+                chat: { id: 777002, title: "Store Alerts", type: "group" },
+              },
+            },
+          }],
+        }),
+      });
+      const chat = await telegramService.detectChatId("tok");
+      expect(chat).toEqual({ chatId: "777002", chatName: "Store Alerts", chatType: "group" });
     });
   });
 
@@ -284,6 +382,44 @@ describe("Telegram Routes & Service", () => {
       await telegramService.notifyOwner(telegramService.EVENT_TYPES.NEW_INVOICE, { invoiceNo: 1 }, getDb());
 
       expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("renders each recipient's chosen preset variant", async () => {
+      const db = getDb();
+      db.prepare("DELETE FROM message_template_variants WHERE category='telegram_new_invoice'").run();
+      db.prepare(`INSERT INTO message_template_variants (category, label, body, channel, is_active)
+        VALUES ('telegram_new_invoice', 'قياسي — مفصل', 'DETAILED {invoice_no}', 'telegram', 1)`).run();
+      db.prepare(`INSERT INTO message_template_variants (category, label, body, channel, is_active)
+        VALUES ('telegram_new_invoice', 'مختصر — سريع', 'BRIEF {invoice_no}', 'telegram', 0)`).run();
+
+      const idDetailed = insertRecipient(db, { chat_id: "111", notify_new_invoice: true });
+      const idBrief = insertRecipient(db, { chat_id: "222", notify_new_invoice: true });
+      db.prepare("UPDATE telegram_recipients SET event_presets=? WHERE id=?")
+        .run(JSON.stringify({ notifyNewInvoice: "مختصر — سريع" }), idBrief);
+      db.prepare("UPDATE telegram_recipients SET event_presets=? WHERE id=?")
+        .run(JSON.stringify({ notifyNewInvoice: "قياسي — مفصل" }), idDetailed);
+
+      await telegramService.notifyOwner(telegramService.EVENT_TYPES.NEW_INVOICE, { invoiceNo: 42, total: 100 }, db);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const byChat = Object.fromEntries(fetchSpy.mock.calls.map(([, opts]) => {
+        const b = JSON.parse(opts.body);
+        return [b.chat_id, b.text];
+      }));
+      expect(byChat["111"]).toContain("DETAILED 42");
+      expect(byChat["222"]).toContain("BRIEF 42");
+    });
+
+    it("prefixes items with their SKU in items_table", () => {
+      const db = getDb();
+      db.prepare("DELETE FROM message_templates WHERE kind='telegram_new_invoice'").run();
+      db.prepare("INSERT INTO message_templates (kind, body) VALUES ('telegram_new_invoice', '{items_table}')").run();
+      const text = telegramService.buildMessage(
+        telegramService.EVENT_TYPES.NEW_INVOICE,
+        { invoiceNo: 1, total: 10, lines: [{ item_name: "سماعة", item_code: "SKU-1", quantity: 1, unit_price: 10, line_total: 10 }] },
+        db
+      );
+      expect(text).toContain("[SKU-1] سماعة");
     });
   });
 

@@ -5,6 +5,7 @@ const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { featureGate } = require("../utils/features");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 router.use(authRequired);
@@ -101,6 +102,19 @@ router.post("/", requirePagePermission("repair_orders", "add"), (req, res) => {
   }
 
   req.audit("add", "repair_orders", { id }, `تم استلام جهاز للصيانة — رقم الطلب: ${id}`);
+  try {
+    const created = db.prepare("SELECT * FROM repair_orders WHERE id = ?").get(id);
+    const customer = created?.customer_id ? db.prepare("SELECT name FROM customers WHERE id = ?").get(created.customer_id) : null;
+    notifyOwner(TG.REPAIR_ORDER_CREATED, {
+      orderNo: created?.order_number || `#${id}`,
+      customerName: customer?.name,
+      deviceType: [created?.device_type, created?.device_brand, created?.device_model].filter(Boolean).join(" "),
+      problem: created?.reported_issue,
+      estimatedCost: created?.estimated_cost || 0,
+      userName: req.user?.full_name || req.user?.username,
+      createdAt: created?.created_at,
+    });
+  } catch (_) {}
   res.status(201).json({ success: true, data: getOrder(db, id) });
 });
 
@@ -152,6 +166,30 @@ router.patch("/:id/status", requirePagePermission("repair_orders", "edit"), (req
   db.prepare("INSERT INTO repair_order_status_log (repair_order_id, from_status, to_status, changed_by, note) VALUES (?,?,?,?,?)").run(id, order.status, status, req.user?.id || null, note || null);
 
   req.audit("edit", "repair_orders", { id, status }, `تغيير حالة طلب صيانة #${id} إلى ${status}`);
+  try {
+    if ((status === "ready" || status === "delivered") && status !== order.status) {
+      const customer = order.customer_id ? db.prepare("SELECT name FROM customers WHERE id = ?").get(order.customer_id) : null;
+      const deviceType = [order.device_type, order.device_brand, order.device_model].filter(Boolean).join(" ");
+      if (status === "ready") {
+        notifyOwner(TG.REPAIR_ORDER_READY, {
+          orderNo: order.order_number || `#${id}`,
+          customerName: customer?.name,
+          deviceType,
+          finalCost: order.final_cost || order.estimated_cost || 0,
+          createdAt: nowSql(),
+        });
+      } else {
+        notifyOwner(TG.REPAIR_ORDER_DELIVERED, {
+          orderNo: order.order_number || `#${id}`,
+          customerName: customer?.name,
+          deviceType,
+          amountPaid: order.final_cost || 0,
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: nowSql(),
+        });
+      }
+    }
+  } catch (_) {}
   res.json({ success: true, data: getOrder(db, id) });
 });
 
@@ -261,6 +299,17 @@ router.post("/:id/deliver", requirePagePermission("repair_orders", "edit"), (req
 
   const invoiceId = tx();
   req.audit("add", "invoices", { invoiceId, repairOrderId: id }, `تسليم طلب صيانة #${order.order_number} وإنشاء فاتورة`);
+  try {
+    const customer = order.customer_id ? db.prepare("SELECT name FROM customers WHERE id = ?").get(order.customer_id) : null;
+    notifyOwner(TG.REPAIR_ORDER_DELIVERED, {
+      orderNo: order.order_number || `#${id}`,
+      customerName: customer?.name,
+      deviceType: [order.device_type, order.device_brand, order.device_model].filter(Boolean).join(" "),
+      amountPaid: finalCost,
+      userName: req.user?.full_name || req.user?.username,
+      createdAt: nowSql(),
+    });
+  } catch (_) {}
   res.json({ success: true, data: { invoice_id: invoiceId, remaining_amount: remaining } });
 });
 

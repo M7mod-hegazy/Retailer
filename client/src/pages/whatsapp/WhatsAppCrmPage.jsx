@@ -18,13 +18,15 @@ import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import html2canvas from "html2canvas";
+import { motion } from "framer-motion";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
-import { useTelegramConnect } from "../../hooks/useTelegramConnect";
+import { useTelegramConnect, TELEGRAM_PRESET_DETAILED, TELEGRAM_PRESET_BRIEF, TELEGRAM_PRESET_OPTIONS } from "../../hooks/useTelegramConnect";
 import { useSmsConnect } from "../../hooks/useSmsConnect";
 import WhatsAppConnectWizard from "../../components/whatsapp/wizard/whatsappSteps";
 import TelegramConnectWizard, { AddRecipientWizard } from "../../components/whatsapp/wizard/telegramSteps";
 import SmsConnectWizard from "../../components/whatsapp/wizard/smsSteps";
+import Modal from "../../components/ui/Modal";
 
 // ─── Shared components ───────────────────────────────────────────────────
 
@@ -33,71 +35,95 @@ function StatusDot({ status, size = "w-2 h-2" }) {
     connected: "bg-success-text", sent: "bg-success-text", active: "bg-success-text",
     qr: "bg-warning-text", pending: "bg-warning-text",
     connecting: "bg-text-muted", loading: "bg-text-muted",
-    disconnected: "bg-text-muted", failed: "bg-danger", error: "bg-danger",
-    unavailable: "bg-danger", archived: "bg-text-muted",
+    disconnected: "bg-text-muted", failed: "bg-danger-text", error: "bg-danger-text",
+    unavailable: "bg-danger-text", archived: "bg-text-muted",
   };
-  return <span className={`inline-block ${size} rounded-full ${colors[status] || "bg-text-muted"}`} />;
+  const isPulse = ["connected", "active", "qr", "connecting", "loading"].includes(status);
+  return (
+    <span className={`relative flex shrink-0 ${size}`}>
+      {isPulse && (
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${colors[status] || "bg-text-muted"}`} />
+      )}
+      <span className={`relative inline-flex rounded-full h-full w-full ${colors[status] || "bg-text-muted"}`} />
+    </span>
+  );
 }
 
 const CONTACT_TYPE_BADGE = {
-  customer: { text: "عميل", cls: "bg-info-bg text-info-text" },
-  lead: { text: "عميل محتمل", cls: "bg-warning-bg text-warning-text" },
+  customer: { text: "عميل", cls: "bg-info-bg text-info-text border-info-border/30" },
+  lead: { text: "عميل محتمل", cls: "bg-warning-bg text-warning-text border-warning-border/30" },
 };
 function ContactTypeBadge({ type, className = "" }) {
-  const b = CONTACT_TYPE_BADGE[type] || { text: "رقم غير مسجل", cls: "bg-bg-base text-text-muted" };
-  return <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black ${b.cls} ${className}`}>{b.text}</span>;
+  const b = CONTACT_TYPE_BADGE[type] || { text: "رقم غير مسجل", cls: "bg-bg-base text-text-muted border-border-normal" };
+  return (
+    <span className={`shrink-0 px-2 py-0.5 rounded-lg border text-[10px] font-black tracking-wide ${b.cls} ${className}`}>
+      {b.text}
+    </span>
+  );
 }
 
 function StatCard({ label, value, icon: Icon, accent, sub }) {
   return (
-    <div className="rounded-xl border border-border-normal bg-bg-surface p-5 shadow-card hover:shadow-elevated transition-shadow">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-card" style={{ background: accent }}>
-          <Icon className="h-6 w-6" />
-        </div>
+    <div className="rounded-3xl border border-border-normal bg-bg-surface p-6 shadow-sm hover:shadow-elevated transition-all duration-300 group relative overflow-hidden flex flex-col justify-between">
+      <div className="flex items-start justify-between gap-3 relative z-10 w-full">
         <div className="min-w-0">
-          <p className="text-2xl font-black text-text-primary">{value ?? "—"}</p>
-          <p className="text-xs font-bold text-text-secondary">{label}</p>
-          {sub && <p className="text-[11px] font-bold text-text-muted">{sub}</p>}
+          <p className="font-mono text-3xl font-black text-text-primary tracking-tighter leading-none">{value ?? "—"}</p>
+          <p className="text-xs font-bold text-text-secondary mt-2">{label}</p>
+        </div>
+        <div 
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:rotate-6"
+          style={{ backgroundColor: accent }}
+        >
+          <Icon className="h-5 w-5" />
         </div>
       </div>
+      {sub && (
+        <div className="mt-4 pt-3 border-t border-border-subtle/50 w-full">
+          <p className="text-[10px] font-black text-text-muted tracking-tight">{sub}</p>
+        </div>
+      )}
     </div>
   );
 }
 
 function SectionCard({ title, icon: Icon, accent, open, onToggle, badge, children }) {
   return (
-    <div className="rounded-xl border border-border-normal bg-bg-surface shadow-card overflow-hidden">
+    <div className="rounded-3xl border border-border-normal bg-bg-surface shadow-sm overflow-hidden transition-all duration-300 hover:shadow-card">
       <button type="button" onClick={onToggle}
-        className="w-full flex items-center gap-3 px-5 py-4 text-right hover:bg-bg-overlay transition-colors">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: accent }}>
+        className="w-full flex items-center gap-4 px-6 py-5 text-right hover:bg-bg-overlay transition-colors outline-none">
+        <div 
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+          style={{ backgroundColor: accent }}
+        >
           <Icon className="h-4 w-4" />
         </div>
-        <span className="text-sm font-black text-text-primary flex-1">{title}</span>
+        <span className="text-sm font-black text-text-primary flex-1 tracking-tight">{title}</span>
         {badge != null && badge !== false && (
-          <span className="flex items-center justify-center h-6 min-w-[24px] px-1.5 rounded-full bg-bg-surface text-text-secondary text-[11px] font-black">{badge}</span>
+          <span className="flex items-center justify-center h-6 min-w-[24px] px-2.5 rounded-full bg-bg-base text-text-secondary border border-border-subtle/60 text-[10px] font-black">{badge}</span>
         )}
         {open ? <ChevronUp className="h-4 w-4 text-text-muted" /> : <ChevronDown className="h-4 w-4 text-text-muted" />}
       </button>
-      {open && <div className="px-5 pb-5 pt-3 border-t border-border-subtle">{children}</div>}
+      {open && (
+        <div className="px-6 pb-6 pt-3 border-t border-border-subtle/50 bg-bg-surface/30">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
 function EmptyState({ icon: Icon, title, description, action }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-surface mb-4">
-        <Icon className="h-8 w-8 text-text-muted" />
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center bg-bg-base/20 border border-dashed border-border-normal/60 rounded-[28px] max-w-xl mx-auto">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-bg-surface border border-border-subtle shadow-sm mb-4 text-text-muted">
+        <Icon className="h-6 w-6" />
       </div>
-      <p className="text-base font-black text-text-muted">{title}</p>
-      {description && <p className="text-[13px] font-bold text-text-muted mt-1 max-w-sm">{description}</p>}
-      {action && <div className="mt-4">{action}</div>}
+      <p className="text-sm font-black text-text-secondary tracking-tight">{title}</p>
+      {description && <p className="text-xs font-bold text-text-muted mt-1.5 max-w-xs leading-relaxed">{description}</p>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
-
-// ─── Invoice Preview (uses global print system) ──────────────────────────
 
 function InvoicePreview({ invoice, settings }) {
   return (
@@ -329,34 +355,48 @@ export default function WhatsAppCrmPage() {
   return (
     <div dir="rtl" className="flex h-full flex-col bg-bg-base">
       {/* ── Full-width Header ─────────────────────────────────── */}
-      <div className="bg-primary text-white">
+      <div className="border-b border-border-subtle bg-bg-surface/80 backdrop-blur-xl shadow-sm">
         <div className="px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur shadow-elevated">
-                <MessageSquare className="h-6 w-6" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary-500/10 shadow-sm transition-transform duration-300 hover:rotate-6">
+                <MessageSquare className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-lg font-black">مركز الرسائل والحملات</h1>
-                <p className="text-[12px] font-bold text-white/80">تواصل مع عملائك عبر واتساب ورسائل SMS — محادثات وحملات وقوالب من مكان واحد</p>
+                <h1 className="text-xl font-black text-text-primary tracking-tight">مركز الرسائل والحملات</h1>
+                <p className="text-xs font-bold text-text-secondary mt-0.5 leading-relaxed">تواصل مع عملائك عبر واتساب ورسائل SMS — محادثات وحملات وقوالب من مكان واحد</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-white/15 backdrop-blur">
-                <span className={`inline-block w-2 h-2 rounded-full ${bgStatus} ${waStatus.status === "qr" ? "animate-pulse" : ""}`} />
-                واتساب: {statusText}
-                {isConnected && waStatus.phone && <span dir="ltr" className="text-white/70 mr-1">{waStatus.phone}</span>}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black border ${
+                isConnected
+                  ? "bg-success-bg text-success-text border-success-border/40"
+                  : waStatus.status === "qr"
+                  ? "bg-warning-bg text-warning-text border-warning-border/40"
+                  : "bg-bg-base text-text-secondary border-border-normal"
+              }`}>
+                <StatusDot status={waStatus.status} />
+                <span>واتساب: {statusText}</span>
+                {isConnected && waStatus.phone && <span dir="ltr" className="text-text-muted mr-1 font-mono">{waStatus.phone}</span>}
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-white/15 backdrop-blur">
-                <span className={`inline-block w-2 h-2 rounded-full ${smsEnabled ? "bg-white" : "bg-white/30"}`} />
-                SMS: {smsEnabled ? "مفعّلة" : "غير مفعّلة"}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black border ${
+                smsEnabled
+                  ? "bg-info-bg text-info-text border-info-border/40"
+                  : "bg-bg-base text-text-secondary border-border-normal"
+              }`}>
+                <StatusDot status={smsEnabled ? "connected" : "disconnected"} />
+                <span>SMS: {smsEnabled ? "مفعّلة" : "غير مفعّلة"}</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black bg-white/15 backdrop-blur">
-                <span className={`inline-block w-2 h-2 rounded-full ${telegramEnabled ? "bg-white" : "bg-white/30"}`} />
-                {t("telegram.channelName")}: {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black border ${
+                telegramEnabled
+                  ? "bg-info-bg text-info-text border-info-border/40"
+                  : "bg-bg-base text-text-secondary border-border-normal"
+              }`}>
+                <StatusDot status={telegramEnabled ? "connected" : "disconnected"} />
+                <span>{t("telegram.channelName")}: {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}</span>
               </div>
               <button onClick={fetchStats}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 transition-all active:scale-95 backdrop-blur">
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-base hover:bg-bg-overlay text-text-secondary hover:text-text-primary border border-border-normal transition-all active:scale-95 shadow-sm">
                 <RefreshCw className={`h-4 w-4 ${statsLoading ? "animate-spin" : ""}`} />
               </button>
             </div>
@@ -365,29 +405,39 @@ export default function WhatsAppCrmPage() {
       </div>
 
       {/* ── Sticky Tab Bar ─────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-bg-surface border-b border-border-normal shadow-card">
+      <div className="sticky top-0 z-10 bg-bg-surface/90 backdrop-blur-md border-b border-border-subtle shadow-sm">
         <div className="px-6">
-          <div className="flex items-center gap-1 py-2">
-            {TABS.map(tab => (
-              <React.Fragment key={tab.id}>
-                {tab.group === "alerts" && (
-                  <span className="mx-1 h-6 w-px shrink-0 bg-border-normal" aria-hidden="true" />
-                )}
-                <button onClick={() => setActiveTab(tab.id)}
-                  title={tab.group === "alerts" ? "تنبيهات للمالك فقط — مختلفة عن قنوات مراسلة العملاء" : undefined}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
-                      ? "bg-primary text-white shadow-card"
-                      : "text-text-secondary hover:text-text-primary hover:bg-bg-base"
+          <div className="flex items-center gap-1.5 py-3">
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <React.Fragment key={tab.id}>
+                  {tab.group === "alerts" && (
+                    <span className="mx-1 h-6 w-px shrink-0 bg-border-normal/60" aria-hidden="true" />
+                  )}
+                  <button onClick={() => setActiveTab(tab.id)}
+                    title={tab.group === "alerts" ? "تنبيهات للمالك فقط — مختلفة عن قنوات مراسلة العملاء" : undefined}
+                    className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all whitespace-nowrap outline-none ${
+                      isActive
+                        ? "text-primary"
+                        : "text-text-secondary hover:text-text-primary hover:bg-bg-base/70"
                     }`}>
-                  <tab.icon className="h-4 w-4" />
-                  {tab.id === "telegram" ? t("telegram.channelName") : tab.label}
-                </button>
-              </React.Fragment>
-            ))}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTabIndicator"
+                        className="absolute inset-0 bg-primary/10 border border-primary-500/10 rounded-xl"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <tab.icon className={`h-4 w-4 relative z-10 ${isActive ? "text-primary" : "text-text-secondary"}`} />
+                    <span className="relative z-10">{tab.id === "telegram" ? t("telegram.channelName") : tab.label}</span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
       </div>
-
       {/* ── Tab Content ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
@@ -468,7 +518,7 @@ export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEna
     }
   }
 
-  async function handleClearAndRetry() {
+async function handleClearAndRetry() {
     setConnectError(null);
     try {
       await api.post("/api/whatsapp/engine-disconnect");
@@ -502,87 +552,109 @@ export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEna
         <div className="grid gap-4 lg:grid-cols-3">
 
           {/* WhatsApp channel */}
-          <div className={`relative overflow-hidden rounded-2xl border p-5 ${state === "connected" ? "bg-success-bg border-success-border"
-              : state === "qr" ? "bg-warning-bg border-warning-border"
-                : state === "error" ? "bg-danger-bg border-danger-border"
-                  : "bg-bg-surface border-border-normal"
-            }`}>
-            <div className="flex items-start gap-3">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-card ${theme.bg} ${theme.badgeText}`}>
+          <div className="relative overflow-hidden rounded-[24px] border border-border-normal bg-bg-surface p-6 shadow-sm hover:shadow-elevated transition-all duration-300 group">
+            {/* Glossy glare line */}
+            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+            {/* Vertical Accent stripe */}
+            <div className={`absolute right-0 top-0 bottom-0 w-[4px] rounded-r-full ${
+              state === "connected" ? "bg-success-text" : state === "qr" ? "bg-warning-text" : "bg-text-muted"
+            }`} />
+
+            <div className="flex items-start gap-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${
+                state === "connected" ? "bg-success-bg border-success-border/30 text-success-text" :
+                state === "qr" ? "bg-warning-bg border-warning-border/30 text-warning-text animate-pulse" :
+                state === "connecting" ? "bg-bg-base border-border-normal text-text-muted animate-spin" :
+                "bg-bg-base border-border-normal text-text-muted"
+              }`}>
                 {state === "connected" ? <Wifi className="h-5 w-5" /> :
-                  state === "qr" ? <Smartphone className="h-5 w-5 animate-pulse" /> :
-                    state === "connecting" ? <RefreshCw className="h-5 w-5 animate-spin" /> :
-                      <WifiOff className="h-5 w-5" />}
+                  state === "qr" ? <Smartphone className="h-5 w-5" /> :
+                  state === "connecting" ? <RefreshCw className="h-5 w-5 animate-spin" /> :
+                  <WifiOff className="h-5 w-5" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-text-primary">{t("whatsapp.title")}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${theme.badgeText} ${theme.bg}`}>{theme.text}</span>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-black text-text-primary tracking-tight">{t("whatsapp.title")}</h3>
+                  <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-black tracking-wide ${
+                    state === "connected" ? "bg-success-bg border-success-border/30 text-success-text" :
+                    state === "qr" ? "bg-warning-bg border-warning-border/30 text-warning-text" :
+                    "bg-bg-base border-border-normal text-text-muted"
+                  }`}>{theme.text}</span>
                 </div>
-                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("whatsapp.desc")}</p>
+                <p className="text-[11px] font-bold text-text-secondary mt-1.5 leading-relaxed">{t("whatsapp.desc")}</p>
                 {state === "connected" && (
-                  <p className="text-sm font-bold text-success-text font-mono mt-1" dir="ltr">{engine.phone ? `+${engine.phone}` : ""}</p>
+                  <p className="text-xs font-bold text-success-text font-mono mt-1.5" dir="ltr">{engine.phone ? `+${engine.phone}` : ""}</p>
                 )}
                 {isUnavailable && (
-                  <p className="text-xs font-bold text-danger mt-1">تأكد من تشغيل التطبيق عبر Electron</p>
+                  <p className="text-[10px] font-black text-danger-text mt-1.5">تأكد من تشغيل التطبيق عبر Electron</p>
                 )}
               </div>
               {!isUnavailable && (
                 state !== "connected" ? (
                   <button onClick={() => setWizardChannel("whatsapp")}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-card hover:opacity-90 transition-all active:scale-95 min-w-[130px] justify-center">
+                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm hover:opacity-90 transition-all active:scale-[0.98] min-w-[110px] justify-center">
                     <Link className="h-3.5 w-3.5" /> {t("whatsapp.title")}
                   </button>
                 ) : (
                   <button onClick={handleUnlink}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl border border-danger-border bg-bg-surface px-4 py-2 text-xs font-black text-danger hover:bg-danger-bg transition-all active:scale-95">
+                    className="shrink-0 flex items-center gap-1.5 rounded-xl border border-danger-border bg-bg-surface px-4 py-2.5 text-xs font-black text-danger-text hover:bg-danger-bg/50 transition-all active:scale-[0.98]">
                     <Unlink className="h-3.5 w-3.5" /> فصل
                   </button>
                 )
               )}
             </div>
 
-            {/* What you get — always visible, before or after connecting */}
-            <div className="mt-3 flex flex-wrap gap-2">
+            {/* Tags */}
+            <div className="mt-5 pt-4 border-t border-border-subtle/50 flex flex-wrap gap-1.5">
               {t("whatsapp.connectedTags").split("|").map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                <span key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-base border border-border-subtle/40 text-[10px] font-black text-text-secondary">
                   <Zap className="h-3 w-3 text-text-muted" />{tag}
                 </span>
               ))}
             </div>
-
           </div>
 
           {/* SMS channel */}
-          <div className={`relative overflow-hidden rounded-2xl border p-5 ${smsEnabled ? "bg-success-bg border-success-border" : "bg-bg-surface border-border-normal"
-            }`}>
-            <div className="flex items-start gap-3">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-card text-white ${smsEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+          <div className="relative overflow-hidden rounded-[24px] border border-border-normal bg-bg-surface p-6 shadow-sm hover:shadow-elevated transition-all duration-300 group">
+            {/* Glossy glare line */}
+            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+            {/* Vertical Accent stripe */}
+            <div className={`absolute right-0 top-0 bottom-0 w-[4px] rounded-r-full ${
+              smsEnabled ? "bg-success-text" : "bg-text-muted"
+            }`} />
+
+            <div className="flex items-start gap-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${
+                smsEnabled ? "bg-success-bg border-success-border/30 text-success-text" : "bg-bg-base border-border-normal text-text-muted"
+              }`}>
                 <MessageCircle className="h-5 w-5" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-text-primary">{t("sms.title")}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-black text-white ${smsEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-black text-text-primary tracking-tight">{t("sms.title")}</h3>
+                  <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-black tracking-wide ${
+                    smsEnabled ? "bg-success-bg border-success-border/30 text-success-text" : "bg-bg-base border-border-normal text-text-muted"
+                  }`}>
                     {smsEnabled ? "مفعّلة" : "غير مفعّلة"}
                   </span>
                 </div>
-                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("sms.desc")}</p>
+                <p className="text-[11px] font-bold text-text-secondary mt-1.5 leading-relaxed">{t("sms.desc")}</p>
               </div>
               <button onClick={() => (smsEnabled ? setSmsSetupOpen(true) : setWizardChannel("sms"))}
-                className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${smsEnabled
+                className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-black transition-all active:scale-[0.98] ${
+                  smsEnabled
                     ? "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-base"
-                    : "bg-primary text-white shadow-card hover:opacity-90"
-                  }`}>
+                    : "bg-primary text-white shadow-sm hover:opacity-90"
+                }`}>
                 {smsEnabled ? <Settings className="h-3.5 w-3.5" /> : <Link className="h-3.5 w-3.5" />}
                 {smsEnabled ? "الإعدادات" : "تفعيل SMS"}
               </button>
             </div>
 
-            {/* What you get — always visible, before or after activating */}
-            <div className="mt-3 flex flex-wrap gap-2">
+            {/* Tags */}
+            <div className="mt-5 pt-4 border-t border-border-subtle/50 flex flex-wrap gap-1.5">
               {t("sms.connectedTags").split("|").map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                <span key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-base border border-border-subtle/40 text-[10px] font-black text-text-secondary">
                   <Zap className="h-3 w-3 text-text-muted" />{tag}
                 </span>
               ))}
@@ -590,35 +662,46 @@ export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEna
           </div>
 
           {/* Telegram channel */}
-          <div className={`relative overflow-hidden rounded-2xl border p-5 ${telegramEnabled ? "bg-success-bg border-success-border" : "bg-bg-surface border-border-normal"
-            }`}>
-            <div className="flex items-start gap-3">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-card text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+          <div className="relative overflow-hidden rounded-[24px] border border-border-normal bg-bg-surface p-6 shadow-sm hover:shadow-elevated transition-all duration-300 group">
+            {/* Glossy glare line */}
+            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+            {/* Vertical Accent stripe */}
+            <div className={`absolute right-0 top-0 bottom-0 w-[4px] rounded-r-full ${
+              telegramEnabled ? "bg-success-text" : "bg-text-muted"
+            }`} />
+
+            <div className="flex items-start gap-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${
+                telegramEnabled ? "bg-success-bg border-success-border/30 text-success-text" : "bg-bg-base border-border-normal text-text-muted"
+              }`}>
                 <Send className="h-5 w-5" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-text-primary">{t("telegram.channelName")}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-black text-white ${telegramEnabled ? "bg-success-text" : "bg-text-muted"}`}>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-black text-text-primary tracking-tight">{t("telegram.channelName")}</h3>
+                  <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-black tracking-wide ${
+                    telegramEnabled ? "bg-success-bg border-success-border/30 text-success-text" : "bg-bg-base border-border-normal text-text-muted"
+                  }`}>
                     {telegramEnabled ? t("telegram.statusEnabled") : t("telegram.statusDisabled")}
                   </span>
                 </div>
-                <p className="text-[11px] font-bold text-text-muted mt-0.5">{t("telegram.channelDesc")}</p>
+                <p className="text-[11px] font-bold text-text-secondary mt-1.5 leading-relaxed">{t("telegram.channelDesc")}</p>
               </div>
               <button onClick={() => (telegramEnabled ? setActiveTab("telegram") : setWizardChannel("telegram"))}
-                className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all active:scale-95 ${telegramEnabled
+                className={`shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-black transition-all active:scale-[0.98] ${
+                  telegramEnabled
                     ? "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-base"
-                    : "bg-primary text-white shadow-card hover:opacity-90"
-                  }`}>
+                    : "bg-primary text-white shadow-sm hover:opacity-90"
+                }`}>
                 {telegramEnabled ? <Settings className="h-3.5 w-3.5" /> : <Link className="h-3.5 w-3.5" />}
                 {telegramEnabled ? t("telegram.settings") : t("telegram.activate")}
               </button>
             </div>
 
-            {/* What you get — always visible, before or after activating */}
-            <div className="mt-3 flex flex-wrap gap-2">
+            {/* Tags */}
+            <div className="mt-5 pt-4 border-t border-border-subtle/50 flex flex-wrap gap-1.5">
               {t("telegram.connectedTags").split("|").map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-bg-base text-[11px] font-bold text-text-secondary">
+                <span key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-base border border-border-subtle/40 text-[10px] font-black text-text-secondary">
                   <Zap className="h-3 w-3 text-text-muted" />{tag}
                 </span>
               ))}
@@ -627,28 +710,7 @@ export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEna
         </div>
       </div>
 
-      {smsSetupOpen && (
-        <SmsSetupModal
-          onClose={() => setSmsSetupOpen(false)}
-          onSaved={() => { onConfigChanged?.(); }}
-        />
-      )}
-
-      {wizardChannel === "whatsapp" && (
-        <WhatsAppConnectWizard
-          onClose={() => setWizardChannel(null)}
-          engine={engine} linking={linking} connectError={connectError}
-          onLink={handleLink} onClearAndRetry={handleClearAndRetry}
-        />
-      )}
-      {wizardChannel === "telegram" && (
-        <TelegramConnectWizard onClose={() => setWizardChannel(null)} onSaved={onConfigChanged} />
-      )}
-      {wizardChannel === "sms" && (
-        <SmsConnectWizard onClose={() => setWizardChannel(null)} onSaved={onConfigChanged} />
-      )}
-
-      {/* Stats grid */}
+            {/* Stats grid */}
       {loading ? (
         <div className="flex items-center justify-center py-16"><RefreshCw className="h-8 w-8 animate-spin text-text-muted" /></div>
       ) : stats ? (
@@ -706,17 +768,26 @@ export function DashboardTab({ stats, loading, waStatus, smsEnabled, telegramEna
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <button onClick={() => setActiveTab("inbox")} className="flex items-center gap-3 rounded-xl border border-border-normal bg-bg-surface p-5 hover:border-primary hover:shadow-elevated transition-all text-right">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-info-bg text-info-text"><Inbox className="h-5 w-5" /></div>
-              <div><p className="text-sm font-black text-text-primary">صندوق الوارد</p><p className="text-[11px] font-bold text-text-muted">{stats.unreadCount || 0} غير مقروءة</p></div>
+            <button onClick={() => setActiveTab("inbox")} 
+              className="group relative overflow-hidden flex items-center gap-4 rounded-[22px] bg-bg-surface border border-border-normal p-5 hover:border-primary hover:shadow-elevated shadow-sm transition-all duration-300 text-right w-full active:scale-[0.98]">
+              <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-primary rounded-r-full" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-info-bg text-info-text border border-info-border/30 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-6"><Inbox className="h-5 w-5" /></div>
+              <div><p className="text-sm font-black text-text-primary tracking-tight">صندوق الوارد</p><p className="text-[11px] font-bold text-text-muted mt-0.5">{stats.unreadCount || 0} غير مقروءة</p></div>
             </button>
-            <button onClick={() => setActiveTab("marketing")} className="flex items-center gap-3 rounded-xl border border-border-normal bg-bg-surface p-5 hover:border-primary hover:shadow-elevated transition-all text-right">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-success-bg text-success-text"><Megaphone className="h-5 w-5" /></div>
-              <div><p className="text-sm font-black text-text-primary">العملاء والحملات</p><p className="text-[11px] font-bold text-text-muted">{stats.totalContacts} عميل — أرسل حملة جماعية</p></div>
+            <button onClick={() => setActiveTab("marketing")} 
+              className="group relative overflow-hidden flex items-center gap-4 rounded-[22px] bg-bg-surface border border-border-normal p-5 hover:border-primary hover:shadow-elevated shadow-sm transition-all duration-300 text-right w-full active:scale-[0.98]">
+              <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-success-text rounded-r-full" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-success-bg text-success-text border border-success-border/30 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-6"><Megaphone className="h-5 w-5" /></div>
+              <div><p className="text-sm font-black text-text-primary tracking-tight">العملاء والحملات</p><p className="text-[11px] font-bold text-text-muted mt-0.5">{stats.totalContacts} عميل — أرسل حملة جماعية</p></div>
             </button>
-            <button onClick={() => setActiveTab("templates")} className="flex items-center gap-3 rounded-xl border border-border-normal bg-bg-surface p-5 hover:border-primary hover:shadow-elevated transition-all text-right">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-bg text-warning-text"><FileText className="h-5 w-5" /></div>
-              <div><p className="text-sm font-black text-text-primary">القوالب</p><p className="text-[11px] font-bold text-text-muted">رسائل جاهزة للحملات والإرسال التلقائي</p></div>
+            <button onClick={() => setActiveTab("templates")} 
+              className="group relative overflow-hidden flex items-center gap-4 rounded-[22px] bg-bg-surface border border-border-normal p-5 hover:border-primary hover:shadow-elevated shadow-sm transition-all duration-300 text-right w-full active:scale-[0.98]">
+              <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0.02)_50%,rgba(255,255,255,0)_100%)] pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-warning-text rounded-r-full" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-warning-bg text-warning-text border border-warning-border/30 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-6"><FileText className="h-5 w-5" /></div>
+              <div><p className="text-sm font-black text-text-primary tracking-tight">القوالب</p><p className="text-[11px] font-bold text-text-muted mt-0.5">رسائل جاهزة للحملات والإرسال التلقائي</p></div>
             </button>
           </div>
         </>
@@ -1117,8 +1188,8 @@ function InboxTab() {
   function MessageBubble({ msg, index }) {
     const isOut = msg.direction === "outbound";
     const bubbleClass = isOut
-      ? "bg-primary text-white rounded-br-md"
-      : "bg-bg-base text-text-primary rounded-bl-md";
+      ? "bg-primary text-white rounded-2xl rounded-br-sm border border-primary-600/10 shadow-sm"
+      : "bg-bg-surface text-text-primary rounded-2xl rounded-bl-sm border border-border-subtle shadow-sm";
     const reaction = reactions[msg.id || index];
 
     return (
@@ -1320,8 +1391,8 @@ function InboxTab() {
           {selectedJid ? (
             <>
               {/* Header */}
-              <div className="flex items-center gap-3 px-5 py-3 border-b border-border-normal bg-bg-base">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-sm font-black text-primary">
+              <div className="flex items-center gap-4 px-6 py-4 border-b border-border-normal bg-bg-base/70 backdrop-blur-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary-500/10 text-sm font-black text-primary shadow-sm">
                   {currConv?.contact_name?.charAt(0) || "?"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -1329,7 +1400,7 @@ function InboxTab() {
                     {currConv?.contact_name || selectedJid.split("@")[0]}
                     <ContactTypeBadge type={currConv?.contact_type} />
                   </p>
-                  <p className="text-[11px] font-bold text-text-muted font-mono truncate" dir="ltr">{selectedJid.split("@")[0]}</p>
+                  <p className="text-[10px] font-bold text-text-muted font-mono truncate mt-0.5" dir="ltr">{selectedJid.split("@")[0]}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setShowContactInfo(prev => !prev)}
@@ -2474,42 +2545,152 @@ function SmsSetupModal({ onClose, onSaved }) {
   );
 }
 
-function TelegramTab({ telegramEnabled, onConfigChanged }) {
-  const { t } = useTranslation();
-  const {
-    config, setConfig, loading, loadError, saving, saved, testing, detecting,
-    disconnecting,
-    recipients, updateRecipientLocal, addRecipient, deleteRecipient, saveSingleRecipient, refreshRecipients,
-    qrData, generatingQr, scanConnected, pollStatus,
-    botInfo, validating,
-    history, loadingHistory, fetchHistory,
-    detectChatId, generateDeepLink, save, sendTest, disconnect,
-  } = useTelegramConnect(onConfigChanged);
-
-  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
-  const [showAddWizard, setShowAddWizard] = useState(false);
-  const [showConnectWizard, setShowConnectWizard] = useState(false);
-  const [expandedToken, setExpandedToken] = useState(false);
-  const [historyPage, setHistoryPage] = useState(0);
-  const [savingRecipientIdx, setSavingRecipientIdx] = useState(null);
-  const [savedRecipientIdx, setSavedRecipientIdx] = useState(null);
-  const HISTORY_LIMIT = 30;
-
-  useEffect(() => {
-    if (saved) fetchHistory(HISTORY_LIMIT);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saved]);
-
-  const StepBadge = ({ n, done }) => (
-    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-success-text text-white" : "bg-primary text-white"}`}>
-      {done ? <Check className="h-3.5 w-3.5" /> : n}
-    </span>
+function TelegramSwitch({ checked, onChange, disabled = false, label }) {
+  return (
+    <label className={`inline-flex items-center gap-2 ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => !disabled && onChange?.(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-primary" : "bg-bg-overlay"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-bg-surface shadow transition-transform ${checked ? "rtl:-translate-x-[14px] ltr:translate-x-[14px]" : "rtl:-translate-x-[2px] ltr:translate-x-[2px]"}`} />
+      </button>
+      {label ? <span className="text-[11px] font-black text-text-primary truncate">{label}</span> : null}
+    </label>
   );
+}
 
-  const isBotConnected = Boolean(config.telegram_bot_token.trim());
-  const hasEnabledRecipient = recipients.some(r => r.enabled && r.chatId);
+// ─── Telegram tab: module-scope building blocks ─────────────────────────────
+// These are defined OUTSIDE TelegramTab on purpose: nested component functions
+// get a new identity on every parent render, which makes React remount them
+// and drop input focus/state on each keystroke.
 
-  const EVENT_CATEGORIES = [
+// Each toggle field maps to the message_templates kind used for its preview.
+const TG_EVENT_TEMPLATE_MAP = {
+  notifyNewInvoice: "telegram_new_invoice",
+  notifyDailyClose: "telegram_daily_close",
+  notifyLargeAmounts: "telegram_large_invoice",
+  notifyReturnsVoids: "telegram_sales_return",
+  notifyPurchasesPayments: "telegram_purchase_created",
+  notifyReturnPayment: "telegram_return_payment",
+  notifyCustomerCreated: "telegram_customer_created",
+  notifySupplierCreated: "telegram_supplier_created",
+  notifyExpenseCreated: "telegram_expense_created",
+  notifyLowStock: "telegram_low_stock",
+  notifySystem: "telegram_backup_result",
+  notifyWeekly: "telegram_weekly_digest",
+  notifyMonthly: "telegram_monthly_digest",
+  notifyYearly: "telegram_yearly_digest",
+  notifyStockTransfer: "telegram_stock_transfer",
+  notifyInventoryAdjustment: "telegram_inventory_adjustment",
+  notifyNewProduct: "telegram_new_product",
+  notifyPriceChange: "telegram_price_change",
+  notifyBatchExpiry: "telegram_batch_expiry",
+  notifyPhysicalCount: "telegram_physical_count",
+  notifySupplierPayment: "telegram_supplier_payment",
+  notifyDebtPayment: "telegram_debt_payment",
+  notifyInstallmentPaid: "telegram_installment_paid",
+  notifyPurchaseVoided: "telegram_purchase_voided",
+  notifyPurchaseReturn: "telegram_purchase_return",
+  notifyBranchTransfer: "telegram_branch_transfer",
+  notifyPasswordChanged: "telegram_password_changed",
+  notifyPermissionChanged: "telegram_permission_changed",
+  notifySupervisorOverride: "telegram_supervisor_override",
+  notifyRepairOrder: "telegram_repair_created",
+  notifyRevenueCreated: "telegram_revenue_created",
+  notifyWithdrawalCreated: "telegram_withdrawal_created",
+  notifyEmployeeCreated: "telegram_employee_created",
+  notifySalarySettled: "telegram_salary_settled",
+  notifyAdvanceCreated: "telegram_advance_created",
+  notifyDeductionCreated: "telegram_deduction_created",
+  notifyBonusCreated: "telegram_bonus_created",
+  // New edit/delete events (migration 201)
+  notifyExpenseEdited: "telegram_expense_edited",
+  notifyExpenseDeleted: "telegram_expense_deleted",
+  notifyRevenueEdited: "telegram_revenue_edited",
+  notifyRevenueDeleted: "telegram_revenue_deleted",
+  // New edit/cancel events (migration 202) — share existing toggles
+  notifyReturnsVoids: "telegram_invoice_edited", // preview shows invoice_edited as representative
+  // Individual category overrides (for the preset picker to show the right template)
+  telegram_invoice_edited: "telegram_invoice_edited",
+  telegram_invoice_amended: "telegram_invoice_amended",
+  telegram_purchase_edited: "telegram_purchase_edited",
+  telegram_purchase_return_cancelled: "telegram_purchase_return_cancelled",
+  telegram_branch_transfer_edited: "telegram_branch_transfer_edited",
+  telegram_branch_transfer_cancelled: "telegram_branch_transfer_cancelled",
+  telegram_withdrawal_edited: "telegram_withdrawal_edited",
+  telegram_withdrawal_deleted: "telegram_withdrawal_deleted",
+};
+
+// Sample values for the preview — keys match the {tokens} in the seeded
+// template variants exactly (see migrations 177/192/194).
+const TG_SAMPLE_TIME = "١٤ يوليو ٢٠٢٦، ٦:٣٠ م";
+const TG_SAMPLE_ITEMS =
+  "1. [BT-HD-001] سماعة بلوتوث | الكمية: 2 | السعر: 250.00 ج | الإجمالي: 500.00 ج\n" +
+  "2. [CHG-WL-003] شاحن لاسلكي | الكمية: 1 | السعر: 350.00 ج | الإجمالي: 350.00 ج";
+const TG_SAMPLE_DATA = {
+  telegram_new_invoice: { invoice_no: "12345", customer_name: "أحمد محمد", total: "850.00 ج", subtotal: "850.00 ج", tax: "0.00 ج", discount: "0.00 ج", payment_type: "نقداً", paid: "850.00 ج", balance: "0.00 ج", created_at: TG_SAMPLE_TIME, items_count: 2, items_table: TG_SAMPLE_ITEMS, payment_breakdown: "• نقداً: 500.00 ج\n• شبكة: 350.00 ج" },
+  telegram_daily_close: { date: "2026-07-14", opening_balance: "1,000.00 ج", cash_sales: "5,000.00 ج", credit_sales: "2,000.00 ج", expected_cash: "6,000.00 ج", actual_cash: "5,950.00 ج", discrepancy: "-50.00 ج", invoices_count: 25 },
+  telegram_shift_close: { shift_id: "42", opening_cash: "500.00 ج", expected_cash: "3,500.00 ج", closing_cash: "3,480.00 ج", discrepancy: "-20.00 ج", invoices_count: 15 },
+  telegram_large_invoice: { invoice_no: "12399", customer_name: "محمد سعيد", total: "50,000.00 ج" },
+  telegram_large_discount: { invoice_no: "12400", discount_percent: "35" },
+  telegram_sales_return: { original_invoice_id: "12350", total: "300.00 ج" },
+  telegram_invoice_voided: { invoice_no: "12350", reason: "خطأ في الإدخال", user_name: "أحمد" },
+  telegram_purchase_created: { kind_label: "فاتورة شراء", reference: "PUR-2026-001", supplier_name: "شركة النور للتوريدات", total: "25,000.00 ج" },
+  telegram_customer_payment: { customer_name: "سعيد علي", amount: "500.00 ج", method: "نقداً" },
+  telegram_return_payment: { customer_name: "خالد عبدالله", amount: "300.00 ج", method: "نقداً", date: "2026-07-14" },
+  telegram_customer_created: { customer_name: "خالد عبدالله", phone: "01234567890", city: "القاهرة", opening_balance: "0.00 ج" },
+  telegram_supplier_created: { supplier_name: "شركة النور للتوريدات", phone: "0221234567", opening_balance: "0.00 ج" },
+  telegram_expense_created: { category: "إيجار", amount: "10,000.00 ج", date: "2026-07-01", notes: "إيجار شهر يوليو" },
+  telegram_low_stock: { product_name: "[BT-HD-001] سماعة بلوتوث", current_quantity: 3, min_quantity: 10 },
+  telegram_backup_result: { success_text: "✅ نسخة احتياطية ناجحة", reason: "نسخة تلقائية", file_path: "backups/retailer-2026-07-14.db", error: "" },
+  telegram_stock_transfer: { from_warehouse: "المخزن الرئيسي", to_warehouse: "فرع القاهرة", items_table: TG_SAMPLE_ITEMS, items_count: 2, total_units: 3, time: TG_SAMPLE_TIME },
+  telegram_inventory_adjustment: { product_name: "[BT-HD-001] سماعة بلوتوث", warehouse: "المخزن الرئيسي", old_quantity: 50, new_quantity: 48, difference: -2, reason: "تلف", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_new_product: { product_name: "شاحن لاسلكي", sku: "CHG-WL-003", price: "350.00 ج", warehouse: "المخزن الرئيسي", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_price_change: { product_name: "[BT-HD-001] سماعة بلوتوث", old_price: "300.00 ج", new_price: "250.00 ج", change_percent: "-16.7%", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_batch_expiry: { product_name: "[CHG-WL-003] شاحن لاسلكي", batch_no: "BATCH-001", expiry_date: "2026-12-31", remaining_quantity: 25, warehouse: "المخزن الرئيسي" },
+  telegram_physical_count: { warehouse: "المخزن الرئيسي", matched_count: 150, mismatched_count: 5, total_items: 155, user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_supplier_payment: { supplier_name: "شركة النور للتوريدات", amount: "10,000.00 ج", method: "شيك", reference: "CHK-001", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_debt_payment: { customer_name: "سعيد علي", amount: "2,000.00 ج", method: "نقداً", remaining_debt: "3,000.00 ج", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_installment_paid: { customer_name: "سعيد علي", installment_no: 2, total_installments: 6, amount: "1,000.00 ج", remaining: "4,000.00 ج" },
+  telegram_purchase_voided: { reference_no: "PUR-2026-001", supplier_name: "شركة النور للتوريدات", total: "25,000.00 ج", reason: "خطأ في الكمية", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_purchase_return: { reference_no: "PRT-2026-001", supplier_name: "شركة النور للتوريدات", total: "5,000.00 ج", items_table: TG_SAMPLE_ITEMS, items_count: 2, user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_branch_transfer: { reference_no: "BT-S-2026-001", from_branch: "الفرع الأول", to_warehouse: "الفرع الثاني", transfer_type: "إرسال", items_table: TG_SAMPLE_ITEMS, items_count: 2, total_units: 3, total_cost: "850.00 ج", time: TG_SAMPLE_TIME },
+  telegram_password_changed: { user_name: "محمد أحمد", time: TG_SAMPLE_TIME, ip_address: "192.168.1.100" },
+  telegram_permission_changed: { user_name: "محمد أحمد", action: "تم تغيير الصلاحيات", details: "إضافة صلاحية إدارة المخزون", changed_by: "المدير", time: TG_SAMPLE_TIME },
+  telegram_supervisor_override: { user_name: "محمد أحمد", action: "إلغاء فاتورة", details: "فاتورة بقيمة 5,000.00 ج", supervisor: "المدير العام", time: TG_SAMPLE_TIME },
+  telegram_repair_created: { order_no: "RPR-001", customer_name: "فاطمة حسن", device_type: "لابتوب", problem: "الشاشة لا تعمل", estimated_cost: "300.00 ج", time: TG_SAMPLE_TIME },
+  telegram_revenue_created: { doc_no: "REV-001", amount: "5,000.00 ج", category: "إيراد مبيعات", description: "مبيعات يوم الجمعة", method: "نقداً", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_withdrawal_created: { doc_no: "WD-001", amount: "2,000.00 ج", category: "مصروفات تشغيل", note: "دفع فاتورة كهرباء", method: "نقداً", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_employee_created: { employee_name: "محمد علي", job_title: "محاسب", salary: "8,000.00 ج", phone: "01012345678", user_name: "المدير", time: TG_SAMPLE_TIME },
+  telegram_salary_settled: { employee_name: "محمد علي", period: "2026-06-01 → 2026-06-30", base_salary: "8,000.00 ج", bonuses: "500.00 ج", deductions: "200.00 ج", advance_deductions: "300.00 ج", net_salary: "8,000.00 ج", paid_amount: "8,000.00 ج", user_name: "المحاسب", time: TG_SAMPLE_TIME },
+  telegram_advance_created: { employee_name: "محمد علي", amount: "3,000.00 ج", installment_count: 3, installment_amount: "1,000.00 ج", notes: "سلفة شخصية", user_name: "المدير", time: TG_SAMPLE_TIME },
+  telegram_deduction_created: { employee_name: "محمد علي", amount: "200.00 ج", deduction_type: "تأخير", is_recurring: "لا", notes: "تأخير عن العمل", user_name: "المدير", time: TG_SAMPLE_TIME },
+  telegram_bonus_created: { employee_name: "محمد علي", amount: "500.00 ج", bonus_type: "أداء", is_recurring: "لا", notes: "أداء ممتاز", user_name: "المدير", time: TG_SAMPLE_TIME },
+  // New edit/delete events (migration 201)
+  telegram_expense_edited: { doc_no: "EXP-2026-042", category: "إيجار", old_amount: "10,000.00 ج", new_amount: "11,500.00 ج", old_description: "إيجار يونيو", new_description: "إيجار يوليو", payment_method: "نقداً", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_expense_deleted: { doc_no: "EXP-2026-041", category: "كهرباء", amount: "2,500.00 ج", description: "فاتورة كهرباء يونيو", payment_method: "نقداً", date: "2026-06-30", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_revenue_edited: { doc_no: "REV-2026-015", category: "مبيعات", old_amount: "5,000.00 ج", new_amount: "5,500.00 ج", old_description: "مبيعات الجمعة", new_description: "مبيعات الجمعة والسبت", payment_method: "نقداً", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_revenue_deleted: { doc_no: "REV-2026-014", category: "مبيعات", amount: "3,200.00 ج", description: "مبيعات الخميس", payment_method: "نقداً", date: "2026-07-10", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  // New edit/cancel events (migration 202)
+  telegram_invoice_edited: { invoice_no: "INV-2026-1201", customer_name: "أحمد محمد", total: "1,250.00 ج", items_table: TG_SAMPLE_ITEMS, payment_breakdown: "• نقداً: 850.00 ج\n• شبكة: 400.00 ج", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_invoice_amended: { old_invoice_no: "INV-2026-1200", new_invoice_no: "INV-2026-1201", customer_name: "سعيد علي", total: "980.00 ج", items_table: TG_SAMPLE_ITEMS, user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_purchase_edited: { reference_no: "PUR-2026-088", supplier_name: "شركة التوريد", new_total: "15,800.00 ج", payment_method: "آجل", items_table: "1. سماعة بلوتوث × 20 × 180.00 ج\n2. شاحن × 15 × 260.00 ج", user_name: "محمد", time: TG_SAMPLE_TIME },
+  telegram_purchase_return_cancelled: { reference_no: "PRET-2026-022", supplier_name: "شركة التوريد", total: "3,600.00 ج", reason: "خطأ في الإدخال", user_name: "محمد", time: TG_SAMPLE_TIME },
+  telegram_branch_transfer_edited: { reference_no: "BTR-2026-041", transfer_type: "إرسال", partner_branch: "فرع المعادي", items_table: "1. سماعة بلوتوث × 5\n2. شاحن × 3", user_name: "محمد", time: TG_SAMPLE_TIME },
+  telegram_branch_transfer_cancelled: { reference_no: "BTR-2026-040", transfer_type: "استلام", partner_branch: "فرع السيدة زينب", reason: "خطأ في الكمية", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_withdrawal_edited: { doc_no: "WD-2026-019", category: "صيانة", old_amount: "500.00 ج", new_amount: "750.00 ج", note: "صيانة تكييف", payment_method: "نقداً", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_withdrawal_deleted: { doc_no: "WD-2026-018", category: "كهرباء", amount: "1,200.00 ج", note: "فاتورة كهرباء", payment_method: "نقداً", date: "2026-07-08", user_name: "أحمد", time: TG_SAMPLE_TIME },
+  telegram_weekly_digest: { period_label: "الأسبوع 24 — 2026", sales_total: "45,000.00 ج", sales_delta: "+12%", sales_count: 180, avg_invoice: "250.00 ج", profit: "9,000.00 ج", products_table: "1. سماعة بلوتوث — 40 قطعة\n2. شاحن لاسلكي — 25 قطعة", customers_table: "1. أحمد محمد — 3,500.00 ج\n2. سعيد علي — 2,100.00 ج", liquidity: "60,000.00 ج", treasury_balance: "35,000.00 ج", bank_balance: "25,000.00 ج", debts: "12,000.00 ج", low_stock_count: 4 },
+};
+TG_SAMPLE_DATA.telegram_monthly_digest = { ...TG_SAMPLE_DATA.telegram_weekly_digest, period_label: "يوليو 2026" };
+TG_SAMPLE_DATA.telegram_yearly_digest = { ...TG_SAMPLE_DATA.telegram_weekly_digest, period_label: "سنة 2026" };
+
+function buildTelegramEventCategories(t) {
+  return [
     {
       key: "sales", label: t("telegram.catSales"), icon: Receipt,
       events: [
@@ -2517,6 +2698,12 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
         { field: "notifyDailyClose", label: t("telegram.toggleDailyClose"), hint: t("telegram.hintDailyClose") },
         { field: "notifyLargeAmounts", label: t("telegram.toggleLargeAmounts"), hint: t("telegram.hintLargeAmounts") },
         { field: "notifyReturnsVoids", label: t("telegram.toggleReturnsVoids"), hint: t("telegram.hintReturnsVoids") },
+        { field: "telegram_invoice_edited", label: "تعديل فاتورة مبيعات", hint: "عند تعديل فاتورة مبيعات (يشاركها نفس مفتاح المرتجعات والإلغاء)" },
+        { field: "telegram_invoice_amended", label: "تعديل (أمندمنت) فاتورة", hint: "عند إلغاء وإعادة إنشاء فاتورة مبيعات (أمندمنت)" },
+        { field: "telegram_purchase_edited", label: "تعديل فاتورة مشتريات", hint: "عند تعديل فاتورة مشتريات (يشاركها نفس مفتاح المشتريات)" },
+        { field: "telegram_purchase_return_cancelled", label: "إلغاء مرتجع مشتريات", hint: "عند إلغاء مرتجع مشتريات" },
+        { field: "telegram_branch_transfer_edited", label: "تعديل حركة فرع", hint: "عند تعديل حركة تحويل بين الفروع" },
+        { field: "telegram_branch_transfer_cancelled", label: "إلغاء حركة فرع", hint: "عند إلغاء حركة تحويل بين الفروع" },
       ],
     },
     {
@@ -2528,8 +2715,14 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
         { field: "notifyDebtPayment", label: t("telegram.toggleDebtPayment"), hint: t("telegram.hintDebtPayment") },
         { field: "notifyInstallmentPaid", label: t("telegram.toggleInstallmentPaid"), hint: t("telegram.hintInstallmentPaid") },
         { field: "notifyExpenseCreated", label: t("telegram.toggleExpenseCreated"), hint: t("telegram.hintExpenseCreated") },
+        { field: "notifyExpenseEdited", label: "تعديل مصروف", hint: "عند تعديل مبلغ أو بيانات مصروف مسجّل" },
+        { field: "notifyExpenseDeleted", label: "حذف مصروف", hint: "عند حذف مصروف نهائياً" },
         { field: "notifyRevenueCreated", label: t("telegram.toggleRevenueCreated"), hint: t("telegram.hintRevenueCreated") },
+        { field: "notifyRevenueEdited", label: "تعديل إيراد", hint: "عند تعديل مبلغ أو بيانات إيراد مسجّل" },
+        { field: "notifyRevenueDeleted", label: "حذف إيراد", hint: "عند حذف إيراد نهائياً" },
         { field: "notifyWithdrawalCreated", label: t("telegram.toggleWithdrawalCreated"), hint: t("telegram.hintWithdrawalCreated") },
+        { field: "telegram_withdrawal_edited", label: "تعديل سحب نقدي", hint: "عند تعديل مبلغ أو بيانات سحب نقدي مسجّل" },
+        { field: "telegram_withdrawal_deleted", label: "حذف سحب نقدي", hint: "عند حذف سحب نقدي نهائياً" },
       ],
     },
     {
@@ -2548,7 +2741,7 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
       events: [
         { field: "notifyPurchaseVoided", label: t("telegram.togglePurchaseVoided"), hint: t("telegram.hintPurchaseVoided") },
         { field: "notifyPurchaseReturn", label: t("telegram.togglePurchaseReturn"), hint: t("telegram.hintPurchaseReturn") },
-        { field: "notifyBranchTransfer", label: t("telegram.toggleBranchTransfer"), hint: t("telegram.hintBranchTransfer") },
+        { field: "notifyBranchTransfer", label: t("telegram.toggleBranchTransfer"), hint: t("telegram.hintBranchTransfer"), subTemplates: ["telegram_purchase_edited", "telegram_purchase_return_cancelled", "telegram_branch_transfer_edited", "telegram_branch_transfer_cancelled"] },
       ],
     },
     {
@@ -2598,6 +2791,552 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
       ],
     },
   ];
+}
+
+// Renders a Telegram message body: *bold* segments and line breaks.
+function TelegramMessageText({ text }) {
+  const lines = String(text || "").split("\n");
+  return (
+    <div dir="rtl" className="text-xs font-bold text-text-primary leading-relaxed">
+      {lines.map((line, i) => {
+        const parts = line.split(/(\*[^*\n]+\*)/g).filter(Boolean);
+        return (
+          <p key={i} className="min-h-[1.2em] break-words">
+            {parts.map((p, j) =>
+              p.length > 2 && p.startsWith("*") && p.endsWith("*")
+                ? <strong key={j} className="font-black">{p.slice(1, -1)}</strong>
+                : <React.Fragment key={j}>{p}</React.Fragment>
+            )}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// معاينة الرسالة — a compact, Telegram-styled chat preview of the exact
+// variant the recipient picked for this event.
+function TgEventPreviewModal({ eventLabel, templateKind, preset, onClose }) {
+  const { t } = useTranslation();
+  const [body, setBody] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [tplRes, varRes] = await Promise.all([
+          api.get("/api/whatsapp/crm/templates"),
+          api.get("/api/whatsapp/crm/template-variants"),
+        ]);
+        if (!alive) return;
+        const variants = varRes.data?.data || [];
+        const templates = tplRes.data?.data || [];
+        // Match by category AND label — matching label alone returned a
+        // variant from a different event, which made the preview look random.
+        const variant = variants.find((v) => v.category === templateKind && v.label === preset);
+        const tpl = templates.find((x) => x.kind === templateKind);
+        setBody(variant?.body || tpl?.body || null);
+      } catch {
+        if (alive) setBody(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [templateKind, preset]);
+
+  const sampleVars = TG_SAMPLE_DATA[templateKind] || {};
+  const rendered = body
+    ? Object.entries(sampleVars).reduce((acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), String(val)), body)
+    : "";
+  const presetShort = preset === TELEGRAM_PRESET_BRIEF ? t("telegram.presetBrief") : t("telegram.presetDetailed");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("telegram.sampleMessage")}
+      >
+        {/* Chat header */}
+        <div className="flex items-center gap-2.5 border-b border-border-normal bg-bg-base/70 px-4 py-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+            <Send className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-black text-text-primary">{t("telegram.botPreviewName")}</p>
+            <p className="truncate text-[10px] font-bold text-text-muted">{eventLabel}</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">{presetShort}</span>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-bg-overlay">
+            <X className="h-4 w-4 text-text-muted" />
+          </button>
+        </div>
+
+        {/* Chat canvas */}
+        <div
+          className="max-h-[55vh] overflow-y-auto bg-bg-base px-3 py-4"
+          style={{ backgroundImage: "radial-gradient(var(--border-subtle) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
+        >
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : body ? (
+            <div className="max-w-[94%] rounded-2xl rtl:rounded-tr-md ltr:rounded-tl-md border border-border-normal bg-bg-surface px-3.5 py-2.5 shadow-card">
+              <TelegramMessageText text={rendered} />
+              <div className="mt-1.5 flex items-center justify-end gap-0.5 text-[9px] font-bold text-text-muted">
+                <span className="me-1">{t("telegram.previewTimeNow")}</span>
+                <Check className="h-3 w-3 text-primary" />
+                <Check className="-ms-2 h-3 w-3 text-primary" />
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-xs font-bold text-text-muted">{t("telegram.templateNotFound")}</div>
+          )}
+        </div>
+
+        <div className="border-t border-border-normal bg-bg-surface px-4 py-2.5 text-center text-[10px] font-bold text-text-muted">
+          {t("telegram.templatePreviewNote")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TgPresetSegment({ value, onChange }) {
+  const { t } = useTranslation();
+  return (
+    <div className="inline-flex rounded-lg border border-border-normal bg-bg-base p-0.5">
+      {TELEGRAM_PRESET_OPTIONS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          className={`rounded-md px-2.5 py-1 text-[10px] font-black transition-colors ${value === p ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"}`}
+        >
+          {p === TELEGRAM_PRESET_BRIEF ? t("telegram.presetBrief") : t("telegram.presetDetailed")}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TgEventRow({ event, checked, preset, onToggle, onPresetChange, onPreview }) {
+  const { t } = useTranslation();
+  return (
+    <div className={`rounded-lg border transition-colors ${checked ? "border-primary/30 bg-primary/5" : "border-border-subtle bg-bg-surface/40"}`}>
+      <div className="flex items-center gap-2.5 px-2.5 py-2">
+        <TelegramSwitch checked={checked} onChange={onToggle} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[11px] font-black text-text-primary">{event.label}</p>
+          <p className="truncate text-[10px] font-bold text-text-muted">{event.hint}</p>
+        </div>
+      </div>
+      {checked && (
+        <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-border-subtle/60 px-2.5 py-1.5">
+          <TgPresetSegment value={preset} onChange={onPresetChange} />
+          <button
+            type="button"
+            onClick={onPreview}
+            title={t("telegram.seeSample")}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black text-primary transition-colors hover:bg-primary/10"
+          >
+            <Eye className="h-3 w-3" />
+            {t("telegram.previewMessage")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TgEventCategory({ category, recipient, onUpdate, expanded, onToggleExpand, onPreview }) {
+  const { t } = useTranslation();
+  const enabledCount = category.events.filter((e) => recipient[e.field]).length;
+  const allChecked = enabledCount === category.events.length;
+  const someChecked = enabledCount > 0;
+
+  const patchFor = (field, val) =>
+    field === "notifyRepairOrder"
+      ? { notifyRepairOrder: val, notifyRepairCreated: val, notifyRepairReady: val, notifyRepairDelivered: val }
+      : { [field]: val };
+
+  const toggleAll = (val) => {
+    const patch = {};
+    category.events.forEach((ev) => Object.assign(patch, patchFor(ev.field, val)));
+    onUpdate(patch);
+  };
+
+  const getPreset = (field) => recipient.eventPresets?.[field] || TELEGRAM_PRESET_DETAILED;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border-normal bg-bg-base">
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-right transition-colors hover:bg-bg-surface/60"
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <category.icon className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate text-[11px] font-black text-text-primary">{category.label}</span>
+          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${allChecked ? "bg-success-bg text-success-text" : someChecked ? "bg-warning-bg text-warning-text" : "bg-bg-surface text-text-muted"}`}>
+            {t("telegram.categoryEventsCount", { enabled: enabledCount, total: category.events.length })}
+          </span>
+          <ChevronDown className={`ms-auto h-4 w-4 shrink-0 text-text-muted transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        <div className="shrink-0 border-s border-border-normal px-3 py-2.5" title={allChecked ? t("telegram.deselectAll") : t("telegram.toggleAll")}>
+          <TelegramSwitch checked={allChecked} onChange={toggleAll} />
+        </div>
+      </div>
+      {expanded && (
+        <div className="grid gap-1.5 border-t border-border-normal p-2.5 md:grid-cols-2">
+          {category.events.map((e) => (
+            <TgEventRow
+              key={e.field}
+              event={e}
+              checked={Boolean(recipient[e.field])}
+              preset={getPreset(e.field)}
+              onToggle={(val) => onUpdate(patchFor(e.field, val))}
+              onPresetChange={(p) => onUpdate({ eventPresets: { ...recipient.eventPresets, [e.field]: p } })}
+              onPreview={() => onPreview({ field: e.field, label: e.label, preset: getPreset(e.field) })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TgRecipientTile({ recipient, index, selected, onSelect }) {
+  const { t } = useTranslation();
+  const name = recipient.name?.trim() || t("telegram.unnamedRecipient");
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex items-center gap-2.5 rounded-xl border p-3 text-right transition-all ${selected ? "border-primary bg-primary/5 shadow-card" : "border-border-normal bg-bg-base hover:border-primary/40"}`}
+    >
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white ${selected ? "bg-primary" : "bg-text-muted"}`}>
+        {index + 1}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-xs font-black text-text-primary">{name}</span>
+          {index === 0 && (
+            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-black text-primary">{t("telegram.defaultRecipient")}</span>
+          )}
+        </span>
+        <span dir="ltr" className="block truncate text-start text-[10px] font-bold text-text-muted">
+          {recipient.chatId || t("telegram.recipientChatMissing")}
+        </span>
+      </span>
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${recipient.enabled && recipient.chatId ? "bg-success-text" : "bg-text-muted"}`}
+        title={recipient.enabled ? t("telegram.enabled") : t("telegram.disabled")}
+      />
+    </button>
+  );
+}
+
+function TgRecipientEditor({
+  recipient, index, eventCategories,
+  onUpdate, onDetect, onTest, onAskDelete,
+  testing, detecting, saving, justSaved, hasBotToken,
+}) {
+  const { t } = useTranslation();
+  const [expandedCats, setExpandedCats] = React.useState(() => new Set(["sales"]));
+  const [preview, setPreview] = React.useState(null); // { field, label, preset }
+
+  const totalEnabled = eventCategories.reduce(
+    (sum, cat) => sum + cat.events.filter((e) => recipient[e.field]).length, 0
+  );
+  const totalEvents = eventCategories.reduce((sum, cat) => sum + cat.events.length, 0);
+  const allExpanded = expandedCats.size === eventCategories.length;
+
+  const toggleCategory = (key) => {
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const displayName = recipient.name?.trim() || t("telegram.unnamedRecipient");
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-primary/40 bg-bg-surface shadow-card">
+      {/* Recipient header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-normal bg-bg-base/60 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-black text-white">
+            {index + 1}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="truncate text-xs font-black text-text-primary">{displayName}</p>
+              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${recipient.enabled ? "bg-success-bg text-success-text" : "bg-bg-base text-text-muted"}`}>
+                {recipient.enabled ? t("telegram.enabled") : t("telegram.disabled")}
+              </span>
+            </div>
+            <p className="mt-0.5 text-[10px] font-bold text-text-muted">
+              {recipient.chatId ? t("telegram.recipientChatSummary", { chatId: recipient.chatId }) : t("telegram.recipientChatMissing")}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <TelegramSwitch
+            checked={recipient.enabled}
+            onChange={(val) => onUpdate({ enabled: val })}
+            label={t("telegram.notificationsOn")}
+          />
+          <button
+            type="button"
+            onClick={onTest}
+            disabled={testing || !recipient.enabled || !recipient.chatId}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] font-black text-primary transition-all hover:bg-primary/10 active:scale-95 disabled:opacity-50"
+          >
+            {testing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            {t("telegram.testSend")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onAskDelete(index, displayName)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-[11px] font-black text-danger-text transition-all hover:opacity-90 active:scale-95"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t("telegram.deleteRecipient")}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-4">
+        {/* Identity */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-[11px] font-black text-text-secondary">{t("telegram.recipientName")}</label>
+            <input
+              type="text"
+              value={recipient.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+              placeholder={t("telegram.recipientNamePlaceholder")}
+              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none transition-colors focus:border-primary focus:bg-bg-surface"
+            />
+            <p className="mt-1 text-[10px] font-bold text-text-muted">{t("telegram.recipientNameHint")}</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-black text-text-secondary">{t("telegram.chatId")} *</label>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                dir="ltr"
+                value={recipient.chatId}
+                onChange={(e) => onUpdate({ chatId: e.target.value })}
+                placeholder={t("telegram.chatIdPlaceholder")}
+                className="min-w-0 flex-1 rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none transition-colors focus:border-primary focus:bg-bg-surface"
+              />
+              <button
+                type="button"
+                onClick={onDetect}
+                disabled={detecting || saving || !hasBotToken}
+                title={t("telegram.chatIdDetectHint")}
+                className="flex shrink-0 items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-[10px] font-black text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+              >
+                {detecting || saving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Scan className="h-3 w-3" />}
+                <span className="hidden sm:inline">{detecting ? t("telegram.detecting") : t("telegram.detectButton")}</span>
+              </button>
+            </div>
+            <details className="group mt-1">
+              <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-black text-primary hover:underline">
+                <Info className="h-3 w-3" />
+                {t("telegram.chatIdHintSummary")}
+              </summary>
+              <div className="mt-1.5 whitespace-pre-line rounded-lg bg-bg-base p-2.5 text-[10px] font-bold leading-relaxed text-text-secondary">
+                {t("telegram.chatIdHintDetailed")}
+              </div>
+            </details>
+          </div>
+        </div>
+
+        {/* Events */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-black text-text-primary">{t("telegram.recipientEvents")}</p>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">
+                {t("telegram.categoryEventsCount", { enabled: totalEnabled, total: totalEvents })}
+              </span>
+              {justSaved && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-success-text">
+                  <CheckCircle className="h-3.5 w-3.5" /> {t("telegram.saved")}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setExpandedCats(allExpanded ? new Set() : new Set(eventCategories.map((c) => c.key)))}
+              className="inline-flex items-center gap-1 text-[10px] font-black text-primary hover:underline"
+            >
+              {allExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {allExpanded ? t("telegram.collapseAllCats") : t("telegram.expandAllCats")}
+            </button>
+          </div>
+          <p className="text-[10px] font-bold text-text-muted">{t("telegram.eventsSaveHint")}</p>
+          <div className="space-y-2">
+            {eventCategories.map((cat) => (
+              <TgEventCategory
+                key={cat.key}
+                category={cat}
+                recipient={recipient}
+                onUpdate={onUpdate}
+                expanded={expandedCats.has(cat.key)}
+                onToggleExpand={() => toggleCategory(cat.key)}
+                onPreview={setPreview}
+              />
+            ))}
+          </div>
+          {!recipient.chatId && (
+            <div className="flex items-center gap-1 rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-[10px] font-bold text-warning-text">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {t("telegram.chatIdRequiredToSave")}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {preview && (
+        <TgEventPreviewModal
+          eventLabel={preview.label}
+          templateKind={TG_EVENT_TEMPLATE_MAP[preview.field]}
+          preset={preview.preset}
+          onClose={() => setPreview(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TelegramTab({ telegramEnabled, onConfigChanged }) {
+  const { t } = useTranslation();
+  const {
+    config, setConfig, loading, loadError, saving, saved, dirty, testing,
+    disconnecting,
+    recipients, updateRecipientLocal, deleteRecipient, saveSingleRecipient, refreshRecipients,
+    qrData, generatingQr, pollStatus,
+    botInfo, validating,
+    history, loadingHistory, fetchHistory,
+    generateDeepLink, save, sendTest, disconnect,
+  } = useTelegramConnect(onConfigChanged);
+
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [showAddWizard, setShowAddWizard] = useState(false);
+  const [showConnectWizard, setShowConnectWizard] = useState(false);
+  const [expandedToken, setExpandedToken] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [savingRecipientIdx, setSavingRecipientIdx] = useState(null);
+  const [savedRecipientIdx, setSavedRecipientIdx] = useState(null);
+  const [detectingRecipientIdx, setDetectingRecipientIdx] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deletingRecipient, setDeletingRecipient] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'failed' | 'pending'
+  const [expandedErrorId, setExpandedErrorId] = useState(null);
+  const [retryingQueue, setRetryingQueue] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const HISTORY_LIMIT = 30;
+  const historyIntervalRef = React.useRef(null);
+
+  const eventCategories = React.useMemo(() => buildTelegramEventCategories(t), [t]);
+
+  // Fetch history on mount (once loading finishes) and after each save
+  useEffect(() => {
+    if (!loading) fetchHistory(HISTORY_LIMIT);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, saved]);
+
+  // Auto-refresh history every 30s while tab is visible
+  useEffect(() => {
+    historyIntervalRef.current = setInterval(() => fetchHistory(HISTORY_LIMIT), 30_000);
+    return () => clearInterval(historyIntervalRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleRetryQueue() {
+    setRetryingQueue(true);
+    try {
+      await api.post('/api/telegram/retry-queue');
+      await fetchHistory(HISTORY_LIMIT);
+      toast.success('تمت إعادة المحاولة');
+    } catch { toast.error('تعذرت إعادة المحاولة'); }
+    finally { setRetryingQueue(false); }
+  }
+
+  function copyError(row) {
+    const text = `الحدث: ${row.event_type}\nالوقت: ${row.created_at}\nالخطأ: ${row.error || '—'}\nالرسالة: ${(row.text || '').slice(0, 300)}`;
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopiedId(row.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  const StepBadge = ({ n, done }) => (
+    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-success-text text-white" : "bg-primary text-white"}`}>
+      {done ? <Check className="h-3.5 w-3.5" /> : n}
+    </span>
+  );
+
+  const isBotConnected = Boolean(config.telegram_bot_token.trim());
+  const hasEnabledRecipient = recipients.some(r => r.enabled && r.chatId);
+  const safeIdx = recipients.length === 0 ? 0 : Math.min(selectedIdx, recipients.length - 1);
+  const selectedRecipient = recipients[safeIdx];
+
+  async function handleConfirmDeleteRecipient() {
+    if (deleteConfirm == null) return;
+    setDeletingRecipient(true);
+    try {
+      await deleteRecipient(deleteConfirm.index);
+      toast.success(t("telegram.recipientDeleted"));
+      setDeleteConfirm(null);
+      setSelectedIdx(0);
+    } catch { /* toast shown by hook */ }
+    finally { setDeletingRecipient(false); }
+  }
+
+  async function detectForRecipient(index) {
+    if (!config.telegram_bot_token.trim()) { toast.error(t("telegram.detectNeedsToken")); return; }
+    setDetectingRecipientIdx(index);
+    try {
+      const r = await api.post("/api/telegram/detect-chat-id", {
+        bot_token: config.telegram_bot_token.trim(),
+        api_base: config.telegram_api_base?.trim() || undefined,
+      }, { validateStatus: s => s < 500 });
+      const body = r.data;
+      if (body?.found === false) {
+        toast.error(t("telegram.detectNothing"), { duration: 4000 });
+      } else if (body?.data?.chatId) {
+        const current = recipients[index];
+        const patch = { chatId: String(body.data.chatId), name: current?.name || body.data.chatName || "" };
+        updateRecipientLocal(index, patch);
+        toast.success(body.data.chatName ? t("telegram.detectFound", { name: body.data.chatName }) : t("telegram.detectFoundNoName"));
+        setSavingRecipientIdx(index);
+        try {
+          await saveSingleRecipient(index, { ...(current || {}), ...patch });
+          setSavedRecipientIdx(index);
+          setTimeout(() => setSavedRecipientIdx(null), 2000);
+        } catch { /* toast shown by hook */ }
+        finally { setSavingRecipientIdx(null); }
+      } else if (body?.success === false) {
+        toast.error(body.message || t("telegram.detectError"));
+      }
+    } catch (e) { toast.error(e.response?.data?.message || t("telegram.detectError")); }
+    finally { setDetectingRecipientIdx(null); }
+  }
 
   const EVENT_TYPE_MAP = {
     NEW_INVOICE: { icon: Receipt, label: t("telegram.toggleNewInvoice") },
@@ -2617,7 +3356,6 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
     BACKUP_RESULT: { icon: Monitor, label: t("telegram.toggleSystem") },
     FAILED_LOGIN: { icon: Monitor, label: t("telegram.toggleSystem") },
     TEST: { icon: Send, label: t("telegram.test") },
-    // Extended events
     STOCK_TRANSFERRED: { icon: Package, label: t("telegram.toggleStockTransfer") },
     INVENTORY_ADJUSTED: { icon: ClipboardList, label: t("telegram.toggleInventoryAdjustment") },
     NEW_PRODUCT: { icon: Tags, label: t("telegram.toggleNewProduct") },
@@ -2651,410 +3389,159 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
     pending: { label: t("telegram.statusPending"), cls: "bg-warning-bg text-warning-text" },
   };
 
-  // Template category mapping for preview (each event maps to its template kind)
-  const EVENT_TEMPLATE_MAP = {
-    notifyNewInvoice: "telegram_new_invoice",
-    notifyDailyClose: "telegram_daily_close",
-    notifyLargeAmounts: "telegram_large_invoice",
-    notifyReturnsVoids: "telegram_sales_return",
-    notifyPurchasesPayments: "telegram_purchase_created",
-    notifyReturnPayment: "telegram_return_payment",
-    notifyCustomerCreated: "telegram_customer_created",
-    notifySupplierCreated: "telegram_supplier_created",
-    notifyExpenseCreated: "telegram_expense_created",
-    notifyLowStock: "telegram_low_stock",
-    notifySystem: "telegram_backup_result",
-    notifyWeekly: "telegram_weekly_digest",
-    notifyMonthly: "telegram_monthly_digest",
-    notifyYearly: "telegram_yearly_digest",
-    notifyStockTransfer: "telegram_stock_transfer",
-    notifyInventoryAdjustment: "telegram_inventory_adjustment",
-    notifyNewProduct: "telegram_new_product",
-    notifyPriceChange: "telegram_price_change",
-    notifyBatchExpiry: "telegram_batch_expiry",
-    notifyPhysicalCount: "telegram_physical_count",
-    notifySupplierPayment: "telegram_supplier_payment",
-    notifyDebtPayment: "telegram_debt_payment",
-    notifyInstallmentPaid: "telegram_installment_paid",
-    notifyPurchaseVoided: "telegram_purchase_voided",
-    notifyPurchaseReturn: "telegram_purchase_return",
-    notifyBranchTransfer: "telegram_branch_transfer",
-    notifyPasswordChanged: "telegram_password_changed",
-    notifyPermissionChanged: "telegram_permission_changed",
-    notifySupervisorOverride: "telegram_supervisor_override",
-    notifyRepairOrder: "telegram_repair_created",
-    notifyRevenueCreated: "telegram_revenue_created",
-    notifyWithdrawalCreated: "telegram_withdrawal_created",
-    notifyEmployeeCreated: "telegram_employee_created",
-    notifySalarySettled: "telegram_salary_settled",
-    notifyAdvanceCreated: "telegram_advance_created",
-    notifyDeductionCreated: "telegram_deduction_created",
-    notifyBonusCreated: "telegram_bonus_created",
-  };
+  const failedCount = history.filter(r => r.status === 'failed').length;
+  const pendingCount = history.filter(r => r.status === 'pending').length;
+  const alertCount = failedCount + pendingCount;
 
-  // Sample data for template preview
-  const SAMPLE_DATA = {
-    telegram_new_invoice: { invoice_no: "12345", customer_name: "أحمد محمد", total: "1,500.00 ج", items_count: 5, items_table: "1. سماعة بلوتوث | الكمية: 2 | السعر: 250.00 | الإجمالي: 500.00", payment_breakdown: "• نقداً: 800.00 ج\n• شبكة: 700.00 ج" },
-    telegram_customer_payment: { customer_name: "سعيد علي", amount: "500.00 ج", method: "نقداً" },
-    telegram_stock_transfer: { from_warehouse: "المستودع الرئيسي", to_warehouse: "فرع القاهرة", items_table: "1. لابتوب HP | الكمية: 10 | السعر: 15,000.00 | الإجمالي: 150,000.00", items_count: 3, total_units: 25, time: new Date().toLocaleString("ar-EG") },
-    telegram_branch_transfer: { reference_no: "BT-S-2024-001", from_branch: "الفرع الأول", to_warehouse: "الفرع الثاني", transfer_type: "إرسال", items_table: "1. هاتف Samsung | الكمية: 5 | السعر: 8,000.00 | الإجمالي: 40,000.00", items_count: 2, total_units: 8, total_cost: "48,000.00 ج", time: new Date().toLocaleString("ar-EG") },
-    telegram_customer_created: { customer_name: "خالد عبدالله", phone: "01234567890", city: "القاهرة", opening_balance: "0.00 ج" },
-    telegram_password_changed: { user_name: "محمد أحمد", time: new Date().toLocaleString("ar-EG"), ip_address: "192.168.1.100" },
-    telegram_repair_created: { order_no: "RPR-001", customer_name: "فاطمة حسن", device_type: "لابتوب", problem: "لا يشتعل الشاشة", estimated_cost: "300.00 ج", time: new Date().toLocaleString("ar-EG") },
-    telegram_low_stock: { product_name: "سماعة بلوتوث", current_quantity: 3, min_quantity: 10 },
-    telegram_revenue_created: { doc_no: "REV-001", amount: "5,000.00 ج", category: "إيراد مبيعات", description: "مبيعات يوم الجمعة", method: "نقداً", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_withdrawal_created: { doc_no: "WD-001", amount: "2,000.00 ج", category: "مصروفات تشغيل", note: "دفع فاتورة كهرباء", method: "نقداً", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_expense_created: { category: "إيجار", amount: "10,000.00 ج", date: "2024-07-01", notes: "إيجار شهر يوليو" },
-    telegram_employee_created: { employee_name: "محمد علي", job_title: "محاسب", salary: "8,000.00 ج", phone: "01012345678", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
-    telegram_salary_settled: { employee_name: "محمد علي", period: "2024-06-01 → 2024-06-30", base_salary: "8,000.00 ج", bonuses: "500.00 ج", deductions: "200.00 ج", advance_deductions: "300.00 ج", net_salary: "8,000.00 ج", paid_amount: "8,000.00 ج", user_name: "المحاسب", time: new Date().toLocaleString("ar-EG") },
-    telegram_advance_created: { employee_name: "محمد علي", amount: "3,000.00 ج", installment_count: 3, installment_amount: "1,000.00 ج", notes: "سلفة شخصية", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
-    telegram_deduction_created: { employee_name: "محمد علي", amount: "200.00 ج", deduction_type: "تأخير", is_recurring: "لا", notes: "تأخير عن العمل", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
-    telegram_bonus_created: { employee_name: "محمد علي", amount: "500.00 ج", bonus_type: "أداء", is_recurring: "لا", notes: "أداء ممتاز", user_name: "المدير", time: new Date().toLocaleString("ar-EG") },
-    telegram_daily_close: { date: "2024-07-01", opening_balance: "1,000.00 ج", cash_sales: "5,000.00 ج", credit_sales: "2,000.00 ج", expected_cash: "6,000.00 ج", actual_cash: "5,950.00 ج", discrepancy: "-50.00 ج", invoices_count: 25 },
-    telegram_shift_close: { shift_id: "VR-042", opening_cash: "500.00 ج", expected_cash: "3,500.00 ج", closing_cash: "3,480.00 ج", discrepancy: "-20.00 ج", invoices_count: 15 },
-    telegram_large_invoice: { invoice_no: "12399", customer_name: "محمد سعيد", total: "50,000.00 ج" },
-    telegram_large_discount: { invoice_no: "12400", discount_percent: "35%" },
-    telegram_invoice_voided: { invoice_no: "12350", reason: "خطأ في الإدخال", user_name: "أحمد" },
-    telegram_return_payment: { customer_name: "خالد عبدالله", amount: "300.00 ج", method: "نقداً", date: "2024-07-01" },
-    telegram_supplier_created: { supplier_name: "شركة飐قة مصر", phone: "0221234567", opening_balance: "0.00 ج" },
-    telegram_purchase_voided: { reference_no: "PO-2024-001", supplier_name: "شركة飐قة مصر", total: "25,000.00 ج", reason: "خطأ في الكمية", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_purchase_return: { reference_no: "PR-2024-001", supplier_name: "شركة飐قة مصر", total: "5,000.00 ج", items_table: "1. لابتوب HP | الكمية: 1 | السعر: 5,000.00 | الإجمالي: 5,000.00", items_count: 1, user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_supplier_payment: { supplier_name: "شركة飐قة مصر", amount: "10,000.00 ج", method: "شيك", reference: " CHK-001", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_debt_payment: { customer_name: "سعيد علي", amount: "2,000.00 ج", method: "نقداً", remaining_debt: "3,000.00 ج", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_inventory_adjustment: { product_name: "سماعة بلوتوث", warehouse: "المستودع الرئيسي", old_quantity: 50, new_quantity: 48, difference: -2, reason: "تلف", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_new_product: { product_name: "شاحن لاسلكي", sku: "CHG-WL-001", price: "250.00 ج", warehouse: "المستودع الرئيسي", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_price_change: { product_name: "سماعة بلوتوث", old_price: "300.00 ج", new_price: "250.00 ج", change_percent: "-16.7%", user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_batch_expiry: { product_name: "شاحن لاسلكي", batch_no: "BATCH-001", expiry_date: "2024-12-31", remaining_quantity: 25, warehouse: "المستودع الرئيسي" },
-    telegram_physical_count: { warehouse: "المستودع الرئيسي", matched_count: 150, mismatched_count: 5, total_items: 155, user_name: "أحمد", time: new Date().toLocaleString("ar-EG") },
-    telegram_permission_changed: { user_name: "محمد أحمد", action: "تم تغيير الصلاحيات", details: "إضافة صلاحية إدارة المخزون", changed_by: "المدير", time: new Date().toLocaleString("ar-EG") },
-    telegram_supervisor_override: { user_name: "محمد أحمد", action: "تجاوز صلاحيات", details: "إلغاء فاتورة بقيمة 5,000.00 ج", supervisor: "المدير العام", time: new Date().toLocaleString("ar-EG") },
-  };
-
-  function EventPreviewModal({ eventField, preset, onClose }) {
-    const [template, setTemplate] = React.useState(null);
-    const [loading, setLoading] = React.useState(true);
-    const templateKind = EVENT_TEMPLATE_MAP[eventField];
-    const activePreset = preset || "قياسي — مفصل";
-
-    React.useEffect(() => {
-      if (!templateKind) { setLoading(false); return; }
-      const fetchTemplate = async () => {
-        try {
-          const res = await api.get("/api/whatsapp/crm/templates");
-          const templates = res.data?.data || [];
-          const tpl = templates.find(t => t.kind === templateKind);
-          if (!tpl) { setTemplate(null); return; }
-          try {
-            const vr = await api.get("/api/whatsapp/crm/template-variants", { params: { category: templateKind, label: activePreset } });
-            const variants = vr.data?.data || [];
-            const variant = variants.find(v => v.label === activePreset && v.is_active);
-            if (variant && variant.body) {
-              setTemplate({ ...tpl, body: variant.body });
-            } else {
-              setTemplate(tpl);
-            }
-          } catch {
-            setTemplate(tpl);
-          }
-        } catch { /* silent */ }
-        finally { setLoading(false); }
-      };
-      fetchTemplate();
-    }, [templateKind, activePreset]);
-
-    const sampleVars = SAMPLE_DATA[templateKind] || {};
-    const renderedBody = template?.body
-      ? Object.entries(sampleVars).reduce((acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), val), template.body)
-      : "";
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-        <div className="bg-bg-surface rounded-2xl shadow-modal w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-normal">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-black text-text-primary">{t("telegram.sampleMessage")}</h3>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{activePreset}</span>
-            </div>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-bg-overlay"><X className="h-4 w-4 text-text-muted" /></button>
-          </div>
-          <div className="p-4">
-            {loading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : template ? (
-              <div className="space-y-3">
-                <div className="bg-bg-base rounded-xl p-4 border border-border-normal">
-                  <pre className="text-xs font-bold text-text-primary whitespace-pre-wrap font-sans leading-relaxed">{renderedBody}</pre>
-                </div>
-                <div className="text-[10px] font-bold text-text-muted text-center">{t("telegram.templatePreviewNote")}</div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-text-muted text-xs">{t("telegram.templateNotFound")}</div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function EventToggleGroup({ category, recipient, onUpdate }) {
-    const [previewField, setPreviewField] = React.useState(null);
-    const [openPresetDropdown, setOpenPresetDropdown] = React.useState(null);
-    const PRESET_OPTIONS = ["قياسي — مفصل", "مختصر — سريع"];
-    const allChecked = category.events.every(e => recipient[e.field]);
-    const someChecked = category.events.some(e => recipient[e.field]);
-    const toggleAll = () => {
-      const val = !allChecked;
-      const patch = {};
-      category.events.forEach(e => { patch[e.field] = val; });
-      onUpdate(patch);
-    };
-    const getPreset = (field) => recipient.eventPresets?.[field] || PRESET_OPTIONS[0];
-    const setPreset = (field, preset) => {
-      onUpdate({ eventPresets: { ...recipient.eventPresets, [field]: preset } });
-    };
-    return (
-      <>
-        <div className="rounded-xl border border-border-normal bg-bg-base overflow-hidden">
-          <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-normal bg-bg-surface/50">
-            <div className="flex items-center gap-2">
-              <category.icon className="h-3.5 w-3.5 text-primary" />
-              <span className="text-[11px] font-black text-text-primary">{category.label}</span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${allChecked ? "bg-success-bg text-success-text" : someChecked ? "bg-warning-bg text-warning-text" : "bg-bg-base text-text-muted"}`}>
-                {category.events.filter(e => recipient[e.field]).length}/{category.events.length}
-              </span>
-            </div>
-            <button type="button" onClick={toggleAll}
-              className="text-[10px] font-black text-primary hover:underline">
-              {allChecked ? t("telegram.deselectAll") : t("telegram.toggleAll")}
-            </button>
-          </div>
-          <div className="px-3 py-2 space-y-1">
-            {category.events.map(e => (
-              <div key={e.field} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-bg-surface transition-colors">
-                <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                  <input type="checkbox" checked={recipient[e.field]}
-                    onChange={ev => onUpdate({ [e.field]: ev.target.checked })}
-                    className="h-3.5 w-3.5 rounded border-border-normal text-primary focus:ring-primary shrink-0" />
-                  <span className="text-[11px] font-black text-text-primary truncate">{e.label}</span>
-                  <span className="text-[10px] font-bold text-text-muted hidden sm:inline truncate">— {e.hint}</span>
-                </label>
-                <div className="relative shrink-0">
-                  <button type="button" onClick={() => setOpenPresetDropdown(openPresetDropdown === e.field ? null : e.field)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-text-muted hover:text-primary px-1.5 py-0.5 rounded hover:bg-bg-overlay transition-colors"
-                    title={t("telegram.seeSample")}>
-                    <Eye className="h-3 w-3" />
-                    <span className="hidden md:inline max-w-[60px] truncate">{getPreset(e.field) === "قياسي — مفصل" ? "مفصل" : "مختصر"}</span>
-                  </button>
-                  {openPresetDropdown === e.field && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setOpenPresetDropdown(null)} />
-                      <div className="absolute z-50 mt-1 end-0 w-44 rounded-xl border border-border-normal bg-bg-surface shadow-elevated overflow-hidden">
-                        <div className="px-2.5 py-1.5 border-b border-border-subtle">
-                          <span className="text-[10px] font-black text-text-muted">{t("telegram.presetChoice")}</span>
-                        </div>
-                        {PRESET_OPTIONS.map(p => (
-                          <div key={p} className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer transition-colors ${getPreset(e.field) === p ? "bg-primary-50" : "hover:bg-bg-overlay"}`}
-                            onClick={() => { setPreset(e.field, p); setOpenPresetDropdown(null); }}>
-                            <span className={`text-[11px] font-bold flex-1 ${getPreset(e.field) === p ? "text-primary" : "text-text-primary"}`}>{p}</span>
-                            <button type="button" onClick={ev => { ev.stopPropagation(); setPreviewField(e.field); setOpenPresetDropdown(null); }}
-                              className="p-1 rounded hover:bg-bg-base transition-colors" title={t("telegram.seeSample")}>
-                              <Eye className="h-3 w-3 text-text-muted hover:text-primary" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {previewField && <EventPreviewModal eventField={previewField} preset={getPreset(previewField)} onClose={() => setPreviewField(null)} />}
-      </>
-    );
-  }
-
-  function RecipientCard({ recipient, index }) {
-    const [detectingRecipient, setDetectingRecipient] = useState(null);
-    const update = (patch) => updateRecipientLocal(index, patch);
-
-    async function detectRecipientChatId() {
-      if (!config.telegram_bot_token.trim()) { toast.error(t("telegram.detectNeedsToken")); return; }
-      setDetectingRecipient(index);
-      try {
-        const r = await api.post("/api/telegram/detect-chat-id", {
-          bot_token: config.telegram_bot_token.trim(),
-          api_base: config.telegram_api_base?.trim() || undefined,
-        }, { validateStatus: s => s < 500 });
-        const body = r.data;
-        if (body?.found === false) {
-          toast.error(t("telegram.detectNothing"), { duration: 4000 });
-        } else if (body?.data?.chatId) {
-          update({ chatId: body.data.chatId, name: recipient.name || body.data.chatName || "" });
-          toast.success(body.data.chatName ? t("telegram.detectFound", { name: body.data.chatName }) : t("telegram.detectFoundNoName"));
-        } else if (body?.success === false) {
-          toast.error(body.message || t("telegram.detectError"));
-        }
-      } catch (e) { toast.error(e.response?.data?.message || t("telegram.detectError")); }
-      finally { setDetectingRecipient(null); }
-    }
-
-    const isFirst = index === 0;
-    return (
-      <div className={`rounded-xl border bg-bg-surface p-4 space-y-3 ${isFirst ? "border-primary/40 shadow-card" : "border-border-normal"}`}>
-        <div className="flex items-start gap-3">
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-black text-text-secondary mb-1 block">{t("telegram.recipientName")}</label>
-              <input type="text" value={recipient.name}
-                onChange={e => update({ name: e.target.value })}
-                placeholder={t("telegram.recipientNamePlaceholder")}
-                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label className="text-[11px] font-black text-text-secondary">{t("telegram.chatId")} *</label>
-                {isFirst && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-primary text-white">{t("telegram.defaultRecipient")}</span>}
-              </div>
-              <div className="flex gap-1.5">
-                <input type="text" dir="ltr" value={recipient.chatId}
-                  onChange={e => update({ chatId: e.target.value })}
-                  placeholder={t("telegram.chatIdPlaceholder")}
-                  className="flex-1 min-w-0 rounded-lg border border-border-normal bg-bg-input px-3 py-2 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-                <button type="button" onClick={detectRecipientChatId} disabled={detectingRecipient || !config.telegram_bot_token.trim()}
-                  className="shrink-0 flex items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-[10px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
-                  title={t("telegram.chatIdDetectHint")}>
-                  {detectingRecipient === index ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Scan className="h-3 w-3" />}
-                  <span className="hidden sm:inline">{t("telegram.detectButton")}</span>
-                </button>
-              </div>
-              <details className="group mt-1">
-                <summary className="text-[10px] font-black text-primary cursor-pointer list-none flex items-center gap-1 hover:underline">
-                  <Info className="h-3 w-3" />
-                  {t("telegram.chatIdHintSummary")}
-                </summary>
-                <div className="mt-1.5 rounded-lg bg-bg-base p-2.5 text-[10px] font-bold text-text-secondary leading-relaxed whitespace-pre-line">
-                  {t("telegram.chatIdHintDetailed")}
-                </div>
-              </details>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <label className="flex items-center gap-1.5 text-[11px] font-black text-text-secondary cursor-pointer">
-              <input type="checkbox" checked={recipient.enabled} onChange={e => update({ enabled: e.target.checked })}
-                className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
-              {recipient.enabled ? t("telegram.enabled") : t("telegram.disabled")}
-            </label>
-            <button type="button" onClick={() => sendTest(recipient.chatId)} disabled={testing || !recipient.enabled || !recipient.chatId}
-              className="text-[11px] font-black text-primary hover:underline flex items-center gap-1 disabled:opacity-50">
-              <Send className="h-3 w-3" /> {t("telegram.test")}
-            </button>
-            <button type="button" onClick={() => deleteRecipient(index)}
-              className="text-[11px] font-black text-danger-text hover:underline flex items-center gap-1">
-              <Trash2 className="h-3 w-3" /> {t("common.delete")}
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-[11px] font-black text-text-muted">{t("telegram.recipientEvents")}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {EVENT_CATEGORIES.map(cat => (
-              <EventToggleGroup key={cat.key} category={cat} recipient={recipient} onUpdate={update} />
-            ))}
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            {!recipient.chatId && (
-              <span className="text-[10px] font-bold text-warning-text flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> أدخل Chat ID للحفظ
-              </span>
-            )}
-            {savedRecipientIdx === index && (
-              <span className="text-[11px] font-bold text-success-text flex items-center gap-1 animate-pulse">
-                <CheckCircle className="h-3.5 w-3.5" /> {t("telegram.saved")}
-              </span>
-            )}
-            <button type="button" onClick={async () => {
-              setSavingRecipientIdx(index);
-              setSavedRecipientIdx(null);
-              try {
-                await saveSingleRecipient(index);
-                setSavedRecipientIdx(index);
-                setTimeout(() => setSavedRecipientIdx(null), 2000);
-              } catch { /* handled by hook */ }
-              finally { setSavingRecipientIdx(null); }
-            }} disabled={savingRecipientIdx === index || !recipient.chatId}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-              {savingRecipientIdx === index ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-              {t("telegram.save")}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const filteredHistory = history.filter(r => {
+    if (historyFilter === 'failed') return r.status === 'failed';
+    if (historyFilter === 'pending') return r.status === 'pending';
+    return true;
+  });
 
   function HistorySection() {
     return (
       <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
-        <div className="flex items-center justify-between gap-2.5 mb-4">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4">
           <div className="flex items-center gap-2.5">
             <StepBadge n="٤" done={false} />
             <div>
-              <p className="text-sm font-black text-text-primary">{t("telegram.historyTitle")}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-black text-text-primary">{t("telegram.historyTitle")}</p>
+                {alertCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger-text text-[9px] font-black text-white">
+                    {alertCount}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] font-bold text-text-muted">
-                {saved ? `${history.length} ${t("telegram.historyTitle").toLowerCase()}` : t("telegram.historyNotConnected")}
+                {loadingHistory ? 'جاري التحميل...' : history.length === 0 ? 'لا توجد رسائل بعد' : `${history.length} رسالة`}
               </p>
             </div>
           </div>
-          {saved && (
-            <button type="button" onClick={() => { setHistoryPage(0); fetchHistory(HISTORY_LIMIT); }}
+          <div className="flex items-center gap-2">
+            {(failedCount > 0 || pendingCount > 0) && (
+              <button
+                type="button"
+                onClick={handleRetryQueue}
+                disabled={retryingQueue}
+                className="flex items-center gap-1 rounded-lg border border-warning-border bg-warning-bg px-2.5 py-1.5 text-[10px] font-black text-warning-text hover:opacity-90 disabled:opacity-50 transition-all"
+              >
+                {retryingQueue ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                إعادة المحاولة
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { setHistoryPage(0); fetchHistory(HISTORY_LIMIT); }}
               disabled={loadingHistory}
-              className="flex items-center gap-1 text-[11px] font-black text-primary hover:underline disabled:opacity-50">
-              <RefreshCw className={`h-3 w-3 ${loadingHistory ? "animate-spin" : ""}`} />
+              className="flex items-center gap-1 text-[11px] font-black text-primary hover:underline disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${loadingHistory ? 'animate-spin' : ''}`} />
               {t("telegram.historyRefresh")}
             </button>
-          )}
-        </div>
-        {!saved ? (
-          <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
-            <Clock className="h-8 w-8 text-text-muted mx-auto mb-2" />
-            <p className="text-xs font-black text-text-secondary">{t("telegram.historyNotConnected")}</p>
           </div>
-        ) : history.length === 0 ? (
+        </div>
+
+        {/* Filter pills */}
+        <div className="flex items-center gap-1.5 mb-3">
+          {[
+            { key: 'all', label: `الكل (${history.length})` },
+            { key: 'failed', label: `فشل (${failedCount})`, cls: failedCount > 0 ? 'text-danger-text' : '' },
+            { key: 'pending', label: `انتظار (${pendingCount})`, cls: pendingCount > 0 ? 'text-warning-text' : '' },
+          ].map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setHistoryFilter(f.key)}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-black transition-all ${
+                historyFilter === f.key
+                  ? 'bg-primary text-white'
+                  : `bg-bg-base border border-border-normal text-text-muted hover:border-primary/40 ${f.cls || ''}`
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {filteredHistory.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
             <Clock className="h-8 w-8 text-text-muted mx-auto mb-2" />
-            <p className="text-xs font-black text-text-secondary">{t("telegram.historyEmpty")}</p>
+            <p className="text-xs font-black text-text-secondary">
+              {loadingHistory ? 'جاري التحميل...' : historyFilter === 'all' ? 'لا توجد رسائل مسجلة بعد — ستظهر هنا بعد أول إشعار' : 'لا توجد رسائل بهذا الفلتر'}
+            </p>
           </div>
         ) : (
-          <div className="space-y-1.5 max-h-80 overflow-y-auto">
-            {history.map((row) => {
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+            {filteredHistory.map((row) => {
               const meta = EVENT_TYPE_MAP[row.event_type] || { icon: Send, label: row.event_type };
               const IconComp = meta.icon;
               const status = STATUS_MAP[row.status] || STATUS_MAP.pending;
+              const isExpanded = expandedErrorId === row.id;
+              const hasError = row.status === 'failed' && row.error;
               return (
-                <div key={row.id} className="flex items-center gap-2.5 rounded-lg border border-border-normal bg-bg-base px-3 py-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg-surface">
-                    <IconComp className="h-3.5 w-3.5 text-text-secondary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-black text-text-primary">{meta.label}</span>
-                      <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${status.cls}`}>{status.label}</span>
+                <div key={row.id} className={`rounded-lg border bg-bg-base overflow-hidden transition-all ${
+                  hasError ? 'border-danger-border/50' : 'border-border-normal'
+                }`}>
+                  <div className="flex items-center gap-2.5 px-3 py-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-bg-surface">
+                      <IconComp className="h-3.5 w-3.5 text-text-secondary" />
                     </div>
-                    {row.text && <p className="text-[10px] font-bold text-text-muted truncate mt-0.5">{row.text.slice(0, 80)}</p>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-black text-text-primary">{meta.label}</span>
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${status.cls}`}>{status.label}</span>
+                        {row.retry_count > 0 && (
+                          <span className="shrink-0 text-[9px] font-bold text-text-muted">× {row.retry_count} محاولة</span>
+                        )}
+                      </div>
+                      {row.text && <p className="text-[10px] font-bold text-text-muted truncate mt-0.5">{row.text.slice(0, 90)}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] font-bold text-text-muted">{row.created_at?.slice(0, 16)?.replace('T', ' ')}</span>
+                      {hasError && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedErrorId(isExpanded ? null : row.id)}
+                          title="عرض تفاصيل الخطأ"
+                          className="flex items-center justify-center h-6 w-6 rounded-md bg-danger-bg text-danger-text hover:opacity-80 transition-all"
+                        >
+                          <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold text-text-muted shrink-0">{row.created_at?.slice(0, 16)?.replace("T", " ")}</span>
+                  {isExpanded && hasError && (
+                    <div className="border-t border-danger-border/30 bg-danger-bg/30 px-3 py-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p dir="ltr" className="text-[10px] font-mono text-danger-text leading-relaxed flex-1 break-all">{row.error}</p>
+                        <button
+                          type="button"
+                          onClick={() => copyError(row)}
+                          title="نسخ تفاصيل الخطأ"
+                          className="shrink-0 flex items-center gap-1 rounded-md bg-bg-surface border border-border-normal px-2 py-1 text-[9px] font-black text-text-secondary hover:border-primary/40 transition-all"
+                        >
+                          {copiedId === row.id ? <Check className="h-3 w-3 text-success-text" /> : <Copy className="h-3 w-3" />}
+                          {copiedId === row.id ? 'تم النسخ' : 'نسخ'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
-        {saved && history.length >= HISTORY_LIMIT && (
-          <button type="button" onClick={() => { setHistoryPage(p => p + 1); fetchHistory(HISTORY_LIMIT * (historyPage + 2)); }}
+        {history.length >= HISTORY_LIMIT && (
+          <button
+            type="button"
+            onClick={() => { setHistoryPage(p => p + 1); fetchHistory(HISTORY_LIMIT * (historyPage + 2)); }}
             disabled={loadingHistory}
-            className="w-full mt-3 text-[11px] font-black text-primary hover:underline disabled:opacity-50">
+            className="w-full mt-3 text-[11px] font-black text-primary hover:underline disabled:opacity-50"
+          >
             {t("telegram.historyLoadMore")}
           </button>
         )}
@@ -3069,6 +3556,59 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
     <div className="space-y-5">
       {showAddWizard && <AddRecipientWizard onClose={() => setShowAddWizard(false)} onAdded={() => { setShowAddWizard(false); refreshRecipients(); toast.success(t("telegram.recipientAdded")); }} />}
       {showConnectWizard && <TelegramConnectWizard onClose={() => setShowConnectWizard(false)} onSaved={onConfigChanged} />}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !deletingRecipient && setDeleteConfirm(null)}>
+          <div
+            className="bg-bg-surface rounded-2xl shadow-modal w-full max-w-md overflow-hidden border border-danger-border"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="telegram-delete-recipient-title"
+          >
+            <div className="flex items-start gap-3 border-b border-danger-border bg-danger-bg px-5 py-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger-text/10">
+                <Trash2 className="h-5 w-5 text-danger-text" />
+              </div>
+              <div className="min-w-0">
+                <h3 id="telegram-delete-recipient-title" className="text-sm font-black text-danger-text">
+                  {t("telegram.deleteRecipientConfirmTitle")}
+                </h3>
+                <p className="text-[11px] font-bold text-text-secondary mt-1 leading-relaxed">
+                  {t("telegram.deleteRecipientConfirmMessage", { name: deleteConfirm.name })}
+                </p>
+                {recipients[deleteConfirm.index]?.chatId && (
+                  <p className="text-[10px] font-bold text-text-muted mt-1" dir="ltr">
+                    {t("telegram.recipientChatSummary", { chatId: recipients[deleteConfirm.index].chatId })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[11px] font-bold text-text-muted leading-relaxed">{t("telegram.deleteRecipientConfirmHint")}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-border-normal px-5 py-4 bg-bg-base/60">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deletingRecipient}
+                className="rounded-lg border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-base disabled:opacity-50 transition-all active:scale-95"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteRecipient}
+                disabled={deletingRecipient}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-danger-text px-4 py-2 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+              >
+                {deletingRecipient ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                {deletingRecipient ? t("telegram.deletingRecipient") : t("telegram.deleteRecipientConfirmAction")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
@@ -3215,7 +3755,14 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
           <div className="flex items-center gap-2.5">
             <StepBadge n="٢" done={hasEnabledRecipient} />
             <div>
-              <p className="text-sm font-black text-text-primary">{t("telegram.step2")}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-black text-text-primary">{t("telegram.step2")}</p>
+                {recipients.length > 0 && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">
+                    {t("telegram.recipientsCountBadge", { count: recipients.length })}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] font-bold text-text-muted">{t("telegram.recipientsHint")}</p>
             </div>
           </div>
@@ -3225,44 +3772,92 @@ function TelegramTab({ telegramEnabled, onConfigChanged }) {
             <Plus className="h-3.5 w-3.5" /> {t("telegram.addRecipient")}
           </button>
         </div>
-        <div className="space-y-3">
-          {recipients.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
-              <Users className="h-8 w-8 text-text-muted mx-auto mb-2" />
-              <p className="text-xs font-black text-text-secondary">{t("telegram.noRecipients")}</p>
-              <p className="text-[11px] font-bold text-text-muted mt-1">{t("telegram.noRecipientsHint")}</p>
-            </div>
-          ) : (
-            recipients.map((recipient, index) => (
-              <RecipientCard key={index} recipient={recipient} index={index} />
-            ))
-          )}
-        </div>
+
+        {recipients.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border-normal bg-bg-base p-6 text-center">
+            <Users className="h-8 w-8 text-text-muted mx-auto mb-2" />
+            <p className="text-xs font-black text-text-secondary">{t("telegram.noRecipients")}</p>
+            <p className="text-[11px] font-bold text-text-muted mt-1">{t("telegram.noRecipientsHint")}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recipients.length > 1 && (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {recipients.map((recipient, index) => (
+                  <TgRecipientTile
+                    key={recipient.id ?? `recipient-${index}`}
+                    recipient={recipient}
+                    index={index}
+                    selected={index === safeIdx}
+                    onSelect={() => setSelectedIdx(index)}
+                  />
+                ))}
+              </div>
+            )}
+            {selectedRecipient && (
+              <TgRecipientEditor
+                key={selectedRecipient.id ?? `editor-${safeIdx}`}
+                recipient={selectedRecipient}
+                index={safeIdx}
+                eventCategories={eventCategories}
+                onUpdate={(patch) => updateRecipientLocal(safeIdx, patch)}
+                onDetect={() => detectForRecipient(safeIdx)}
+                onTest={() => sendTest(selectedRecipient.chatId)}
+                onAskDelete={(index, name) => setDeleteConfirm({ index, name })}
+                testing={testing}
+                detecting={detectingRecipientIdx === safeIdx}
+                saving={savingRecipientIdx === safeIdx}
+                justSaved={savedRecipientIdx === safeIdx}
+                hasBotToken={Boolean(config.telegram_bot_token.trim())}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Step 3 — Enable + Save */}
+      {/* Step 3 — Enable */}
       <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
         <div className="flex items-center gap-2.5 mb-4">
           <StepBadge n="٣" done={saved} />
-          <p className="text-sm font-black text-text-primary">{t("telegram.step3")}</p>
+          <div>
+            <p className="text-sm font-black text-text-primary">{t("telegram.step3")}</p>
+            <p className="text-[11px] font-bold text-text-muted">{t("telegram.step3Hint")}</p>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <label className="flex flex-1 items-center justify-between rounded-lg border border-border-normal bg-bg-input px-4 py-3 cursor-pointer">
-            <span className="text-xs font-black text-text-primary">{t("telegram.enable")}</span>
-            <input type="checkbox" checked={config.telegram_enabled}
-              onChange={e => setConfig(c => ({ ...c, telegram_enabled: e.target.checked }))}
-              className="h-4 w-4 rounded border-border-normal text-primary focus:ring-primary" />
-          </label>
-          <button onClick={save} disabled={saving}
-            className="flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {t("telegram.save")}
-          </button>
+        <div className="flex items-center justify-between rounded-lg border border-border-normal bg-bg-input px-4 py-3">
+          <div>
+            <span className="text-xs font-black text-text-primary block">{t("telegram.enable")}</span>
+            <span className="text-[10px] font-bold text-text-muted">{t("telegram.enableHint")}</span>
+          </div>
+          <TelegramSwitch
+            checked={config.telegram_enabled}
+            onChange={(val) => setConfig(c => ({ ...c, telegram_enabled: val }))}
+          />
         </div>
         {!saved && isBotConnected && (
           <p className="mt-3 text-[11px] font-bold text-text-muted">{t("telegram.step4Hint")}</p>
         )}
       </div>
+
+      {/* Sticky save bar */}
+      {(dirty || saving) && (
+        <div className="sticky bottom-3 z-20">
+          <div className="rounded-2xl border border-primary/30 bg-bg-surface/95 backdrop-blur shadow-elevated px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${dirty ? "bg-warning-text animate-pulse" : "bg-success-text"}`} />
+              <div className="min-w-0">
+                <p className="text-xs font-black text-text-primary">{dirty ? t("telegram.unsavedChanges") : t("telegram.savingChanges")}</p>
+                <p className="text-[10px] font-bold text-text-muted truncate">{t("telegram.unsavedChangesHint")}</p>
+              </div>
+            </div>
+            <button onClick={save} disabled={saving || !hasEnabledRecipient}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
+              {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {saving ? t("telegram.savingChanges") : t("telegram.saveAll")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Step 4 — History */}
       <HistorySection />

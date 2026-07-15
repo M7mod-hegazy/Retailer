@@ -7,6 +7,7 @@ const { recomputeWACCForItem } = require("../services/waccService");
 const { hasTable, recordMovement } = require("../services/costLedger");
 const { isFeatureEnabled, featureGate } = require("../utils/features");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 // Guards against two overlapping imports committing at once (better-sqlite3 is
@@ -647,6 +648,15 @@ router.post("/", requirePagePermission("items", "add"), (req, res) => {
   if (wholePrice > 0) insertBaseline.run(newItemId, "wholesale_price", wholePrice, wholePrice, opId, createdBy);
 
   req.audit("create", "items", { id: newItemId }, `📦 تم إضافة صنف: ${payload.name || ''}`);
+  try {
+    notifyOwner(TG.NEW_PRODUCT, {
+      productName: payload.name || `صنف #${newItemId}`,
+      sku: sku.code,
+      price: salePrice,
+      userName: req.user?.name || req.user?.username,
+      createdAt: nowSql(),
+    });
+  } catch (_) {}
   const row = getDb().prepare("SELECT * FROM items WHERE id = ?").get(info.lastInsertRowid);
   return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
 });
@@ -709,6 +719,15 @@ router.post("/quick", requirePagePermission("items", "add"), featureGate("featur
   }
 
   req.audit("create", "items", { id: newItemId }, `📦 تم إضافة صنف سريع: ${name}`);
+  try {
+    notifyOwner(TG.NEW_PRODUCT, {
+      productName: name,
+      sku: code,
+      price: salePrice,
+      userName: req.user?.name || req.user?.username,
+      createdAt: nowSql(),
+    });
+  } catch (_) {}
   const row = db.prepare("SELECT * FROM items WHERE id = ?").get(newItemId);
   return res.status(201).json({ success: true, data: withWacc(withImages([row])[0]) });
 });
@@ -823,6 +842,22 @@ router.put("/:id", requirePagePermission("items", "edit"), (req, res) => {
   }
 
   req.audit("update", "items", { id }, `📦 تم تعديل صنف: ${payload.name || ''}`);
+  try {
+    const salePriceChange = priceChanges.find((c) => c.field === "sale_price");
+    if (salePriceChange) {
+      const { oldVal, newVal } = salePriceChange;
+      const pct = oldVal !== 0 ? ((newVal - oldVal) / oldVal) * 100 : 0;
+      const changePercent = oldVal !== 0 ? `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%` : "—";
+      notifyOwner(TG.PRICE_CHANGED, {
+        productName: payload.name || existing.name || `صنف #${id}`,
+        oldPrice: oldVal,
+        newPrice: newVal,
+        changePercent,
+        userName: req.user?.name || req.user?.username,
+        createdAt: nowSql(),
+      });
+    }
+  } catch (_) {}
   const row = db.prepare("SELECT * FROM items WHERE id = ?").get(id);
   return res.json({ success: true, data: withWacc(withImages([row])[0]) });
 });

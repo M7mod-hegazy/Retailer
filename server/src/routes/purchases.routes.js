@@ -1023,6 +1023,23 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
     })();
 
     req.audit("create", "purchase_return", { id: purchaseReturn?.id, purchase_id: Number(req.params.id), total: purchaseReturn?.total }, `↩️ تم معالجة مرتجع مشتريات للفاتورة #${req.params.id}`, purchaseReturn?.id ? `/purchases/returns/${purchaseReturn.id}` : null);
+    try {
+      const fullReturn = purchaseReturn?.id ? getPurchaseReturnWithLines(db, purchaseReturn.id) : null;
+      notifyOwner(TG.PURCHASE_RETURN, {
+        referenceNo: purchaseReturn?.doc_no,
+        supplierName: fullReturn?.supplier_name,
+        total: purchaseReturn?.total || 0,
+        items: (fullReturn?.lines || []).map((l) => ({
+          item_name: l.item_name,
+          item_code: l.item_code,
+          quantity: l.quantity,
+          unit_price: l.unit_cost,
+          line_total: l.line_total,
+        })),
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: purchaseReturn?.created_at,
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: purchaseReturn });
   } catch (error) {
     next(error);
@@ -1176,6 +1193,21 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
       return getPurchaseWithLines(db, purchase.id);
     })();
     req.audit("edit", "purchase", { id: Number(req.params.id), total: updated?.total }, `📦 تم تعديل مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const supplierRow = updated?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(updated.supplier_id) : null;
+      notifyOwner(TG.PURCHASE_EDITED, {
+        referenceNo: updated?.doc_no || updated?.reference_no,
+        docNo: updated?.doc_no,
+        supplierName: supplierRow?.name || updated?.supplier_name || null,
+        total: updated?.total,
+        lines: updated?.lines,
+        paymentMethod: updated?.payment_method || null,
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.json({ success: true, data: updated });
   } catch (error) { next(error); }
 });
@@ -1485,6 +1517,21 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
       revertPurchaseLinePriceUpdates(purchase.id, voidUserId, db);
     })();
     req.audit("void", "purchase", { id: Number(req.params.id) }, `📦 تم إلغاء (فويد) مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
+    try {
+      const voided = db.prepare(`
+        SELECT p.doc_no, p.purchase_no, p.total, p.created_at, s.name AS supplier_name
+        FROM purchases p LEFT JOIN suppliers s ON s.id = p.supplier_id
+        WHERE p.id = ?
+      `).get(Number(req.params.id));
+      notifyOwner(TG.PURCHASE_VOIDED, {
+        referenceNo: voided?.doc_no || voided?.purchase_no || `#${req.params.id}`,
+        supplierName: voided?.supplier_name,
+        total: voided?.total || 0,
+        reason: req.body?.reason,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: nowSql(),
+      });
+    } catch (_) {}
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -1549,6 +1596,21 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
     })();
 
     req.audit("cancel", "purchase_return", { id: Number(req.params.id), reason: req.body?.reason }, `↩️ تم إلغاء مرتجع مشتريات #${req.params.id}`, `/purchases/returns/${req.params.id}`);
+    // Telegram notification
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const prData = result || {};
+      const supplierRow = prData.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(prData.supplier_id) : null;
+      notifyOwner(TG.PURCHASE_RETURN_CANCELLED, {
+        referenceNo: prData.doc_no || prData.reference_no,
+        docNo: prData.doc_no,
+        supplierName: supplierRow?.name || prData.supplier_name || null,
+        total: prData.total,
+        reason: req.body?.reason,
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.json({ success: true, data: result });
   } catch (error) { next(error); }
 });
