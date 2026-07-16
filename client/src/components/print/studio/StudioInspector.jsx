@@ -193,6 +193,12 @@ const BLOCK_VARIANTS = {
     { value: "split", label: "ثلاثة خطوط موزعة" },
     { value: "boxed", label: "مربعات توقيع مغلقة" },
   ],
+  vendor_branding: [
+    { value: "minimal", label: "سطر هادئ (خط علوي رفيع)" },
+    { value: "badge", label: "شارة بيضاوية" },
+    { value: "ribbon", label: "شريط ممتد" },
+    { value: "stamp", label: "ختم مصغّر" },
+  ],
   branch: [
     { value: "standard", label: "افتراضي" },
     { value: "badge", label: "شارة ملونة ممتلئة" },
@@ -1958,6 +1964,21 @@ export default function StudioInspector({ st }) {
                   <option value="solid">مستمر</option><option value="dashed">متقطع</option><option value="dotted">منقط</option>
                 </select>
               </Row>
+            </Section>
+          )}
+
+          {selected === "vendor_branding" && (
+            <Section title="بصمة الحجازي">
+              <Toggle label="إظهار الشعار" checked={st.ov("vendor_branding").showIcon !== false}
+                onChange={(v) => st.setOverride("vendor_branding", { showIcon: v })} />
+              <div className="mt-1.5">
+                <Toggle label="إظهار رقم الدعم الفني" checked={st.ov("vendor_branding").showPhone !== false}
+                  onChange={(v) => st.setOverride("vendor_branding", { showPhone: v })} />
+              </div>
+              <div className="mt-1.5">
+                <Toggle label="إظهار الوصف الفرعي" checked={!!st.ov("vendor_branding").showTagline}
+                  onChange={(v) => st.setOverride("vendor_branding", { showTagline: v })} />
+              </div>
             </Section>
           )}
 

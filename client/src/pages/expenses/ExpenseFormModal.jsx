@@ -131,7 +131,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <TitleBar title="تسجيل مصروف جديد" subtitle="إضافة حركة مالية تابعة للمصروفات العمومية أو الإدارية" onClose={onClose} onDetach={handleDetach} />

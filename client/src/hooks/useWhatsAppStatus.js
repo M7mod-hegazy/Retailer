@@ -4,10 +4,28 @@ import api from "../services/api";
 const CACHE_TTL = 10_000;
 let cache = { status: "loading", qr: null, error: null, phone: null, ts: 0 };
 const listeners = new Set();
+let consecutiveFailures = 0;
+const MAX_RETRIES = 3;
+const BASE_DELAY = 2000;
 
 function notify(next) {
   cache = { ...next, ts: Date.now() };
   listeners.forEach((fn) => fn(cache));
+}
+
+function isNetworkError(err) {
+  if (!err) return false;
+  const code = err?.code || err?.response?.statusText || "";
+  const msg = err?.message || "";
+  return (
+    code === "ERR_CONNECTION_RESET" ||
+    code === "ECONNRESET" ||
+    code === "ETIMEDOUT" ||
+    code === "ENOTFOUND" ||
+    code === "Network Error" ||
+    msg.includes("net::ERR_") ||
+    msg.includes("connection reset")
+  );
 }
 
 export function useWhatsAppStatus(pollInterval = 8000) {
@@ -21,8 +39,18 @@ export function useWhatsAppStatus(pollInterval = 8000) {
   const fetch_ = useCallback(async () => {
     try {
       const r = await api.get("/api/whatsapp/engine-status");
+      consecutiveFailures = 0;
+      retryCountRef.current = 0;
       notify(r.data?.data || { status: "unavailable" });
-    } catch {
+    } catch (err) {
+      if (isNetworkError(err)) {
+        consecutiveFailures++;
+        if (consecutiveFailures <= MAX_RETRIES) {
+          const delay = BASE_DELAY * Math.pow(2, consecutiveFailures - 1);
+          setTimeout(() => fetch_(), delay);
+        }
+        return;
+      }
       if (cache.status === "loading") notify({ status: "unavailable", qr: null, error: null, phone: null });
     }
   }, []);

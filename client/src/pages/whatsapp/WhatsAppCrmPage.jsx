@@ -389,7 +389,7 @@ function SendInvoiceModal({ phone, contactName, contactEmail, emailEnabled, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-3xl mx-4 max-h-[92vh] overflow-y-auto rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -2404,7 +2404,7 @@ function AddContactModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-sm mx-4 rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -2501,7 +2501,7 @@ function AssignTagModal({ contact, currentTags, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-sm mx-4 rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -2724,7 +2724,7 @@ function CreateCampaignModal({ onClose, smsEnabled = false, emailEnabled = false
   const systemTemplates = templates.filter(t => t.is_system && usableForChannel(t));
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={() => onClose(false)}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={() => onClose(false)}>
       <div dir="rtl" className="w-full max-w-2xl mx-4 max-h-[92vh] overflow-y-auto rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -2955,7 +2955,7 @@ function CampaignAnalyticsModal({ campaign, onClose }) {
   const pct = total > 0 ? Math.round((sent / total) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -3067,7 +3067,7 @@ function SmsSetupModal({ onClose, onSaved }) {
   );
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -6320,7 +6320,7 @@ function CategoryManagerModal({ category, variants, onClose, onChanged }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div dir="rtl" className="w-full max-w-5xl mx-4 max-h-[95vh] overflow-y-auto rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -6441,7 +6441,7 @@ function CategoryVariantEditorModal({ category, variant, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-bg-overlay" onMouseDown={() => onClose(false)}>
+    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={() => onClose(false)}>
       <div dir="rtl" className="w-full max-w-lg mx-4 rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">
@@ -6532,7 +6532,7 @@ function TemplateEditorModal({ template, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay" onMouseDown={() => onClose(false)}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={() => onClose(false)}>
       <div dir="rtl" className="w-full max-w-lg mx-4 rounded-2xl bg-bg-surface p-6 shadow-modal animate-fade-in" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-black text-text-primary flex items-center gap-2">

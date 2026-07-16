@@ -1860,7 +1860,7 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 px-4 pb-6 pt-20 backdrop-blur-sm" dir="rtl">
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 pb-6 pt-20" dir="rtl">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative w-full max-w-3xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
         <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
@@ -2080,7 +2080,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
   const metricLabel = { revenue: "الإيراد", gross_profit: "الربح", quantity_sold: "الكمية" };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 px-4 pb-6 pt-20 backdrop-blur-sm" dir="rtl">
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 pb-6 pt-20" dir="rtl">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative w-full max-w-6xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
 

@@ -340,7 +340,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
         initial="hidden"
         animate="visible"
         exit="hidden"
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 backdrop-blur-xl p-4 overflow-y-auto"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4 overflow-y-auto"
         onClick={onClose}
       >
         <motion.div

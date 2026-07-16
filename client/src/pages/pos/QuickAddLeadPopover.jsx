@@ -68,7 +68,7 @@ export default function QuickAddLeadPopover({ open, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseDown={onClose}>
       <div
         dir="rtl"
         className="w-full max-w-sm mx-4 rounded-2xl bg-white p-5 shadow-2xl animate-fade-in"

@@ -84,7 +84,7 @@ export default function IllustratedGuide({ guide, onClose }) {
   }
 
   return createPortal(
-    <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay p-4" onMouseDown={onClose}>
+    <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onMouseDown={onClose}>
       <div
         className="relative w-full max-w-lg rounded-3xl bg-bg-surface shadow-modal overflow-hidden animate-fade-in"
         onMouseDown={(e) => e.stopPropagation()}

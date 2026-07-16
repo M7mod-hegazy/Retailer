@@ -32,6 +32,7 @@ import DocGridBlock from "./DocGridBlock";
 import BankDetailsBlock from "./BankDetailsBlock";
 import PatternDividerBlock from "./PatternDividerBlock";
 import ReceiverSignatureBlock from "./ReceiverSignatureBlock";
+import VendorBrandingBlock from "./VendorBrandingBlock";
 import {
   BankStatementMetricsBlock, AjalStatementMetricsBlock, AjalScheduleMetricsBlock,
   DailyTreasuryMetricsBlock, DailyTreasurySummariesBlock, AjalFullStatementMetricsBlock,
@@ -86,6 +87,7 @@ export const BLOCK_REGISTRY = {
   bank_details:        { component: BankDetailsBlock,          label: "الحساب البنكي",       group: "foot",     families: ALL },
   pattern_divider:     { component: PatternDividerBlock,       label: "فاصل زخرفي",          group: "inserted", families: ALL },
   receiver_signature:  { component: ReceiverSignatureBlock,    label: "توقيع المستلم",       group: "foot",     families: ALL },
+  vendor_branding:     { component: VendorBrandingBlock,        label: "توقيع الحجازي",       desc: "بصمة النظام في تذييل المستند — الشعار ورقم الدعم الفني، بعدة أشكال", group: "foot", families: ALL },
 
   // Report specific blocks
   bank_statement_metrics:         { component: BankStatementMetricsBlock,         label: "ملخص البنك (KPIs)",   group: "body", families: ["page"] },

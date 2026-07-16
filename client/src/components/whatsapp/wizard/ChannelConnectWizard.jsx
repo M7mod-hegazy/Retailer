@@ -33,7 +33,7 @@ export default function ChannelConnectWizard({ open = true, onClose, onComplete,
   }
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-overlay p-4" onMouseDown={onClose}>
+    <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onMouseDown={onClose}>
       <div className="relative w-full max-w-lg rounded-3xl bg-bg-surface shadow-modal overflow-hidden animate-fade-in" onMouseDown={(e) => e.stopPropagation()}>
         <button onClick={onClose} aria-label="إغلاق"
           className="absolute top-4 left-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-text-muted hover:bg-bg-base transition-colors">

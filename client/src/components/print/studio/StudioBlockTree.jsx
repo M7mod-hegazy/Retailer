@@ -19,60 +19,60 @@ const SCOPE_ALLOWED_BLOCKS = {
   branch_transfer: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date", "items_table",
-    "notes", "footer_text", "signature_lines", "receiver_signature",
+    "notes", "footer_text", "signature_lines", "receiver_signature", "vendor_branding",
   ]),
   account_statement: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "account_statement_party", "account_statement_ledger", "account_statement_summary",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   bank_statement: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "bank_statement_metrics", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   daily_treasury: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "daily_treasury_metrics", "daily_treasury_summaries", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   ajal_statement: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "ajal_party", "ajal_statement_metrics", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   ajal_schedule: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "ajal_party", "ajal_schedule_metrics", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   ajal_full_statement: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "ajal_full_statement_metrics", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   cheque_register: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "cheque_register_metrics", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   payment_methods_report: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date",
     "payment_methods_report_metrics", "payment_methods_by_method", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ]),
   reports_generic: new Set([
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date", "report_table",
-    "notes", "footer_text", "signature_lines",
+    "notes", "footer_text", "signature_lines", "vendor_branding",
   ])
 };
 
@@ -81,7 +81,7 @@ const INVOICE_ALLOWED_BLOCKS = new Set([
   "doc_title", "doc_number", "doc_date", "customer", "cashier",
   "items_table", "subtotal", "discount", "increase", "tax", "grand_total", "payments",
   "notes", "footer_text", "qr", "barcode", "order_number", "image", "doc_grid", "bank_details",
-  "pattern_divider", "receiver_signature", "watermark", "signature_lines"
+  "pattern_divider", "receiver_signature", "watermark", "signature_lines", "vendor_branding"
 ]);
 
 function isBlockLogicalForScope(type, scope, family, size) {

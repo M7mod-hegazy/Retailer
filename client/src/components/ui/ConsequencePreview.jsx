@@ -26,7 +26,7 @@ export default function ConsequencePreview({
   if (!open) return null;
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-[210] flex items-center justify-center bg-bg-overlay p-4" onMouseDown={onClose}>
+    <div dir="rtl" className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onMouseDown={onClose}>
       <div
         className="relative w-full max-w-md rounded-3xl bg-bg-surface shadow-modal overflow-hidden animate-fade-in"
         onMouseDown={(e) => e.stopPropagation()}

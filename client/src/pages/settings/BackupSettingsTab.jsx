@@ -404,7 +404,9 @@ export default function BackupSettingsTab() {
         onConfirm={handleConfirmRestore}
       />
       <EmptyDatabaseDialog open={emptyOpen} onClose={() => setEmptyOpen(false)} onConfirm={handleConfirmEmpty} />
-      <DramaticDeleteConfirm itemName={confirmState.itemName} onConfirm={handleConfirm} onCancel={handleCancel} />
+      {confirmState.open && (
+        <DramaticDeleteConfirm itemName={confirmState.itemName} onConfirm={handleConfirm} onCancel={handleCancel} />
+      )}
     </div>
   );
 }

@@ -166,7 +166,7 @@ export default function PaymentMethodsPage() {
 
       {/* Slide-over Form Overlay */}
       {modalOpen && (
-        <div className="fixed inset-0 z-[110] flex justify-end bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[110] flex justify-end bg-black/60 backdrop-blur-sm">
            <div className="h-full w-full max-w-lg shadow-2xl animate-in slide-in-from-left duration-300" style={{ backgroundColor: "var(--bg-surface)" }}>
               <header className="flex items-center justify-between border-b px-8 py-6" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-overlay)" }}>
                  <div className="flex items-center gap-4">

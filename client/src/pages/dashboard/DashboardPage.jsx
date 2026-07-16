@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Command, ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, HardDrive, Wifi as WifiIcon, WifiOff as WifiOffIcon, PlayCircle, CloudUpload, ShieldCheck, Database, ImageIcon } from "lucide-react";
+import { ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, HardDrive, Wifi as WifiIcon, WifiOff as WifiOffIcon, PlayCircle, CloudUpload, ShieldCheck, Database, ImageIcon } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
@@ -19,6 +19,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import { useElectron } from "../../hooks/useElectron";
 import { useServerClock } from "../../hooks/useServerClock";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
+import ElHegaziMark from "../../components/branding/ElHegaziMark";
 import AnnouncementBanner from "../../components/assistant/AnnouncementBanner";
 import SectionErrorBoundary from "../../components/ui/SectionErrorBoundary";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
@@ -192,12 +193,12 @@ function QuickEntryModal({ type, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
       />
       <motion.div
@@ -298,7 +299,7 @@ function QuickEntryModal({ type, onClose }) {
 
 // ─── Magnetic nav card ────────────────────────────────────────────────────────
 // ─── Channel status (WhatsApp / SMS / Telegram) ────────────────────────────
-function ChannelStatusDots({ status, className = "", layout = "vertical" }) {
+function ChannelStatusDots({ status, className = "", layout = "vertical", active = false }) {
   if (!status) return null;
   const channels = [
     { key: "whatsapp", label: "واتساب", on: !!status.whatsapp?.connected, color: "var(--success-text)", bg: "var(--success-bg)" },
@@ -310,17 +311,30 @@ function ChannelStatusDots({ status, className = "", layout = "vertical" }) {
   const onCount = channels.filter(c => c.on).length;
   if (layout === "horizontal") {
     return (
-      <div className={`flex items-center gap-1.5 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
         {channels.map((d) => (
           <span
             key={d.key}
-            className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded leading-none border ${d.on
-              ? `border-current/20`
-              : "bg-[var(--bg-overlay)] text-[var(--text-muted)] border-transparent opacity-40"
-              }`}
-            style={d.on ? { color: d.color, backgroundColor: d.bg } : undefined}
+            className={`flex items-center gap-1.5 text-[10px] leading-none transition-all duration-300 ${
+              d.on
+                ? active
+                  ? "text-white font-black"
+                  : "text-[var(--text-primary)] font-black"
+                : active
+                  ? "text-white/40 font-bold"
+                  : "text-[var(--text-muted)] font-bold opacity-60"
+            }`}
           >
-            <span className="w-1 h-1 rounded-full shrink-0" style={d.on ? { backgroundColor: d.color } : { backgroundColor: "var(--text-muted)" }} />
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500 ${
+                d.on
+                  ? active
+                    ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                    : "shadow-[0_0_6px_currentColor]"
+                  : "bg-current opacity-30"
+              }`}
+              style={d.on && !active ? { backgroundColor: d.color } : undefined}
+            />
             {d.label}
           </span>
         ))}
@@ -429,13 +443,7 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
                 </span>
               )}
 
-              {item.pageKey === "whatsapp_crm" && channelsStatus && (
-                <ChannelStatusDots
-                  status={channelsStatus}
-                  layout="horizontal"
-                  className="self-center"
-                />
-              )}
+
 
               {/* Branch-transfer: two stacked action buttons */}
               {isBranchTransfer ? (
@@ -479,6 +487,15 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
               }`}>
               {TOOLTIPS[item.pageKey]}
             </p>
+            {item.pageKey === "whatsapp_crm" && channelsStatus && (
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]/40">
+                <ChannelStatusDots
+                  status={channelsStatus}
+                  layout="horizontal"
+                  active={active}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -877,8 +894,8 @@ export default function DashboardPage() {
 
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-30 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 text-[var(--on-feature)] rounded-[1.2rem] flex items-center justify-center shadow-2xl">
-              <Command className="w-7 h-7" />
+            <div className="shrink-0 shadow-2xl rounded-[1.2rem]">
+              <ElHegaziMark size={64} glow />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-[var(--on-feature)] tracking-tight mb-1">

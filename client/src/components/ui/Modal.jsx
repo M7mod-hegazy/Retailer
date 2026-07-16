@@ -110,7 +110,7 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed bottom-0 left-0 z-[200] flex items-start justify-center overflow-y-auto bg-slate-900/60 px-4 pb-6 pt-20 backdrop-blur-sm"
+          className="fixed bottom-0 left-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 pb-6 pt-20"
           style={{ right: chromeInset.right, top: 0 }}
           onClick={onClose}
         >

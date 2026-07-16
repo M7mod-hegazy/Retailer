@@ -309,7 +309,7 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-bg-overlay backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
+      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 380, damping: 30 } }}
@@ -483,7 +483,7 @@ function ComparePanel({ data, onClose }) {
   if (!data) return null;
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-bg-overlay backdrop-blur-xl p-4 overflow-y-auto" onClick={onClose}>
+      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 380, damping: 30 } }}
@@ -1080,7 +1080,7 @@ export default function OwnerStatementPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay p-4 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
               onClick={() => setSelectedPaymentFlow(null)}
             >
               <motion.div

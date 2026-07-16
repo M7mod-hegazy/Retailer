@@ -45,7 +45,7 @@ export default function QuitOrLogoutModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={handleCancel}
         >
           <motion.div
