@@ -90,26 +90,38 @@ export function useEmailWizardSteps({ onSaved } = {}) {
           </div>
 
           {isSmtp && (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <input type="text" dir="ltr" value={email.email_host}
-                  onChange={e => setEmail(s => ({ ...s, email_host: e.target.value }))}
-                  placeholder="smtp.gmail.com"
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-                <input type="number" dir="ltr" value={email.email_port}
-                  onChange={e => setEmail(s => ({ ...s, email_port: Number(e.target.value) || 465 }))}
-                  placeholder="465"
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-right">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary block">اسم الخادم (Host)</label>
+                  <input type="text" dir="ltr" value={email.email_host === "null" || !email.email_host ? "" : email.email_host}
+                    onChange={e => setEmail(s => ({ ...s, email_host: e.target.value }))}
+                    placeholder="smtp.gmail.com"
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary block">المنفذ (Port)</label>
+                  <input type="number" dir="ltr" value={email.email_port === "null" || !email.email_port ? "" : email.email_port}
+                    onChange={e => setEmail(s => ({ ...s, email_port: Number(e.target.value) || 465 }))}
+                    placeholder="465"
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="text" dir="ltr" value={email.email_user}
-                  onChange={e => setEmail(s => ({ ...s, email_user: e.target.value }))}
-                  placeholder="username"
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-                <input type="password" dir="ltr" value={email.email_pass}
-                  onChange={e => setEmail(s => ({ ...s, email_pass: e.target.value }))}
-                  placeholder="••••••••"
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+              <div className="grid grid-cols-2 gap-2 text-right">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary block">اسم المستخدم (User)</label>
+                  <input type="text" dir="ltr" value={email.email_user === "null" || !email.email_user ? "" : email.email_user}
+                    onChange={e => setEmail(s => ({ ...s, email_user: e.target.value }))}
+                    placeholder="username"
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary block">كلمة المرور (Pass)</label>
+                  <input type="password" dir="ltr" value={email.email_pass === "null" || !email.email_pass ? "" : email.email_pass}
+                    onChange={e => setEmail(s => ({ ...s, email_pass: e.target.value }))}
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+                </div>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={email.email_secure}
@@ -121,29 +133,41 @@ export function useEmailWizardSteps({ onSaved } = {}) {
           )}
 
           {!isSmtp && (
-            <div className="space-y-2">
-              <input type="password" dir="ltr" value={email.email_api_key}
-                onChange={e => setEmail(s => ({ ...s, email_api_key: e.target.value }))}
-                placeholder={email.email_provider === "sendgrid" ? "SG.xxxx" : "key-xxxx"}
-                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-              {email.email_provider === "mailgun" && (
-                <input type="text" dir="ltr" value={email.email_domain}
-                  onChange={e => setEmail(s => ({ ...s, email_domain: e.target.value }))}
-                  placeholder="mg.yourdomain.com"
+            <div className="space-y-3">
+              <div className="space-y-1 text-right">
+                <label className="text-[10px] font-black text-text-secondary block">مفتاح API (API Key)</label>
+                <input type="password" dir="ltr" value={email.email_api_key === "null" || !email.email_api_key ? "" : email.email_api_key}
+                  onChange={e => setEmail(s => ({ ...s, email_api_key: e.target.value }))}
+                  placeholder={email.email_provider === "sendgrid" ? "SG.xxxx" : "key-xxxx"}
                   className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+              </div>
+              {email.email_provider === "mailgun" && (
+                <div className="space-y-1 text-right">
+                  <label className="text-[10px] font-black text-text-secondary block">اسم النطاق (Domain)</label>
+                  <input type="text" dir="ltr" value={email.email_domain === "null" || !email.email_domain ? "" : email.email_domain}
+                    onChange={e => setEmail(s => ({ ...s, email_domain: e.target.value }))}
+                    placeholder="mg.yourdomain.com"
+                    className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+                </div>
               )}
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" value={email.email_from_name}
-              onChange={e => setEmail(s => ({ ...s, email_from_name: e.target.value }))}
-              placeholder="اسم المتجر"
-              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-            <input type="email" dir="ltr" value={email.email_from_email}
-              onChange={e => setEmail(s => ({ ...s, email_from_email: e.target.value }))}
-              placeholder="store@gmail.com"
-              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+          <div className="grid grid-cols-2 gap-2 text-right">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">اسم المرسل (From Name)</label>
+              <input type="text" value={email.email_from_name === "null" || !email.email_from_name ? "" : email.email_from_name}
+                onChange={e => setEmail(s => ({ ...s, email_from_name: e.target.value }))}
+                placeholder="اسم المتجر"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">بريد المرسل (From Email)</label>
+              <input type="email" dir="ltr" value={email.email_from_email === "null" || !email.email_from_email ? "" : email.email_from_email}
+                onChange={e => setEmail(s => ({ ...s, email_from_email: e.target.value }))}
+                placeholder="store@gmail.com"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
           </div>
         </div>
       ),

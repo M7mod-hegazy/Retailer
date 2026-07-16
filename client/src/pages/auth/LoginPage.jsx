@@ -212,9 +212,15 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Mark + wordmark */}
+            {/* Mark + wordmark — the support number rides fused directly under the
+                mark so it's never a detached footnote, always read as one unit */}
             <div className="flex items-center gap-4">
-              <ElHegaziMark size={56} glow />
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <ElHegaziMark size={56} glow />
+                <span dir="ltr" className="text-[11px] font-black tracking-wide text-white bg-white/10 border border-white/30 rounded-full px-2.5 py-0.5" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  01032440775
+                </span>
+              </div>
               <div>
                 <h1
                   className="text-6xl md:text-7xl lg:text-[80px] font-bold leading-[1.15] text-white"

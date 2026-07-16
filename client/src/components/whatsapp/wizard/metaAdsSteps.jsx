@@ -91,34 +91,52 @@ export function useMetaAdsWizardSteps({ onSaved } = {}) {
               ٣. من Business Manager، انسخ Business ID و Ad Account ID
             </p>
           </div>
-          <input type="password" dir="ltr" value={config.access_token}
-            onChange={e => setConfig(s => ({ ...s, access_token: e.target.value }))}
-            placeholder="System User Access Token"
-            className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" dir="ltr" value={config.app_id}
-              onChange={e => setConfig(s => ({ ...s, app_id: e.target.value }))}
-              placeholder="App ID"
-              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-            <input type="password" dir="ltr" value={config.app_secret}
-              onChange={e => setConfig(s => ({ ...s, app_secret: e.target.value }))}
-              placeholder="App Secret"
+          <div className="space-y-1 text-right">
+            <label className="text-[10px] font-black text-text-secondary block">رمز الوصول للمستخدِم (Access Token)</label>
+            <input type="password" dir="ltr" value={config.access_token === "null" || !config.access_token ? "" : config.access_token}
+              onChange={e => setConfig(s => ({ ...s, access_token: e.target.value }))}
+              placeholder="System User Access Token"
               className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" dir="ltr" value={config.business_id}
-              onChange={e => setConfig(s => ({ ...s, business_id: e.target.value }))}
-              placeholder="Business Manager ID"
-              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
-            <input type="text" dir="ltr" value={config.ad_account_id}
-              onChange={e => setConfig(s => ({ ...s, ad_account_id: e.target.value }))}
-              placeholder="Ad Account ID (act_xxxxx)"
+          <div className="grid grid-cols-2 gap-2 text-right">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">معرّف التطبيق (App ID)</label>
+              <input type="text" dir="ltr" value={config.app_id === "null" || !config.app_id ? "" : config.app_id}
+                onChange={e => setConfig(s => ({ ...s, app_id: e.target.value }))}
+                placeholder="App ID"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">سِر التطبيق (App Secret)</label>
+              <input type="password" dir="ltr" value={config.app_secret === "null" || !config.app_secret ? "" : config.app_secret}
+                onChange={e => setConfig(s => ({ ...s, app_secret: e.target.value }))}
+                placeholder="App Secret"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-right">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">معرّف الأعمال (Business ID)</label>
+              <input type="text" dir="ltr" value={config.business_id === "null" || !config.business_id ? "" : config.business_id}
+                onChange={e => setConfig(s => ({ ...s, business_id: e.target.value }))}
+                placeholder="Business Manager ID"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">معرّف الحساب الإعلاني (Ad Account ID)</label>
+              <input type="text" dir="ltr" value={config.ad_account_id === "null" || !config.ad_account_id ? "" : config.ad_account_id}
+                onChange={e => setConfig(s => ({ ...s, ad_account_id: e.target.value }))}
+                placeholder="Ad Account ID (act_xxxxx)"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
+            </div>
+          </div>
+          <div className="space-y-1 text-right">
+            <label className="text-[10px] font-black text-text-secondary block">معرّف البكسل (Pixel ID) - اختياري</label>
+            <input type="text" dir="ltr" value={config.pixel_id === "null" || !config.pixel_id ? "" : config.pixel_id}
+              onChange={e => setConfig(s => ({ ...s, pixel_id: e.target.value }))}
+              placeholder="Pixel ID (اختياري)"
               className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
           </div>
-          <input type="text" dir="ltr" value={config.pixel_id}
-            onChange={e => setConfig(s => ({ ...s, pixel_id: e.target.value }))}
-            placeholder="Pixel ID (اختياري)"
-            className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors" />
         </div>
       ),
       canGoNext: Boolean(config.access_token?.trim()),

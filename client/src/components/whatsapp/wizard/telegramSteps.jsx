@@ -95,10 +95,13 @@ export function useTelegramWizardSteps({ onSaved } = {}) {
       illustration: <PasteTokenScene token={config.telegram_bot_token} />,
       caption: t("wizard.telegram.step3.caption"),
       content: (
-        <input type="password" dir="ltr" value={config.telegram_bot_token}
-          onChange={(e) => setConfig((c) => ({ ...c, telegram_bot_token: e.target.value }))}
-          placeholder={t("telegram.botTokenPlaceholder")}
-          className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+        <div className="space-y-1 text-right">
+          <label className="text-[10px] font-black text-text-secondary block">رمز البوت (Bot Token)</label>
+          <input type="password" dir="ltr" value={config.telegram_bot_token === "null" || !config.telegram_bot_token ? "" : config.telegram_bot_token}
+            onChange={(e) => setConfig((c) => ({ ...c, telegram_bot_token: e.target.value }))}
+            placeholder={t("telegram.botTokenPlaceholder")}
+            className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+        </div>
       ),
       canGoNext: Boolean(config.telegram_bot_token.trim()),
     },
@@ -259,10 +262,10 @@ function ManualEntryScene({ chatId, setChatId, detecting, onDetect }) {
         </div>
       </div>
 
-      <div className="w-full">
+      <div className="w-full text-right">
         <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.chatId")} *</label>
         <div className="flex gap-1.5">
-          <input type="text" dir="ltr" value={chatId} onChange={e => setChatId(e.target.value)}
+          <input type="text" dir="ltr" value={chatId === "null" || !chatId ? "" : chatId} onChange={e => setChatId(e.target.value)}
             placeholder={t("telegram.chatIdPlaceholder")}
             className="flex-1 min-w-0 rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
           <button type="button" onClick={onDetect} disabled={detecting}
@@ -294,9 +297,9 @@ function NameRecipientScene({ name, setName }) {
         <p className="text-[11px] font-black text-text-primary">{t("telegram.wizard.nameStepTitle")}</p>
         <p className="text-[10px] font-bold text-text-muted leading-relaxed mt-0.5">{t("telegram.wizard.nameStepDesc")}</p>
       </div>
-      <div className="w-full">
+      <div className="w-full text-right">
         <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.nameRecipient")}</label>
-        <input type="text" value={name} onChange={e => setName(e.target.value)}
+        <input type="text" value={name === "null" || !name ? "" : name} onChange={e => setName(e.target.value)}
           placeholder={t("telegram.nameRecipientHint")}
           className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
       </div>

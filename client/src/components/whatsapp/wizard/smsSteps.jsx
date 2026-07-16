@@ -65,20 +65,29 @@ export function useSmsWizardSteps({ onSaved } = {}) {
       illustration: <CredentialsScene />,
       caption: t("wizard.sms.step2.caption"),
       content: (
-        <div className="space-y-2">
-          <input type="url" dir="ltr" value={sms.sms_api_url}
-            onChange={(e) => setSms((s) => ({ ...s, sms_api_url: e.target.value }))}
-            placeholder="https://smsmisr.com/api/SMS/..."
-            className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-          <div className="grid grid-cols-2 gap-2">
-            <input type="password" dir="ltr" value={sms.sms_api_key}
-              onChange={(e) => setSms((s) => ({ ...s, sms_api_key: e.target.value }))}
-              placeholder="API Key"
+        <div className="space-y-3 text-right">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text-secondary block">رابط بوابة SMS (API URL)</label>
+            <input type="url" dir="ltr" value={sms.sms_api_url === "null" || !sms.sms_api_url ? "" : sms.sms_api_url}
+              onChange={(e) => setSms((s) => ({ ...s, sms_api_url: e.target.value }))}
+              placeholder="https://smsmisr.com/api/SMS/..."
               className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-            <input type="text" dir="ltr" value={sms.sms_sender}
-              onChange={(e) => setSms((s) => ({ ...s, sms_sender: e.target.value }))}
-              placeholder="Sender ID"
-              className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-right">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">مفتاح API (API Key)</label>
+              <input type="password" dir="ltr" value={sms.sms_api_key === "null" || !sms.sms_api_key ? "" : sms.sms_api_key}
+                onChange={(e) => setSms((s) => ({ ...s, sms_api_key: e.target.value }))}
+                placeholder="API Key"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-text-secondary block">اسم المرسل (Sender ID)</label>
+              <input type="text" dir="ltr" value={sms.sms_sender === "null" || !sms.sms_sender ? "" : sms.sms_sender}
+                onChange={(e) => setSms((s) => ({ ...s, sms_sender: e.target.value }))}
+                placeholder="Sender ID"
+                className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+            </div>
           </div>
         </div>
       ),

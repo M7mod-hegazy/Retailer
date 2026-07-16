@@ -19,7 +19,7 @@ import { usePageTour } from "../../hooks/usePageTour";
 import { useElectron } from "../../hooks/useElectron";
 import { useServerClock } from "../../hooks/useServerClock";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
-import ElHegaziMark from "../../components/branding/ElHegaziMark";
+import BrandLockup from "../../components/branding/BrandLockup";
 import AnnouncementBanner from "../../components/assistant/AnnouncementBanner";
 import SectionErrorBoundary from "../../components/ui/SectionErrorBoundary";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
@@ -895,7 +895,7 @@ export default function DashboardPage() {
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-30 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
             <div className="shrink-0 shadow-2xl rounded-[1.2rem]">
-              <ElHegaziMark size={64} glow />
+              <BrandLockup size={64} tone="dark" showWordmark={false} />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-[var(--on-feature)] tracking-tight mb-1">
