@@ -13,7 +13,7 @@ export default function BrandLockup({ size = 40, tone = "dark", showWordmark = t
   const wordColor = isDark ? "#fff" : "#16241D";
   const phoneStyle = isDark
     ? { background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff" }
-    : { background: "rgba(5,150,105,0.08)", border: "1px solid #059669", color: "#047857" };
+    : { background: "var(--accent-soft)", border: "1px solid var(--primary)", color: "var(--primary-600)" };
   const wordSize = Math.max(10, Math.round(size * 0.24));
   const phoneSize = Math.max(9, Math.round(size * 0.22));
 

@@ -63,7 +63,7 @@ function LedgerField({ label, value, onChange, focused, onFocus, onBlur, inputRe
         <span className="text-[11px] font-black uppercase tracking-[0.15em] text-[#8A8578]">{label}</span>
         {tag && <span className="text-[9px] font-black uppercase tracking-widest text-[#B8B0A0]">{tag}</span>}
       </div>
-      <div className={`relative flex items-center gap-2 border-b-2 transition-colors duration-300 ${focused ? "border-[#F5A623]" : "border-[#E7E1D3] hover:border-[#D8CFB9]"}`}>
+      <div className={`relative flex items-center gap-2 border-b-2 transition-colors duration-300 ${focused ? "border-primary" : "border-[#E7E1D3] hover:border-[#D8CFB9]"}`}>
         <input
           ref={inputRef}
           type={type}
@@ -217,7 +217,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <ElHegaziMark size={56} glow />
-                <span dir="ltr" className="text-[11px] font-black tracking-wide text-white bg-white/10 border border-white/30 rounded-full px-2.5 py-0.5" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <span dir="ltr" className="text-[11px] font-black tracking-wide text-white border border-white/30 rounded-full px-2.5 py-0.5" style={{ background: "rgba(255, 255, 255, 0.12)", fontVariantNumeric: "tabular-nums" }}>
                   01032440775
                 </span>
               </div>
@@ -280,7 +280,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="w-12 h-12 flex items-center justify-center bg-[#16241D] rounded-2xl text-[#F5A623] shrink-0">
+                  <div className="w-12 h-12 flex items-center justify-center bg-[#16241D] rounded-2xl text-primary shrink-0">
                     <LockKeyhole className="w-[22px] h-[22px]" strokeWidth={2} />
                   </div>
                   <div>
@@ -327,7 +327,7 @@ export default function LoginPage() {
                     ref={submitBtnRef}
                     type="submit"
                     disabled={submitting}
-                    className="group relative w-full flex items-center justify-center bg-[#0EA371] text-white font-black text-[17px] py-[18px] rounded-2xl overflow-hidden transition-all duration-300 hover:bg-[#0C8F63] hover:shadow-[0_14px_34px_rgba(14,163,113,0.35)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                    className="group relative w-full flex items-center justify-center bg-primary text-white font-black text-[17px] py-[18px] rounded-2xl overflow-hidden transition-all duration-300 hover:bg-primary-600 hover:shadow-[0_14px_34px_var(--primary-glow)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     <div className="absolute top-0 -inset-full h-full w-1/2 z-0 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shine_1.5s]" />
                     <span className="relative z-10 flex items-center gap-3">
