@@ -23,7 +23,7 @@ function IntroScene() {
   );
 }
 
-function ScanScene({ qr }) {
+function ScanScene({ qr, loading }) {
   return (
     <div className="flex items-center gap-4">
       <PhoneFrame accent={ACCENT}>
@@ -33,7 +33,17 @@ function ScanScene({ qr }) {
           <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-white" style={{ background: ACCENT }}><Link2 className="h-3.5 w-3.5" /> ربط جهاز</div>
         </div>
       </PhoneFrame>
-      <QrTile src={qr} accent={ACCENT} size={140} />
+      {loading ? (
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-[140px] w-[140px] rounded-2xl border-2 border-dashed animate-pulse flex flex-col items-center justify-center gap-2"
+            style={{ borderColor: ACCENT + "60", background: ACCENT + "08" }}>
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: ACCENT }} />
+            <span className="text-[10px] font-black text-center px-2" style={{ color: ACCENT }}>جارٍ توليد رمز QR…</span>
+          </div>
+        </div>
+      ) : (
+        <QrTile src={qr} accent={ACCENT} size={140} />
+      )}
     </div>
   );
 }
@@ -49,25 +59,22 @@ function SuccessScene({ phone }) {
 
 export function useWhatsappWizardSteps({ engine, linking, connectError, onLink, onClearAndRetry }) {
   const { t } = useTranslation();
+  const qrLoading = linking || (!engine.qr && engine.status !== "connected");
 
   const steps = [
     {
       key: "intro",
       illustration: <IntroScene />,
       caption: t("wizard.whatsapp.step1.caption"),
-      content: (
-        <button type="button" onClick={onLink} disabled={linking}
-          className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black text-white shadow-card disabled:opacity-60 transition-all active:scale-95"
-          style={{ background: ACCENT }}>
-          <CheckCheck className="h-4 w-4" /> {t("wizard.whatsapp.step1.button")}
-        </button>
-      ),
-      canGoNext: engine.status === "qr" || engine.status === "connected",
+      onNext: onLink,
+      nextLabel: t("wizard.whatsapp.step1.button"),
+      nextLoading: linking,
+      canGoNext: !linking,
     },
     {
       key: "scan",
-      illustration: <ScanScene qr={engine.qr} />,
-      caption: t("wizard.whatsapp.step2.caption"),
+      illustration: <ScanScene qr={engine.qr} loading={qrLoading} />,
+      caption: qrLoading ? "جارٍ الاتصال بالخادم وتوليد رمز QR، يرجى الانتظار…" : t("wizard.whatsapp.step2.caption"),
       content: connectError ? (
         <div className="rounded-xl border border-danger-border bg-danger-bg p-3 text-center">
           <p className="text-xs font-bold text-danger">{connectError}</p>
@@ -94,6 +101,7 @@ export default function WhatsAppConnectWizard({ onClose, engine, linking, connec
       onClose={onClose} icon={Wifi} accent={ACCENT}
       title={t("wizard.whatsapp.title")} subtitle={t("wizard.whatsapp.subtitle")}
       steps={steps} forceIndex={forceIndex}
+      nextDisabled={linking}
     />
   );
 }

@@ -25,6 +25,7 @@ export default function ChannelConnectWizard({ open = true, onClose, onComplete,
       return;
     }
     if (!canGoNext) return;
+    if (step.onNext) step.onNext();
     setIndex((i) => Math.min(i + 1, steps.length - 1));
   }
   function goPrev() {
@@ -78,10 +79,12 @@ export default function ChannelConnectWizard({ open = true, onClose, onComplete,
               {cancelLabel}
             </button>
           )}
-          <button onClick={goNext} disabled={!canGoNext}
+          <button onClick={goNext} disabled={!canGoNext || step.nextLoading}
             className="flex items-center gap-1.5 rounded-2xl px-5 py-2.5 text-sm font-black text-white shadow transition-all active:scale-95 disabled:opacity-40"
             style={{ background: accent }}>
-            {isLast ? (<><Check className="h-4 w-4" /> تم</>) : (<>{step.nextLabel || "التالي"} <ChevronLeft className="h-4 w-4" /></>)}
+            {step.nextLoading ? (
+              <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> {step.nextLabel || "التالي"}</>
+            ) : isLast ? (<><Check className="h-4 w-4" /> تم</>) : (<>{step.nextLabel || "التالي"} <ChevronLeft className="h-4 w-4" /></>)}
           </button>
         </div>
       </div>

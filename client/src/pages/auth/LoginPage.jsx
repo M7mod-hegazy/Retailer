@@ -14,18 +14,18 @@ import ElHegaziMark from "../../components/branding/ElHegaziMark";
 
 const highlights = [
   {
-    title: "نقطة بيع أسرع",
-    description: "إدخال واضح بدون خطوات زائدة، مع تركيز على السرعة داخل الفاتورة.",
+    title: "بيع بالسرعة اللي بتحتاجها",
+    description: "شاشة كاشير مرتبة، بدون تعقيد. افتح الفاتورة وخلص الأوردر في ثوان.",
     icon: Zap,
   },
   {
-    title: "تحكم مالي مباشر",
-    description: "المبيعات، الخزائن، وحركة التحصيل في نفس السياق وبنفس اللغة البصرية.",
+    title: "متابعة الفلوس لحظة بلحظة",
+    description: "المبيعات والمصروفات والخزينة — كلهم في مكان واحد، واضحين على طول.",
     icon: Wallet,
   },
   {
-    title: "أمان تشغيلي ثابت",
-    description: "صلاحيات واضحة، تتبع أدق، وتجربة متسقة لكل فروعك.",
+    title: "كل فرع تحت إيدك",
+    description: "صلاحيات لكل موظف، تقارير لكل فرع، وكل حاجة بتتسجل تلقائياً.",
     icon: ShieldCheck,
   },
 ];
@@ -153,13 +153,13 @@ export default function LoginPage() {
       setFeedback({
         type: "success",
         message: loggedUsername === "m7mod"
-          ? "تم تسجيل دخول المطور بنجاح. جاري فتح النظام..."
-          : "تم التحقق بنجاح. جاري فتح النظام..."
+          ? "أهلاً م/ محمود! بيتفتح النظام دلوقتي..."
+          : "تمام! بيتفتح النظام..."
       });
     } catch (_error) {
       setFeedback({
         type: "error",
-        message: "فشل الدخول. الرجاء التحقق من الحساب وكلمة المرور.",
+        message: "الاسم أو كلمة السر غلط. جرب تاني.",
       });
       setSubmitting(false);
     }
@@ -228,14 +228,15 @@ export default function LoginPage() {
                 >
                   {customerBranding.app_name || "الحجازي"}
                 </h1>
+                <p className="text-[13px] font-bold text-white/50 mt-1 tracking-wide">م/ محمود حجازي</p>
               </div>
             </div>
             <div className="-mt-4 space-y-3">
               <h2 className="text-2xl md:text-3xl font-black text-[#34D399]">
-                {customerBranding.app_subtitle || "منظومة التجزئة الذكية"}
+                {customerBranding.app_subtitle || "برنامج كاشير وإدارة محلات"}
               </h2>
               <p className="text-[15px] md:text-base text-white/50 max-w-lg leading-[1.9] font-medium">
-                نظام نقاط بيع صُمم خصيصاً للسرعة القصوى، دقة العمليات المحاسبية، وتوفير بيئة تشغيلية آمنة ومريحة لكل فروعك.
+                برنامج كاشير فسه كل المميزات إلي حتعوزها و أكتر — سريع، بيوفر عليك وقت كتير، وبيساعدك تتابع مبيعاتك وخزينتك من أي فرع.
               </p>
             </div>
 
@@ -255,10 +256,12 @@ export default function LoginPage() {
             </div>
 
             {/* الحجازي vendor credit — quiet footer of the dark panel */}
-            <div className="flex items-center gap-2 pt-2 text-white/30" dir="ltr">
-              <span className="text-[11px] font-bold tracking-wide">01032440775</span>
+            <div className="flex items-center gap-2 pt-2 text-white/30" dir="rtl">
+              <span className="text-[11px] font-bold">م/ محمود حجازي</span>
               <span className="text-[11px]">·</span>
-              <span dir="rtl" className="text-[11px] font-bold">الدعم الفني — الحجازي</span>
+              <span className="text-[11px] font-bold">دعم فني</span>
+              <span className="text-[11px]">·</span>
+              <span dir="ltr" className="text-[11px] font-bold">01032440775</span>
             </div>
           </motion.div>
 
@@ -284,8 +287,8 @@ export default function LoginPage() {
                     <LockKeyhole className="w-[22px] h-[22px]" strokeWidth={2} />
                   </div>
                   <div>
-                    <h2 className="text-[26px] font-black text-[#16241D] tracking-tight leading-tight">تسجيل الدخول</h2>
-                    <p className="text-[13px] text-[#8A8578] font-bold mt-0.5">أدخل بياناتك لبدء جلسة عمل جديدة</p>
+                    <h2 className="text-[26px] font-black text-[#16241D] tracking-tight leading-tight">أهلاً بيك 👋</h2>
+                    <p className="text-[13px] text-[#8A8578] font-bold mt-0.5">ادخل بياناتك وابدأ شغلك</p>
                   </div>
                 </div>
 

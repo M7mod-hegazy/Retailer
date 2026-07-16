@@ -895,7 +895,7 @@ export default function DashboardPage() {
         <header data-help="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-30 max-w-7xl mx-auto">
           <div className="flex items-center gap-5">
             <div className="shrink-0 shadow-2xl rounded-[1.2rem]">
-              <BrandLockup size={64} tone="dark" showWordmark={false} />
+              <BrandLockup size={48} tone="dark" showWordmark={true} />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-[var(--on-feature)] tracking-tight mb-1">

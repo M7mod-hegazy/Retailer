@@ -46,7 +46,7 @@ export default function AppShell({ children }) {
   const perfSettings = usePerformanceStore((s) => s.settings);
   const perfPreset = usePerformanceStore((s) => s.preset);
   const [branding, setBranding] = useState({
-    title: "ElHegazi Retailer",
+    title: "م/ محمود حجازي — الحجازي",
     subtitle: "Retailer Suite",
     logoUrl: null,
     showOnSidebar: true,
@@ -80,7 +80,7 @@ export default function AppShell({ children }) {
         applyFontSettings(settings);
         applyColorTheme(settings);
         setBranding({
-          title: settings.app_name || settings.company_name || "ElHegazi Retailer",
+          title: settings.app_name || settings.company_name || "م/ محمود حجازي — الحجازي",
           subtitle: settings.app_subtitle || settings.branch_name || "Retailer Suite",
           logoUrl: resolveImageUrl(settings.logo_url || null),
           showOnSidebar: settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0,

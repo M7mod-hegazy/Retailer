@@ -536,7 +536,8 @@ export default function ItemsTableBlock({ invoice = {}, settings: s, props = {},
   const headBorder = border === "grid" ? { borderTop: rb, borderLeft: rb, borderRight: rb, borderBottom: "2px solid #000" } : { borderBottom: "2px solid #000" };
   const headCell = {
     ...headBorder, padding: "1px 4px 3px", fontWeight: 900, textAlign: "center",
-    fontSize: `${rollHeadFs}px`, color: rollDark ? "#fff" : "#000", wordBreak: "break-word",
+    fontSize: `${rollHeadFs}px`, color: rollDark ? "#fff" : "#000",
+    whiteSpace: "nowrap", overflow: "hidden",
   };
   const rollHeadRow = rollDark ? { background: "#000" } : {};
   const cell = { ...bodyBorder, padding: `${rollPadY}px 4px`, fontWeight: 700, wordBreak: "break-word" };

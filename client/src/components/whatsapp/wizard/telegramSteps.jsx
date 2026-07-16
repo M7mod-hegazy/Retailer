@@ -323,11 +323,21 @@ function RecipientSuccessScene() {
 function useAddRecipientStepsLogic() {
   const { t } = useTranslation();
   const connect = useTelegramConnect();
-  const { config, qrData, generatingQr, scanConnected, pollStatus, detectChatId, generateDeepLink } = connect;
+  const { config, qrData, generatingQr, scanConnected, pollStatus, detecting, generateDeepLink } = connect;
 
   const [method, setMethod] = useState(null);
   const [chatId, setChatId] = useState("");
   const [name, setName] = useState("");
+
+  // Mirror config.telegram_chat_id → local chatId after detectChatId() succeeds
+  useEffect(() => {
+    if (method !== "manual") return;
+    const detected = config.telegram_chat_id;
+    if (detected && detected !== "null" && detected !== chatId) {
+      setChatId(detected);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.telegram_chat_id, method]);
 
   const steps = [
     { key: "choose-method", illustration: <ChooseMethodScene method={method} setMethod={setMethod} />, caption: t("telegram.wizard.chooseMethodHint"), canGoNext: Boolean(method) },
@@ -343,7 +353,7 @@ function useAddRecipientStepsLogic() {
   } else if (method === "manual") {
     steps.push({
       key: "manual-entry",
-      illustration: <ManualEntryScene chatId={chatId} setChatId={setChatId} detecting={false} onDetect={detectChatId} />,
+      illustration: <ManualEntryScene chatId={chatId} setChatId={setChatId} detecting={detecting} onDetect={connect.detectChatId} />,
       caption: t("telegram.wizard.manualStep3Desc"),
       canGoNext: Boolean(chatId.trim()),
     });

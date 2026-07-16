@@ -649,8 +649,10 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                     </div>
                   </div>
 
-                  {/* Hidden capture target */}
-                  <div style={{ position: "fixed", left: "-9999px", top: 0, zIndex: -2, width: SHEET_W[activePaperSize], background: "#ffffff" }}>
+                  {/* Hidden capture target — must be `absolute` not `fixed` so
+                      html2canvas doesn't capture other fixed-position UI elements
+                      (modal backdrop, sticky header, etc.) in the same layer */}
+                  <div style={{ position: "absolute", left: "-9999px", top: 0, zIndex: -2, width: SHEET_W[activePaperSize], background: "#ffffff", overflow: "visible" }}>
                     <div ref={captureRef}>
                       {isPageDoc ? (
                         <PrintA4Doc invoice={printInvoice} settings={effectiveSettings} size={activePaperSize} scope={docType} />

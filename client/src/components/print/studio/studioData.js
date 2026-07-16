@@ -1853,7 +1853,7 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
-          vendor_branding: { variant: "minimal" },
+          vendor_branding: { variant: "minimal" }
         }
       }
     },
@@ -1867,7 +1867,7 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
-          vendor_branding: { variant: "ribbon" },
+          vendor_branding: { variant: "ribbon" }
         }
       }
     },
@@ -2217,7 +2217,7 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["company_name", "branch", "doc_number", "doc_date", "items_table", "receiver_signature", "vendor_branding"],
         perBlock: {
-          vendor_branding: { variant: "minimal" },
+          vendor_branding: { variant: "minimal" }
         }
       }
     },
@@ -2231,7 +2231,7 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["logo", "company_name", "branch", "address", "tax_id", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature", "vendor_branding"],
         perBlock: {
-          vendor_branding: { variant: "minimal" },
+          vendor_branding: { variant: "minimal" }
         }
       }
     },

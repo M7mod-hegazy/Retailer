@@ -4,6 +4,7 @@ import React from "react";
 // identically in the Studio canvas and the real Print Preview (no `editing`-only
 // placeholder branch to fall out of sync, unlike data-driven blocks).
 const WORDMARK = "الحجازي";
+const OWNER_NAME = "م/ محمود حجازي";
 const TAGLINE = "نظام نقاط البيع الذكي";
 const PHONE = "01032440775";
 const INK = "#0f172a";
@@ -109,7 +110,10 @@ export default function VendorBrandingBlock({ props = {}, family, settings = {} 
   const lineHeight = props.lineHeight || 1.25;
 
   const WordMark = ({ color = wordColor, size = fs }) => (
-    <span style={{ fontWeight: weight, fontStyle, fontSize: `${size + 1}px`, color, lineHeight, whiteSpace: "nowrap" }}>{WORDMARK}</span>
+    <span style={{ display: "flex", flexDirection: "column", gap: 0, lineHeight }}>
+      <span style={{ fontWeight: weight, fontStyle, fontSize: `${size + 1}px`, color, whiteSpace: "nowrap" }}>{WORDMARK}</span>
+      <span style={{ fontWeight: 700, fontSize: `${Math.max(6, size - 1)}px`, color, opacity: 0.75, whiteSpace: "nowrap" }}>{OWNER_NAME}</span>
+    </span>
   );
   const Tagline = ({ color = SUB, size = fs }) => (
     showTagline ? <span style={{ fontWeight: 600, fontSize: `${Math.max(6, size - 2)}px`, color, opacity: isRoll ? 1 : 0.75, lineHeight, whiteSpace: "nowrap" }}>{TAGLINE}</span> : null

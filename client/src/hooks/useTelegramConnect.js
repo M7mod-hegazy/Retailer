@@ -563,7 +563,7 @@ export function useTelegramConnect(onSaved) {
   function createRecipient() {
     return {
       name: "",
-      chatId: config.telegram_chat_id || "",
+      chatId: "",
       enabled: true,
       notifyNewInvoice: true,
       notifyDailyClose: true,

@@ -84,7 +84,7 @@ export function HelpSettingsTab() {
 
   const copyInfo = () => {
     if (!systemInfo) return;
-    const text = `ElHegazi Retailer\nVersion: ${systemInfo.version}\nUsers: ${systemInfo.user_count}\nCompleted Tours: ${systemInfo.completed_tours}`;
+    const text = `م/ محمود حجازي — الحجازي Retailer\nVersion: ${systemInfo.version}\nUsers: ${systemInfo.user_count}\nCompleted Tours: ${systemInfo.completed_tours}`;
     navigator.clipboard.writeText(text).then(() => {
       toast.success(isRTL ? "تم نسخ المعلومات" : "Info copied");
     });
@@ -361,10 +361,10 @@ export function HelpSettingsTab() {
         <div className="rounded-sm border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm p-6 mb-5">
           <div className="flex flex-col sm:flex-row items-start gap-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
-              <span className="text-xl font-black tracking-tight">MH</span>
+              <span className="text-xl font-black tracking-tight">مح</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-base font-black text-slate-900">Mohamed Hegazy</h4>
+              <h4 className="text-base font-black text-slate-900">م/ محمود حجازي</h4>
               <p className="text-[12px] font-bold text-emerald-600 mt-0.5 tracking-wide">
                 {isRTL ? "مطور ومصمم النظام" : "Full-Stack Developer & Designer"}
               </p>

@@ -223,8 +223,9 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
             </div>
           )}
           <div className="min-w-0">
-            <h2 className="text-[15px] font-black tracking-tight text-zinc-900 leading-none truncate">{branding?.title || "نظام الحجازي"}</h2>
-            <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mt-1 truncate">{branding?.subtitle || "إدارة التجزئة"}</div>
+            <h2 className="text-[15px] font-black tracking-tight text-zinc-900 leading-none truncate">{branding?.title || "الحجازي"}</h2>
+            <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mt-0.5 truncate">{branding?.subtitle || "إدارة التجزئة"}</div>
+            <div className="text-[9px] font-bold text-zinc-400 mt-0.5 truncate">م/ محمود حجازي</div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">

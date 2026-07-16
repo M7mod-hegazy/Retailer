@@ -1173,8 +1173,21 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                       <div className="w-full bg-rose-100/50 border-t border-rose-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
-                        <span className="font-bold text-rose-700/80">إجمالي اليوم:</span>
-                        <span className="font-mono font-black text-rose-800">{fmt(summary?.expenses_cash ?? 0)} ج.م</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); navigate("/expenses"); }}
+                          onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), navigate("/expenses"))}
+                          className="flex items-center gap-1 text-rose-600/70 hover:text-rose-700 transition-colors cursor-pointer group/link"
+                          title="فتح صفحة المصروفات"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5 group-hover/link:scale-110 transition-transform" />
+                          <span className="font-bold hover:underline">فتح الصفحة</span>
+                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-rose-700/80">إجمالي اليوم:</span>
+                          <span className="font-mono font-black text-rose-800">{fmt(summary?.expenses_cash ?? 0)} ج.م</span>
+                        </div>
                       </div>
                     </motion.button>
                     </PermissionGate>
@@ -1202,8 +1215,21 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                       <div className="w-full bg-emerald-100/50 border-t border-emerald-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
-                        <span className="font-bold text-emerald-700/80">إجمالي اليوم:</span>
-                        <span className="font-mono font-black text-emerald-800">{fmt(summary?.revenues_cash ?? 0)} ج.م</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); navigate("/revenues"); }}
+                          onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), navigate("/revenues"))}
+                          className="flex items-center gap-1 text-emerald-600/70 hover:text-emerald-700 transition-colors cursor-pointer group/link"
+                          title="فتح صفحة الإيرادات"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5 group-hover/link:scale-110 transition-transform" />
+                          <span className="font-bold hover:underline">فتح الصفحة</span>
+                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-emerald-700/80">إجمالي اليوم:</span>
+                          <span className="font-mono font-black text-emerald-800">{fmt(summary?.revenues_cash ?? 0)} ج.م</span>
+                        </div>
                       </div>
                     </motion.button>
                     </PermissionGate>
@@ -1231,8 +1257,21 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                       <div className="w-full bg-sky-100/50 border-t border-sky-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
-                        <span className="font-bold text-sky-700/80">إجمالي اليوم:</span>
-                        <span className="font-mono font-black text-sky-800">{fmt(summary?.withdrawals ?? 0)} ج.م</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); navigate("/withdrawals"); }}
+                          onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), navigate("/withdrawals"))}
+                          className="flex items-center gap-1 text-sky-600/70 hover:text-sky-700 transition-colors cursor-pointer group/link"
+                          title="فتح صفحة المسحوبات"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5 group-hover/link:scale-110 transition-transform" />
+                          <span className="font-bold hover:underline">فتح الصفحة</span>
+                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-sky-700/80">إجمالي اليوم:</span>
+                          <span className="font-mono font-black text-sky-800">{fmt(summary?.withdrawals ?? 0)} ج.م</span>
+                        </div>
                       </div>
                     </motion.button>
                     </PermissionGate>
@@ -1313,8 +1352,18 @@ export default function DailyTreasuryPage() {
                         </div>
                       </div>
                       <div className="w-full bg-teal-100/50 border-t border-teal-200/40 px-3 py-2 flex items-center justify-between text-[10px] relative z-10 pr-4">
-                        <span className="font-bold text-teal-700/80">إجراء سريع:</span>
-                        <span className="font-black text-teal hover:text-teal-700 transition-colors group-hover:translate-x-[-2px] transition-transform">سند سريع ←</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); navigate("/definitions/employees"); }}
+                          onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), navigate("/definitions/employees"))}
+                          className="flex items-center gap-1 text-teal-600/70 hover:text-teal-700 transition-colors cursor-pointer group/link"
+                          title="فتح صفحة الموظفين"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5 group-hover/link:scale-110 transition-transform" />
+                          <span className="font-bold hover:underline">فتح الصفحة</span>
+                        </span>
+                        <span className="font-black text-teal-700 group-hover:translate-x-[-2px] transition-transform">سند سريع ←</span>
                       </div>
                     </motion.button>
                   </div>

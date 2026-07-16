@@ -40,7 +40,6 @@ export function useWhatsAppStatus(pollInterval = 8000) {
     try {
       const r = await api.get("/api/whatsapp/engine-status");
       consecutiveFailures = 0;
-      retryCountRef.current = 0;
       notify(r.data?.data || { status: "unavailable" });
     } catch (err) {
       if (isNetworkError(err)) {
