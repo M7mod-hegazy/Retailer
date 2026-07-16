@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { UtensilsCrossed, Plus, Pencil, Trash2, Save, X, ChevronDown, ChevronLeft, GripVertical } from "lucide-react";
+import { UtensilsCrossed, Plus, Pencil, Trash2, Save, X, ChevronDown, ChevronLeft, GripVertical, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import Button from "../../components/ui/Button";
 import FeatureRoute from "../../components/ui/FeatureRoute";
 import Modal from "../../components/ui/Modal";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 function GroupModal({ group, onClose, onSaved }) {
   const [name, setName] = useState(group?.name || "");
@@ -13,7 +14,7 @@ function GroupModal({ group, onClose, onSaved }) {
   const [required, setRequired] = useState(group?.required ? true : false);
   const [sortOrder, setSortOrder] = useState(String(group?.sort_order || "0"));
   const [selectedModifierIds, setSelectedModifierIds] = useState(group?.modifiers?.map((m) => m.id) || []);
-  const saving = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const { data: modifiersData } = useQuery({
     queryKey: ["modifiers"],
@@ -30,6 +31,7 @@ function GroupModal({ group, onClose, onSaved }) {
   async function handleSave(e) {
     e.preventDefault();
     if (!name.trim()) { toast.error("اسم المجموعة مطلوب"); return; }
+    setSaving(true);
     const payload = { name: name.trim(), selection_type: selectionType, required: required ? 1 : 0, sort_order: Number(sortOrder || 0), modifier_ids: selectedModifierIds };
     try {
       if (group?.id) {
@@ -40,7 +42,7 @@ function GroupModal({ group, onClose, onSaved }) {
         toast.success("تم إنشاء المجموعة");
       }
       onSaved?.();
-    } catch { toast.error("فشل الحفظ"); }
+    } catch { toast.error("فشل الحفظ"); } finally { setSaving(false); }
   }
 
   return (
@@ -84,7 +86,10 @@ function GroupModal({ group, onClose, onSaved }) {
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>إلغاء</Button>
-            <Button type="submit" size="sm"><Save className="h-4 w-4 me-1" />حفظ</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 me-1 animate-spin" /> : <Save className="h-4 w-4 me-1" />}
+              حفظ
+            </Button>
           </div>
         </form>
       </div>
@@ -96,10 +101,12 @@ function ModifierModal({ modifier, onClose, onSaved }) {
   const [name, setName] = useState(modifier?.name || "");
   const [nameEn, setNameEn] = useState(modifier?.name_en || "");
   const [priceAdjustment, setPriceAdjustment] = useState(String(modifier?.price_adjustment || "0"));
+  const [saving, setSaving] = useState(false);
 
   async function handleSave(e) {
     e.preventDefault();
     if (!name.trim()) { toast.error("اسم الإضافة مطلوب"); return; }
+    setSaving(true);
     try {
       const payload = { name: name.trim(), name_en: nameEn.trim() || null, price_adjustment: Number(priceAdjustment || 0) };
       if (modifier?.id) {
@@ -110,7 +117,7 @@ function ModifierModal({ modifier, onClose, onSaved }) {
         toast.success("تم إنشاء الإضافة");
       }
       onSaved?.();
-    } catch { toast.error("فشل الحفظ"); }
+    } catch { toast.error("فشل الحفظ"); } finally { setSaving(false); }
   }
 
   return (
@@ -132,7 +139,10 @@ function ModifierModal({ modifier, onClose, onSaved }) {
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>إلغاء</Button>
-            <Button type="submit" size="sm"><Save className="h-4 w-4 me-1" />حفظ</Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 me-1 animate-spin" /> : <Save className="h-4 w-4 me-1" />}
+              حفظ
+            </Button>
           </div>
         </form>
       </div>
@@ -238,6 +248,8 @@ export default function ModifierGroupsPage() {
   const [tab, setTab] = useState("groups");
   const [groupModal, setGroupModal] = useState(null);
   const [modifierModal, setModifierModal] = useState(null);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [modifierToDisable, setModifierToDisable] = useState(null);
 
   const { data: groups, isLoading: loadingGroups } = useQuery({
     queryKey: ["modifier-groups"],
@@ -314,7 +326,7 @@ export default function ModifierGroupsPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <button type="button" onClick={() => setGroupModal(g)} className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600"><Pencil className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => { if (confirm("حذف المجموعة؟")) deleteGroup.mutate(g.id); }} className="p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => setGroupToDelete(g)} className="p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                     {g.modifiers?.length > 0 && (
@@ -367,7 +379,7 @@ export default function ModifierGroupsPage() {
                         <td className="px-4 py-2.5 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button type="button" onClick={() => setModifierModal(m)} className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600"><Pencil className="h-4 w-4" /></button>
-                            <button type="button" onClick={() => { if (confirm("تعطيل الإضافة؟")) deleteModifier.mutate(m.id); }} className="p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => setModifierToDisable(m)} className="p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -385,6 +397,27 @@ export default function ModifierGroupsPage() {
         {/* Tab: Item-Group linking */}
         {tab === "items" && <ModifierItemsTab />}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(groupToDelete)}
+        onClose={() => setGroupToDelete(null)}
+        onConfirm={() => { if (groupToDelete) { deleteGroup.mutate(groupToDelete.id); setGroupToDelete(null); } }}
+        title="حذف المجموعة"
+        message={`هل تريد حذف "${groupToDelete?.name || ""}"؟ لا يمكن التراجع.`}
+        confirmText="نعم، احذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
+      <ConfirmDialog
+        open={Boolean(modifierToDisable)}
+        onClose={() => setModifierToDisable(null)}
+        onConfirm={() => { if (modifierToDisable) { deleteModifier.mutate(modifierToDisable.id); setModifierToDisable(null); } }}
+        title="تعطيل الإضافة"
+        message={`هل تريد تعطيل "${modifierToDisable?.name || ""}"؟ لن تظهر في القوائم بعد الآن.`}
+        confirmText="نعم، عطّل"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </FeatureRoute>
   );
 }

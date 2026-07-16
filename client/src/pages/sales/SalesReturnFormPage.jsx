@@ -266,6 +266,7 @@ export default function SalesReturnFormPage() {
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [todayReturnsOpen, setTodayReturnsOpen] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
   const [waSendOpen, setWaSendOpen] = useState(false);
@@ -944,7 +945,7 @@ export default function SalesReturnFormPage() {
     if (!editReturnId) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/api/invoices/returns/${editReturnId}`);
+      await api.post(`/api/invoices/returns/${editReturnId}/cancel`, { reason: cancelReason });
       navigate("/sales/returns", { replace: true });
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل حذف المرتجع", type: "error" });
@@ -2213,7 +2214,7 @@ export default function SalesReturnFormPage() {
       {showDeleteModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          onClick={() => !isDeleting && setShowDeleteModal(false)}
+          onClick={() => !isDeleting && (setShowDeleteModal(false), setCancelReason(""))}
         >
           <div
             className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
@@ -2235,16 +2236,38 @@ export default function SalesReturnFormPage() {
               <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-3.5 mb-6 text-2sm font-bold text-rose-700">
                 تأكد من صحة قرارك قبل المتابعة.
               </div>
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">سبب الإلغاء *</label>
+                <input
+                  type="text"
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="أدخل سبب الإلغاء"
+                  className="w-full h-11 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-all"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {["خطأ في الإدخال", "مرتجع مكرر", "طلب عميل", "بضاعة تالفة", "خطأ في السعر", "الإلغاء"].map(reason => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setCancelReason(reason)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${cancelReason === reason ? "bg-rose-100 text-rose-700 border border-rose-300" : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"}`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={handleDelete}
-                  disabled={isDeleting}
+                  disabled={isDeleting || !cancelReason.trim()}
                   className="flex-1 h-11 rounded-2xl btn-danger text-sm font-black disabled:opacity-50 transition-all active:scale-[0.98]"
                 >
                   {isDeleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
                 </button>
                 <button
-                  onClick={() => setShowDeleteModal(false)}
+                  onClick={() => { setShowDeleteModal(false); setCancelReason(""); }}
                   disabled={isDeleting}
                   className="h-11 px-6 rounded-2xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200 transition-colors"
                 >

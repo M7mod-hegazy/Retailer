@@ -15,6 +15,7 @@ import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { formatNumber } from "../../utils/currency";
+import { useConfirm } from "../../hooks/useConfirm";
 
 const fmt = (n) => formatNumber(n);
 
@@ -61,6 +62,7 @@ function MethodsTab() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: "", category: "digital_wallet", icon: "💳", description: "", excludes_from_treasury: true });
   const [saving, setSaving] = useState(false);
+  const { confirm } = useConfirm();
   const handleKeyDown = useFieldNavigation();
   const nameRef = useRef(null);
   const iconRef = useRef(null);
@@ -94,7 +96,8 @@ function MethodsTab() {
   }
 
   async function handleDelete(id, name) {
-    if (!confirm(`حذف "${name}"؟`)) return;
+    const ok = await confirm({ title: "حذف طريقة الدفع", message: `حذف "${name}"؟` });
+    if (!ok) return;
     try { await api.delete(`/api/payment-methods/${id}`); load(); }
     catch (e) { toast.error(e.response?.data?.message || "لا يمكن الحذف"); }
   }

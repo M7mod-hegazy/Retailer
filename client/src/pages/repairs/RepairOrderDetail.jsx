@@ -6,8 +6,11 @@ import api from "../../services/api";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
+import PermissionGate from "../../components/ui/PermissionGate";
 import { Wrench, Plus, Trash2, CheckCircle2, ArrowRight, Search } from "lucide-react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const STATUS_FLOW = ["received", "diagnosing", "waiting_parts", "in_repair", "waiting_customer", "ready", "delivered"];
 const STATUS_LABELS = {
@@ -34,6 +37,7 @@ export default function RepairOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
   const { data, isLoading } = useQuery({
     queryKey: ["repair-order", id],
@@ -44,6 +48,10 @@ export default function RepairOrderDetail() {
   const [laborForm, setLaborForm] = useState({ description: "", amount: "" });
   const [itemSearch, setItemSearch] = useState("");
   const [showItemPicker, setShowItemPicker] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [deliverLoading, setDeliverLoading] = useState(false);
+  const [partDeleting, setPartDeleting] = useState(null);
+  const [laborDeleting, setLaborDeleting] = useState(null);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses"],
@@ -63,7 +71,28 @@ export default function RepairOrderDetail() {
   const laborAmountRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
 
-  if (isLoading) return <div className="text-center py-16 text-slate-400">جاري التحميل...</div>;
+  if (isLoading) return (
+    <div className="space-y-4 animate-pulse p-6">
+      <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+      <div className="grid grid-cols-2 gap-4">
+        {[1,2,3,4].map(i => (
+          <div key={i} className="space-y-2">
+            <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+            <div className="h-10 bg-slate-200 rounded"></div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <div className="h-5 bg-slate-200 rounded w-1/4"></div>
+        <div className="h-24 bg-slate-200 rounded"></div>
+        <div className="h-24 bg-slate-200 rounded"></div>
+      </div>
+      <div className="flex gap-3">
+        <div className="h-10 bg-slate-200 rounded w-32"></div>
+        <div className="h-10 bg-slate-200 rounded w-32"></div>
+      </div>
+    </div>
+  );
   if (!data) return <div className="text-center py-16 text-red-500">لم يُعثر على الطلب</div>;
 
   const order = data;
@@ -72,13 +101,14 @@ export default function RepairOrderDetail() {
   const subtotal = partsTotal + laborTotal;
 
   async function changeStatus(newStatus) {
+    setStatusLoading(true);
     try {
       await api.patch(`/api/repair-orders/${id}/status`, { status: newStatus });
       qc.invalidateQueries(["repair-order", id]);
       toast.success("تم تحديث الحالة");
     } catch (err) {
       toast.error(err.response?.data?.message || "فشل تحديث الحالة");
-    }
+    } finally { setStatusLoading(false); }
   }
 
   async function addPart(e) {
@@ -96,8 +126,11 @@ export default function RepairOrderDetail() {
   }
 
   async function deletePart(partId) {
-    await api.delete(`/api/repair-orders/${id}/parts/${partId}`);
-    qc.invalidateQueries(["repair-order", id]);
+    setPartDeleting(partId);
+    try {
+      await api.delete(`/api/repair-orders/${id}/parts/${partId}`);
+      qc.invalidateQueries(["repair-order", id]);
+    } finally { setPartDeleting(null); }
   }
 
   async function addLabor(e) {
@@ -113,12 +146,17 @@ export default function RepairOrderDetail() {
   }
 
   async function deleteLabor(laborId) {
-    await api.delete(`/api/repair-orders/${id}/labor/${laborId}`);
-    qc.invalidateQueries(["repair-order", id]);
+    setLaborDeleting(laborId);
+    try {
+      await api.delete(`/api/repair-orders/${id}/labor/${laborId}`);
+      qc.invalidateQueries(["repair-order", id]);
+    } finally { setLaborDeleting(null); }
   }
 
   async function deliver() {
-    if (!window.confirm("هل تريد تسليم الجهاز وإنشاء الفاتورة؟")) return;
+    const ok = await confirm({ title: "تسليم الجهاز", message: "هل تريد تسليم الجهاز وإنشاء الفاتورة؟" });
+    if (!ok) return;
+    setDeliverLoading(true);
     try {
       const res = await api.post(`/api/repair-orders/${id}/deliver`, { final_cost: subtotal });
       toast.success("تم التسليم وإنشاء الفاتورة");
@@ -128,13 +166,14 @@ export default function RepairOrderDetail() {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "فشل التسليم");
-    }
+    } finally { setDeliverLoading(false); }
   }
 
   const currentIdx = STATUS_FLOW.indexOf(order.status);
   const nextStatus = currentIdx >= 0 && currentIdx < STATUS_FLOW.length - 1 ? STATUS_FLOW[currentIdx + 1] : null;
 
   return (
+    <>
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -150,18 +189,24 @@ export default function RepairOrderDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link to="edit"><Button size="sm" variant="ghost">تعديل</Button></Link>
+          <PermissionGate page="repair_orders" action="edit">
+            <Link to="edit"><Button size="sm" variant="ghost">تعديل</Button></Link>
+          </PermissionGate>
           {nextStatus && order.status !== "delivered" && order.status !== "cancelled" && (
-            <Button size="sm" onClick={() => changeStatus(nextStatus)}>
-              <ArrowRight className="h-4 w-4 me-1" />
-              {STATUS_LABELS[nextStatus]}
-            </Button>
+            <PermissionGate page="repair_orders" action="edit">
+              <Button size="sm" onClick={() => changeStatus(nextStatus)} disabled={statusLoading} loading={statusLoading}>
+                <ArrowRight className="h-4 w-4 me-1" />
+                {STATUS_LABELS[nextStatus]}
+              </Button>
+            </PermissionGate>
           )}
           {order.status === "ready" && !order.invoice_id && (
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={deliver}>
-              <CheckCircle2 className="h-4 w-4 me-1" />
-              تسليم وفاتورة
-            </Button>
+            <PermissionGate page="repair_orders" action="edit">
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={deliver} disabled={deliverLoading} loading={deliverLoading}>
+                <CheckCircle2 className="h-4 w-4 me-1" />
+                تسليم وفاتورة
+              </Button>
+            </PermissionGate>
           )}
         </div>
       </div>
@@ -192,14 +237,14 @@ export default function RepairOrderDetail() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {order.parts.map(p => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-4 py-2">{p.part_name}</td>
                     <td className="px-4 py-2 text-end">{p.quantity}</td>
                     <td className="px-4 py-2 text-end">{Number(p.unit_cost).toLocaleString()}</td>
                     <td className="px-4 py-2 text-end font-bold">{(p.quantity * p.unit_cost).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => deletePart(p.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                        <Trash2 className="h-4 w-4" />
+                      <button onClick={() => deletePart(p.id)} disabled={partDeleting === p.id} className="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                        {partDeleting === p.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
                       </button>
                     </td>
                   </tr>
@@ -252,12 +297,12 @@ export default function RepairOrderDetail() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {order.labor.map(l => (
-                  <tr key={l.id}>
+                  <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-4 py-2">{l.description}</td>
                     <td className="px-4 py-2 text-end font-bold">{Number(l.amount).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => deleteLabor(l.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                        <Trash2 className="h-4 w-4" />
+                      <button onClick={() => deleteLabor(l.id)} disabled={laborDeleting === l.id} className="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                        {laborDeleting === l.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
                       </button>
                     </td>
                   </tr>
@@ -284,5 +329,7 @@ export default function RepairOrderDetail() {
         <div className="flex justify-between font-black text-emerald-700"><span>المتبقي:</span><span>{Math.max(0, subtotal - Number(order.deposit_amount || 0)).toLocaleString()}</span></div>
       </div>
     </div>
+    <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+    </>
   );
 }

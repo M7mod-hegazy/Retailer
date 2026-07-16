@@ -440,7 +440,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       <Modal open={open} onClose={onClose} title={title || t("whatsapp.sendReceipt")} showDetach={false}>
         <div className="flex flex-col items-center justify-center py-8 text-center" dir="rtl">
           <AlertCircle className="h-10 w-10 text-danger mb-3" />
-          <p className="text-sm font-black text-text-primary">{t("permissions.denied")}</p>
+          <p className="text-sm font-black text-text-primary">غير مصرح</p>
         </div>
       </Modal>
     );

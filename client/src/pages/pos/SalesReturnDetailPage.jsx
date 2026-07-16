@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft, Trash2, Pencil, Printer, RotateCcw,
-  User, Calendar, X, Package,
+  User, Calendar, X, Package, Copy, Check,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
@@ -20,9 +20,14 @@ function fmt(n) {
 function CancelReasonModal({ onConfirm, onClose }) {
   const [reason, setReason] = useState("");
   const PRESETS = ["خطأ في البيانات", "خطأ في الكمية", "طلب العميل", "مرتجع مكرر", "أخرى"];
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[16px] font-black text-slate-800">سبب إلغاء المرتجع</h3>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
@@ -57,6 +62,14 @@ export default function SalesReturnDetailPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [printSettings, setPrintSettings] = useState({});
   const [waSendOpen, setWaSendOpen] = useState(false);
+  const [copied, setCopied] = useState(null);
+
+  function handleCopy(text, id) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -118,7 +131,42 @@ export default function SalesReturnDetailPage() {
   }
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center bg-slate-50"><div className="text-sm font-black text-slate-400 animate-pulse">جاري التحميل...</div></div>;
+    return (
+      <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
+        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-slate-300 bg-white px-6">
+          <div className="h-8 w-8 rounded-sm bg-slate-100 animate-pulse" />
+          <div className="h-4 w-48 bg-slate-200 rounded animate-pulse" />
+          <div className="h-6 w-16 rounded-full bg-slate-100 animate-pulse" />
+        </header>
+        <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
+          <div className="flex flex-1 flex-col gap-3 min-w-0">
+            <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-200 bg-white p-4 shrink-0">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-2 w-16 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4" style={{ animationDelay: `${i * 40}ms` }} />
+                </div>
+              ))}
+            </section>
+            <div className="rounded-md border border-slate-200 bg-white overflow-hidden flex-1">
+              <div className="bg-slate-50 border-b px-4 py-3 flex gap-4">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-3 bg-slate-200 rounded animate-pulse flex-1" />)}
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="px-4 py-3 flex gap-4 border-b border-slate-50">
+                  {[...Array(4)].map((_, j) => <div key={j} className="h-3 bg-slate-100 rounded animate-pulse flex-1" style={{ animationDelay: `${(i * 4 + j) * 30}ms` }} />)}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-72 shrink-0 space-y-3">
+            <div className="rounded-md border border-slate-200 bg-white p-4 space-y-3">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-slate-100 rounded animate-pulse w-full" />)}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (!doc) {
@@ -145,7 +193,11 @@ export default function SalesReturnDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-sm font-black text-slate-800">مرتجع مبيعات #{doc.doc_no}</h1>
+            <h1 className="text-sm font-black text-slate-800">مرتجع مبيعات #{doc.doc_no}
+              <button onClick={() => handleCopy(doc.doc_no, "doc")} className="inline-flex ms-1 rounded p-1 hover:bg-slate-100 transition-colors align-middle">
+                {copied === "doc" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
+              </button>
+            </h1>
             <span className="text-[11px] font-bold text-slate-400">
               {doc.original_invoice_no ? `من فاتورة ${doc.original_invoice_no}` : "مرتجع عام"}
             </span>

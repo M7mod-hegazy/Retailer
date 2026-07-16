@@ -900,13 +900,29 @@ router.post("/reorder", requirePagePermission("items", "add"), (req, res) => {
   return res.json({ success: true });
 });
 
-router.delete("/:id", requirePagePermission("items", "delete"), (req, res) => {
+router.delete("/:id", requirePagePermission("items", "delete"), async (req, res) => {
   try {
-    const existing = getDb().prepare("SELECT id FROM items WHERE id = ?").get(req.params.id);
+    const db = getDb();
+    const existing = db.prepare(`
+      SELECT i.id, i.name, i.code, i.sale_price,
+             (SELECT COALESCE(SUM(quantity), 0) FROM stock_levels WHERE item_id = i.id) AS quantity
+      FROM items i WHERE i.id = ?
+    `).get(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "الصنف غير موجود" });
-    getDb().prepare("UPDATE items SET deleted_at = ?, is_active = 0, updated_at = ? WHERE id = ?").run(nowSql(), nowSql(), req.params.id);
-    req.audit("delete", "items", { id: req.params.id }, `📦 تم حذف صنف`);
-    return res.json({ success: true });
+    db.prepare("UPDATE items SET deleted_at = ?, is_active = 0, updated_at = ? WHERE id = ?").run(nowSql(), nowSql(), req.params.id);
+    req.audit("delete", "items", { id: req.params.id }, `📦 تم حذف صنف: ${existing.name || ""}`);
+    let _tgStatus = null;
+    try {
+      _tgStatus = await notifyOwner(TG.ITEM_DELETED, {
+        productName: existing.name,
+        sku: existing.code,
+        price: existing.sale_price,
+        quantity: existing.quantity,
+        userName: req.user?.name || req.user?.username,
+        createdAt: nowSql(),
+      });
+    } catch (_) {}
+    return res.json({ success: true, telegramStatus: _tgStatus });
   } catch (err) {
     return res.status(500).json({ success: false, message: "تعذر حذف الصنف" });
   }
@@ -1466,6 +1482,18 @@ router.post("/import", express.json({ limit: "50mb" }), requirePagePermission("i
           console.error("[import] Failed to record import batch:", batchErr.message);
         }
 
+        // One summary notification for the whole import — never per row.
+        try {
+          if ((data.inserted || 0) + (data.updated || 0) > 0) {
+            notifyOwner(TG.NEW_PRODUCT, {
+              productName: `استيراد أصناف: ${data.inserted || 0} جديد، ${data.updated || 0} محدّث`,
+              sku: req.body?.file_name || "ملف استيراد",
+              userName: req.user?.name || req.user?.username,
+              createdAt: nowSql(),
+            });
+          }
+        } catch (_) {}
+
         return res.json({ success: true, data: { ...data, warnings: validation.warnings } });
       } finally {
         if (!dryRun) importInProgress = false;
@@ -1755,7 +1783,38 @@ function calcNewPrice(oldPrice, direction, adjustment_type, value) {
     : Math.max(0, Math.round((oldPrice + signed) * 100) / 100);
 }
 
-router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, res, next) => {
+const PRICE_FIELD_LABELS = {
+  retail_price: "سعر البيع", sale_price: "سعر البيع", wholesale_price: "سعر الجملة",
+  purchase_price: "سعر الشراء", price2: "سعر 2", price3: "سعر 3",
+};
+
+function bulkAdjustmentLabel(direction, adjustmentType, value) {
+  const dir = direction === "down" ? "خفض" : "زيادة";
+  return adjustmentType === "percent" ? `${dir} ${value}%` : `${dir} ${value} (قيمة ثابتة)`;
+}
+
+// One summary Telegram message per bulk pricing operation (never per item —
+// a 500-item update must not send 500 messages).
+async function notifyBulkPriceOperation(db, req, { operationLabel, itemsCount, fieldLabel, adjustmentLabel, reason, changes }) {
+  try {
+    const preview = (changes || []).slice(0, 10)
+      .map((c) => `• ${c.name || `صنف #${c.id}`}: ${c.old} ← ${c.new}`)
+      .join("\n");
+    const more = (changes || []).length > 10 ? `\n… و${changes.length - 10} صنف آخر` : "";
+    return await notifyOwner(TG.PRICE_BULK_UPDATE, {
+      operationLabel,
+      itemsCount,
+      fieldLabel,
+      adjustmentLabel,
+      reason: reason || "—",
+      changesTable: preview ? preview + more : "—",
+      userName: req.user?.name || req.user?.username,
+      createdAt: nowSql(),
+    });
+  } catch (_) { return null; }
+}
+
+router.post("/bulk-price-update", requirePagePermission("items", "add"), async (req, res, next) => {
   const db = getDb();
   try {
     const { item_ids, adjustment_type, adjustment_value, direction = "up", price_field = "retail_price", reason = "" } = req.body;
@@ -1768,7 +1827,7 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
     let totalChanges = 0;
 
     const placeholders = item_ids.map(() => "?").join(",");
-    const items = db.prepare(`SELECT id, ${field} as old_price FROM items WHERE id IN (${placeholders})`).all(...item_ids);
+    const items = db.prepare(`SELECT id, name, ${field} as old_price FROM items WHERE id IN (${placeholders})`).all(...item_ids);
 
     const changedBy = req.user?.name || req.user?.username || "غير محدد";
     const insertHistory = db.prepare(
@@ -1777,24 +1836,35 @@ router.post("/bulk-price-update", requirePagePermission("items", "add"), (req, r
     );
     const updateItem = db.prepare(`UPDATE items SET ${field} = ?, updated_at = ? WHERE id = ?`);
 
+    const changes = [];
     const run = db.transaction(() => {
       for (const item of items) {
         const newPrice = calcNewPrice(item.old_price, direction, adjustment_type, value);
         if (newPrice === item.old_price) continue;
         insertHistory.run(item.id, field, item.old_price, newPrice, adjustment_type, value, reason, operationId, changedBy);
         updateItem.run(newPrice, nowSql(), item.id);
+        changes.push({ id: item.id, name: item.name, old: item.old_price, new: newPrice });
         totalChanges++;
       }
     });
     run();
 
-    res.json({ success: true, changes: totalChanges, operation_id: operationId });
+    const _tgStatus = totalChanges > 0 ? await notifyBulkPriceOperation(db, req, {
+      operationLabel: "تحديث أسعار جماعي",
+      itemsCount: totalChanges,
+      fieldLabel: PRICE_FIELD_LABELS[price_field] || price_field,
+      adjustmentLabel: bulkAdjustmentLabel(direction, adjustment_type, value),
+      reason,
+      changes,
+    }) : null;
+
+    res.json({ success: true, changes: totalChanges, operation_id: operationId, telegramStatus: _tgStatus });
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (req, res, next) => {
+router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), async (req, res, next) => {
   const db = getDb();
   try {
     const { rules, inline_overrides, reason = "" } = req.body;
@@ -1879,13 +1949,22 @@ router.post("/bulk-price-batch-update", requirePagePermission("items", "add"), (
     });
     run();
 
-    res.json({ success: true, changes: totalChanges, operation_id: operationId, batch_rules: appliedRules });
+    const _tgStatus = totalChanges > 0 ? await notifyBulkPriceOperation(db, req, {
+      operationLabel: "تحديث أسعار جماعي (قواعد متعددة)",
+      itemsCount: totalChanges,
+      fieldLabel: appliedRules.map((r) => PRICE_FIELD_LABELS[r.price_field] || r.price_field).filter((v, i, a) => a.indexOf(v) === i).join("، ") || "أسعار متعددة",
+      adjustmentLabel: appliedRules.map((r) => `${bulkAdjustmentLabel(r.direction, r.adjustment_type, r.adjustment_value)} (${r.items_count} صنف)`).join(" | ") || "تعديلات يدوية",
+      reason,
+      changes: [],
+    }) : null;
+
+    res.json({ success: true, changes: totalChanges, operation_id: operationId, batch_rules: appliedRules, telegramStatus: _tgStatus });
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/bulk-price-rollback", requirePagePermission("items", "add"), (req, res, next) => {
+router.post("/bulk-price-rollback", requirePagePermission("items", "add"), async (req, res, next) => {
   const db = getDb();
   try {
     const { operation_id } = req.body;
@@ -1901,7 +1980,17 @@ router.post("/bulk-price-rollback", requirePagePermission("items", "add"), (req,
       db.prepare("DELETE FROM price_history WHERE operation_id = ?").run(operation_id);
     });
     run();
-    res.json({ success: true, restored });
+
+    const _tgStatus = restored > 0 ? await notifyBulkPriceOperation(db, req, {
+      operationLabel: "استرجاع تحديث أسعار (تراجع)",
+      itemsCount: restored,
+      fieldLabel: PRICE_FIELD_LABELS[history[0]?.field] || history[0]?.field || "—",
+      adjustmentLabel: `استرجاع العملية ${operation_id}`,
+      reason: "تراجع عن عملية تحديث أسعار",
+      changes: [],
+    }) : null;
+
+    res.json({ success: true, restored, telegramStatus: _tgStatus });
   } catch (err) {
     next(err);
   }

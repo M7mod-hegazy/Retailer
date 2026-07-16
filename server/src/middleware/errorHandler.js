@@ -1,8 +1,14 @@
 const { isForeignKeyError, describeForeignKeyViolations } = require("../utils/fkDiagnostics");
 
-function errorHandler(err, _req, res, _next) {
+function errorHandler(err, req, res, _next) {
   const status = err.status || 500;
-  console.error("[ERROR]", status, err.message, err.stack);
+  // Expected auth/permission rejections are routine (expired token, missing
+  // permission) — one concise line, no stack, or the console drowns in noise.
+  if (status === 401 || status === 403) {
+    console.warn("[AUTH]", status, req?.method, req?.originalUrl || req?.url, "-", err.message);
+  } else {
+    console.error("[ERROR]", status, err.message, err.stack);
+  }
 
   const body = {
     success: false,

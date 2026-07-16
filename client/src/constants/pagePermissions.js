@@ -14,6 +14,9 @@ export const ACTION_LABELS = {
   manage_permissions: "إدارة الصلاحيات",
   edit_general: "تعديل الإعدادات العامة",
   edit_security: "تعديل إعدادات الأمان",
+  studio: "استوديو الطباعة",
+  calibrate: "معايرة الطابعة",
+  device_profile: "ملف جهاز الطابعة",
   adjust: "تسوية",
   transfer: "تحويل",
   export: "تصدير",
@@ -29,6 +32,12 @@ export const ACTION_LABELS = {
   manage_deductions: "إدارة الخصومات",
   manage_bonuses: "إدارة المكافئات",
   settle_payroll: "صرف الرواتب",
+  manage_templates: "إدارة القوالب",
+  connect: "ربط/فصل القنوات",
+  manage_events: "إدارة أحداث التتبع",
+  pull: "سحب بيانات من المتجر",
+  push: "دفع البيانات إلى المتجر",
+  configure: "إعداد المزامنة",
 };
 
 export const ACTION_DESCRIPTIONS = {
@@ -47,6 +56,9 @@ export const ACTION_DESCRIPTIONS = {
   manage_permissions: "تعديل صلاحيات المستخدمين الآخرين",
   edit_general: "تعديل الإعدادات العامة للنظام",
   edit_security: "تعديل إعدادات الأمان والحماية",
+  studio: "فتح استوديو تصميم قوالب الطباعة وتعديل التصميم",
+  calibrate: "معايرة وضبط حجم الورق والهوامش للطابعة",
+  device_profile: "استيراد وتصدير ملف إعدادات جهاز الطابعة",
   adjust: "إجراء تسويات يدوية على المخزون",
   transfer: "تحويل الأصناف بين المخازن والفروع",
   export: "تصدير البيانات والتقارير إلى ملفات خارجية",
@@ -62,6 +74,12 @@ export const ACTION_DESCRIPTIONS = {
   manage_deductions: "إدارة الخصومات",
   manage_bonuses: "إدارة المكافئات",
   settle_payroll: "صرف الرواتب وإنشاء مصروفات",
+  manage_templates: "إدارة القوالب (إنشاء، تعديل، حذف، تفعيل)",
+  connect: "ربط وفصل قنوات التواصل (واتساب، تيليجرام، SMS، البريد)",
+  manage_events: "تعديل الأحداث المراد متابعتها على تيليجرام",
+  pull: "سحب المنتجات والبيانات من المتجر الإلكتروني إلى النظام المحلي",
+  push: "دفع التغييرات المحلية إلى المتجر الإلكتروني",
+  configure: "إعداد بيانات الاتصال بالمتجر الإلكتروني وتفعيل المزامنة التلقائية",
 };
 
 export const PAGE_PERMISSIONS = {
@@ -97,7 +115,8 @@ export const PAGE_PERMISSIONS = {
   reports: { label: 'مركز التقارير', actions: ['view', 'export'] },
   users: { label: 'المستخدمين', actions: ['view', 'add', 'edit', 'delete', 'manage_permissions', 'print'] },
   employees: { label: 'الموظفين', actions: ['view', 'add', 'edit', 'delete', 'print', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'] },
-  settings: { label: 'الإعدادات العامة', actions: ['view', 'edit_general', 'edit_security'] },
+  settings: { label: 'الإعدادات العامة', actions: ['view', 'edit', 'edit_general', 'edit_security'] },
+  print_settings: { label: 'إعدادات الطباعة', actions: ['view', 'edit', 'studio', 'calibrate', 'device_profile'] },
   dashboard: { label: 'لوحة التحكم', actions: ['view'] },
   stock: { label: 'المخزون', actions: ['view', 'add', 'edit', 'delete', 'adjust', 'transfer', 'print'] },
   payments: { label: 'المدفوعات', actions: ['view', 'add', 'edit', 'delete', 'print'] },
@@ -105,9 +124,10 @@ export const PAGE_PERMISSIONS = {
   employee_adjustments: { label: 'مكافآت وخصومات', actions: ['view', 'add'] },
   backup: { label: 'النسخ الاحتياطي', actions: ['view', 'create', 'restore', 'export', 'empty'] },
   updates: { label: 'التحديثات', actions: ['view'] },
-  history: { label: 'سجل النشاط', actions: ['view'] },
-  whatsapp_crm: { label: 'مركز الرسائل والحملات', actions: ['view', 'add', 'edit', 'delete'] },
-  whatsapp_receipt: { label: 'إرسال إيصال واتساب', actions: ['send'] },
+  history: { label: 'سجل النشاط', actions: ['view', 'export'] },
+  whatsapp_crm: { label: 'مركز الرسائل والحملات', actions: ['view', 'add', 'edit', 'delete', 'send', 'connect', 'manage_templates', 'manage_events'] },
+  whatsapp_receipt: { label: 'إرسال إيصال واتساب', actions: ['view', 'send'] },
+  sync: { label: 'المزامنة (E-Commerce)', actions: ['view', 'pull', 'push', 'configure', 'restore'] },
   restaurant_tables: { label: 'طاولات المطعم', actions: ['view', 'add', 'edit', 'delete'] },
   restaurant_modifiers: { label: 'إضافات المطعم (موديفير)', actions: ['view', 'add', 'edit', 'delete'] },
   gold_pricing: { label: 'تسعير الذهب', actions: ['view', 'add', 'edit', 'delete'] },
@@ -129,5 +149,5 @@ export const ROLE_PRESETS = {
 
 // Ordered list of all unique actions across all pages (for matrix column headers)
 const ALL_UNIQUE_ACTIONS = [...new Set(Object.values(PAGE_PERMISSIONS).flatMap(p => p.actions))];
-const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'send', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete', 'print', 'send', 'void', 'hold', 'discount', 'export', 'adjust', 'transfer', 'manage_permissions', 'edit_general', 'edit_security', 'studio', 'calibrate', 'device_profile', 'create', 'restore', 'import_undo', 'edit_tax_rate', 'view_sensitive', 'backdate_records', 'salary_view', 'salary_edit', 'manage_advances', 'manage_deductions', 'manage_bonuses', 'settle_payroll', 'manage_templates', 'connect', 'manage_events', 'pull', 'push', 'configure'];
 export const ALL_ACTIONS = ACTION_ORDER.filter(a => ALL_UNIQUE_ACTIONS.includes(a));

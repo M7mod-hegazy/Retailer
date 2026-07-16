@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import TitleBar from "../../components/ui/TitleBar";
+import PermissionGate from "../../components/ui/PermissionGate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { useDetach } from "../../hooks/useDetach";
+import FieldError from "../../components/ui/FieldError";
 
 export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
@@ -24,6 +26,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   const [payMethods, setPayMethods] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   
   const [form, setForm] = useState({
     amount: "",
@@ -52,7 +55,21 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   useEffect(() => {
     if (!open) return;
     loadSelectionData();
+    setTimeout(() => amountRef.current?.focus(), 100);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => {
+      if (e.key === 'Escape') onClose();
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [open, onClose]);
 
   async function loadSelectionData() {
     try {
@@ -73,10 +90,14 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (loading) return;
-    if (!form.amount || !form.category_id) {
-      toast.error("يرجى إدخال المبلغ والتصنيف");
+    const newErrors = {};
+    if (!form.amount) newErrors.amount = "أدخل المبلغ";
+    if (!form.category_id) newErrors.category_id = "اختر التصنيف";
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     setLoading(true);
     try {
@@ -110,7 +131,7 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <TitleBar title="تسجيل مصروف جديد" subtitle="إضافة حركة مالية تابعة للمصروفات العمومية أو الإدارية" onClose={onClose} onDetach={handleDetach} />
@@ -122,17 +143,18 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">قيمة المصروف</label>
                  <div className="relative">
                     <DollarSign className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                     <input 
-                        ref={amountRef}
-                        type="number"
-                        required
-                        value={form.amount}
-                        onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))}
-                        onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
-                        placeholder="0.00"
-                         className="w-full rounded-sm border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none focus:border-rose-600 focus:ring-1 focus:ring-rose-600"
-                     />
-                 </div>
+                      <input 
+                         ref={amountRef}
+                         type="number"
+                         required
+                         value={form.amount}
+                         onChange={(e) => { setForm(f => ({ ...f, amount: e.target.value })); setErrors(err => ({ ...err, amount: undefined })); }}
+                         onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
+                         placeholder="0.00"
+                          className={`w-full rounded-sm border bg-white py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none transition-all ${errors.amount ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-slate-200 focus:border-rose-600 focus:ring-1 focus:ring-rose-600"}`}
+                      />
+                  </div>
+                  <FieldError error={errors.amount} />
               </div>
 
               {/* Category */}
@@ -140,18 +162,19 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تصنيف المصروف</label>
                  <div className="relative">
                     <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                     <select 
-                        ref={categoryRef}
-                        required
-                        value={form.category_id}
-                        onChange={(e) => setForm(f => ({ ...f, category_id: e.target.value }))}
-                        onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: amountRef })}
-                        className="w-full appearance-none rounded-sm border border-slate-200 py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
-                     >
-                        <option value="">اختيار الفئة...</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                     </select>
-                 </div>
+                      <select 
+                         ref={categoryRef}
+                         required
+                         value={form.category_id}
+                         onChange={(e) => { setForm(f => ({ ...f, category_id: e.target.value })); setErrors(err => ({ ...err, category_id: undefined })); }}
+                         onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: amountRef })}
+                         className={`w-full appearance-none rounded-sm border py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-all ${errors.category_id ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-slate-800"}`}
+                      >
+                         <option value="">اختيار الفئة...</option>
+                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                  </div>
+                  <FieldError error={errors.category_id} />
               </div>
 
               {/* Description */}
@@ -256,21 +279,24 @@ export default function ExpenseFormModal({ open, onClose, onSuccess }) {
               <button 
                  type="button"
                  onClick={onClose}
-                 className="btn-danger rounded-sm px-6 py-2.5 text-sm font-black transition-colors"
+                  className="btn-ghost rounded-sm px-6 py-2.5 text-sm font-black transition-colors"
               >
                  إلغاء التغييرات
               </button>
-              <button 
-                 type="submit"
-                 disabled={loading}
-                 className="flex items-center gap-2 rounded-sm bg-rose-900 px-10 py-2.5 text-sm font-black text-white shadow-lg shadow-rose-900/20 transition-all hover:bg-rose-800 active:scale-95 disabled:opacity-50"
-              >
-                 {loading ? 'جاري الحفظ...' : (
-                    <>
-                       <CheckCircle2 className="h-4 w-4" /> حفظ مصروف جديد
-                    </>
-                 )}
-              </button>
+               <PermissionGate page="expenses" action="add">
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="flex items-center gap-2 rounded-sm bg-rose-900 px-10 py-2.5 text-sm font-black text-white shadow-lg shadow-rose-900/20 transition-all hover:bg-rose-800 active:scale-95 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {loading ? 'جاري الحفظ...' : 'حفظ مصروف جديد'}
+                  </button>
+               </PermissionGate>
            </div>
         </form>
       </div>

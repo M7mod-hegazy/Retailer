@@ -97,6 +97,7 @@ function topProducts(db, from, to, limit = 5) {
   try {
     return db.prepare(
       `SELECT COALESCE(il.item_name_ar, it.name) AS name,
+              it.code AS sku,
               SUM(il.quantity) AS qty, SUM(il.line_total) AS rev
        FROM invoice_lines il JOIN invoices i ON i.id = il.invoice_id
        LEFT JOIN items it ON it.id = il.item_id
@@ -143,9 +144,10 @@ function lowStockCount(db) {
 
 function buildProductsTable(products, currency) {
   if (!products.length) return "لا توجد منتجات";
-  return products.map((p, i) =>
-    `${i + 1}. ${p.name || "—"} — ${Number(p.qty || 0).toLocaleString("ar-EG")} قطعة (${formatMoney(p.rev, currency)})`
-  ).join("\n");
+  return products.map((p, i) => {
+    const label = p.sku ? `[${p.sku}] ${p.name || "—"}` : (p.name || "—");
+    return `${i + 1}. ${label} — ${Number(p.qty || 0).toLocaleString("ar-EG")} قطعة (${formatMoney(p.rev, currency)})`;
+  }).join("\n");
 }
 
 function buildCustomersTable(customers, currency) {

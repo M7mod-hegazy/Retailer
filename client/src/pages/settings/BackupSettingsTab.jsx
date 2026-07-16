@@ -9,6 +9,8 @@ import RestoreBrowser from "./backup/RestoreBrowser";
 import RestoreConfirmModal from "./backup/RestoreConfirmModal";
 import EmptyDatabaseDialog from "./backup/EmptyDatabaseDialog";
 import { pickFolder, pickSavePath, isDesktop, formatBytes, formatDateTime } from "./backup/helpers";
+import { useConfirm } from "../../hooks/useConfirm";
+import { DramaticDeleteConfirm } from "../../components/ui/DramaticDeleteConfirm";
 
 function InfoTip({ text }) {
   if (!text) return null;
@@ -63,6 +65,7 @@ export default function BackupSettingsTab() {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [emptyOpen, setEmptyOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { dramaticConfirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [settings, setSettings] = useState({
@@ -78,7 +81,7 @@ export default function BackupSettingsTab() {
     api
       .get("/api/backup/settings")
       .then((res) => res.data?.data && setSettings((s) => ({ ...s, ...res.data.data })))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -128,7 +131,7 @@ export default function BackupSettingsTab() {
     try {
       const res = await api.put("/api/backup/settings", next);
       if (res.data?.data) setSettings((s) => ({ ...s, ...res.data.data }));
-      toast.success("تم حفظ إعدادات النسخ التلقائي");
+      toast.success("تم حفظ إعدادات أخر النسخ التلقائي");
     } catch {
       toast.error("تعذر حفظ الإعدادات");
     } finally {
@@ -223,7 +226,7 @@ export default function BackupSettingsTab() {
       {canCreate && (
         <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-1 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
-            <Clock className="h-4 w-4 text-slate-500" /> النسخ التلقائي
+            <Clock className="h-4 w-4 text-slate-500" /> أخر النسخ التلقائي
           </div>
           <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
             يأخذ النظام نسخة احتياطية عند فتح البرنامج، وعند إغلاقه، ودورياً أثناء التشغيل — متى مضى على آخر نسخة أكثر من الفترة المحددة. لا يعتمد على توقيت ثابت قد لا يعمل إذا كان الجهاز مغلقاً.
@@ -352,7 +355,8 @@ export default function BackupSettingsTab() {
                 const file = e.target.files?.[0];
                 e.target.value = "";
                 if (!file) return;
-                if (!window.confirm("سيتم استبدال كل البيانات الحالية بمحتوى الملف. متابعة؟")) return;
+                const ok = await dramaticConfirm({ itemName: file.name });
+                if (!ok) return;
                 setBusy(true);
                 const t = toast.loading("جارٍ الاستيراد...");
                 try {
@@ -400,6 +404,7 @@ export default function BackupSettingsTab() {
         onConfirm={handleConfirmRestore}
       />
       <EmptyDatabaseDialog open={emptyOpen} onClose={() => setEmptyOpen(false)} onConfirm={handleConfirmEmpty} />
+      <DramaticDeleteConfirm itemName={confirmState.itemName} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

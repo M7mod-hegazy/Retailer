@@ -46,6 +46,27 @@ export default function EmployeesPage() {
 
   useEffect(() => { loadEmployees(); }, []);
 
+  useEffect(() => {
+    if (!showForm) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowForm(false); setEditingRow(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showForm]);
+
+  useEffect(() => {
+    if (!permDenied) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPermDenied(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [permDenied]);
+
+  useEffect(() => {
+    if (!deleteState) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDeleteState(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [deleteState]);
+
   async function loadEmployees() {
     setLoading(true);
     try {

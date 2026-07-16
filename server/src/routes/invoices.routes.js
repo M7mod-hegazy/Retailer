@@ -97,23 +97,137 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
 });
 
 // Get invoices by customer phone (for WhatsApp CRM invoice sending)
+// Now includes sales, returns, and credit notes with doc_no and type
 router.get("/by-phone", requirePagePermission("pos", "view"), (req, res) => {
   try {
     const db = getDb();
     const { phone } = req.query;
     if (!phone) return res.json({ success: true, data: [] });
-    const rows = db.prepare(`
-      SELECT i.id, i.invoice_no, i.total, i.status, i.created_at, i.subtotal, i.discount,
-             i.tax_amount, i.amount_received, i.payment_type,
-             c.name AS customer_name, c.phone AS customer_phone
-      FROM invoices i
-      LEFT JOIN customers c ON c.id = i.customer_id
-      WHERE i.status != 'cancelled'
-        AND c.phone IS NOT NULL AND c.phone != ''
-        AND (REPLACE(REPLACE(c.phone,' ',''),'-','') LIKE ?)
-      ORDER BY i.created_at DESC
-      LIMIT 50
-    `).all(`%${phone.replace(/[\s-]/g, '')}%`);
+    const norm = phone.replace(/[\s-]/g, "");
+    const like = `%${norm}%`;
+    let rows = [];
+    // Try full query (sales + returns + email)
+    try {
+      rows = db.prepare(`
+        SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at, i.subtotal, i.discount,
+               i.tax_amount, i.amount_received, i.payment_type,
+               c.name AS customer_name, c.phone AS customer_phone,
+               'sale' AS type
+        FROM invoices i
+        LEFT JOIN customers c ON c.id = i.customer_id
+        WHERE i.status != 'cancelled'
+          AND c.phone IS NOT NULL AND c.phone != ''
+          AND (REPLACE(REPLACE(c.phone,' ',''),'-','') LIKE ?)
+        UNION ALL
+        SELECT sr.id, sr.doc_no, sr.total, sr.status, sr.created_at, 0 AS subtotal, 0 AS discount,
+               0 AS tax_amount, 0 AS amount_received, sr.refund_method AS payment_type,
+               c.name AS customer_name, c.phone AS customer_phone,
+               'return' AS type
+        FROM sales_returns sr
+        LEFT JOIN customers c ON c.id = sr.customer_id
+        WHERE sr.status != 'cancelled'
+          AND c.phone IS NOT NULL AND c.phone != ''
+          AND (REPLACE(REPLACE(c.phone,' ',''),'-','') LIKE ?)
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).all(like, like);
+    } catch (_) {
+      // sales_returns or customers table may not exist — fall through
+      rows = [];
+    }
+    // Fallback: sales only
+    if (!rows.length) {
+      try {
+        rows = db.prepare(`
+          SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at, i.subtotal, i.discount,
+                 i.tax_amount, i.amount_received, i.payment_type,
+                 c.name AS customer_name, c.phone AS customer_phone,
+                 'sale' AS type
+          FROM invoices i
+          LEFT JOIN customers c ON c.id = i.customer_id
+          WHERE i.status != 'cancelled'
+            AND c.phone IS NOT NULL AND c.phone != ''
+            AND (REPLACE(REPLACE(c.phone,' ',''),'-','') LIKE ?)
+          ORDER BY created_at DESC
+          LIMIT 100
+        `).all(like);
+      } catch (_) {
+        // customers table may not exist — bare invoice query
+        try {
+          rows = db.prepare(`
+            SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at, i.subtotal, i.discount,
+                   i.tax_amount, i.amount_received, i.payment_type,
+                   NULL AS customer_name, i.walk_in_phone AS customer_phone,
+                   'sale' AS type
+            FROM invoices i
+            WHERE i.status != 'cancelled'
+              AND i.walk_in_phone IS NOT NULL AND i.walk_in_phone != ''
+              AND (REPLACE(REPLACE(i.walk_in_phone,' ',''),'-','') LIKE ?)
+            ORDER BY created_at DESC
+            LIMIT 100
+          `).all(like);
+        } catch (__) {
+          rows = [];
+        }
+      }
+    }
+    res.json({ success: true, data: rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Search invoices by doc number (across all customers)
+router.get("/by-doc", requirePagePermission("pos", "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const { doc_no } = req.query;
+    if (!doc_no || !doc_no.trim()) return res.json({ success: true, data: [] });
+    const like = `%${doc_no.trim()}%`;
+    let rows = [];
+    try {
+      rows = db.prepare(`
+        SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at,
+               c.name AS customer_name, c.phone AS customer_phone,
+               'sale' AS type
+        FROM invoices i
+        LEFT JOIN customers c ON c.id = i.customer_id
+        WHERE i.status != 'cancelled' AND i.invoice_no LIKE ?
+        UNION ALL
+        SELECT sr.id, sr.doc_no, sr.total, sr.status, sr.created_at,
+               c.name AS customer_name, c.phone AS customer_phone,
+               'return' AS type
+        FROM sales_returns sr
+        LEFT JOIN customers c ON c.id = sr.customer_id
+        WHERE sr.status != 'cancelled' AND sr.doc_no LIKE ?
+        ORDER BY created_at DESC
+        LIMIT 50
+      `).all(like, like);
+    } catch (_) { rows = []; }
+    if (!rows.length) {
+      try {
+        rows = db.prepare(`
+          SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at,
+                 c.name AS customer_name, c.phone AS customer_phone,
+                 'sale' AS type
+          FROM invoices i
+          LEFT JOIN customers c ON c.id = i.customer_id
+          WHERE i.status != 'cancelled' AND i.invoice_no LIKE ?
+          ORDER BY created_at DESC
+          LIMIT 50
+        `).all(like);
+      } catch (_) {
+        try {
+          rows = db.prepare(`
+            SELECT i.id, i.invoice_no AS doc_no, i.total, i.status, i.created_at,
+                   NULL AS customer_name, NULL AS customer_phone,
+                   'sale' AS type
+            FROM invoices i
+            WHERE i.status != 'cancelled' AND i.invoice_no LIKE ?
+            ORDER BY created_at DESC
+            LIMIT 50
+          `).all(like);
+        } catch (__) { rows = []; }
+      }
+    }
     res.json({ success: true, data: rows });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -222,40 +336,110 @@ router.get("/returns/:id", requirePagePermission("sales_returns", "view"), (req,
     } catch (e) { next(e); }
 });
 
-router.post("/general-return", requirePagePermission("sales_returns", "add"), (req, res, next) => {
+router.post("/general-return", requirePagePermission("sales_returns", "add"), async (req, res, next) => {
   try {
     const result = createGeneralReturn({ ...req.body, user_id: req.user?.id || req.body.user_id || null, _user: req.user });
     req.audit("create", "sales_return", { id: result?.id }, `↩️ تم إنشاء مرتجع مبيعات عام #${result?.id}`, result?.id ? `/pos/sales-returns/${result.id}` : null);
-    res.json({ success: true, data: result });
+    // Itemized SALES_RETURN on top of the service's RETURN_PAYMENT — mirrors
+    // the invoice-linked return route, which sends both.
+    let _tgStatus = null;
+    try {
+      const details = result?.id ? getReturnDetails(result.id) : null;
+      _tgStatus = await notifyOwner(TG.SALES_RETURN, {
+        originalInvoiceId: null,
+        originalInvoiceNo: details?.doc_no || result?.doc_no || "مرتجع عام",
+        id: result?.id,
+        total: result?.total,
+        customerName: details?.customer_name || details?.walk_in_name || null,
+        lines: details?.lines || [],
+        refundMethod: result?.refund_method || null,
+        reason: result?.reason || null,
+        userName: actingUserName(getDb(), req),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delete"), (req, res, next) => {
+// Resolves the display name of the acting user for notification messages.
+function actingUserName(db, req) {
+  try {
+    const row = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    return row?.name || req.user?.full_name || req.user?.username || null;
+  } catch (_) { return req.user?.username || null; }
+}
+
+router.post("/returns/:id/cancel", requirePagePermission("sales_returns", "delete"), async (req, res, next) => {
   try {
     const { reason, user_id } = req.body || {};
+    const before = getReturnDetails(Number(req.params.id));
     const result = cancelSalesReturn(Number(req.params.id), reason, req.user?.id || user_id || null);
     req.audit("cancel", "sales_return", { id: Number(req.params.id), reason }, `↩️ تم إلغاء مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      _tgStatus = await notifyOwner(TG.SALES_RETURN_CANCELLED, {
+        docNo: before?.doc_no || req.params.id,
+        customerName: before?.customer_name || before?.walk_in_name,
+        total: before?.total,
+        reason,
+        lines: before?.lines || [],
+        userName: actingUserName(getDb(), req),
+        cancelledAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
+router.put("/returns/:id", requirePagePermission("sales_returns", "edit"), async (req, res, next) => {
   try {
+    const before = getReturnDetails(Number(req.params.id));
     const result = editSalesReturn(Number(req.params.id), { ...(req.body || {}), _user: req.user }, req.user?.id || req.body?.user_id || null);
     req.audit("edit", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      const after = getReturnDetails(Number(req.params.id));
+      _tgStatus = await notifyOwner(TG.SALES_RETURN_EDITED, {
+        docNo: after?.doc_no || before?.doc_no || req.params.id,
+        customerName: after?.customer_name || after?.walk_in_name || before?.customer_name,
+        oldTotal: before?.total,
+        newTotal: after?.total,
+        oldLines: before?.lines || [],
+        newLines: after?.lines || [],
+        userName: actingUserName(getDb(), req),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"), (req, res, next) => {
+router.put("/returns/:id/amend", requirePagePermission("sales_returns", "edit"), async (req, res, next) => {
   try {
+    const before = getReturnDetails(Number(req.params.id));
     const result = amendSalesReturn(Number(req.params.id), req.body || {}, req.user?.id || req.body?.user_id || null);
     req.audit("amend", "sales_return", { id: Number(req.params.id) }, `↩️ تم تعديل (أمندمنت) مرتجع مبيعات #${req.params.id}`, `/pos/sales-returns/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      // amendSalesReturn returns { original, new_return }
+      const after = result?.new_return?.id ? getReturnDetails(result.new_return.id) : null;
+      _tgStatus = await notifyOwner(TG.SALES_RETURN_EDITED, {
+        docNo: after?.doc_no || before?.doc_no || req.params.id,
+        customerName: after?.customer_name || after?.walk_in_name || before?.customer_name,
+        oldTotal: before?.total,
+        newTotal: after?.total,
+        oldLines: before?.lines || [],
+        newLines: after?.lines || [],
+        userName: actingUserName(getDb(), req),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.post("/general-purchase-return", requirePagePermission("purchase_returns", "add"), (req, res, next) => {
+router.post("/general-purchase-return", requirePagePermission("purchase_returns", "add"), async (req, res, next) => {
   try {
     const db = getDb();
     const { lines, supplier_id, settlement_type, notes, reason } = req.body;
@@ -365,7 +549,25 @@ router.post("/general-purchase-return", requirePagePermission("purchase_returns"
     })();
 
     req.audit("create", "purchase_return", { id: result.id, doc_no: result.doc_no, total: result.total }, `↩️ تم إنشاء مرتجع مشتريات عام #${result.id} بمبلغ ${result.total}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      const supplierRow = result.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(result.supplier_id) : null;
+      const prLines = db.prepare(`
+        SELECT prl.*, i.name AS item_name, i.code AS item_code
+        FROM purchase_return_lines prl
+        LEFT JOIN items i ON i.id = prl.item_id
+        WHERE prl.purchase_return_id = ?
+      `).all(result.id);
+      _tgStatus = await notifyOwner(TG.PURCHASE_RETURN, {
+        referenceNo: result.doc_no || result.id,
+        supplierName: supplierRow?.name || null,
+        items: prLines,
+        total: result.total,
+        userName: actingUserName(db, req),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
@@ -458,18 +660,24 @@ router.get("/:id", requirePagePermission("pos", "view"), (req, res, next) => {
 router.put("/:id", requirePagePermission("pos", "edit"), async (req, res, next) => {
   try {
     const db = getDb();
+    const invoiceId = Number(req.params.id);
+    const invoiceBefore = getInvoiceWithLines(invoiceId);
     const userId = req.user?.id ? Number(req.user.id) : null;
-    const result = editInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, userId);
-    req.audit("edit", "invoice", { id: Number(req.params.id) }, `🧾 تم تعديل فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    const result = editInvoice(invoiceId, { ...(req.body || {}), _user: req.user }, userId);
+    req.audit("edit", "invoice", { id: invoiceId }, `🧾 تم تعديل فاتورة #${invoiceId}`, `/invoices/${invoiceId}`);
     let _tgStatus = null;
     try {
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
       _tgStatus = await notifyOwner(TG.INVOICE_EDITED, {
         invoiceNo: result?.invoice_no,
-        customerName: result?.customer_name,
-        total: result?.total,
-        lines: result?.lines,
-        paymentType: result?.payment_type,
+        oldTotal: invoiceBefore?.total,
+        newTotal: result?.total,
+        oldLines: invoiceBefore?.lines,
+        newLines: result?.lines,
+        oldPaymentType: invoiceBefore?.payment_type,
+        newPaymentType: result?.payment_type,
+        oldCustomerName: invoiceBefore?.customer_name,
+        newCustomerName: result?.customer_name,
         userName: userRow?.name || req.user?.full_name || req.user?.username,
         createdAt: new Date().toISOString(),
       });
@@ -558,6 +766,7 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), async 
       user_id: req.user?.id || req.body?.user_id || null
     });
     const returnAuditId = req.audit("create", "sales_return", { invoice_id: Number(req.params.id), return_id: salesReturn?.id }, `↩️ تم معالجة مرتجع للفاتورة #${req.params.id}`, salesReturn?.id ? `/pos/sales-returns/${salesReturn.id}` : `/invoices/${req.params.id}`);
+    let _tgStatus = null;
     try {
       const db = getDb();
       const invoiceId = req.params.id;
@@ -572,7 +781,7 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), async 
       const originalInvoice = db.prepare("SELECT invoice_no, customer_id FROM invoices WHERE id = ?").get(invoiceId);
       const customerRow = originalInvoice?.customer_id ? db.prepare("SELECT name FROM customers WHERE id = ?").get(originalInvoice.customer_id) : null;
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-      notifyOwner(TG.SALES_RETURN, {
+      _tgStatus = await notifyOwner(TG.SALES_RETURN, {
         originalInvoiceId: invoiceId,
         originalInvoiceNo: originalInvoice?.invoice_no || invoiceId,
         id: salesReturn?.id,
@@ -580,11 +789,12 @@ router.post("/:id/return", requirePagePermission("sales_returns", "add"), async 
         customerName: customerRow?.name || null,
         lines: salesReturn?.lines || [],
         refundMethod: salesReturn?.refund_method || req.body?.refund_method || null,
+        reason: salesReturn?.reason || req.body?.reason || null,
         userName: userRow?.name || req.user?.full_name || req.user?.username,
         createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.status(201).json({ success: true, data: salesReturn });
+    res.status(201).json({ success: true, data: salesReturn, telegramStatus: _tgStatus });
   } catch (error) {
     next(error);
   }
@@ -603,6 +813,7 @@ router.post("/:id/void", requirePagePermission("pos", "void"), async (req, res, 
     const { voidInvoice } = require("../services/invoiceService");
     const voided = voidInvoice(Number(req.params.id), req.body.reason, req.user?.id || 1);
     const voidAuditId = req.audit("void", "invoice", { id: Number(req.params.id), reason: req.body.reason }, `🧾 تم إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    let _tgStatus = null;
     try {
       NotificationModel.create({
         title: "🧾 تم إلغاء فاتورة",
@@ -611,16 +822,18 @@ router.post("/:id/void", requirePagePermission("pos", "void"), async (req, res, 
         link: voidAuditId ? `/history?log_id=${voidAuditId}` : `/invoices/${req.params.id}`,
       });
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-      notifyOwner(TG.INVOICE_VOIDED, {
+      _tgStatus = await notifyOwner(TG.INVOICE_VOIDED, {
         id: Number(req.params.id),
         invoiceNo: invoiceBefore?.invoice_no,
         total: invoiceBefore?.total,
         customerName: invoiceBefore?.customer_name,
         reason: req.body.reason,
+        lines: invoiceBefore?.lines || [],
         userName: userRow?.name || req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.json({ success: true, data: voided });
+    res.json({ success: true, data: voided, telegramStatus: _tgStatus });
   } catch (error) {
     next(error);
   }
@@ -632,18 +845,21 @@ router.delete("/:id", requirePagePermission("pos", "void"), async (req, res, nex
     const invoiceBefore = getInvoiceWithLines(Number(req.params.id));
     const result = cancelInvoice(Number(req.params.id), req.body?.reason, req.user?.id);
     req.audit("cancel", "invoice", { id: Number(req.params.id), reason: req.body?.reason }, `🧾 تم حذف/إلغاء فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    let _tgStatus = null;
     try {
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-      notifyOwner(TG.INVOICE_VOIDED, {
+      _tgStatus = await notifyOwner(TG.INVOICE_VOIDED, {
         id: Number(req.params.id),
         invoiceNo: invoiceBefore?.invoice_no,
         total: invoiceBefore?.total,
         customerName: invoiceBefore?.customer_name,
         reason: req.body?.reason,
+        lines: invoiceBefore?.lines || [],
         userName: userRow?.name || req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (err) {
     next(err);
   }
@@ -652,26 +868,32 @@ router.delete("/:id", requirePagePermission("pos", "void"), async (req, res, nex
 router.put("/:id/amend", requirePagePermission("pos", "edit"), async (req, res, next) => {
   try {
     const db = getDb();
-    // Fetch old invoice_no BEFORE amend (amend voids the original)
-    const originalInvoice = db.prepare("SELECT invoice_no FROM invoices WHERE id = ?").get(Number(req.params.id));
-    const result = amendInvoice(Number(req.params.id), { ...(req.body || {}), _user: req.user }, req.user?.id);
-    req.audit("amend", "invoice", { original_id: Number(req.params.id), new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${req.params.id}`, `/invoices/${req.params.id}`);
+    const invoiceId = Number(req.params.id);
+    const invoiceBefore = getInvoiceWithLines(invoiceId);
+    const result = amendInvoice(invoiceId, { ...(req.body || {}), _user: req.user }, req.user?.id);
+    req.audit("amend", "invoice", { original_id: invoiceId, new_id: result?.id }, `🧾 تم تعديل (أمندمنت) فاتورة #${invoiceId}`, `/invoices/${invoiceId}`);
     // Telegram notification
+    let _tgStatus = null;
     try {
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-      notifyOwner(TG.INVOICE_AMENDED, {
-        originalId: req.params.id,
-        oldInvoiceNo: originalInvoice?.invoice_no,
-        invoiceNo: result?.invoice_no,
-        id: result?.id,
-        customerName: result?.customer_name,
-        total: result?.total,
-        lines: result?.lines,
+      // amendInvoice returns { original, new_invoice } — not a flat invoice.
+      const newInvoice = result?.new_invoice || result;
+      _tgStatus = await notifyOwner(TG.INVOICE_AMENDED, {
+        originalId: invoiceId,
+        oldInvoiceNo: invoiceBefore?.invoice_no,
+        invoiceNo: newInvoice?.invoice_no,
+        id: newInvoice?.id,
+        oldTotal: invoiceBefore?.total,
+        newTotal: newInvoice?.total,
+        oldLines: invoiceBefore?.lines,
+        newLines: newInvoice?.lines,
+        oldCustomerName: invoiceBefore?.customer_name,
+        newCustomerName: newInvoice?.customer_name,
         userName: userRow?.name || req.user?.full_name || req.user?.username,
         createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (err) {
     next(err);
   }

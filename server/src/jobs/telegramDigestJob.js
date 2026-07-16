@@ -6,7 +6,7 @@
 // digest is delivered exactly once.
 const logger = require("../config/logger");
 const { getDb } = require("../config/database");
-const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, isDigestEnabledForRecipient, sendTelegramMessage, enqueueNotification } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, isDigestEnabledForRecipient, sendTelegramMessage, enqueueNotification, logSentNotification } = require("../services/telegramService");
 const { completedPeriodBounds, buildDigest } = require("../services/telegramDigest");
 
 const PERIODS = [
@@ -36,10 +36,12 @@ function sendDigestToRecipients(db, config, text, periodType) {
   if (recipients.length > 0) {
     for (const recipient of recipients) {
       if (!isDigestEnabledForRecipient(recipient, periodType)) continue;
-      sendTelegramMessage(config, recipient.chatId, text).catch((err) => {
-        logger.warn({ message: "Telegram digest send failed, enqueued for retry", chatId: recipient.chatId, type: periodType, error: err.message });
-        try { enqueueNotification(db, `digest_${periodType}`, recipient.chatId, text, {}); } catch (_) {}
-      });
+      sendTelegramMessage(config, recipient.chatId, text)
+        .then(() => logSentNotification(db, `digest_${periodType}`, recipient.chatId, text))
+        .catch((err) => {
+          logger.warn({ message: "Telegram digest send failed, enqueued for retry", chatId: recipient.chatId, type: periodType, error: err.message });
+          try { enqueueNotification(db, `digest_${periodType}`, recipient.chatId, text, {}); } catch (_) {}
+        });
     }
     return;
   }
@@ -47,10 +49,12 @@ function sendDigestToRecipients(db, config, text, periodType) {
   // Legacy fallback.
   const legacy = getLegacyTelegramConfig(db);
   if (legacy && legacy.enabled && rowForPeriod(legacy, periodType)) {
-    sendTelegramMessage(legacy, legacy.chatId, text).catch((err) => {
-      logger.warn({ message: "Telegram digest send failed, enqueued for retry", type: periodType, error: err.message });
-      try { enqueueNotification(db, `digest_${periodType}`, legacy.chatId, text, {}); } catch (_) {}
-    });
+    sendTelegramMessage(legacy, legacy.chatId, text)
+      .then(() => logSentNotification(db, `digest_${periodType}`, legacy.chatId, text))
+      .catch((err) => {
+        logger.warn({ message: "Telegram digest send failed, enqueued for retry", type: periodType, error: err.message });
+        try { enqueueNotification(db, `digest_${periodType}`, legacy.chatId, text, {}); } catch (_) {}
+      });
   }
 }
 

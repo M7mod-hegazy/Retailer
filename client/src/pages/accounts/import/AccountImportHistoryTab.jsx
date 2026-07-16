@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Download, RotateCcw, Loader2 } from "lucide-react";
 import api from "../../../services/api";
 import { usePermission } from "../../../hooks/usePermission";
+import { DramaticDeleteConfirm } from "../../../components/ui/DramaticDeleteConfirm";
 
 function hoursSince(createdAt) {
   const t = new Date(String(createdAt).replace(" ", "T") + "Z").getTime();
@@ -16,6 +17,7 @@ export default function AccountImportHistoryTab({ entityType }) {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [undoTarget, setUndoTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,7 +50,13 @@ export default function AccountImportHistoryTab({ entityType }) {
   };
 
   const undo = async (batch) => {
-    if (!window.confirm("سيتم التراجع عن هذه العملية وحذف الحسابات التي أُنشئت فيها. متابعة؟")) return;
+    setUndoTarget(batch);
+  };
+
+  const handleUndoConfirm = async () => {
+    if (!undoTarget) return;
+    const batch = undoTarget;
+    setUndoTarget(null);
     setBusyId(batch.id);
     try {
       await api.post(`${apiBase}/import/batches/${batch.id}/undo`);
@@ -152,6 +160,13 @@ export default function AccountImportHistoryTab({ entityType }) {
           </tbody>
         </table>
       </div>
+      {undoTarget && (
+        <DramaticDeleteConfirm
+          itemName={undoTarget.file_name || `#${undoTarget.id}`}
+          onConfirm={handleUndoConfirm}
+          onCancel={() => setUndoTarget(null)}
+        />
+      )}
     </div>
   );
 }

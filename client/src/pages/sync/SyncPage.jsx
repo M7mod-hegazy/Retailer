@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { usePermission } from "../../hooks/usePermission";
 import { getSyncConfig, getSyncStatus, getSyncCheck, getSyncLogs, getSyncLog, getPendingChanges, applySync, pullProducts, previewPull, getConflicts, resolveConflict, getSnapshots, previewRollback, executeRollback, getOnlineOrders, prepareOnlineOrder, ignoreOnlineOrder, pushStoreCatalog } from "../../services/syncService";
 import { useSyncStore } from "../../stores/syncStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
@@ -200,7 +201,7 @@ function ProductRow({ product, fields, onFieldToggle, onPreviewImages, imageCoun
           <div className="relative flex-shrink-0">
             <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200 cursor-pointer shadow-sm" onClick={() => onPreviewImages(product)}>
               {images.length > 0 ? (
-                <img src={images[0]} alt="" className="w-full h-full object-cover" />
+                <img src={images[0]} alt="" loading="lazy" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-text-muted"><ImageIcon className="h-5 w-5" /></div>
               )}
@@ -342,7 +343,7 @@ function ProductRow({ product, fields, onFieldToggle, onPreviewImages, imageCoun
             <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
               {images.map((url, i) => (
                 <button key={i} onClick={() => onPreviewImages(product)} className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:border-primary transition shadow-sm">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -775,7 +776,7 @@ function ImagesDiffRow({ posValue, ecomValue }) {
         {posList.length > 0 ? (
           <div className="flex items-center gap-1">
             {posList.map((url, i) => (
-              <img key={i} src={url} alt="" className="w-6 h-6 rounded object-cover border border-gray-200" />
+              <img key={i} src={url} alt="" loading="lazy" className="w-6 h-6 rounded object-cover border border-gray-200" />
             ))}
             {posCount > 4 && <span className="text-[10px] text-text-muted font-bold">+{posCount - 4}</span>}
           </div>
@@ -795,7 +796,7 @@ function ImagesDiffRow({ posValue, ecomValue }) {
         {ecomList.length > 0 ? (
           <div className="flex items-center gap-1">
             {ecomList.map((url, i) => (
-              <img key={i} src={url} alt="" className="w-6 h-6 rounded object-cover border border-gray-200" />
+              <img key={i} src={url} alt="" loading="lazy" className="w-6 h-6 rounded object-cover border border-gray-200" />
             ))}
             {ecomCount > 4 && <span className="text-[10px] text-text-muted font-bold">+{ecomCount - 4}</span>}
           </div>
@@ -1019,7 +1020,7 @@ function StoreAbout({ t }) {
                   <span className="w-2 h-2 rounded-full bg-success-border" />
                 </div>
                 {s.url ? (
-                  <img src={s.url} alt={s.caption} className="w-full object-cover" style={{ aspectRatio: "4 / 3" }} />
+                  <img src={s.url} alt={s.caption} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "4 / 3" }} />
                 ) : (
                   <div className="relative flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-primary-50/40" style={{ aspectRatio: "4 / 3" }}>
                     <Icon className="h-10 w-10 text-primary/40 mb-2" />
@@ -1212,6 +1213,11 @@ function NotConfiguredBranding({ onGoToConfig }) {
 export default function SyncPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const canView = usePermission("sync", "view");
+  const canPull = usePermission("sync", "pull");
+  const canPush = usePermission("sync", "push");
+  const canConfigure = usePermission("sync", "configure");
+  const canRestore = usePermission("sync", "restore");
   const n_currencySymbol = useAppSettingsStore((s) => s.settings.currency_symbol) || "ج.م";
   const {
     config, configured, connected, status, checking,
@@ -1703,13 +1709,13 @@ export default function SyncPage() {
           <div className="flex items-center gap-2">
             <RealtimeBadge />
             <StatusBadge connected={connected} pulse={loading} />
-            <button
+            {canConfigure && <button
               onClick={() => navigate("/sync/config")}
               className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl text-xs font-bold text-text-secondary hover:bg-gray-100 hover:border-primary transition-all duration-200"
             >
               <Settings2 className="h-3.5 w-3.5" />
               {t("sync.configShort")}
-            </button>
+            </button>}
             <button
               onClick={loadAll}
               disabled={loading}
@@ -2074,14 +2080,14 @@ export default function SyncPage() {
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/60">
                       <span className="text-[10px] text-text-muted">فعّل/عطّل الأعمدة لكل المنتجات المؤهلة</span>
-                      <button
+                      {canPull && <button
                         onClick={openReview}
                         disabled={pulling || activeSkus.length === 0}
                         className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
                       >
                         {pulling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowLeftRight className="h-3.5 w-3.5" />}
                         مراجعة وسحب ({activeSkus.length})
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 );
@@ -2271,14 +2277,14 @@ export default function SyncPage() {
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/60">
                       <span className="text-[10px] text-text-muted">فعّل/عطّل الأعمدة لكل المنتجات الجديدة</span>
-                      <button
+                      {canPull && <button
                         onClick={openReview}
                         disabled={pulling || activeSkus.length === 0}
                         className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
                       >
                         {pulling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowLeftRight className="h-3.5 w-3.5" />}
                         مراجعة وسحب ({activeSkus.length})
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 );
@@ -2403,7 +2409,11 @@ export default function SyncPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPending.map((change, i) => (
+                    {filteredPending.length === 0 ? (
+                      <tr><td colSpan={5} className="text-center py-8 text-sm text-slate-400">
+                        {searchQ ? "لا توجد نتائج مطابقة" : "لا توجد تغييرات معلقة"}
+                      </td></tr>
+                    ) : filteredPending.map((change, i) => (
                       <tr key={change.id} className="border-b border-gray-200 hover:bg-gray-50/50 transition animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                         <td className="py-3 px-4">
                           <span className="text-text-primary font-bold">{change.item_name}</span>
@@ -2427,14 +2437,14 @@ export default function SyncPage() {
                 </table>
               </div>
               <div className="p-4 border-t border-gray-200 flex justify-end bg-gray-50/50">
-                <button
+                {canPush && <button
                   onClick={handlePush}
                   disabled={pushing}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
                 >
                   {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                   {t("sync.pushAll")}
-                </button>
+                </button>}
               </div>
             </>
           ) : (
@@ -2476,7 +2486,7 @@ export default function SyncPage() {
                 </button>
               ))}
             </div>
-            <button
+            {canView && <button
               onClick={() => {
                 const filtered = getFilteredLogs();
                 if (filtered.length === 0) { toast.error("لا توجد سجلات للتصدير"); return; }
@@ -2493,7 +2503,7 @@ export default function SyncPage() {
             >
               <Download className="h-3.5 w-3.5" />
               تصدير
-            </button>
+            </button>}
           </div>
           {getFilteredLogs().length > 0 ? (
             <>
@@ -2576,6 +2586,7 @@ function RollbackTab({
   selectedSnapshotId, setPreviewOpen, setPreviewData, setPreviewLoading,
   setRollbackState, setRollbackProgress, setSelectedSnapshotId,
 }) {
+  const canRestore = usePermission("sync", "restore");
   const handlePreview = async (snapshot) => {
     setSelectedSnapshotId(snapshot.id);
     setPreviewLoading(true);
@@ -2792,14 +2803,14 @@ function RollbackTab({
                     >
                       {t("sync.rollback.preview")}
                     </button>
-                    <button
+                    {canRestore && <button
                       onClick={() => handleRollback(snap.id)}
                       disabled={rollbackState === "rolling_back" || snap.direction === "rollback"}
                       className="px-3 py-1.5 bg-warning-bg text-warning-text rounded-lg text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all active:scale-95 inline-flex items-center gap-1"
                     >
                       <Undo2 className="h-3 w-3" />
                       {t("sync.rollback.rollback")}
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
@@ -2828,6 +2839,11 @@ function RollbackTab({
 /* ─── Rollback Preview Modal ─── */
 function RollbackPreviewModal({ t, previewData, previewLoading, onClose, onConfirm }) {
   const [open, setOpen] = useState(true);
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") { setOpen(false); onClose(); } };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   if (!open) return null;
 
   const data = previewData;
@@ -2936,6 +2952,7 @@ function RollbackPreviewModal({ t, previewData, previewLoading, onClose, onConfi
 /* ─── Conflict Card ─── */
 function ConflictCard({ conflict: c, resolvingSku, onResolve }) {
   const { t } = useTranslation();
+  const canPush = usePermission("sync", "push");
   const [showDiff, setShowDiff] = useState(false);
   const [imgError, setImgError] = useState(false);
   const currencySymbol = useAppSettingsStore((s) => s.settings.currency_symbol) || "ج.م";
@@ -2951,6 +2968,7 @@ function ConflictCard({ conflict: c, resolvingSku, onResolve }) {
             <img
               src={c.pos?.image || c.ecom?.image}
               alt=""
+              loading="lazy"
               className="w-full h-full object-cover"
               onError={() => setImgError(true)}
             />
@@ -2982,28 +3000,30 @@ function ConflictCard({ conflict: c, resolvingSku, onResolve }) {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button
-            onClick={() => onResolve(c.sku, "keep_pos")}
-            disabled={resolvingSku === c.sku}
-            className="px-2.5 py-1.5 bg-success-bg text-success-text rounded-lg text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all active:scale-95"
-          >
-            {resolvingSku === c.sku ? <Loader2 className="h-3 w-3 animate-spin" /> : t("sync.page.conflict.posVersion")}
-          </button>
-          <button
-            onClick={() => onResolve(c.sku, "keep_ecom")}
-            disabled={resolvingSku === c.sku}
-            className="px-2.5 py-1.5 bg-info-bg text-info-text rounded-lg text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all active:scale-95"
-          >
-            {resolvingSku === c.sku ? <Loader2 className="h-3 w-3 animate-spin" /> : t("sync.page.conflict.ecomVersion")}
-          </button>
-          <button
-            onClick={() => onResolve(c.sku, "keep_both")}
-            disabled={resolvingSku === c.sku}
-            className="px-2 py-1.5 border border-gray-200 text-text-muted rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-text-secondary transition-all active:scale-95"
-          >
-            <Layers className="h-3 w-3 inline mr-1" />
-            {t("sync.page.conflict.keepBoth")}
-          </button>
+          {canPush && <>
+            <button
+              onClick={() => onResolve(c.sku, "keep_pos")}
+              disabled={resolvingSku === c.sku}
+              className="px-2.5 py-1.5 bg-success-bg text-success-text rounded-lg text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all active:scale-95"
+            >
+              {resolvingSku === c.sku ? <Loader2 className="h-3 w-3 animate-spin" /> : t("sync.page.conflict.posVersion")}
+            </button>
+            <button
+              onClick={() => onResolve(c.sku, "keep_ecom")}
+              disabled={resolvingSku === c.sku}
+              className="px-2.5 py-1.5 bg-info-bg text-info-text rounded-lg text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all active:scale-95"
+            >
+              {resolvingSku === c.sku ? <Loader2 className="h-3 w-3 animate-spin" /> : t("sync.page.conflict.ecomVersion")}
+            </button>
+            <button
+              onClick={() => onResolve(c.sku, "keep_both")}
+              disabled={resolvingSku === c.sku}
+              className="px-2 py-1.5 border border-gray-200 text-text-muted rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-text-secondary transition-all active:scale-95"
+            >
+              <Layers className="h-3 w-3 inline mr-1" />
+              {t("sync.page.conflict.keepBoth")}
+            </button>
+          </>}
         </div>
 
         {/* Expand diff toggle */}

@@ -23,6 +23,8 @@ import { useAuthStore } from "../../stores/authStore";
 import FeaturesTab from "./FeaturesTab";
 import ShortcutsTab from "./ShortcutsTab";
 import { getMeta, getHint, getPlaceholder, getDefault, findMissingCritical, fieldKeyToTab } from "../../utils/fieldMeta";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 
 const tabs = [
@@ -294,6 +296,7 @@ export default function SettingsPage() {
   const settingsRef   = useRef({});
   const pendingTabRef = useRef(null);
   const focusAttemptRef = useRef(0);
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
   const dir = i18n.dir();
 
@@ -473,13 +476,14 @@ export default function SettingsPage() {
     toast(isRTL ? "تم تجاهل التغييرات" : "Changes discarded", { icon: "↩️" });
   };
 
-  const handleTabClick = (tabId) => {
+  const handleTabClick = async (tabId) => {
     if (tabId === activeTab) return;
     if (dirty) {
       const confirmMsg = isRTL
         ? "لديك تغييرات غير محفوظة. هل تريد تجاهلها والانتقال؟"
         : "You have unsaved changes. Discard them and switch tabs?";
-      if (!window.confirm(confirmMsg)) return;
+      const ok = await confirm({ title: isRTL ? "تجاهل التغييرات" : "Discard Changes", message: confirmMsg });
+      if (!ok) return;
       handleDiscard();
     }
     setActiveTab(tabId);
@@ -999,6 +1003,7 @@ export default function SettingsPage() {
         settings={settings}
         operationLabel="معاينة إعدادات الطباعة"
       />
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

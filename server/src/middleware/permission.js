@@ -10,6 +10,9 @@ function requirePermission(flag) {
     }
     const err = new Error("ليس لديك صلاحية للوصول إلى هذا المورد");
     err.status = 403;
+    // The client's axios interceptor shows its permission toast only when it
+    // sees this code — without it the action fails silently.
+    err.code = "permission_denied";
     return next(err);
   };
 }
@@ -97,4 +100,22 @@ function requireAnyPagePermission(pages, action) {
   };
 }
 
-module.exports = { requirePermission, requirePagePermission, requireAnyPagePermission, userHasPagePermission, getUserPermissions };
+// Like requireAnyPagePermission but accepts a map of { page: action } so
+// different pages can require different actions.
+// e.g. requireAnyPageAction({ settings: "edit", whatsapp_crm: "manage_templates" })
+function requireAnyPageAction(pageActionMap) {
+  const entries = Object.entries(pageActionMap);
+  return (req, res, next) => {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "unauthorized" });
+    if (user.role === "dev" || user.role === "admin") return next();
+
+    const perms = getUserPermissions(user);
+    if (entries.some(([page, action]) => perms[page]?.includes(action))) return next();
+
+    logPermissionDenial(user.id, entries[0][0], entries[0][1], req.method, req.path, req);
+    return res.status(403).json({ error: "permission_denied", page: entries[0][0], action: entries[0][1] });
+  };
+}
+
+module.exports = { requirePermission, requirePagePermission, requireAnyPagePermission, requireAnyPageAction, userHasPagePermission, getUserPermissions };

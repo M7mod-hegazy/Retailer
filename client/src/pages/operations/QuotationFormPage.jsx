@@ -159,6 +159,50 @@ export default function QuotationFormPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Escape-to-close for modals/dropdowns
+  useEffect(() => {
+    if (!imageModalOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setImageModalOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [imageModalOpen]);
+  useEffect(() => {
+    if (!browseItemsOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setBrowseItemsOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [browseItemsOpen]);
+  useEffect(() => {
+    if (!customerCreateOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setCustomerCreateOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [customerCreateOpen]);
+  useEffect(() => {
+    if (!previewOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPreviewOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [previewOpen]);
+  useEffect(() => {
+    if (!colSettingsOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setColSettingsOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [colSettingsOpen]);
+  useEffect(() => {
+    if (!showCustomerList) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowCustomerList(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showCustomerList]);
+  useEffect(() => {
+    if (!saveSuccess) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onDismissSaveSuccess(); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [saveSuccess, onDismissSaveSuccess]);
+
   const [selectedItem, setSelectedItem] = useState(null);
   const [staging, setStaging] = useState({ qty: 1, price: 0, discount: 0 });
   const [increaseMode, setIncreaseMode] = useState('flat');

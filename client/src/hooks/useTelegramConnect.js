@@ -21,6 +21,7 @@ function configSnapshot(config) {
     telegram_enabled: Boolean(config.telegram_enabled),
     telegram_bot_token: config.telegram_bot_token || "",
     telegram_api_base: config.telegram_api_base || "https://api.telegram.org",
+    telegram_status_chip_enabled: config.telegram_status_chip_enabled !== false,
   };
 }
 
@@ -89,6 +90,19 @@ const RECIPIENT_FIELD_DEFAULTS = {
   notifyExpenseDeleted: true,
   notifyRevenueEdited: true,
   notifyRevenueDeleted: true,
+  // Return lifecycle sub-events (migration 210)
+  telegram_sales_return_edited: true,
+  telegram_sales_return_cancelled: true,
+  telegram_purchase_return_edited: true,
+  // Sub-event toggles (persisted server-side since migration 208)
+  telegram_invoice_edited: true,
+  telegram_invoice_amended: true,
+  telegram_purchase_edited: true,
+  telegram_purchase_return_cancelled: true,
+  telegram_branch_transfer_edited: true,
+  telegram_branch_transfer_cancelled: true,
+  telegram_withdrawal_edited: true,
+  telegram_withdrawal_deleted: true,
 };
 
 function pickField(r, key) {
@@ -149,6 +163,19 @@ function recipientToApi(r) {
     notify_expense_deleted: Boolean(pickField(r, "notifyExpenseDeleted")),
     notify_revenue_edited: Boolean(pickField(r, "notifyRevenueEdited")),
     notify_revenue_deleted: Boolean(pickField(r, "notifyRevenueDeleted")),
+    // Return lifecycle sub-events (migration 210)
+    notify_sales_return_edited: Boolean(pickField(r, "telegram_sales_return_edited")),
+    notify_sales_return_cancelled: Boolean(pickField(r, "telegram_sales_return_cancelled")),
+    notify_purchase_return_edited: Boolean(pickField(r, "telegram_purchase_return_edited")),
+    // Edit/cancel sub-events — real per-recipient columns since migration 208
+    notify_invoice_edited: Boolean(pickField(r, "telegram_invoice_edited")),
+    notify_invoice_amended: Boolean(pickField(r, "telegram_invoice_amended")),
+    notify_purchase_edited: Boolean(pickField(r, "telegram_purchase_edited")),
+    notify_purchase_return_cancelled: Boolean(pickField(r, "telegram_purchase_return_cancelled")),
+    notify_branch_transfer_edited: Boolean(pickField(r, "telegram_branch_transfer_edited")),
+    notify_branch_transfer_cancelled: Boolean(pickField(r, "telegram_branch_transfer_cancelled")),
+    notify_withdrawal_edited: Boolean(pickField(r, "telegram_withdrawal_edited")),
+    notify_withdrawal_deleted: Boolean(pickField(r, "telegram_withdrawal_deleted")),
     event_presets: parseEventPresets(r.eventPresets ?? r.event_presets),
   };
 }
@@ -207,6 +234,20 @@ function recipientFromApi(r) {
     notifyExpenseDeleted: readBool(r, "notify_expense_deleted", "notifyExpenseDeleted", true),
     notifyRevenueEdited: readBool(r, "notify_revenue_edited", "notifyRevenueEdited", true),
     notifyRevenueDeleted: readBool(r, "notify_revenue_deleted", "notifyRevenueDeleted", true),
+    // Edit/cancel sub-events — persisted server-side since migration 208; the
+    // UI keeps its historical telegram_* field names. Camel fallbacks cover the
+    // notifyXxx keys the service layer exposes.
+    telegram_sales_return_edited: readBool(r, "notify_sales_return_edited", "notifySalesReturnEdited", true),
+    telegram_sales_return_cancelled: readBool(r, "notify_sales_return_cancelled", "notifySalesReturnCancelled", true),
+    telegram_purchase_return_edited: readBool(r, "notify_purchase_return_edited", "notifyPurchaseReturnEdited", true),
+    telegram_invoice_edited: readBool(r, "notify_invoice_edited", "notifyInvoiceEdited", true),
+    telegram_invoice_amended: readBool(r, "notify_invoice_amended", "notifyInvoiceAmended", true),
+    telegram_purchase_edited: readBool(r, "notify_purchase_edited", "notifyPurchaseEdited", true),
+    telegram_purchase_return_cancelled: readBool(r, "notify_purchase_return_cancelled", "notifyPurchaseReturnCancelled", true),
+    telegram_branch_transfer_edited: readBool(r, "notify_branch_transfer_edited", "notifyBranchTransferEdited", true),
+    telegram_branch_transfer_cancelled: readBool(r, "notify_branch_transfer_cancelled", "notifyBranchTransferCancelled", true),
+    telegram_withdrawal_edited: readBool(r, "notify_withdrawal_edited", "notifyWithdrawalEdited", true),
+    telegram_withdrawal_deleted: readBool(r, "notify_withdrawal_deleted", "notifyWithdrawalDeleted", true),
     eventPresets: parseEventPresets(r.eventPresets ?? r.event_presets),
   };
 }
@@ -222,6 +263,7 @@ export function useTelegramConnect(onSaved) {
     telegram_bot_token: "",
     telegram_chat_id: "",
     telegram_api_base: "https://api.telegram.org",
+    telegram_status_chip_enabled: true,
   });
   const [recipients, setRecipients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -296,6 +338,9 @@ export function useTelegramConnect(onSaved) {
         telegram_bot_token: d.telegram_bot_token || "",
         telegram_chat_id: d.telegram_chat_id || "",
         telegram_api_base: d.telegram_api_base || "https://api.telegram.org",
+        telegram_status_chip_enabled: d.telegram_status_chip_enabled === undefined || d.telegram_status_chip_enabled === null
+          ? true
+          : Boolean(d.telegram_status_chip_enabled),
       };
       setConfig(loaded);
       // Server-side migrateLegacyRecipientIfNeeded promotes a legacy
@@ -489,6 +534,7 @@ export function useTelegramConnect(onSaved) {
         telegram_enabled: config.telegram_enabled,
         telegram_bot_token: config.telegram_bot_token,
         telegram_api_base: config.telegram_api_base,
+        telegram_status_chip_enabled: config.telegram_status_chip_enabled !== false,
       });
       // Persist all recipients.
       const savedRecipients = await saveRecipients();
@@ -560,6 +606,24 @@ export function useTelegramConnect(onSaved) {
       notifyDeductionCreated: true,
       notifyBonusCreated: true,
       notifyRepairOrder: true,
+      // New edit/delete events (migration 201)
+      notifyExpenseEdited: true,
+      notifyExpenseDeleted: true,
+      notifyRevenueEdited: true,
+      notifyRevenueDeleted: true,
+      // Return lifecycle sub-events (migration 210)
+      telegram_sales_return_edited: true,
+      telegram_sales_return_cancelled: true,
+      telegram_purchase_return_edited: true,
+      // Sub-event toggles (persisted server-side)
+      telegram_invoice_edited: true,
+      telegram_invoice_amended: true,
+      telegram_purchase_edited: true,
+      telegram_purchase_return_cancelled: true,
+      telegram_branch_transfer_edited: true,
+      telegram_branch_transfer_cancelled: true,
+      telegram_withdrawal_edited: true,
+      telegram_withdrawal_deleted: true,
       eventPresets: {},
     };
   }

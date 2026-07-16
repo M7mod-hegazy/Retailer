@@ -9,18 +9,11 @@ import {
   PAGE_PERMISSIONS,
   DEFAULT_USER_PERMISSIONS,
   ALL_ACTIONS,
+  ACTION_LABELS,
   ACTION_DESCRIPTIONS,
 } from "../../constants/pagePermissions";
 import SmartTooltip from "../ui/SmartTooltip";
 import { REPORT_SOURCES, REPORT_SOURCE_KEYS } from "../../constants/reportPermissions";
-
-const ACTION_LABELS = {
-  view: "رؤية",
-  add: "إضافة",
-  edit: "تعديل",
-  delete: "حذف",
-  print: "طباعة",
-};
 
 function buildEmptyPermissions() {
   const base = Object.keys(PAGE_PERMISSIONS).reduce((acc, key) => {

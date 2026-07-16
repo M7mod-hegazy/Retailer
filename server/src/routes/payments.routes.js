@@ -118,14 +118,15 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res, nex
       const paymentResult = db
         .prepare(
           `INSERT INTO payments
-           (party_type, party_id, amount, method, reference_number, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, created_at, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (party_type, party_id, amount, method, direction, reference_number, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, created_at, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           partyType,
           partyId,
           amount,
           method,
+          direction,
           payload.reference_number || null,
           payload.notes || null,
           payload.treasury_id || null,

@@ -141,21 +141,36 @@ router.get("/:id/delete-impact", requirePagePermission("suppliers", "delete"), (
   res.json({ success: true, data: buildImpact(supplierRelated(getDb(), req.params.id)) });
 });
 
-router.delete("/:id", requirePagePermission("suppliers", "delete"), (req, res) => {
+router.delete("/:id", requirePagePermission("suppliers", "delete"), async (req, res) => {
   try {
     const db = getDb();
+
+    const before = db.prepare("SELECT name, phone, opening_balance FROM suppliers WHERE id = ?").get(req.params.id);
+    const notifyDeleted = async () => {
+      try {
+        return await notifyOwner(TG.SUPPLIER_DELETED, {
+          supplierName: before?.name,
+          phone: before?.phone,
+          balance: before?.opening_balance,
+          userName: req.user?.name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (_) { return null; }
+    };
 
     if (hasAnyRelated(supplierRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE suppliers SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "suppliers", { id: req.params.id }, `👤 تم أرشفة مورد`, `/definitions/suppliers/${req.params.id}`);
-      return res.json({ success: true, archived: true, message: "تم أرشفة المورد لأنه مرتبط بفواتير مشتريات" });
+      const _tgStatus = await notifyDeleted();
+      return res.json({ success: true, archived: true, message: "تم أرشفة المورد لأنه مرتبط بفواتير مشتريات", telegramStatus: _tgStatus });
     }
 
     // Hard delete if no transactions
     db.prepare("DELETE FROM suppliers WHERE id = ?").run(req.params.id);
     req.audit("delete", "suppliers", { id: req.params.id }, `👤 تم حذف مورد`, `/definitions/suppliers`);
-    res.json({ success: true });
+    const _tgStatus = await notifyDeleted();
+    res.json({ success: true, telegramStatus: _tgStatus });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف المورد لأنه مرتبط ببيانات أخرى" });
     res.status(500).json({ success: false, message: "تعذر الحذف" });

@@ -18,6 +18,7 @@ import { applyFontSettings } from "../../utils/fontSettings";
 import { applyColorTheme } from "../../utils/applyColorTheme";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import FpsOverlay from "../ui/FpsOverlay";
+import { GlobalTelegramStatusChip } from "../ui/TelegramStatusChip";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -133,6 +134,7 @@ export default function AppShell({ children }) {
       <RouteHelpTrigger />
       <PageTour />
       <FpsOverlay />
+      <GlobalTelegramStatusChip />
       <ShortcutCheatsheetModal open={cheatsheetOpen} onClose={() => setCheatsheetOpen(false)} />
     </>
   );

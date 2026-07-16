@@ -159,6 +159,7 @@ export default function GlobalSearchPage() {
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
+      if (e.key === "Escape") { close(); return; }
       if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, flatItems.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, -1)); }
       else if (e.key === "Enter" && activeIdx >= 0) {

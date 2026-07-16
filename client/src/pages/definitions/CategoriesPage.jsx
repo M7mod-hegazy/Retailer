@@ -126,6 +126,12 @@ export default function CategoriesPage() {
   const [catDraft, setCatDraft] = useState({ name: "", sku_prefix: "", image_url: "" });
   const [catModal, setCatModal] = useState(null); // null | {mode:'add'|'edit', data}
   const [deleteModal, setDeleteModal] = useState(null);
+  useEffect(() => {
+    if (!deleteModal) return;
+    const h = (e) => { if (e.key === "Escape") setDeleteModal(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [deleteModal]);
   const [saving, setSaving] = useState(false);
 
   const loadAll = useCallback(async () => {
@@ -259,9 +265,31 @@ export default function CategoriesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[var(--bg-base)] text-slate-400 gap-4" dir="rtl">
-        <RefreshCw className="h-8 w-8 animate-spin text-emerald-500 opacity-75" />
-        <span className="text-[11px] font-black tracking-widest uppercase">جاري مزامنة الفئات...</span>
+      <div className="flex flex-col gap-6 px-6 md:px-8 py-8 min-h-[100dvh] bg-[var(--bg-base)]" dir="rtl">
+        <div className="h-32 rounded-2xl bg-slate-200 animate-pulse w-full" />
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-2xl bg-slate-200 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-5 w-48 bg-slate-200 rounded animate-pulse" />
+            <div className="h-3 w-72 bg-slate-100 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-slate-100 rounded animate-pulse w-1/2" />
+                  <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-2">
+                {[...Array(3)].map((_, j) => <div key={j} className="h-2 bg-slate-50 rounded animate-pulse flex-1" />)}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

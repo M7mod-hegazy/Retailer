@@ -1,7 +1,12 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { nowSql } = require("../utils/datetime");
+const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
 const router = express.Router();
+
+// All pos-drafts routes require authentication
+router.use(authRequired);
 
 // GET /api/pos-drafts?type=active  or  ?type=held
 router.get("/", (req, res) => {

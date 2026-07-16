@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import {
   BookOpen, RefreshCw, Plus, Printer, Lock, Wallet,
   CheckCircle2, X, ArrowDownRight, ArrowLeft, Calculator, Users,
@@ -16,6 +18,7 @@ import toast from "react-hot-toast";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { usePageTour } from "../../hooks/usePageTour";
 import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
+import Badge from "../../components/ui/Badge";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import DailyTreasuryTemplate from "../../components/print/templates/DailyTreasuryTemplate";
@@ -24,6 +27,7 @@ import { todayCairo, formatHHMM } from "../../utils/dateHelpers";
 import ReturnsWarningModal from "../../components/ui/ReturnsWarningModal";
 import ConceptCard from "../../components/ui/ConceptCard";
 import EmployeesQuickModal from "../../components/modals/EmployeesQuickModal";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const fmt = (n) => formatNumber(n);
 const todayStr = () => todayCairo();
@@ -119,7 +123,7 @@ function getEquationRowAffects(tx) {
     case "expense": affects.push({ id: "expenses_cash", amount: Math.abs(ce) }); break;
     case "revenue": affects.push({ id: "revenues_cash", amount: ce }); break;
     case "purchase": affects.push({ id: "purchases_payable", amount: total }); break;
-    case "supplier_payment": affects.push({ id: "supplier_cash_payments", amount: Math.abs(ce) }); break;
+    case "supplier_payment": affects.push({ id: ce >= 0 ? "supplier_refund_payments" : "supplier_cash_payments", amount: Math.abs(ce) }); break;
     case "sales_return": {
       const creditAmt = Number(tx.credit_amount ?? 0);
       const cashAmt = ce !== 0 ? Math.abs(ce) : 0;
@@ -137,7 +141,7 @@ function getEquationRowAffects(tx) {
       break;
     }
     case "ajal_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
-    case "customer_payment": affects.push({ id: "customer_collections", amount: Math.abs(ce) }); break;
+    case "customer_payment": affects.push({ id: ce <= 0 ? "customer_collections" : "customer_refund_payments", amount: Math.abs(ce) }); break;
     case "withdrawal": affects.push({ id: "withdrawals", amount: Math.abs(ce) }); break;
     default: break;
   }
@@ -323,6 +327,7 @@ const TABS = [
 ];
 
 export default function DailyTreasuryPage() {
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   usePageTour('daily_treasury');
   const navigate = useNavigate();
   const [date, setDate] = useState(todayStr());
@@ -345,10 +350,22 @@ export default function DailyTreasuryPage() {
 
   // Money count modal
   const [moneyOpen, setMoneyOpen] = useState(false);
+  useEffect(() => {
+    if (!moneyOpen) return;
+    const h = (e) => { if (e.key === "Escape") setMoneyOpen(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [moneyOpen]);
   const [counts, setCounts] = useState({});
 
   // Quick expense/revenue modal
   const [quickModal, setQuickModal] = useState(null);
+  useEffect(() => {
+    if (!quickModal) return;
+    const h = (e) => { if (e.key === "Escape") setQuickModal(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [quickModal]);
   const [quickAmount, setQuickAmount] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [quickCategoryId, setQuickCategoryId] = useState("");
@@ -358,6 +375,12 @@ export default function DailyTreasuryPage() {
 
   // Withdrawal modal
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
+  useEffect(() => {
+    if (!withdrawalOpen) return;
+    const h = (e) => { if (e.key === "Escape") setWithdrawalOpen(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [withdrawalOpen]);
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [withdrawalNote, setWithdrawalNote] = useState("");
   const [withdrawalCategoryId, setWithdrawalCategoryId] = useState("");
@@ -374,6 +397,12 @@ export default function DailyTreasuryPage() {
 
   // History drawer
   const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => {
+    if (!historyOpen) return;
+    const h = (e) => { if (e.key === "Escape") setHistoryOpen(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [historyOpen]);
   const [pastSessions, setPastSessions] = useState([]);
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatus, setHistoryStatus] = useState("");
@@ -401,6 +430,12 @@ export default function DailyTreasuryPage() {
 
   // Calculator
   const [calcOpen, setCalcOpen] = useState(false);
+  useEffect(() => {
+    if (!calcOpen) return;
+    const h = (e) => { if (e.key === "Escape") setCalcOpen(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [calcOpen]);
   const [calcDisplay, setCalcDisplay] = useState("0");
   const [calcPrev, setCalcPrev] = useState(null);
   const [calcOp, setCalcOp] = useState(null);
@@ -699,7 +734,8 @@ export default function DailyTreasuryPage() {
   }
 
   async function handleDeleteCount(id) {
-    if (!window.confirm("حذف هذا العد؟")) return;
+    const ok = await confirm({ title: "حذف العد", message: "حذف هذا العد؟" });
+    if (!ok) return;
     try {
       await api.delete(`/api/daily-sessions/cash-counts/${id}`);
       toast.success("تم حذف العد");
@@ -744,11 +780,13 @@ export default function DailyTreasuryPage() {
     { id: "customer_collections", label: "نقد تم تحصيله من العملاء", tooltip: "مدفوعات نقدية من العملاء لتسوية ذمم أو آجل مسجل مسبقاً.\n\nلزيادته: سجّل تحصيلات نقدية من شاشة حسابات العملاء أو حركات الآجل.", value: summary?.customer_cash_collections ?? (Number(summary?.customer_payments || 0) + Number(summary?.ajal_payments || 0)), tab: "customer_cash_collections", matchTx: (t) => ["customer_payment", "ajal_payment"].includes(t.doc_type) },
     { id: "revenues_cash", label: "إيرادات نقدية", tooltip: "إيرادات متنوعة خارج المبيعات قُبضت نقداً (إيجار، خدمة، غيرها).\n\nلزيادته: سجّل إيراداً سريعاً من زر «تسجيل إيراد سريع» أعلى الصفحة.", value: summary?.revenues_cash, tab: "revenues", matchTx: (t) => t.doc_type === "revenue" },
     { id: "purchase_returns_cash", label: "نقد مسترد من مرتجعات الشراء", tooltip: "نقد استُرد فعلياً من المورد عند إرجاع بضاعة كانت مدفوعة نقداً.\n\nيرتفع تلقائياً عند تسجيل مرتجع شراء بطريقة تسوية «نقدي».", value: summary?.purchase_returns_cash, tab: "purchase_returns", matchTx: (t) => t.doc_type === "purchase_return" && Number(t.cash_effect ?? 0) !== 0 },
+    { id: "supplier_refund_payments", label: "استرداد دفعات من الموردين", tooltip: "نقد استُرد من المورد كاسترداد دفعة (بدلاً من مرتجع بضاعة).\n\nيرتفع عند تسجيل «استرداد دفعة» من شاشة حسابات الموردين.", value: summary?.supplier_refund_payments ?? 0, tab: "supplier_refund_payments", matchTx: (t) => t.doc_type === "supplier_payment" && Number(t.cash_effect ?? 0) > 0 },
   ];
   const cashOutRows = [
     { id: "supplier_cash_payments", label: "نقد مدفوع للموردين", tooltip: "نقد خرج من الصندوق لسداد ذمم الموردين أو مشتريات نقدية مباشرة.\n\nلتقليله: فضّل طرق الدفع الآجلة أو البنكية عند الشراء.", value: summary?.supplier_cash_payments ?? (Number(summary?.supplier_payments || 0) + Number(summary?.supplier_ajal_payments || 0)), tab: "supplier_cash_payments", matchTx: (t) => t.doc_type === "supplier_payment" },
     { id: "expenses_cash", label: "مصروفات نقدية", tooltip: "مصروفات تشغيلية متنوعة دُفعت نقداً من الصندوق.\n\nلمراجعتها: انقر على هذا الصف لتصفية قائمة الحركات وعرضها.", value: summary?.expenses_cash, tab: "expenses", matchTx: (t) => t.doc_type === "expense" },
     { id: "sales_returns_cash", label: "نقد مدفوع لمرتجعات المبيعات", tooltip: "نقد أُعيد للعملاء من الصندوق عند قبول مرتجعات مبيعات.\n\nيرتفع عند تسجيل مرتجع بطريقة «استرداد نقدي» — راجع أسباب المرتجعات لو ارتفع كثيراً.", value: summary?.sales_returns_cash, tab: "sales_returns", matchTx: (t) => t.doc_type === "sales_return" && Number(t.cash_effect ?? 0) !== 0 },
+    { id: "customer_refund_payments", label: "رد دفعات للعملاء", tooltip: "نقد خرج من الصندوق كرد دفعة للعميل (بدلاً من مرتجع بضاعة).\n\nيرتفع عند تسجيل «رد دفعة» من شاشة حسابات العملاء.", value: summary?.customer_refund_payments ?? 0, tab: "customer_refund_payments", matchTx: (t) => t.doc_type === "customer_payment" && Number(t.cash_effect ?? 0) < 0 },
     { id: "withdrawals", label: "مسحوبات من الخزنة", tooltip: "نقد أُخرج من الصندوق لأغراض خارج المبيعات والمصروفات اليومية.\n\nسجّل المسحوبات دائماً بزر «تسجيل مسحوبات» حتى لا يظهر عجز وهمي.", value: summary?.withdrawals, tab: "withdrawals", matchTx: (t) => t.doc_type === "withdrawal" },
   ];
   const netCreditSales = (summary?.pos_credit_sales || 0) - (summary?.pos_installment_cash || 0) + (summary?.multi_credit_portion || 0);
@@ -1113,6 +1151,7 @@ export default function DailyTreasuryPage() {
                 <motion.div variants={fadeInUp} className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                     {/* Expense */}
+                    <PermissionGate page="daily_treasury" action="add">
                     <motion.button
                       whileHover={{ y: -3, scale: 1.01 }}
                       whileTap={{ scale: 0.99, y: 0 }}
@@ -1138,8 +1177,10 @@ export default function DailyTreasuryPage() {
                         <span className="font-mono font-black text-rose-800">{fmt(summary?.expenses_cash ?? 0)} ج.م</span>
                       </div>
                     </motion.button>
+                    </PermissionGate>
 
                     {/* Revenue */}
+                    <PermissionGate page="daily_treasury" action="add">
                     <motion.button
                       whileHover={{ y: -3, scale: 1.01 }}
                       whileTap={{ scale: 0.99, y: 0 }}
@@ -1165,8 +1206,10 @@ export default function DailyTreasuryPage() {
                         <span className="font-mono font-black text-emerald-800">{fmt(summary?.revenues_cash ?? 0)} ج.م</span>
                       </div>
                     </motion.button>
+                    </PermissionGate>
 
                     {/* Withdrawals */}
+                    <PermissionGate page="daily_treasury" action="add">
                     <motion.button
                       whileHover={{ y: -3, scale: 1.01 }}
                       whileTap={{ scale: 0.99, y: 0 }}
@@ -1192,6 +1235,7 @@ export default function DailyTreasuryPage() {
                         <span className="font-mono font-black text-sky-800">{fmt(summary?.withdrawals ?? 0)} ج.م</span>
                       </div>
                     </motion.button>
+                    </PermissionGate>
 
                     {/* Money Count */}
                     <motion.button
@@ -2516,7 +2560,7 @@ export default function DailyTreasuryPage() {
                     {pastSessions.map((s) => (
                       <tr key={s.id} className="rounded-2xl bg-[var(--bg-surface)] shadow-sm ring-1 ring-slate-200/70">
                         <td className="rounded-r-2xl px-3 py-3 font-black text-[var(--text-primary)]">{s.date}</td>
-                        <td className="px-3 py-3"><span className={"inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-black " + (s.status === "closed" ? "bg-[var(--bg-overlay)] text-[var(--text-secondary)]" : "bg-emerald-100 text-emerald-700")}>{s.status === "closed" ? <Lock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}{s.status === "closed" ? "مغلق" : "مفتوح"}</span></td>
+                        <td className="px-3 py-3"><Badge label={s.status === "closed" ? "مغلق" : "مفتوح"} variant={s.status === "closed" ? "neutral" : "success"} /></td>
                         <td className="px-3 py-3 number-fmt text-2sm text-[var(--text-secondary)]">{fmt(s.previous_balance)}</td>
                         <td className="rounded-l-2xl px-3 py-3"><button onClick={() => { setDate(s.date); setHistoryOpen(false); setActiveTab("all"); }} className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600"><Eye className="h-3.5 w-3.5" /> معاينة</button></td>
                       </tr>
@@ -2906,6 +2950,14 @@ export default function DailyTreasuryPage() {
       )}
 
       <EmployeesQuickModal open={empQuickOpen} onClose={() => setEmpQuickOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

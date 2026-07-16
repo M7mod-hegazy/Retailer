@@ -73,7 +73,7 @@ export function KitchenOrderHeaderBlock({ invoice = {}, settings, props = {} }) 
 function KitchenMetaVariantStandard({ invoice, settings, accent }) {
   const orderNum = invoice.invoice_number || invoice.order_number || "#—";
   const table = invoice.dining_table?.number || invoice.table_number || "";
-  const orderType = invoice.order_type === "dine_in" ? " dine_in " : invoice.order_type === "takeaway" ? "takeaway " : "";
+  const orderType = invoice.order_type === "dine_in" ? "صالة" : invoice.order_type === "takeaway" ? "تيك أواي" : "";
   return (
     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85em", fontWeight: 800, marginBottom: 6, borderBottom: "1px dashed #cbd5e1", paddingBottom: 4 }}>
       <span>#{orderNum}</span>

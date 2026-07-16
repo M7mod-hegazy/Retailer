@@ -305,7 +305,8 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest, onPrintRe
 
   return (
     <motion.div variants={FADE_UP}
-      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/30 transition-colors duration-300 overflow-hidden">
+      onClick={() => onPreviewRequest(row)}
+      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/30 transition-colors duration-300 overflow-hidden cursor-pointer">
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
       <div className="flex items-center gap-5 flex-1 min-w-0 z-10">
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-sm transition-all duration-300">

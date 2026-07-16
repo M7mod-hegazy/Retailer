@@ -1,7 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
-const { requirePagePermission, requireAnyPagePermission } = require("../middleware/permission");
+const { requirePagePermission, requireAnyPagePermission, requireAnyPageAction } = require("../middleware/permission");
 const { nowSql } = require("../utils/datetime");
 const { sendSms, getSmsConfig } = require("../services/smsService");
 const { getTelegramConfig } = require("../services/telegramService");
@@ -31,12 +31,20 @@ router.get("/channels-status", requireAnyPagePermission(["settings", "whatsapp_c
     const waStatus = engine ? engine.getStatus() : { status: "unavailable" };
     const smsConfig = getSmsConfig(db);
     const tgConfig = getTelegramConfig(db);
+    // Email config
+    let emailOn = false;
+    try { emailOn = Boolean(db.prepare("SELECT email_enabled FROM settings WHERE id = 1").get()?.email_enabled); } catch (_) {}
+    // Meta Ads config
+    let metaOn = false;
+    try { metaOn = Boolean(db.prepare("SELECT id FROM meta_ads_config WHERE is_active = 1 LIMIT 1").get()); } catch (_) {}
     res.json({
       success: true,
       data: {
-        whatsapp: { connected: waStatus.status === "connected", status: waStatus.status },
+        whatsapp: { connected: waStatus.status === "connected", status: waStatus.status, phone: engine?.getStatus?.()?.phone || null },
         sms: { connected: Boolean(smsConfig) },
         telegram: { connected: Boolean(tgConfig?.enabled) },
+        email: { connected: emailOn },
+        meta: { connected: metaOn },
       },
     });
   } catch (e) {
@@ -154,7 +162,7 @@ router.get("/templates", requireAnyPagePermission(["settings", "whatsapp_receipt
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.put("/templates/:kind", requirePagePermission("settings", "edit"), (req, res) => {
+router.put("/templates/:kind", requireAnyPageAction({ settings: "edit", whatsapp_crm: "manage_templates" }), (req, res) => {
   try {
     const db = getDb();
     const { kind } = req.params;

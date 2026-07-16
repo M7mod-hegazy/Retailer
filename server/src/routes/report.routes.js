@@ -5,7 +5,7 @@ const { listRows, listRowsBySource } = require("../reports/index");
 const { REPORT_REGISTRY, getSource, getSourceClassifications } = require("../reports/registry");
 const { buildColumnsFromRows } = require("../reports/helpers");
 const { getReportColumns, getReportTitle, getReportDescription, normalizeStructuredReport, computeReportTotals, VALUE_TRANSLATIONS } = require("../reports/columns");
-const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx } = require("../services/exportService");
+const { exportRowsToExcelV2, exportRowsToPdfV3, exportRowsToDocx, exportAccountStatementDocx, exportAccountStatementPdf } = require("../services/exportService");
 const { getSalesSummary } = require("../services/reportService");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission, userHasPagePermission, getUserPermissions } = require("../middleware/permission");
@@ -266,20 +266,72 @@ router.get("/export-slug/:slug", (req, res, next) => {
     const { start_date, end_date, format } = req.query;
     const slug = String(req.params.slug || "");
     const opts = buildOpts(req.query);
-    let data = listRows(slug, start_date, end_date, opts);
-    let rows = normalizeReportPayload(data).rows;
+    const data = listRows(slug, start_date, end_date, opts);
+    const normalized = normalizeReportPayload(data);
+    const rows = normalized.rows;
     const requestedColumns = parseColumnsParam(req.query.columns);
     const columns = requestedColumns?.length ? requestedColumns : getReportColumns(slug, rows);
     const reportDef = REPORT_REGISTRY.reports.find(r => r.slug === slug);
     const reportTitle = getReportTitle(slug, reportDef?.title_key || slug);
     const filters = start_date && end_date ? { from: start_date, to: end_date } : null;
-
-    let filePath, contentType, extension;
     const fmt = (format || "excel").toLowerCase();
+
+    // ── Specialized account-statement export ─────────────────────────────
+    const isAccountStatement = slug === "customer-statement" || slug === "supplier-statement";
+    if (isAccountStatement && (fmt === "word" || fmt === "docx" || fmt === "pdf")) {
+      const summary = normalized.summary || {};
+      const partyName = summary.party_name || "";
+      const partyCode = summary.party_code || "";
+      const statementSummary = {
+        total_debit: summary.total_debit,
+        total_credit: summary.total_credit,
+        closing_balance: summary.closing_balance,
+        opening_balance: summary.opening_balance,
+      };
+      const period = { from: start_date || "", to: end_date || "" };
+      const companyName = (() => { try { return getDb().prepare("SELECT company_name FROM settings WHERE id=1").get()?.company_name || ""; } catch { return ""; } })();
+      const accent = "#1e40af";
+
+      if (fmt === "word" || fmt === "docx") {
+        const filePath = await exportAccountStatementDocx({ rows, title: reportTitle, summary: statementSummary, partyName, partyCode, period, accent, companyName });
+        const buffer = fs.readFileSync(filePath);
+        const filename = `${slug}-${Date.now()}.docx`;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("Content-Length", buffer.length);
+        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.send(buffer);
+        res.on("finish", () => { try { fs.unlinkSync(filePath); } catch {} });
+        res.on("error", () => { try { fs.unlinkSync(filePath); } catch {} });
+        return;
+      }
+
+      if (fmt === "pdf") {
+        const filePath = await exportAccountStatementPdf({ rows, title: reportTitle, summary: statementSummary, partyName, partyCode, period, accent });
+        const buffer = fs.readFileSync(filePath);
+        const filename = `${slug}-${Date.now()}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("Content-Length", buffer.length);
+        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.send(buffer);
+        res.on("finish", () => { try { fs.unlinkSync(filePath); } catch {} });
+        res.on("error", () => { try { fs.unlinkSync(filePath); } catch {} });
+        return;
+      }
+    }
+
+    // ── Generic export path ──────────────────────────────────────────────
+    let filePath, contentType, extension;
 
     if (fmt === "word" || fmt === "docx") {
       const totals = computeReportTotals(rows, columns);
-      filePath = await exportRowsToDocx({ rows, title: reportTitle, columns, rtl: true, filters, totals, companyName: "ElHegazi Retailer" });
+      const companyName = (() => { try { return getDb().prepare("SELECT company_name FROM settings WHERE id=1").get()?.company_name || ""; } catch { return ""; } })();
+      filePath = await exportRowsToDocx({ rows, title: reportTitle, columns, rtl: true, filters, totals, companyName });
       contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       extension = "docx";
     } else if (fmt === "pdf") {
@@ -329,11 +381,11 @@ router.get("/export-rows-stream", requirePagePermission("reports", "print"), asy
     const fmt = (format || "excel").toLowerCase();
     let filePath;
     if (fmt === "pdf") {
-      filePath = await exportRowsToPdfV3({ rows, title: title || "Export", columns: cols });
+      filePath = await exportRowsToPdfV3({ rows, title: title || "تصدير", columns: cols });
     } else if (fmt === "docx") {
-      filePath = await exportRowsToDocx({ rows, title: title || "Export", columns: cols, rtl: true });
+      filePath = await exportRowsToDocx({ rows, title: title || "تصدير", columns: cols, rtl: true });
     } else {
-      filePath = await exportRowsToExcelV2({ rows, worksheetName: title || "Export", columns: cols, rtl: true });
+      filePath = await exportRowsToExcelV2({ rows, worksheetName: title || "تصدير", columns: cols, rtl: true });
     }
     const buffer = fs.readFileSync(filePath);
     const ext = fmt === "pdf" ? "pdf" : fmt === "docx" ? "docx" : "xlsx";

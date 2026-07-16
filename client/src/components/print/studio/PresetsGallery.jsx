@@ -8,6 +8,7 @@ import {
   deleteUserPreset, exportUserPresets, importUserPresets,
 } from "../presets/presetEngine";
 import { SHEET_W, sampleById, TEMPLATE_PRESETS, TEMPLATE_MOCK, SCOPE_PRESETS, BLOCK_DOC_SCOPES } from "./studioData";
+import PromptModal from "../../ui/PromptModal";
 
 export const TAG_LABELS = {
   bilingual: "ثنائي اللغة", compact: "موفر للورق", ticket: "تذكرة طلب",
@@ -82,6 +83,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
   const [tag, setTag] = useState("");
   const [userPresets, setUserPresets] = useState(getUserPresets);
   const [previewOpen, setPreviewOpen] = useState(null);
+  const [promptOpen, setPromptOpen] = useState(false);
   const [appliedId, setAppliedId] = useState(() => {
     // Exact hint wins: the doc stamped which preset it was created from.
     if (appliedPresetId) return appliedPresetId;
@@ -173,8 +175,11 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
   const THUMB_H = family === "roll" && isBlockDoc ? 320 : 330;
 
   const saveCurrent = () => {
-    const name = (window.prompt("اسم القالب الجديد:") || "").trim();
-    if (!name) return;
+    setPromptOpen(true);
+  };
+
+  const handleSaveConfirm = (name) => {
+    setPromptOpen(false);
     let preset;
     if (!isBlockDoc) {
       preset = {
@@ -451,6 +456,13 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
           </div>
         </div>
       )}
+      <PromptModal
+        open={promptOpen}
+        title="اسم القالب الجديد"
+        onConfirm={handleSaveConfirm}
+        onCancel={() => setPromptOpen(false)}
+        placeholder="أدخل اسم القالب"
+      />
     </div>
   );
 }

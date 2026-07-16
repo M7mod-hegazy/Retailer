@@ -4,6 +4,8 @@ const router = express.Router();
 const { getDb } = require("../config/database");
 const NotificationModel = require("../models/notification.model");
 const { broadcast } = require("./sse.routes");
+const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
 
 function getSyncConfig(db) {
   return db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
@@ -118,7 +120,7 @@ router.post("/ecom/order", (req, res) => {
 // ══════════════════════════════════════════════════════════════════
 
 // ── GET /api/webhooks/orders — list queued online orders ──
-router.get("/orders", (req, res) => {
+router.get("/orders", authRequired, requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const status = req.query.status || "pending";
@@ -138,7 +140,7 @@ router.get("/orders", (req, res) => {
 });
 
 // ── GET /api/webhooks/orders/:id — one order ──
-router.get("/orders/:id", (req, res) => {
+router.get("/orders/:id", authRequired, requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const row = db.prepare("SELECT * FROM online_orders WHERE id = ?").get(Number(req.params.id));
@@ -151,7 +153,7 @@ router.get("/orders/:id", (req, res) => {
 
 // ── GET /api/webhooks/orders/:id/prepare — match SKUs → POS items + customer ──
 // Returns a prefill payload the POS cart can consume (mirrors the quotation-convert flow).
-router.get("/orders/:id/prepare", (req, res) => {
+router.get("/orders/:id/prepare", authRequired, requirePagePermission("sync", "edit"), (req, res) => {
   try {
     const db = getDb();
     const row = db.prepare("SELECT * FROM online_orders WHERE id = ?").get(Number(req.params.id));
@@ -196,7 +198,7 @@ router.get("/orders/:id/prepare", (req, res) => {
 });
 
 // ── POST /api/webhooks/orders/:id/forward — mark forwarded + link invoice ──
-router.post("/orders/:id/forward", (req, res) => {
+router.post("/orders/:id/forward", authRequired, requirePagePermission("sync", "edit"), (req, res) => {
   try {
     const db = getDb();
     const id = Number(req.params.id);
@@ -213,7 +215,7 @@ router.post("/orders/:id/forward", (req, res) => {
 });
 
 // ── POST /api/webhooks/orders/:id/ignore — dismiss without invoicing ──
-router.post("/orders/:id/ignore", (req, res) => {
+router.post("/orders/:id/ignore", authRequired, requirePagePermission("sync", "edit"), (req, res) => {
   try {
     const db = getDb();
     const id = Number(req.params.id);
@@ -232,7 +234,7 @@ function safeParse(s, fallback) {
   try { return JSON.parse(s); } catch { return fallback; }
 }
 
-router.get("/logs", (req, res) => {
+router.get("/logs", authRequired, requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const limit = Math.min(100, Number(req.query.limit) || 50);
@@ -243,7 +245,7 @@ router.get("/logs", (req, res) => {
   }
 });
 
-router.post("/test", (req, res) => {
+router.post("/test", authRequired, requirePagePermission("sync", "edit"), (req, res) => {
   try {
     const db = getDb();
 
@@ -282,7 +284,7 @@ router.post("/test", (req, res) => {
   }
 });
 
-router.get("/status", (req, res) => {
+router.get("/status", authRequired, requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const cfg = getSyncConfig(db);
@@ -309,7 +311,7 @@ router.get("/status", (req, res) => {
 });
 
 // ── PUT /api/webhooks/config — update webhook settings ──
-router.put("/config", (req, res) => {
+router.put("/config", authRequired, requirePagePermission("settings", "edit"), (req, res) => {
   try {
     const db = getDb();
     const cfg = getSyncConfig(db);

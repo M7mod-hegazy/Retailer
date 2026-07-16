@@ -9,7 +9,7 @@ const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, Alig
 const FONT_ARIAL = "C:\\Windows\\Fonts\\arial.ttf";
 const FONT_ARIAL_BOLD = "C:\\Windows\\Fonts\\arialbd.ttf";
 
-async function exportRowsToExcel(rows = [], worksheetName = "Report") {
+async function exportRowsToExcel(rows = [], worksheetName = "تقرير") {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(worksheetName);
   const headers = Object.keys(rows[0] || {});
@@ -24,7 +24,7 @@ async function exportRowsToExcel(rows = [], worksheetName = "Report") {
   return filePath;
 }
 
-async function exportRowsToPdf(rows = [], title = "Report") {
+async function exportRowsToPdf(rows = [], title = "تقرير") {
   const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.pdf`);
   const doc = new PDFDocument({ margin: 40 });
   const stream = fs.createWriteStream(filePath);
@@ -48,14 +48,14 @@ async function exportRowsToPdf(rows = [], title = "Report") {
  */
 async function exportRowsToExcelV2({
   rows = [],
-  worksheetName = "Report",
+  worksheetName = "تقرير",
   columns,
   rtl = true,
   res = null,
 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "ElHegazi Retailer";
+  workbook.creator = "ElHegazi Retailer"; // metadata field — not visible in sheet
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet(worksheetName, {
@@ -159,7 +159,7 @@ async function exportRowsToExcelV2({
 
 async function exportRowsToPdfV2({
   rows = [],
-  title = "Report",
+  title = "تقرير",
   columns,
 }) {
   const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.pdf`);
@@ -201,7 +201,7 @@ async function exportRowsToPdfV2({
  */
 async function exportRowsToDocx({
   rows = [],
-  title = "Report",
+  title = "تقرير",
   columns,
   rtl = true,
   filters = null,
@@ -255,7 +255,7 @@ async function exportRowsToDocx({
         const value = row?.[k] ?? "";
         const isNumeric = typeof value === "number" || (!isNaN(Number(value)) && value !== "");
         const displayVal = isNumeric && colTypes[k] === "money"
-          ? Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          ? Number(value).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           : String(value);
         return new TableCell({
           borders: {
@@ -299,7 +299,7 @@ async function exportRowsToDocx({
             spacing: { before: 60, after: 60 },
             children: [new TextRun({
               text: hasVal
-                ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                ? Number(val).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : "",
               bold: true,
               size: 20,
@@ -317,7 +317,7 @@ async function exportRowsToDocx({
   const dateStr = now.toLocaleDateString("ar-EG-u-nu-latn");
   const timeStr = now.toLocaleTimeString("ar-EG-u-nu-latn");
   const footerText = `تم التصدير: ${dateStr} ${timeStr}`;
-  const totalRowsText = `إجمالي الصفوف: ${safeRows.length.toLocaleString("en-US")}`;
+  const totalRowsText = `إجمالي الصفوف: ${safeRows.length.toLocaleString("ar-EG-u-nu-latn")}`;
 
   const doc = new Document({
     sections: [{
@@ -428,7 +428,7 @@ async function exportRowsToDocx({
  */
 async function exportRowsToPdfV3({
   rows = [],
-  title = "Report",
+  title = "تقرير",
   columns,
   filters = null,
   orientation = "portrait",
@@ -584,7 +584,7 @@ async function exportRowsToPdfV3({
     keys.forEach((k) => {
       const val = totals[k];
       const display = val != null && !isNaN(Number(val))
-        ? Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ? Number(val).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : "";
       doc.text(display, xPos - colWidth + 3, doc.y + 6, { width: colWidth - 6, align: "center", ellipsis: true });
       xPos -= colWidth;
@@ -615,7 +615,7 @@ async function exportRowsToPdfV3({
   return pdfStream.path;
 }
 
-async function exportRowsToCsv({ rows = [], title = "Report", columns = [], res = null }) {
+async function exportRowsToCsv({ rows = [], title = "تقرير", columns = [], res = null }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const keys = Array.isArray(columns) && columns.length
     ? columns.map((c) => c.key)
@@ -658,6 +658,397 @@ async function exportRowsToCsv({ rows = [], title = "Report", columns = [], res 
   return filePath;
 }
 
+/**
+ * Premium account-statement DOCX export matching the print preview layout.
+ * Uses the same Arabic column headers and visual structure as AccountStatementBlocks.
+ */
+async function exportAccountStatementDocx({
+  rows = [],
+  title = "كشف حساب",
+  summary = {},
+  partyName = "",
+  partyCode = "",
+  period = {},
+  accent = "#1e40af",
+  companyName = "",
+  res = null,
+}) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const cols = [
+    { key: "index", label: "م", width: 6 },
+    { key: "date", label: "التاريخ", width: 14 },
+    { key: "debit", label: "مدين", width: 14 },
+    { key: "credit", label: "دائن", width: 14 },
+    { key: "running_balance", label: "الرصيد", width: 14 },
+    { key: "description", label: "الوصف", width: 38 },
+  ];
+  const accentHex = accent.replace("#", "");
+  const totalDebit = Number(summary.total_debit || 0);
+  const totalCredit = Number(summary.total_credit || 0);
+  const closing = Number(summary.closing_balance || 0);
+
+  const tableRows = [];
+
+  // Header row
+  tableRows.push(new TableRow({
+    tableHeader: true,
+    children: cols.map((c) => new TableCell({
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 8, color: accentHex },
+        bottom: { style: BorderStyle.SINGLE, size: 8, color: accentHex },
+        left: { style: BorderStyle.SINGLE, size: 4, color: accentHex },
+        right: { style: BorderStyle.SINGLE, size: 4, color: accentHex },
+      },
+      shading: { fill: accentHex },
+      width: { size: c.width, type: WidthType.PERCENTAGE },
+      children: [new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 60, after: 60 },
+        children: [new TextRun({ text: c.label, bold: true, color: "FFFFFF", size: 20, rightToLeft: true })],
+      })],
+    })),
+  }));
+
+  // Opening balance row
+  const opening = Number(summary.opening_balance || 0);
+  tableRows.push(new TableRow({
+    children: cols.map((c) => {
+      let val = "";
+      let isBold = true;
+      if (c.key === "description") val = "رصيد سابق";
+      else if (c.key === "debit" || c.key === "credit" || c.key === "running_balance") {
+        val = Number(opening).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else if (c.key === "index" || c.key === "date") val = "—";
+      return new TableCell({
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+          bottom: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+          left: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+          right: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" },
+        },
+        shading: { fill: "fffbeb" },
+        width: { size: c.width, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          alignment: c.key === "description" ? AlignmentType.RIGHT : AlignmentType.CENTER,
+          spacing: { before: 40, after: 40 },
+          children: [new TextRun({ text: val, bold: isBold, size: 18, rightToLeft: true, color: "78350f" })],
+        })],
+      });
+    }),
+  }));
+
+  // Data rows
+  safeRows.forEach((row, rowIdx) => {
+    const isEven = rowIdx % 2 === 0;
+    const amt = Number(row.debit || 0) - Number(row.credit || 0);
+    const isNeg = amt < -0.005;
+    tableRows.push(new TableRow({
+      children: cols.map((c) => {
+        let val = "";
+        let color = "0f172a";
+        let isBold = false;
+        if (c.key === "index") val = String(rowIdx + 1);
+        else if (c.key === "date") val = row.date || "";
+        else if (c.key === "debit") val = row.debit > 0.005 ? Number(row.debit).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+        else if (c.key === "credit") val = row.credit > 0.005 ? Number(row.credit).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+        else if (c.key === "running_balance") { val = Number(row.running_balance || 0).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); isBold = true; color = isNeg ? "dc2626" : "0f172a"; }
+        else if (c.key === "description") val = row.description || "";
+        return new TableCell({
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 2, color: "e2e8f0" },
+            bottom: { style: BorderStyle.SINGLE, size: 2, color: "e2e8f0" },
+            left: { style: BorderStyle.SINGLE, size: 2, color: "e2e8f0" },
+            right: { style: BorderStyle.SINGLE, size: 2, color: "e2e8f0" },
+          },
+          shading: isEven ? { fill: "f8fafc" } : undefined,
+          width: { size: c.width, type: WidthType.PERCENTAGE },
+          children: [new Paragraph({
+            alignment: c.key === "description" ? AlignmentType.RIGHT : AlignmentType.CENTER,
+            spacing: { before: 30, after: 30 },
+            children: [new TextRun({ text: val, bold: isBold, size: 18, rightToLeft: true, color })],
+          })],
+        });
+      }),
+    }));
+  });
+
+  // Summary footer rows
+  const summaryBg = accentHex;
+  // Total row
+  tableRows.push(new TableRow({
+    children: cols.map((c) => {
+      let val = "";
+      let colSpan = 0;
+      if (c.key === "index") { colSpan = 1; val = ""; }
+      else if (c.key === "description") { val = "الإجمالي"; }
+      else if (c.key === "debit") val = totalDebit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      else if (c.key === "credit") val = totalCredit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      else if (c.key === "running_balance") val = closing.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      else if (c.key === "date") val = "";
+      return new TableCell({
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 8, color: summaryBg },
+          bottom: { style: BorderStyle.SINGLE, size: 8, color: summaryBg },
+          left: { style: BorderStyle.SINGLE, size: 4, color: summaryBg },
+          right: { style: BorderStyle.SINGLE, size: 4, color: summaryBg },
+        },
+        shading: { fill: summaryBg },
+        width: { size: c.width, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({ text: val, bold: true, size: 20, rightToLeft: true, color: "FFFFFF" })],
+        })],
+      });
+    }),
+  }));
+
+  // Closing balance row
+  tableRows.push(new TableRow({
+    children: cols.map((c) => {
+      let val = "";
+      if (c.key === "description") val = "الرصيد الختامي";
+      else if (c.key === "running_balance") val = closing.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      else if (c.key === "index" || c.key === "date" || c.key === "debit" || c.key === "credit") val = "";
+      return new TableCell({
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 8, color: summaryBg },
+          bottom: { style: BorderStyle.SINGLE, size: 8, color: summaryBg },
+          left: { style: BorderStyle.SINGLE, size: 4, color: summaryBg },
+          right: { style: BorderStyle.SINGLE, size: 4, color: summaryBg },
+        },
+        shading: { fill: summaryBg },
+        width: { size: c.width, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 40 },
+          children: [new TextRun({ text: val, bold: true, size: 18, rightToLeft: true, color: closing < -0.005 ? "fca5a5" : "FFFFFF" })],
+        })],
+      });
+    }),
+  }));
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("ar-EG-u-nu-latn");
+  const timeStr = now.toLocaleTimeString("ar-EG-u-nu-latn");
+
+  const doc = new Document({
+    sections: [{
+      properties: {
+        page: {
+          margin: { top: 720, right: 720, bottom: 960, left: 720 },
+        },
+      },
+      footers: {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 120 },
+              border: { top: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" } },
+              children: [
+                new TextRun({ text: `تم التصدير: ${dateStr} ${timeStr} | صفحة `, size: 16, color: "94a3b8", italics: true, rightToLeft: true }),
+                new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "94a3b8", italics: true }),
+                new TextRun({ text: " / ", size: 16, color: "94a3b8", italics: true }),
+                new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: "94a3b8", italics: true }),
+              ],
+            }),
+          ],
+        }),
+      },
+      children: [
+        // Company name
+        ...(companyName ? [new Paragraph({
+          alignment: AlignmentType.RIGHT, spacing: { after: 40 },
+          children: [new TextRun({ text: companyName, size: 20, color: "64748b", rightToLeft: true })],
+        })] : []),
+        // Party info
+        ...(partyName ? [new Paragraph({
+          alignment: AlignmentType.RIGHT, spacing: { after: 20 },
+          children: [
+            new TextRun({ text: `${title} — `, size: 22, color: accentHex, bold: true, rightToLeft: true }),
+            new TextRun({ text: partyName, size: 22, color: "0f172a", bold: true, rightToLeft: true }),
+            ...(partyCode ? [new TextRun({ text: ` (${partyCode})`, size: 18, color: "64748b", rightToLeft: true })] : []),
+          ],
+        })] : []),
+        // Period
+        ...(period?.from || period?.to ? [new Paragraph({
+          alignment: AlignmentType.RIGHT, spacing: { after: 60 },
+          children: [new TextRun({ text: `الفترة: ${period.from || "البداية"} إلى ${period.to || "الآن"}`, size: 18, color: "64748b", italics: true, rightToLeft: true })],
+        })] : []),
+        // Title with accent bar
+        new Paragraph({
+          alignment: AlignmentType.RIGHT, spacing: { after: 200 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: accentHex } },
+          children: [new TextRun({ text: title, bold: true, size: 32, rightToLeft: true, color: accentHex })],
+        }),
+        new Paragraph({ text: "", spacing: { after: 80 } }),
+        // Statement table
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: tableRows,
+        }),
+        new Paragraph({ text: "", spacing: { after: 120 } }),
+        // Footer summary
+        new Paragraph({
+          alignment: AlignmentType.RIGHT, spacing: { before: 100 },
+          border: { top: { style: BorderStyle.SINGLE, size: 4, color: "e2e8f0" } },
+          children: [new TextRun({ text: `إجمالي الصفوف: ${safeRows.length} | إجمالي المدين: ${totalDebit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | إجمالي الدائن: ${totalCredit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, size: 18, color: "64748b", rightToLeft: true, italics: true })],
+        }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  if (res) { res.end(buffer); return null; }
+  const filePath = path.join(os.tmpdir(), `${title}-${Date.now()}.docx`);
+  fs.writeFileSync(filePath, buffer);
+  return filePath;
+}
+
+/**
+ * Premium account-statement PDF export matching the print preview layout.
+ */
+async function exportAccountStatementPdf({
+  rows = [],
+  title = "كشف حساب",
+  summary = {},
+  partyName = "",
+  partyCode = "",
+  period = {},
+  accent = "#1e40af",
+  res = null,
+}) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const doc = new PDFDocument({ margin: 40, size: "A4", autoFirstPage: true });
+  const pdfStream = res || fs.createWriteStream(path.join(os.tmpdir(), `${title}-${Date.now()}.pdf`));
+  doc.pipe(pdfStream);
+
+  const cols = [
+    { key: "index", label: "م", width: 6 },
+    { key: "date", label: "التاريخ", width: 14 },
+    { key: "debit", label: "مدين", width: 14 },
+    { key: "credit", label: "دائن", width: 14 },
+    { key: "running_balance", label: "الرصيد", width: 14 },
+    { key: "description", label: "الوصف", width: 38 },
+  ];
+  const accentHex = accent.replace("#", "");
+  const totalDebit = Number(summary.total_debit || 0);
+  const totalCredit = Number(summary.total_credit || 0);
+  const closing = Number(summary.closing_balance || 0);
+  const opening = Number(summary.opening_balance || 0);
+  const pageWidth = doc.page.width - 80;
+
+  // Header
+  doc.rect(0, 0, doc.page.width, 8).fill(accent);
+  doc.roundedRect(40, 20, pageWidth, 30, 4).fill("#f8fafc");
+  doc.fontSize(14).font(FONT_ARIAL_BOLD).fillColor(accent);
+  doc.text(`${title} — ${partyName || ""}${partyCode ? ` (${partyCode})` : ""}`, 50, 26, { align: "right", width: pageWidth - 20 });
+  if (period?.from || period?.to) {
+    doc.fontSize(8).font(FONT_ARIAL).fillColor("#64748b");
+    doc.text(`الفترة: ${period.from || "البداية"} إلى ${period.to || "الآن"}`, 50, 46, { align: "right", width: pageWidth - 20 });
+  }
+  doc.y = 60;
+
+  // Table header
+  const colW = cols.map((c) => (c.width / 100) * pageWidth);
+  doc.rect(40, doc.y, pageWidth, 20).fill(accent);
+  doc.fillColor("#ffffff").fontSize(8).font(FONT_ARIAL_BOLD);
+  let xPos = doc.page.width - 40;
+  cols.forEach((c, i) => {
+    doc.text(c.label, xPos - colW[i] + 2, doc.y + 5, { width: colW[i] - 4, align: "center" });
+    xPos -= colW[i];
+  });
+  doc.y += 22;
+
+  // Opening balance row
+  doc.rect(40, doc.y, pageWidth, 16).fill("#fffbeb");
+  doc.fillColor("#78350f").fontSize(7).font(FONT_ARIAL_BOLD);
+  xPos = doc.page.width - 40;
+  cols.forEach((c, i) => {
+    let val = "—";
+    if (c.key === "description") val = "رصيد سابق";
+    else if (c.key === "running_balance" || c.key === "debit" || c.key === "credit") val = opening.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    doc.text(val, xPos - colW[i] + 2, doc.y + 3, { width: colW[i] - 4, align: c.key === "description" ? "right" : "center" });
+    xPos -= colW[i];
+  });
+  doc.y += 18;
+
+  // Data rows
+  doc.font(FONT_ARIAL);
+  safeRows.forEach((row, rowIdx) => {
+    if (doc.y > doc.page.height - 80) {
+      doc.addPage();
+      // Redraw header
+      doc.rect(0, 0, doc.page.width, 8).fill(accent);
+      doc.rect(40, 20, pageWidth, 20).fill(accent);
+      doc.fillColor("#ffffff").fontSize(8).font(FONT_ARIAL_BOLD);
+      xPos = doc.page.width - 40;
+      cols.forEach((c, i) => {
+        doc.text(c.label, xPos - colW[i] + 2, 25, { width: colW[i] - 4, align: "center" });
+        xPos -= colW[i];
+      });
+      doc.y = 42;
+      doc.font(FONT_ARIAL);
+    }
+
+    if (rowIdx % 2 === 0) doc.rect(40, doc.y, pageWidth, 14).fill("#f8fafc");
+    doc.rect(40, doc.y, pageWidth, 14).stroke("#e2e8f0");
+    doc.fillColor("#0f172a").fontSize(7);
+    xPos = doc.page.width - 40;
+    cols.forEach((c, i) => {
+      let val = "";
+      let color = "#0f172a";
+      if (c.key === "index") val = String(rowIdx + 1);
+      else if (c.key === "date") val = row.date || "";
+      else if (c.key === "debit") val = row.debit > 0.005 ? Number(row.debit).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+      else if (c.key === "credit") val = row.credit > 0.005 ? Number(row.credit).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+      else if (c.key === "running_balance") { val = Number(row.running_balance || 0).toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); const amt = Number(row.debit || 0) - Number(row.credit || 0); if (amt < -0.005) color = "#dc2626"; }
+      else if (c.key === "description") val = row.description || "";
+      doc.fillColor(color).text(val, xPos - colW[i] + 2, doc.y + 3, { width: colW[i] - 4, align: c.key === "description" ? "right" : "center" });
+      xPos -= colW[i];
+    });
+    doc.y += 16;
+  });
+
+  // Summary footer
+  doc.rect(40, doc.y, pageWidth, 16).fill(accent);
+  doc.fillColor("#ffffff").fontSize(7).font(FONT_ARIAL_BOLD);
+  xPos = doc.page.width - 40;
+  cols.forEach((c, i) => {
+    let val = "";
+    if (c.key === "description") val = "الإجمالي";
+    else if (c.key === "debit") val = totalDebit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    else if (c.key === "credit") val = totalCredit.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    else if (c.key === "running_balance") val = closing.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    doc.text(val, xPos - colW[i] + 2, doc.y + 3, { width: colW[i] - 4, align: "center" });
+    xPos -= colW[i];
+  });
+  doc.y += 18;
+
+  // Closing balance row
+  doc.rect(40, doc.y, pageWidth, 16).fill(accent);
+  doc.fillColor(closing < -0.005 ? "#fca5a5" : "#ffffff").fontSize(7);
+  xPos = doc.page.width - 40;
+  cols.forEach((c, i) => {
+    let val = "";
+    if (c.key === "description") val = "الرصيد الختامي";
+    else if (c.key === "running_balance") val = closing.toLocaleString("ar-EG-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    doc.text(val, xPos - colW[i] + 2, doc.y + 3, { width: colW[i] - 4, align: "center" });
+    xPos -= colW[i];
+  });
+  doc.y += 20;
+
+  // Footer
+  doc.fontSize(7).font(FONT_ARIAL).fillColor("#94a3b8");
+  doc.text(`تم التصدير: ${new Date().toLocaleDateString("ar-EG-u-nu-latn")} - ${new Date().toLocaleTimeString("ar-EG-u-nu-latn")} | صفوف: ${safeRows.length}`, 40, doc.y, { align: "center" });
+
+  doc.end();
+  if (res) { await new Promise((r) => res.on("finish", r)); return null; }
+  await new Promise((r) => pdfStream.on("finish", r));
+  return pdfStream.path;
+}
+
 module.exports = {
   exportRowsToExcel,
   exportRowsToPdf,
@@ -666,4 +1057,6 @@ module.exports = {
   exportRowsToDocx,
   exportRowsToPdfV3,
   exportRowsToCsv,
+  exportAccountStatementDocx,
+  exportAccountStatementPdf,
 };

@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
 const { addDateFilter, getCostColumn, stockCostJoin, itemsCostJoin } = require("../reports/helpers");
 const { nowSql, today } = require("../utils/datetime");
 
@@ -450,7 +451,7 @@ function detectAnomalies(db) {
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
 // POST /api/assistant/query — execute a natural language query
-router.post("/query", (req, res, next) => {
+router.post("/query", requirePagePermission("reports", "view"), (req, res, next) => {
   try {
     const db = getDb();
     const { text, context } = req.body || {};
@@ -497,7 +498,7 @@ router.post("/query", (req, res, next) => {
 });
 
 // POST /api/assistant/multi-turn — execute query with conversation history
-router.post("/multi-turn", (req, res, next) => {
+router.post("/multi-turn", requirePagePermission("reports", "view"), (req, res, next) => {
   try {
     const db = getDb();
     const { text, history } = req.body || {};

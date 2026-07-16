@@ -20,6 +20,7 @@ const TYPE_META = {
   invoice: { label: "فاتورة مبيعات" },
   purchase: { label: "فاتورة شراء" },
   payment: { label: "دفعة" },
+  ajal_payment: { label: "دفعة آجل" },
   sales_return: { label: "مرتجع مبيعات" },
   purchase_return: { label: "مرتجع مشتريات" },
   adjustment: { label: "تسوية" },

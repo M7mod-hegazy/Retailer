@@ -7,7 +7,7 @@ export default function ConfirmDialog({ open, title = "تأكيد العملية
     <Modal open={open} title={title} onClose={onCancel} modalType={modalType} modalState={{ title, message }} {...rest}>
       <p className="mb-4 text-sm text-text-secondary">{message}</p>
       <div className="flex justify-end gap-2">
-        <Button variant="danger" onClick={onCancel}>إلغاء</Button>
+        <Button variant="ghost" onClick={onCancel}>إلغاء</Button>
         <Button variant="danger" onClick={onConfirm}>تأكيد</Button>
       </div>
     </Modal>

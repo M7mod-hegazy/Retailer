@@ -116,3 +116,21 @@ export function formatHHMM(value) {
   if (h === 0) h = 12;
   return `${String(h).padStart(2, "0")}:${min} ${ampm}`;
 }
+
+export function timeAgo(value) {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (minutes < 1) return "الآن";
+  if (minutes < 60) return `منذ ${minutes} ${minutes === 1 ? "دقيقة" : "دقائق"}`;
+  if (hours < 24) return `منذ ${hours} ${hours === 1 ? "ساعة" : "ساعات"}`;
+  if (days < 30) return `منذ ${days} ${days === 1 ? "يوم" : "أيام"}`;
+  return formatDate(d);
+}

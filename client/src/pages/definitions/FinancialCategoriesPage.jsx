@@ -12,6 +12,8 @@ import { usePageTour } from "../../hooks/usePageTour";
 import DataTable from "../../components/ui/DataTable";
 import SmartTooltip from "../../components/ui/SmartTooltip";
 import PermissionGate from "../../components/ui/PermissionGate";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 function createInitialState(fields, source = {}) {
   return fields.reduce((acc, field) => ({ ...acc, [field.name]: source[field.name] ?? field.initialValue ?? "" }), {});
@@ -97,6 +99,7 @@ const TABS = [
 export default function FinancialCategoriesPage() {
   usePageTour('financial_categories');
   const handleKeyDown = useFieldNavigation();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const nameRef = useRef(null);
   const descriptionRef = useRef(null);
   const submitBtnRef = useRef(null);
@@ -143,7 +146,8 @@ export default function FinancialCategoriesPage() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("تأكيد الحذف؟")) return;
+    const ok = await confirm({ title: "تأكيد الحذف", message: "هل تريد حذف هذا القسم نهائياً؟" });
+    if (!ok) return;
     try {
       const res = await api.delete(`${activeTab.endpoint}/${id}`);
       if (res.data?.archived) {
@@ -160,8 +164,16 @@ export default function FinancialCategoriesPage() {
     if (e) e.preventDefault();
     if (!form.name?.trim()) return toast.error("الاسم مطلوب");
     setIsSubmitting(true);
+    const isEdit = Boolean(editingRow);
+    const tempId = isEdit ? editingRow.id : Date.now();
+    if (!isEdit) {
+      const optimistic = { id: tempId, name: form.name, description: form.description };
+      setRows(prev => [optimistic, ...prev]);
+    } else {
+      setRows(prev => prev.map(r => r.id === editingRow.id ? { ...r, ...form } : r));
+    }
     try {
-      if (editingRow) {
+      if (isEdit) {
         await api.put(`${activeTab.endpoint}/${editingRow.id}`, form);
         toast.success("تم التحديث بنجاح");
       } else {
@@ -170,7 +182,14 @@ export default function FinancialCategoriesPage() {
       }
       startCreate();
       loadRows();
-    } catch { toast.error("فشل الحفظ"); }
+    } catch {
+      toast.error("فشل الحفظ");
+      if (isEdit) {
+        loadRows();
+      } else {
+        setRows(prev => prev.filter(r => r.id !== tempId));
+      }
+    }
     finally { setIsSubmitting(false); }
   }
   
@@ -537,6 +556,7 @@ export default function FinancialCategoriesPage() {
 
         </div>
       </main>
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

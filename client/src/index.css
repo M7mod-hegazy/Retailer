@@ -605,6 +605,15 @@ textarea {
     color: var(--text-primary);
     transform: translateY(-1px);
   }
+
+  .btn:focus-visible,
+  .btn-icon:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
   
   /* Disabled state for non-native button targets (Link/anchor as button) */
   .btn-disabled {
@@ -3885,6 +3894,20 @@ html[data-theme="dark"] {
 }
 .tg-chip__icon { font-size: 1rem; line-height: 1; }
 .tg-chip__text { direction: rtl; }
+.tg-chip__copy {
+  direction: rtl;
+  margin-inline-start: 0.35rem;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.tg-chip__copy:hover { background: rgba(255, 255, 255, 0.3); }
 
 /* ── State variants ── */
 .tg-chip--sent {

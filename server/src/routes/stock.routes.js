@@ -240,6 +240,22 @@ router.delete("/movements/:id", requirePagePermission("stock_transfer", "delete"
         .run(nowSql(), id);
     })();
 
+    try {
+      const itemRow = db.prepare("SELECT name FROM items WHERE id = ?").get(movement.item_id);
+      const whRow = db.prepare("SELECT name FROM warehouses WHERE id = ?").get(movement.warehouse_id);
+      const level = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(movement.item_id, movement.warehouse_id);
+      notifyOwner(TG.INVENTORY_ADJUSTED, {
+        productName: itemRow?.name || `صنف #${movement.item_id}`,
+        warehouse: whRow?.name || `مخزن #${movement.warehouse_id}`,
+        oldQuantity: Number(level?.quantity ?? 0) + Number(movement.quantity),
+        newQuantity: Number(level?.quantity ?? 0),
+        difference: -Number(movement.quantity),
+        reason: "حذف تسوية مخزون يدوية",
+        userName: req.user?.name || req.user?.username,
+        createdAt: nowSql(),
+      });
+    } catch (_) {}
+
     res.json({ success: true });
   } catch (error) {
     next(error);

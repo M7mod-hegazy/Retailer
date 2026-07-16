@@ -51,8 +51,11 @@ const posRoutes = require("./routes/pos.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
 const whatsappCrmRoutes = require("./routes/whatsappCrm.routes");
+const emailRoutes = require("./routes/email.routes");
 const telegramRoutes = require("./routes/telegram.routes");
 const { pairingPageRouter } = require("./routes/telegram.routes");
+const customerTagsRoutes = require("./routes/customerTags.routes");
+const metaAdsRoutes = require("./routes/metaAds.routes");
 const leadsRoutes = require("./routes/leads.routes");
 const itemUnitsRoutes = require("./routes/itemUnits.routes");
 const variantsRoutes = require("./routes/variants.routes");
@@ -138,8 +141,18 @@ function createApp() {
   // timezone is misconfigured. Unauthenticated — mounted before the license gate.
   app.get("/api/time", (_req, res) => {
     try {
-      const { today } = require("./utils/datetime");
-      res.json({ ok: true, server_time_ms: Date.now(), server_date: today(), timezone: "Africa/Cairo" });
+      const { today, nowSql, wallOffsetMinutes } = require("./utils/datetime");
+      res.json({
+        ok: true,
+        server_time_ms: Date.now(),
+        server_date: today(),
+        // Egypt wall-clock string + the offset actually applied (OS override on a
+        // stale-DST Win7 box, else ICU). The renderer formats live clocks and
+        // date buckets with THIS offset so it matches the server and the taskbar.
+        server_wall_clock: nowSql(),
+        wall_offset_minutes: wallOffsetMinutes(),
+        timezone: "Africa/Cairo",
+      });
     } catch (_e) {
       res.status(500).json({ ok: false });
     }
@@ -213,7 +226,10 @@ function createApp() {
   app.use("/api/pricing", pricingRoutes);
   app.use("/api/whatsapp", whatsappRoutes);
   app.use("/api/whatsapp/crm", whatsappCrmRoutes);
+  app.use("/api/email", emailRoutes);
   app.use("/api/telegram", telegramRoutes);
+  app.use("/api/customer-tags", customerTagsRoutes);
+  app.use("/api/meta-ads", metaAdsRoutes);
   app.use("/api/leads", leadsRoutes);
   app.use("/api/repair-orders", repairOrdersRoutes);
   app.use("/api/restaurant", restaurantRoutes);

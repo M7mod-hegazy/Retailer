@@ -28,6 +28,12 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
       gap: '16px',
       boxShadow: 'var(--shadow-card)',
     }}>
+      <style>{`
+        .shift-btn-open:hover { transform: translateY(-1px); }
+        .shift-btn-deposit:hover { background: var(--primary-50) !important; }
+        .shift-btn-withdraw:hover { background: var(--danger-bg) !important; }
+        .shift-btn-close:hover { background: var(--bg-surface) !important; border-color: var(--text-primary) !important; }
+      `}</style>
       {/* Status Info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {/* Pulse indicator */}
@@ -84,14 +90,13 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
         {!shift ? (
           <button
             onClick={onOpen}
+            className="shift-btn-open"
             style={{
               padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: 600,
               background: 'linear-gradient(135deg, var(--primary), var(--primary-600))',
               color: '#fff', border: 'none', cursor: 'pointer',
               boxShadow: 'var(--shadow-glow)', transition: 'transform 150ms ease',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = ''; }}
           >
             فتح وردية جديدة
           </button>
@@ -99,6 +104,7 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
           <>
             <button
               onClick={() => setPayType("in")}
+              className="shift-btn-deposit"
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
@@ -106,13 +112,12 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
                 border: '1px solid var(--border-accent)', cursor: 'pointer',
                 transition: 'background 150ms ease',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-50)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
             >
               <Plus size={14} /> إيداع
             </button>
             <button
               onClick={() => setPayType("out")}
+              className="shift-btn-withdraw"
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
@@ -120,8 +125,6 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
                 border: '1px solid var(--danger-text)', cursor: 'pointer',
                 transition: 'background 150ms ease',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger-bg)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; }}
             >
               <Minus size={14} /> سحب
             </button>
@@ -130,14 +133,13 @@ export default function ShiftStatusBar({ shift, onOpen, onClose }) {
             
             <button
               onClick={onClose}
+              className="shift-btn-close"
               style={{
                 padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
                 background: 'var(--bg-overlay)', color: 'var(--text-primary)',
                 border: '1px solid var(--border-strong)', cursor: 'pointer',
                 transition: 'all 150ms ease',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.borderColor = 'var(--text-primary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
             >
               إغلاق الوردية
             </button>

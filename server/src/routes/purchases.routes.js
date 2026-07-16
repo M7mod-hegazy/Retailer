@@ -1046,7 +1046,7 @@ router.post("/:id/return", requirePagePermission("purchase_returns", "add"), (re
   }
 });
 
-router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) => {
+router.put("/:id", requirePagePermission("purchases", "edit"), async (req, res, next) => {
   const db = getDb();
   const userId = req.user?.id ? Number(req.user.id) : null;
   try {
@@ -1194,21 +1194,27 @@ router.put("/:id", requirePagePermission("purchases", "edit"), (req, res, next) 
     })();
     req.audit("edit", "purchase", { id: Number(req.params.id), total: updated?.total }, `📦 تم تعديل مشتريات #${req.params.id}`, `/purchases/${req.params.id}`);
     // Telegram notification
+    let _tgStatus = null;
     try {
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-      const supplierRow = updated?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(updated.supplier_id) : null;
-      notifyOwner(TG.PURCHASE_EDITED, {
+      const oldSupplierRow = purchase?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(purchase.supplier_id) : null;
+      const newSupplierRow = updated?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(updated.supplier_id) : null;
+      _tgStatus = await notifyOwner(TG.PURCHASE_EDITED, {
         referenceNo: updated?.doc_no || updated?.reference_no,
         docNo: updated?.doc_no,
-        supplierName: supplierRow?.name || updated?.supplier_name || null,
-        total: updated?.total,
-        lines: updated?.lines,
-        paymentMethod: updated?.payment_method || null,
+        oldSupplierName: oldSupplierRow?.name || purchase?.supplier_name || null,
+        newSupplierName: newSupplierRow?.name || updated?.supplier_name || null,
+        oldTotal: purchase?.total || 0,
+        newTotal: updated?.total || 0,
+        oldLines: purchase?.lines || [],
+        newLines: updated?.lines || [],
+        oldPaymentMethod: purchase?.payment_method || null,
+        newPaymentMethod: updated?.payment_method || null,
         userName: userRow?.name || null,
         createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: updated, telegramStatus: _tgStatus });
   } catch (error) { next(error); }
 });
 
@@ -1523,11 +1529,18 @@ router.post("/:id/void", requirePagePermission("purchases", "delete"), (req, res
         FROM purchases p LEFT JOIN suppliers s ON s.id = p.supplier_id
         WHERE p.id = ?
       `).get(Number(req.params.id));
+      const voidedLines = db.prepare(`
+        SELECT pl.quantity, pl.unit_cost AS unit_price, pl.line_total,
+               i.name AS item_name, i.code AS item_code
+        FROM purchase_lines pl LEFT JOIN items i ON i.id = pl.item_id
+        WHERE pl.purchase_id = ?
+      `).all(Number(req.params.id));
       notifyOwner(TG.PURCHASE_VOIDED, {
         referenceNo: voided?.doc_no || voided?.purchase_no || `#${req.params.id}`,
         supplierName: voided?.supplier_name,
         total: voided?.total || 0,
         reason: req.body?.reason,
+        items: voidedLines,
         userName: req.user?.full_name || req.user?.username,
         createdAt: nowSql(),
       });
@@ -1555,7 +1568,7 @@ function getPurchaseReturnWithLines(db, returnId) {
   return { ...pr, lines };
 }
 
-router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "delete"), (req, res, next) => {
+router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "delete"), async (req, res, next) => {
   const db = getDb();
   try {
     const { reason, user_id } = req.body || {};
@@ -1597,21 +1610,30 @@ router.post("/returns/:id/cancel", requirePagePermission("purchase_returns", "de
 
     req.audit("cancel", "purchase_return", { id: Number(req.params.id), reason: req.body?.reason }, `↩️ تم إلغاء مرتجع مشتريات #${req.params.id}`, `/purchases/returns/${req.params.id}`);
     // Telegram notification
+    let _tgStatus = null;
     try {
       const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
       const prData = result || {};
       const supplierRow = prData.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(prData.supplier_id) : null;
-      notifyOwner(TG.PURCHASE_RETURN_CANCELLED, {
+      // Fetch lines of this purchase return including code / SKU
+      const lines = prData.id ? db.prepare(`
+        SELECT prl.*, i.name AS item_name, i.code AS item_code
+        FROM purchase_return_lines prl
+        LEFT JOIN items i ON i.id = prl.item_id
+        WHERE prl.purchase_return_id = ?
+      `).all(prData.id) : [];
+      _tgStatus = await notifyOwner(TG.PURCHASE_RETURN_CANCELLED, {
         referenceNo: prData.doc_no || prData.reference_no,
         docNo: prData.doc_no,
         supplierName: supplierRow?.name || prData.supplier_name || null,
         total: prData.total,
         reason: req.body?.reason,
+        lines,
         userName: userRow?.name || null,
         createdAt: new Date().toISOString(),
       });
     } catch (_) {}
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (error) { next(error); }
 });
 
@@ -1702,17 +1724,34 @@ function editPurchaseReturn(db, returnId, payload) {
   })();
 }
 
-router.put("/returns/:id", requirePagePermission("purchase_returns", "edit"), (req, res, next) => {
+router.put("/returns/:id", requirePagePermission("purchase_returns", "edit"), async (req, res, next) => {
   const db = getDb();
   ensurePurchaseReturnSettlementSchema(db);
   try {
+    const before = getPurchaseReturnWithLines(db, Number(req.params.id));
     const result = editPurchaseReturn(db, Number(req.params.id), req.body || {});
     req.audit("edit", "purchase_return", { id: Number(req.params.id) }, `↩️ تم تعديل مرتجع مشتريات #${req.params.id}`, `/purchases/returns/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      const after = getPurchaseReturnWithLines(db, Number(req.params.id));
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const supplierRow = after?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(after.supplier_id) : null;
+      _tgStatus = await notifyOwner(TG.PURCHASE_RETURN_EDITED, {
+        referenceNo: after?.doc_no || before?.doc_no || req.params.id,
+        supplierName: supplierRow?.name || after?.supplier_name || null,
+        oldTotal: before?.total,
+        newTotal: after?.total,
+        oldLines: before?.lines || [],
+        newLines: after?.lines || [],
+        userName: userRow?.name || req.user?.username || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (e) { next(e); }
 });
 
-router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit"), (req, res, next) => {
+router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit"), async (req, res, next) => {
   const db = getDb();
   try {
     const payload = req.body || {};
@@ -1795,7 +1834,24 @@ router.put("/returns/:id/amend", requirePagePermission("purchase_returns", "edit
     })();
 
     req.audit("amend", "purchase_return", { original_id: Number(req.params.id), new_id: result?.new_return?.id }, `↩️ تم تعديل (أمندمنت) مرتجع مشتريات #${req.params.id}`, result?.new_return?.id ? `/purchases/returns/${result.new_return.id}` : `/purchases/returns/${req.params.id}`);
-    res.json({ success: true, data: result });
+    let _tgStatus = null;
+    try {
+      const oldPr = result?.original;
+      const newPr = result?.new_return;
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const supplierRow = newPr?.supplier_id ? db.prepare("SELECT name FROM suppliers WHERE id = ?").get(newPr.supplier_id) : null;
+      _tgStatus = await notifyOwner(TG.PURCHASE_RETURN_EDITED, {
+        referenceNo: newPr?.doc_no || oldPr?.doc_no || req.params.id,
+        supplierName: supplierRow?.name || null,
+        oldTotal: oldPr?.total,
+        newTotal: newPr?.total,
+        oldLines: oldPr?.lines || [],
+        newLines: newPr?.lines || [],
+        userName: userRow?.name || req.user?.username || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+    res.json({ success: true, data: result, telegramStatus: _tgStatus });
   } catch (error) { next(error); }
 });
 

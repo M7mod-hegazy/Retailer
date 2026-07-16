@@ -63,7 +63,7 @@ function partyTxnSum(db, partyType, partyId) {
       FROM purchase_returns pr
       WHERE pr.supplier_id = ? AND pr.status = 'active'`, [id]);
     total -= scalar(db, `
-      SELECT COALESCE(SUM(p.amount), 0) AS total
+      SELECT COALESCE(SUM(CASE WHEN p.direction = 'add' THEN -p.amount ELSE p.amount END), 0) AS total
       FROM payments p
       WHERE p.party_type = 'supplier' AND p.party_id = ? AND p.invoice_id IS NULL`, [id]);
     if (tableExists(db, "ajal_payments")) {
@@ -99,7 +99,7 @@ function partyTxnSum(db, partyType, partyId) {
     FROM sales_returns sr
     WHERE sr.customer_id = ? AND sr.status = 'active'`, [id]);
   total -= scalar(db, `
-    SELECT COALESCE(SUM(p.amount), 0) AS total
+    SELECT COALESCE(SUM(CASE WHEN p.direction = 'add' THEN -p.amount ELSE p.amount END), 0) AS total
     FROM payments p
     WHERE p.party_type = 'customer' AND p.party_id = ? AND p.invoice_id IS NULL`, [id]);
   if (tableExists(db, "ajal_payments")) {

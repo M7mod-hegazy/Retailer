@@ -29,6 +29,12 @@ export default function PayrollTab({ employee }) {
   const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSettle, setShowSettle] = useState(false);
+  useEffect(() => {
+    if (!showSettle) return;
+    const h = (e) => { if (e.key === "Escape") setShowSettle(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showSettle]);
   const [calculating, setCalculating] = useState(false);
   const [settleForm, setSettleForm] = useState(null);
   const [activeAdvances, setActiveAdvances] = useState([]);
@@ -41,8 +47,20 @@ export default function PayrollTab({ employee }) {
   const [consumeOneTime, setConsumeOneTime] = useState(true);
   const [salaryBalance, setSalaryBalance] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  useEffect(() => {
+    if (!showConfirm) return;
+    const h = (e) => { if (e.key === "Escape") setShowConfirm(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showConfirm]);
   const [submitting, setSubmitting] = useState(false);
   const [showPayOff, setShowPayOff] = useState(false);
+  useEffect(() => {
+    if (!showPayOff) return;
+    const h = (e) => { if (e.key === "Escape") setShowPayOff(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showPayOff]);
   const [payOffAmount, setPayOffAmount] = useState("");
   const [payOffSubmitting, setPayOffSubmitting] = useState(false);
   const [payOffCategoryId, setPayOffCategoryId] = useState("");

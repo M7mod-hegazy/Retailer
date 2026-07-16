@@ -2,12 +2,14 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ArrowLeft, Lock, Pencil, Trash2, AlertTriangle, CheckCircle2,
   User, Calendar, CreditCard, Banknote, Wallet, Clock, X,
-  Package, ShoppingCart, Printer, History, Settings2,
+  Package, ShoppingCart, Printer, History, Settings2, Copy,
 } from "lucide-react";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useUiStore } from "../../stores/uiStore";
 import api from "../../services/api";
+import { copyToClipboard } from "../../services/connection";
+import { useShortcut } from "../../shortcuts/useShortcut";
 import Modal from "../../components/ui/Modal";
 import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
@@ -29,9 +31,15 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
     api.get("/api/invoices/cancel-reasons").then(r => setPresets(r.data.data || [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[16px] font-black text-slate-800">{title}</h3>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
@@ -90,6 +98,8 @@ export default function InvoiceDetailPage() {
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [returnsWarningOpen, setReturnsWarningOpen] = useState(false);
+
+  useShortcut('invoice.print', () => setPrintOpen(true));
 
   const ALL_COLUMNS = ["index","code","name","quantity","unit_price","discount","line_total"];
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -238,7 +248,7 @@ export default function InvoiceDetailPage() {
       <DocumentHeaderBar
         onBack={() => navigate(-1)}
         title={`فاتورة بيع #${invoice.invoice_no}`}
-        subtitle="محفوظة"
+        subtitle={<span className="flex items-center gap-1.5">محفوظة<button onClick={() => { copyToClipboard(invoice.invoice_no); toast.success("تم النسخ"); }} className="p-1 rounded hover:bg-bg-overlay transition-colors" title="نسخ رقم الفاتورة"><Copy className="w-3.5 h-3.5 text-text-muted" /></button></span>}
         badges={[
           { label: statusInfo.label, cls: statusInfo.cls },
           ...(isAmended ? [{ label: `مُعدَّلة ← ${invoice.amended_by_no || invoice.amended_by}`, cls: "border-amber-200 bg-amber-100 text-amber-700" }] : []),

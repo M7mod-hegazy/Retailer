@@ -31,6 +31,7 @@ export default function PromotionsPage() {
     ends_at: "",
     is_active: true,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchPromotions();
@@ -62,6 +63,7 @@ export default function PromotionsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitting(true);
     try {
       const payload = {
         name: formData.name,
@@ -87,7 +89,7 @@ export default function PromotionsPage() {
       fetchPromotions();
     } catch {
       toast.error("حدث خطأ أثناء حفظ العرض");
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function handleDelete() {
@@ -345,8 +347,10 @@ export default function PromotionsPage() {
               <button 
                 ref={submitBtnRef}
                 type="submit"
-                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98]"
+                disabled={submitting}
+                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
+                {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                 حفظ التغييرات
               </button>
             </div>

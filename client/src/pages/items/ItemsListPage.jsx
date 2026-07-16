@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useShortcut } from "../../shortcuts/useShortcut";
 import ShortcutKbd, { shortcutLabel } from "../../shortcuts/ShortcutKbd";
 import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import {
   ArrowUpDown, 
   Check,
@@ -382,6 +384,7 @@ function SortTh({ label, sortKey, sortConfig, onSort, width, onResizeStart, resi
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ItemsListPage() {
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   usePageTour("items");
   const { t } = useTranslation();
 
@@ -917,7 +920,8 @@ export default function ItemsListPage() {
   }
 
   async function deleteRow(item) {
-    if (!window.confirm(`إخفاء الصنف "${item.name}"؟ يمكن استعادته لاحقاً من خلال تفعيل "عرض المحذوفة".`)) return;
+    const ok = await confirm({ title: "إخفاء الصنف", message: `إخفاء الصنف "${item.name}"؟ يمكن استعادته لاحقاً من خلال تفعيل "عرض المحذوفة".` });
+    if (!ok) return;
     try {
       await api.delete(`/api/items/${item.id}`);
       await loadItems(selectedCatId, search, showDeleted);
@@ -936,7 +940,8 @@ export default function ItemsListPage() {
   // ── bulk actions ──────────────────────────────────────────────────────────
 
   async function bulkDelete() {
-    if (!window.confirm(`إخفاء ${selectedIds.size} صنف؟ يمكن استعادتهم لاحقاً.`)) return;
+    const ok = await confirm({ title: "إخفاء الأصناف", message: `إخفاء ${selectedIds.size} صنف؟ يمكن استعادتهم لاحقاً.` });
+    if (!ok) return;
     try {
       await Promise.all([...selectedIds].map((id) => api.delete(`/api/items/${id}`)));
       toast.success("تم الإخفاء");
@@ -1787,6 +1792,14 @@ export default function ItemsListPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

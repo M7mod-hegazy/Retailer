@@ -7,6 +7,11 @@ const fs = require("fs");
 const path = require("path");
 const { createSnapshot } = require("./syncHelpers");
 const { getUploadsDir } = require("../middleware/upload");
+const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
+
+// All sync routes require authentication
+router.use(authRequired);
 
 function getConfig(db) {
   return db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
@@ -52,7 +57,7 @@ function apiFetch(baseUrl, path, options = {}) {
 }
 
 // ── GET /api/sync/config — return current sync config (masked) ──
-router.get("/config", (req, res) => {
+router.get("/config", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const cfg = db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
@@ -79,7 +84,7 @@ router.get("/config", (req, res) => {
 });
 
 // ── PUT /api/sync/config — save/update sync config ──
-router.put("/config", (req, res) => {
+router.put("/config", requirePagePermission("sync", "configure"), (req, res) => {
   try {
     const db = getDb();
     const { ecom_url, store_id, api_key, auto_sync_enabled, sync_interval_minutes } = req.body;
@@ -104,7 +109,7 @@ router.put("/config", (req, res) => {
 });
 
 // ── POST /api/sync/register-webhook — register POS webhook URL with E-com admin ──
-router.post("/register-webhook", async (req, res) => {
+router.post("/register-webhook", requirePagePermission("sync", "configure"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = db.prepare("SELECT * FROM sync_config WHERE is_active = 1 LIMIT 1").get();
@@ -131,7 +136,7 @@ router.post("/register-webhook", async (req, res) => {
 });
 
 // ── GET /api/sync/status — test connection + get summary ──
-router.get("/status", async (req, res) => {
+router.get("/status", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -252,11 +257,11 @@ const verifyHandler = async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 };
-router.get("/verify", verifyHandler);
-router.post("/verify", verifyHandler);
+router.get("/verify", requirePagePermission("sync", "view"), verifyHandler);
+router.post("/verify", requirePagePermission("sync", "view"), verifyHandler);
 
 // ── GET /api/sync/check — get changes available from E-com ──
-router.get("/check", async (req, res) => {
+router.get("/check", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -340,7 +345,7 @@ router.get("/check", async (req, res) => {
 });
 
 // ── GET /api/sync/search — search E-com catalog ──
-router.get("/search", async (req, res) => {
+router.get("/search", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const cfg = getConfig(getDb());
     if (!cfg) return res.status(400).json({ ok: false, error: "Sync not configured" });
@@ -360,7 +365,7 @@ router.get("/search", async (req, res) => {
 });
 
 // ── POST /api/sync/apply — push selected changes to E-com ──
-router.post("/apply", async (req, res) => {
+router.post("/apply", requirePagePermission("sync", "push"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -483,7 +488,7 @@ async function downloadEcomImages(product, itemId, ecomBaseUrl, db) {
 }
 
 // ── POST /api/sync/pull — pull selected products from E-com ──
-router.post("/pull", async (req, res) => {
+router.post("/pull", requirePagePermission("sync", "pull"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -683,7 +688,7 @@ router.post("/pull", async (req, res) => {
 });
 
 // ── POST /api/sync/preview-pull — preview changes without importing ──
-router.post("/preview-pull", async (req, res) => {
+router.post("/preview-pull", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -758,7 +763,7 @@ router.post("/preview-pull", async (req, res) => {
 });
 
 // ── GET /api/sync/impact-summary — categorized change impact from E-com ──
-router.get("/impact-summary", async (req, res) => {
+router.get("/impact-summary", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -869,7 +874,7 @@ router.get("/impact-summary", async (req, res) => {
 });
 
 // ── GET /api/sync/images/:sku — download image metadata from E-com ──
-router.get("/images/:sku", async (req, res) => {
+router.get("/images/:sku", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const cfg = getConfig(getDb());
     if (!cfg) return res.status(400).json({ ok: false, error: "Sync not configured" });
@@ -890,7 +895,7 @@ router.get("/images/:sku", async (req, res) => {
 });
 
 // ── POST /api/sync/images/upload/:sku — upload image to E-com ──
-router.post("/images/upload/:sku", async (req, res) => {
+router.post("/images/upload/:sku", requirePagePermission("sync", "configure"), async (req, res) => {
   try {
     const cfg = getConfig(getDb());
     if (!cfg) return res.status(400).json({ ok: false, error: "Sync not configured" });
@@ -967,7 +972,7 @@ router.post("/images/upload/:sku", async (req, res) => {
 });
 
 // ── GET /api/sync/logs — sync history ──
-router.get("/logs", (req, res) => {
+router.get("/logs", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const limit = Math.min(100, Number(req.query.limit) || 20);
@@ -979,7 +984,7 @@ router.get("/logs", (req, res) => {
 });
 
 // ── GET /api/sync/logs/:id — single log detail ──
-router.get("/logs/:id", (req, res) => {
+router.get("/logs/:id", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const log = db.prepare("SELECT * FROM sync_log WHERE id = ?").get(req.params.id);
@@ -1005,7 +1010,7 @@ router.get("/logs/:id", (req, res) => {
 });
 
 // ── GET /api/sync/pending — pending changes in POS ──
-router.get("/pending", (req, res) => {
+router.get("/pending", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const search = String(req.query.search || "").trim();
@@ -1038,7 +1043,7 @@ router.get("/pending", (req, res) => {
 });
 
 // ── GET /api/sync/conflicts — detect SKUs changed on both sides ──
-router.get("/conflicts", async (req, res) => {
+router.get("/conflicts", requirePagePermission("sync", "view"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -1100,7 +1105,7 @@ router.get("/conflicts", async (req, res) => {
 });
 
 // ── POST /api/sync/resolve-conflict — resolve a SKU conflict ──
-router.post("/resolve-conflict", async (req, res) => {
+router.post("/resolve-conflict", requirePagePermission("sync", "push"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);
@@ -1189,7 +1194,7 @@ router.post("/resolve-conflict", async (req, res) => {
 });
 
 // ── GET /api/sync/snapshots — list recent snapshots (paginated) ──
-router.get("/snapshots", (req, res) => {
+router.get("/snapshots", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -1211,7 +1216,7 @@ router.get("/snapshots", (req, res) => {
 });
 
 // ── GET /api/sync/snapshots/:id — get full snapshot data ──
-router.get("/snapshots/:id", (req, res) => {
+router.get("/snapshots/:id", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const snap = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(req.params.id);
@@ -1227,7 +1232,7 @@ router.get("/snapshots/:id", (req, res) => {
 });
 
 // ── POST /api/sync/snapshots/:id/rollback-preview — what would be restored ──
-router.post("/snapshots/:id/rollback-preview", (req, res) => {
+router.post("/snapshots/:id/rollback-preview", requirePagePermission("sync", "view"), (req, res) => {
   try {
     const db = getDb();
     const snap = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(req.params.id);
@@ -1280,7 +1285,7 @@ router.post("/snapshots/:id/rollback-preview", (req, res) => {
 });
 
 // ── POST /api/sync/snapshots/:id/rollback — execute rollback ──
-router.post("/snapshots/:id/rollback", (req, res) => {
+router.post("/snapshots/:id/rollback", requirePagePermission("sync", "restore"), (req, res) => {
   try {
     const db = getDb();
     const snap = db.prepare("SELECT * FROM sync_snapshots WHERE id = ?").get(req.params.id);
@@ -1477,7 +1482,7 @@ async function autoPullAll(db) {
 }
 
 // ── PUSH CATALOG — send all active POS items to website's StoreCatalog ──
-router.post("/push-catalog", async (req, res) => {
+router.post("/push-catalog", requirePagePermission("sync", "push"), async (req, res) => {
   try {
     const db = getDb();
     const cfg = getConfig(db);

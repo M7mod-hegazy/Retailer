@@ -26,11 +26,24 @@ export default function AdvancesTab({ employee }) {
   const [payAmount, setPayAmount] = useState("");
   const [payments, setPayments] = useState({});
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  useEffect(() => {
+    if (!showExpenseModal) return;
+    const h = (e) => { if (e.key === "Escape") setShowExpenseModal(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showExpenseModal]);
   const [categories, setCategories] = useState([]);
   const [expenseForm, setExpenseForm] = useState({ create_expense: false, description: "", category_id: "" });
   const [showRepayExpenseConfirm, setShowRepayExpenseConfirm] = useState(false);
+  useEffect(() => {
+    if (!showRepayExpenseConfirm) return;
+    const h = (e) => { if (e.key === "Escape") setShowRepayExpenseConfirm(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showRepayExpenseConfirm]);
   const [repayAdvanceId, setRepayAdvanceId] = useState(null);
   const [repayExpenseForm, setRepayExpenseForm] = useState({ create_expense: false, description: "", category_id: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (employee) loadAdvances();
@@ -78,6 +91,19 @@ export default function AdvancesTab({ employee }) {
 
   async function handleConfirmAdvance() {
     setShowExpenseModal(false);
+    setSubmitting(true);
+    const tempId = Date.now();
+    const optimistic = {
+      id: tempId,
+      amount: Number(form.amount),
+      remaining_balance: Number(form.amount),
+      installment_count: Number(form.installment_count),
+      installment_amount: Number(form.installment_count) > 0 ? Math.round(Number(form.amount) / Number(form.installment_count)) : Number(form.amount),
+      notes: form.notes,
+      status: "active",
+      created_at: new Date().toISOString(),
+    };
+    setAdvances(prev => [optimistic, ...prev]);
     try {
       const res = await api.post(`/api/employees/${employee.id}/advances`, {
         amount: Number(form.amount),
@@ -100,7 +126,10 @@ export default function AdvancesTab({ employee }) {
         setForm({ amount: "", installment_count: "0", notes: "" });
         loadAdvances();
       }
-    } catch { toast.error("فشل إضافة السلفة"); }
+    } catch { 
+      toast.error("فشل إضافة السلفة");
+      setAdvances(prev => prev.filter(a => a.id !== tempId));
+    } finally { setSubmitting(false); }
   }
 
   async function handlePay(advanceId) {
@@ -247,8 +276,10 @@ export default function AdvancesTab({ employee }) {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="h-10 px-6 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg transition-all"
+                  disabled={submitting}
+                  className="h-10 px-6 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                   تأكيد الإضافة
                 </button>
               </div>

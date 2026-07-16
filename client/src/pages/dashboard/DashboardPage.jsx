@@ -20,6 +20,7 @@ import { useElectron } from "../../hooks/useElectron";
 import { useServerClock } from "../../hooks/useServerClock";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
 import AnnouncementBanner from "../../components/assistant/AnnouncementBanner";
+import SectionErrorBoundary from "../../components/ui/SectionErrorBoundary";
 import { fieldKeyToTab, findMissingCritical } from "../../utils/fieldMeta";
 
 // ─── Tooltips ────────────────────────────────────────────────────────────────
@@ -70,17 +71,17 @@ const PAGE_SHORTCUT_MAP = { pos: "dashboard.gotoPos", analytics: "dashboard.goto
 // path   → navigate to create form
 // modal  → open inline quick-entry modal
 const QUICK_ACTIONS = {
-  sales:            { path: "/pos",                                label: "بيع جديد" },
-  purchases:        { path: "/purchases/new",                      label: "فاتورة جديدة" },
-  purchase_orders:  { path: "/purchases/orders/new",               label: "طلب توريد جديد" },
-  purchase_returns: { path: "/purchases/returns/new",              label: "مرتجع جديد" },
-  sales_returns:    { path: "/sales/returns/new",                  label: "مرتجع مبيعات" },
-  branch_transfer:  { path: "/operations/branch-transfer/new",     label: "نقل جديد" },
-  quotations:       { path: "/operations/quotations/new",          label: "عرض سعر جديد" },
-  stock_transfer:   { path: "/stock/transfer",                     label: "تحويل" },
-  revenues:         { modal: "revenue",                            label: "إيراد سريع" },
-  expenses:         { modal: "expense",                            label: "مصروف سريع" },
-  withdrawals:      { modal: "withdrawal",                         label: "مسحوبات" },
+  sales: { path: "/pos", label: "بيع جديد" },
+  purchases: { path: "/purchases/new", label: "فاتورة جديدة" },
+  purchase_orders: { path: "/purchases/orders/new", label: "طلب توريد جديد" },
+  purchase_returns: { path: "/purchases/returns/new", label: "مرتجع جديد" },
+  sales_returns: { path: "/sales/returns/new", label: "مرتجع مبيعات" },
+  branch_transfer: { path: "/operations/branch-transfer/new", label: "نقل جديد" },
+  quotations: { path: "/operations/quotations/new", label: "عرض سعر جديد" },
+  stock_transfer: { path: "/stock/transfer", label: "تحويل" },
+  revenues: { modal: "revenue", label: "إيراد سريع" },
+  expenses: { modal: "expense", label: "مصروف سريع" },
+  withdrawals: { modal: "withdrawal", label: "مسحوبات" },
 };
 
 // ─── Modal config ─────────────────────────────────────────────────────────────
@@ -112,9 +113,9 @@ const MODAL_CONFIG = {
 };
 
 const COLOR_MAP = {
-  rose:    { ring: "ring-[var(--danger-border)]",    btn: "bg-primary hover:bg-primary-600",    icon: "bg-[var(--danger-light)] text-[var(--danger-text)]",    badge: "bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]" },
+  rose: { ring: "ring-[var(--danger-border)]", btn: "bg-primary hover:bg-primary-600", icon: "bg-[var(--danger-light)] text-[var(--danger-text)]", badge: "bg-[var(--danger-bg)] text-[var(--danger-text)] border-[var(--danger-border)]" },
   emerald: { ring: "ring-[var(--success-border)]", btn: "bg-primary hover:bg-primary-600", icon: "bg-[var(--success-light)] text-[var(--success-text)]", badge: "bg-[var(--success-bg)] text-[var(--success-text)] border-[var(--success-border)]" },
-  amber:   { ring: "ring-[var(--warning-border)]",   btn: "bg-primary hover:bg-primary-600",  icon: "bg-[var(--warning-light)] text-[var(--warning-text)]",  badge: "bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)]" },
+  amber: { ring: "ring-[var(--warning-border)]", btn: "bg-primary hover:bg-primary-600", icon: "bg-[var(--warning-light)] text-[var(--warning-text)]", badge: "bg-[var(--warning-bg)] text-[var(--warning-text)] border-[var(--warning-border)]" },
 };
 
 // ─── Permission hook ──────────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ function QuickEntryModal({ type, onClose }) {
   useEffect(() => {
     api.get(`/api${cfg.endpoint}/categories`)
       .then((r) => setCategories(r.data.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, [cfg.endpoint]);
 
   async function handleSubmit(e) {
@@ -300,18 +301,26 @@ function QuickEntryModal({ type, onClose }) {
 function ChannelStatusDots({ status, className = "", layout = "vertical" }) {
   if (!status) return null;
   const channels = [
-    { key: "whatsapp", label: "واتساب", on: !!status.whatsapp?.connected },
-    { key: "sms", label: "SMS", on: !!status.sms?.connected },
-    { key: "telegram", label: "تيليجرام", on: !!status.telegram?.connected },
+    { key: "whatsapp", label: "واتساب", on: !!status.whatsapp?.connected, color: "var(--success-text)", bg: "var(--success-bg)" },
+    { key: "sms", label: "SMS", on: !!status.sms?.connected, color: "var(--info-text)", bg: "var(--info-bg)" },
+    { key: "telegram", label: "تيليجرام", on: !!status.telegram?.connected, color: "var(--info-text)", bg: "var(--info-bg)" },
+    { key: "email", label: "البريد", on: !!status.email?.connected, color: "var(--danger-text)", bg: "var(--danger-bg)" },
+    { key: "meta", label: "Meta", on: !!status.meta?.connected, color: "var(--primary)", bg: "var(--primary-50, var(--primary-glow))" },
   ];
+  const onCount = channels.filter(c => c.on).length;
   if (layout === "horizontal") {
     return (
-      <div className={`flex items-center gap-1 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
+      <div className={`flex items-center gap-1.5 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
         {channels.map((d) => (
           <span
             key={d.key}
-            className={`text-[9px] font-bold px-1.5 py-0.5 rounded leading-none ${d.on ? "bg-[var(--success-bg)] text-[var(--success-text)]" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"}`}
+            className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded leading-none border ${d.on
+              ? `border-current/20`
+              : "bg-[var(--bg-overlay)] text-[var(--text-muted)] border-transparent opacity-40"
+              }`}
+            style={d.on ? { color: d.color, backgroundColor: d.bg } : undefined}
           >
+            <span className="w-1 h-1 rounded-full shrink-0" style={d.on ? { backgroundColor: d.color } : { backgroundColor: "var(--text-muted)" }} />
             {d.label}
           </span>
         ))}
@@ -319,16 +328,21 @@ function ChannelStatusDots({ status, className = "", layout = "vertical" }) {
     );
   }
   return (
-    <div className={`flex flex-col gap-1 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
-      <span className="text-[10px] font-black text-[var(--on-feature-muted)] leading-none mb-0.5">مركز الرسائل</span>
-      {channels.map((d) => (
-        <span key={d.key} className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.on ? "bg-[var(--success-text)]" : "bg-[var(--text-muted)] opacity-30"}`} />
-          <span className={`text-[10px] font-bold leading-none ${d.on ? "text-[var(--on-feature-muted)]" : "text-[var(--on-feature-muted)] opacity-40"}`}>
+    <div className={`flex flex-col gap-1.5 ${className}`} title={channels.map((d) => `${d.label}: ${d.on ? "متصل" : "غير متصل"}`).join(" · ")}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] font-black text-[var(--on-feature-muted)] leading-none">مركز الرسائل</span>
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none" style={{ backgroundColor: onCount > 0 ? "var(--success-bg)" : "var(--bg-overlay)", color: onCount > 0 ? "var(--success-text)" : "var(--text-muted)" }}>
+          {onCount}/{channels.length}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {channels.map((d) => (
+          <span key={d.key} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold leading-none border transition-all" style={d.on ? { color: d.color, backgroundColor: d.bg, borderColor: `${d.color}30` } : { color: "var(--text-muted)", backgroundColor: "var(--bg-overlay)", borderColor: "transparent", opacity: 0.4 }}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: d.on ? d.color : "var(--text-muted)" }} />
             {d.label}
           </span>
-        </span>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -369,10 +383,9 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
   }
 
   const actionBtnClass = (active) =>
-    `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${
-      active
-        ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
-        : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
+    `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${active
+      ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+      : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
     }`;
 
   return (
@@ -382,13 +395,12 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
         to={item.path}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${
-          active
-            ? "bg-primary text-white shadow-[var(--shadow-elevated)]"
-            : item.pageKey === "updates" && updateAvailable
+        className={`group block relative h-full rounded-[2rem] p-6 transition-all duration-500 overflow-hidden ${active
+          ? "bg-primary text-white shadow-[var(--shadow-elevated)]"
+          : item.pageKey === "updates" && updateAvailable
             ? "bg-[var(--bg-surface)] border-2 border-[var(--success-border)] shadow-[var(--shadow-elevated),0_0_30px_-8px_var(--primary-glow)] hover:shadow-[var(--shadow-modal),0_0_40px_-8px_var(--primary-glow)] hover:-translate-y-1"
             : "bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-elevated)] hover:shadow-[var(--shadow-modal)] hover:-translate-y-1 hover:border-[var(--border-accent)]"
-        }`}
+          }`}
         style={{ backgroundImage: "linear-gradient(180deg, var(--bg-surface) 55%, var(--accent-soft))" }}
       >
         {/* Accent bar — slides in from the start edge on hover */}
@@ -404,15 +416,14 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
 
         <div className="relative z-10 flex flex-col h-full justify-between gap-8">
           <div className="flex justify-between items-start">
-            <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${
-              active ? "bg-[var(--chip-on-primary)] text-[var(--on-feature)]" : "bg-[var(--bg-input)] text-[var(--text-muted)] group-hover:bg-primary group-hover:text-white group-hover:scale-110"
-            }`}>
+            <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-500 ${active ? "bg-[var(--chip-on-primary)] text-[var(--on-feature)]" : "bg-[var(--bg-input)] text-[var(--text-muted)] group-hover:bg-primary group-hover:text-white group-hover:scale-110"
+              }`}>
               <item.icon className="w-6 h-6" strokeWidth={1.5} />
             </div>
 
             <div className="flex items-start gap-2">
               {item.pageKey === "updates" && updateAvailable && (
-                  <span className="flex items-center gap-1 bg-[var(--success-text)] text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-[var(--shadow-glow-green)] animate-pulse whitespace-nowrap self-center">
+                <span className="flex items-center gap-1 bg-[var(--success-text)] text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-[var(--shadow-glow-green)] animate-pulse whitespace-nowrap self-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-white" />
                   تحديث
                 </span>
@@ -442,11 +453,10 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
                 <button
                   onClick={handleQuickClick}
                   title={qa.label}
-                   className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${
-                    active
-                      ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
-                      : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
-                  }`}
+                  className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${active
+                    ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+                    : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
+                    }`}
                 >
                   <Zap className="w-3 h-3" />
                   {qa.label}
@@ -454,9 +464,8 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
               ) : null}
 
               {/* Arrow icon */}
-              <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${
-                active ? "border-white/20 text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] group-hover:border-primary group-hover:bg-primary group-hover:text-white"
-              }`}>
+              <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${active ? "border-white/20 text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+                }`}>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -466,9 +475,8 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
             <h3 className={`text-lg font-black tracking-tight mb-2 transition-colors duration-500 ${active ? "text-white" : "text-[var(--text-primary)]"}`}>
               {item.label}
             </h3>
-            <p className={`text-xs font-bold leading-relaxed line-clamp-2 transition-colors duration-500 ${
-              active ? "text-[var(--on-feature-muted)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
-            }`}>
+            <p className={`text-xs font-bold leading-relaxed line-clamp-2 transition-colors duration-500 ${active ? "text-[var(--on-feature-muted)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
+              }`}>
               {TOOLTIPS[item.pageKey]}
             </p>
           </div>
@@ -530,20 +538,17 @@ function SyncDashboardWidget() {
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-card rounded-[2rem] p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              connected ? "bg-[var(--success-light)] text-[var(--success-text)]" : "bg-[var(--danger-light)] text-[var(--danger-text)]"
-            }`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${connected ? "bg-[var(--success-light)] text-[var(--success-text)]" : "bg-[var(--danger-light)] text-[var(--danger-text)]"
+              }`}>
               {connected ? <WifiIcon className="h-5 w-5" /> : <WifiOffIcon className="h-5 w-5" />}
             </div>
             <div>
               <h3 className="text-sm font-black text-[var(--text-primary)]">المزامنة مع المتجر الإلكتروني</h3>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-                  connected ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    connected ? "bg-[var(--success-text)] animate-pulse" : "bg-[var(--danger-text)]"
-                  }`} />
+                <span className={`inline-flex items-center gap-1 text-xs font-bold ${connected ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"
+                  }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-[var(--success-text)] animate-pulse" : "bg-[var(--danger-text)]"
+                    }`} />
                   {connected ? "متصل" : "غير متصل"}
                 </span>
                 <span className="text-[10px] text-[var(--text-muted)]">
@@ -571,11 +576,10 @@ function SyncDashboardWidget() {
         </div>
 
         {/* Pending changes */}
-        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold mb-4 ${
-          (pendingChanges?.length || 0) > 0
-            ? "bg-[var(--warning-bg)] text-[var(--warning-text)]"
-            : "bg-[var(--bg-base)] text-[var(--text-muted)]"
-        }`}>
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold mb-4 ${(pendingChanges?.length || 0) > 0
+          ? "bg-[var(--warning-bg)] text-[var(--warning-text)]"
+          : "bg-[var(--bg-base)] text-[var(--text-muted)]"
+          }`}>
           <AlertCircle className="h-3.5 w-3.5" />
           {(pendingChanges?.length || 0) > 0
             ? `${pendingChanges.length} تغييرات معلقة تحتاج إلى المراجعة`
@@ -760,6 +764,16 @@ export default function DashboardPage() {
   const [backupPreview, setBackupPreview] = useState(null);
   const [backupTooltipOpen, setBackupTooltipOpen] = useState(false);
   const [backupTriggering, setBackupTriggering] = useState(false);
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!backupModalOpen) return;
+    const h = (e) => { if (e.key === "Escape") setBackupModalOpen(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [backupModalOpen]);
+  const [backupToggling, setBackupToggling] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(true);
   const canViewBackup = canView("settings");
 
   const refreshBackupInfo = useCallback(() => {
@@ -769,13 +783,22 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!canViewBackup) return;
-    refreshBackupInfo();
-    // Also load coverage preview (dry-run)
-    api.get("/api/backup/preview")
-      .then((res) => setBackupPreview(res.data?.data || null))
-      .catch(() => setBackupPreview(null));
-  }, [canViewBackup, refreshBackupInfo]);
+    if (!canViewBackup) { setBackupLoading(false); return; }
+    let cancelled = false;
+    Promise.all([
+      api.get("/api/backup/settings"),
+      api.get("/api/backup/preview").catch(() => null),
+    ]).then(([settingsRes, previewRes]) => {
+      if (cancelled) return;
+      setBackupInfo(settingsRes.data?.data || null);
+      setBackupPreview(previewRes?.data?.data || null);
+    }).catch(() => {
+      if (!cancelled) setBackupInfo(null);
+    }).finally(() => {
+      if (!cancelled) setBackupLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [canViewBackup]);
 
   const handleBackupNow = useCallback(async (e) => {
     e.stopPropagation();
@@ -788,13 +811,27 @@ export default function DashboardPage() {
       // Also refresh the backup preview sizes & count
       api.get("/api/backup/preview")
         .then((res) => setBackupPreview(res.data?.data || null))
-        .catch(() => {});
+        .catch(() => { });
     } catch {
       toast.error("فشل إنشاء النسخة الاحتياطية");
     } finally {
       setBackupTriggering(false);
     }
   }, [backupTriggering, refreshBackupInfo]);
+
+  const handleToggleAutoBackup = useCallback(async () => {
+    if (backupToggling) return;
+    setBackupToggling(true);
+    try {
+      const res = await api.put("/api/backup/settings", { auto_backup_enabled: 1, auto_backup_interval_hours: 24 });
+      setBackupInfo(res.data?.data || null);
+      toast.success("✅ تم تفعيل النسخ الاحتياطي التلقائي");
+    } catch {
+      toast.error("فشل تفعيل النسخ الاحتياطي");
+    } finally {
+      setBackupToggling(false);
+    }
+  }, [backupToggling]);
 
   const primaryItems = PRIMARY_MENU.filter((item) => item.path !== "/dashboard" && canView(item.pageKey, item.featureKey));
   const visibleModules = NAV_MODULES.map((module) => ({
@@ -868,7 +905,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Live Clock + version */}
+          {/* Live Clock + badges */}
           <div className="flex items-center gap-3" dir="ltr">
             {/* Clock — on the left (first in LTR) */}
             <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
@@ -882,23 +919,40 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Version / connection status */}
-            {appVersion && appVersion !== "web" && (
-              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
-                {isServerOnline ? (
-                  <Wifi className="w-3 h-3 text-[var(--success-border)]" />
-                ) : (
-                  <WifiOff className="w-3 h-3 text-[var(--danger-text)]" />
-                )}
-                <span className={`text-[10px] font-black tracking-widest ${isServerOnline ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]'}`}>
-                  {isServerOnline ? 'متصل' : 'غير متصل'}
-                </span>
-                <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
+            {/* Messaging channels */}
+            {canViewChannels && !channelsStatus && (
+              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-14 h-1.5 rounded bg-white/20" />
+                  <div className="flex gap-1">
+                    <div className="w-6 h-1.5 rounded bg-white/10" />
+                    <div className="w-6 h-1.5 rounded bg-white/10" />
+                    <div className="w-6 h-1.5 rounded bg-white/10" />
+                  </div>
+                </div>
               </div>
+            )}
+            {channelsStatus && (
+              <Link
+                to="/whatsapp-crm"
+                title={`مركز الرسائل — واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"} · البريد: ${channelsStatus.email?.connected ? "مفعّل" : "غير مفعّل"} · Meta: ${channelsStatus.meta?.connected ? "مربوط" : "غير مربوط"}`}
+                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-colors"
+              >
+                <ChannelStatusDots status={channelsStatus} />
+              </Link>
             )}
 
             {/* ── Backup Badge ─────────────────────────────────────────── */}
-            {canViewBackup && backupInfo !== null && (
+            {canViewBackup && backupLoading && (
+              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-white/20" />
+                  <div className="w-16 h-1.5 rounded bg-white/20" />
+                  <div className="w-12 h-1 rounded bg-white/10" />
+                </div>
+              </div>
+            )}
+            {canViewBackup && !backupLoading && backupInfo !== null && (
               backupInfo.auto_backup_enabled ? (
                 /* AUTO-BACKUP IS ON → show last backup time + backup-now button */
                 <div className="relative self-end mb-1 z-50">
@@ -907,7 +961,7 @@ export default function DashboardPage() {
                     onClick={() => setBackupTooltipOpen((v) => !v)}
                     title={backupInfo.last_auto_backup_at
                       ? `آخر نسخة احتياطية: ${new Date(backupInfo.last_auto_backup_at).toLocaleString("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}`
-                      : "النسخ التلقائي مفعّل — لم تتم نسخة بعد"}
+                      : "أخر النسخ التلقائي مفعّل — لم تتم نسخة بعد"}
                     className="flex items-center gap-1.5 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-all group"
                   >
                     <div className="flex flex-col items-center gap-0.5">
@@ -1018,37 +1072,117 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 /* AUTO-BACKUP IS OFF → activate CTA */
-                <Link
-                  to="/settings?tab=maintenance"
-                  title="النسخ التلقائي غير مفعّل — اضغط لتفعيله"
-                  className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-amber-500/30 hover:border-amber-400/70 transition-all group"
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="flex items-center gap-1">
-                      <HardDrive className="w-3 h-3 text-amber-400 shrink-0" />
-                      <PlayCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                <div className="relative self-end mb-1 z-50">
+                  <button
+                    type="button"
+                    onClick={() => setBackupModalOpen(true)}
+                    title="النسخ التلقائي غير مفعّل — اضغط لتفعيله"
+                    className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-2 shadow-xl hover:bg-amber-500/30 hover:border-amber-400/70 transition-all group"
+                  >
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-1">
+                        <HardDrive className="w-3 h-3 text-amber-400 shrink-0" />
+                        <PlayCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                      </div>
+                      <span className="text-[9px] font-black text-amber-300 leading-none">أخر النسخ التلقائي</span>
+                      <span className="text-[9px] font-bold text-amber-400/80 group-hover:text-amber-300 leading-none">غير مفعّل — فعّله</span>
                     </div>
-                    <span className="text-[9px] font-black text-amber-300 leading-none">النسخ التلقائي</span>
-                    <span className="text-[9px] font-bold text-amber-400/80 group-hover:text-amber-300 leading-none">غير مفعّل — فعّله</span>
-                  </div>
-                </Link>
+                  </button>
+
+                  <AnimatePresence>
+                    {backupModalOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setBackupModalOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md rounded-2xl border border-[var(--border-normal)] bg-[var(--bg-surface)] shadow-[var(--shadow-modal)] overflow-hidden"
+                          dir="rtl"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-subtle)] bg-amber-500/10">
+                            <HardDrive className="w-4 h-4 text-amber-400" />
+                            <span className="text-sm font-black text-[var(--text-primary)]">تفعيل النسخ الاحتياطي التلقائي</span>
+                            <button type="button" onClick={() => setBackupModalOpen(false)} className="mr-auto p-1 rounded-lg hover:bg-[var(--bg-overlay)]">
+                              <X className="w-4 h-4 text-[var(--text-secondary)]" />
+                            </button>
+                          </div>
+
+                          {/* Body */}
+                          <div className="p-5 space-y-4">
+                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                              النسخ الاحتياطي التلقائي يحتفظ بنسخ احتياطية من قاعدة البيانات بشكل دوري، لحماية بياناتك من الفقدان.
+                            </p>
+
+                            {/* Info cards */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3 text-center">
+                                <Database className="w-6 h-6 mx-auto mb-1.5 text-amber-400" />
+                                <span className="text-[10px] font-black text-[var(--text-primary)] block">قاعدة البيانات</span>
+                                <span className="text-[9px] font-bold text-[var(--text-secondary)]">نسخ كامل ودوري</span>
+                              </div>
+                              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3 text-center">
+                                <CloudUpload className="w-6 h-6 mx-auto mb-1.5 text-amber-400" />
+                                <span className="text-[10px] font-black text-[var(--text-primary)] block">كل 24 ساعة</span>
+                                <span className="text-[9px] font-bold text-[var(--text-secondary)]">تلقائي بدون تدخل</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer actions */}
+                          <div className="flex items-center gap-2 px-4 pb-4">
+                            <button
+                              type="button"
+                              onClick={handleBackupNow}
+                              disabled={backupTriggering}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-primary text-white rounded-xl text-xs font-black hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+                            >
+                              {backupTriggering
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <CloudUpload className="w-3.5 h-3.5" />}
+                              {backupTriggering ? "جارٍ النسخ..." : "نسخ احتياطي الآن"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleToggleAutoBackup}
+                              disabled={backupToggling}
+                              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-500 text-white rounded-xl text-xs font-black hover:bg-amber-600 active:scale-95 transition-all disabled:opacity-60"
+                            >
+                              {backupToggling
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <PlayCircle className="w-3.5 h-3.5" />}
+                              {backupToggling ? "جارٍ التفعيل..." : "تفعيل التلقائي"}
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
               )
             )}
 
-            {/* Messaging channels */}
-            {channelsStatus && (
-              <Link
-                to="/whatsapp-crm"
-                title={`مركز الرسائل والحملات — واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"}`}
-                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-colors"
-              >
-                <ChannelStatusDots status={channelsStatus} />
-              </Link>
+            {/* Version / connection status — always last */}
+            {appVersion && appVersion !== "web" && (
+              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
+                {isServerOnline ? (
+                  <Wifi className="w-3 h-3 text-[var(--success-border)]" />
+                ) : (
+                  <WifiOff className="w-3 h-3 text-[var(--danger-text)]" />
+                )}
+                <span className={`text-[10px] font-black tracking-widest ${isServerOnline ? 'text-[var(--success-text)]' : 'text-[var(--danger-text)]'}`}>
+                  {isServerOnline ? 'متصل' : 'غير متصل'}
+                </span>
+                <span className="text-[10px] font-black text-[var(--on-feature-muted)] tracking-widest">{String(appVersion).replace(/^v/i, "")}</span>
+              </div>
             )}
           </div>
         </header>
 
         {/* Primary shortcuts */}
+        <SectionErrorBoundary>
         <motion.div data-help="stats-cards" variants={STAGGER} initial="hidden" animate="visible" className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 relative z-10">
           {primaryItems.map((item) => {
             const isPOS = item.highlight;
@@ -1104,6 +1238,7 @@ export default function DashboardPage() {
             );
           })}
         </motion.div>
+        </SectionErrorBoundary>
       </div>
 
       {/* Reconnected banner */}
@@ -1226,7 +1361,7 @@ export default function DashboardPage() {
           <div className="relative">
             <button
               onClick={() => {
-                try { localStorage.setItem('retailer:settings-warning-dismissed', 'true'); } catch {}
+                try { localStorage.setItem('retailer:settings-warning-dismissed', 'true'); } catch { }
                 setSettingsWarningDismissed(true);
               }}
               className="absolute top-4 left-4 z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--warning-light)] text-[var(--warning-text)] hover:bg-[var(--warning-bg)] transition-colors"
@@ -1248,7 +1383,7 @@ export default function DashboardPage() {
           <div className="relative rounded-[2rem] border-2 border-dashed border-[var(--warning-border)] bg-[var(--warning-bg)]/80 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[var(--shadow-elevated)] backdrop-blur-sm">
             <button
               onClick={() => {
-                try { localStorage.setItem('retailer:no-items-dismissed', 'true'); } catch {}
+                try { localStorage.setItem('retailer:no-items-dismissed', 'true'); } catch { }
                 setNoItemsDismissed(true);
               }}
               className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--warning-light)] text-[var(--warning-text)] hover:bg-[var(--warning-bg)] transition-colors"
@@ -1311,6 +1446,7 @@ export default function DashboardPage() {
         </LayoutGroup>
 
         {/* Cards grid */}
+        <SectionErrorBoundary>
         <AnimatePresence mode="wait">
           {activeModule && (
             <motion.div
@@ -1405,14 +1541,17 @@ export default function DashboardPage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </SectionErrorBoundary>
       </div>
 
       {/* Quick-entry modal */}
+      <SectionErrorBoundary>
       <AnimatePresence>
         {quickModal && (
           <QuickEntryModal type={quickModal} onClose={closeModal} />
         )}
       </AnimatePresence>
+      </SectionErrorBoundary>
     </div>
   );
 }

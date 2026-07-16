@@ -151,6 +151,13 @@ export default function POSListView({ vm }) {
     lastSavedInvoice, setLastSavedInvoice,
   } = vm;
 
+  useEffect(() => {
+    if (!staleHeldAlert) return;
+    const h = (e) => { if (e.key === "Escape") setStaleHeldAlert(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [staleHeldAlert]);
+
   const entryBarRef = useRef(null);
   const discountRef = useRef(null);
   const increaseRef = useRef(null);
@@ -219,6 +226,17 @@ export default function POSListView({ vm }) {
       return () => clearTimeout(t);
     }
   }, [lines.length]);
+
+  const [totalPulse, setTotalPulse] = useState(false);
+  const prevTotalRef = useRef(totals.total);
+  useEffect(() => {
+    if (prevTotalRef.current !== totals.total) {
+      prevTotalRef.current = totals.total;
+      setTotalPulse(true);
+      const t = setTimeout(() => setTotalPulse(false), 400);
+      return () => clearTimeout(t);
+    }
+  }, [totals.total]);
 
   const ALL_COLUMNS = ["index", "sku", "name", "quantity", "unitPrice", "lineDiscount", "warehouseId", "unit", "profit_pct", "barcode", "cost_price", "category", "wholesale_price", "total", "actions"];
   const DEFAULT_VISIBLE = ["index", "sku", "name", "quantity", "unitPrice", "lineDiscount", "warehouseId", "unit", "profit_pct", "total", "actions"];
@@ -492,8 +510,11 @@ export default function POSListView({ vm }) {
         style={{ paddingBottom: "calc(1rem + var(--pos-bottom-bar-h, 0px))" }}
       >
         {/* Right Sidebar (Customer, Summary, Payment) */}
-        <aside style={panelEffectiveCollapsed ? undefined : { width: panelWidth }}
-          className={`shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in ${panelEffectiveCollapsed ? "hidden" : ""}`}
+        <aside style={panelEffectiveCollapsed
+            ? { width: 0, overflow: "hidden", opacity: 0, transition: "all 0.3s ease" }
+            : { width: panelWidth, opacity: 1, transition: "all 0.3s ease" }
+          }
+          className="shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in"
         >
           {/* Customer Card */}
           <div className="shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
@@ -739,7 +760,7 @@ export default function POSListView({ vm }) {
               <div className="h-px bg-slate-100 my-1" />
               <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
-                <div className="text-[32px] number-fmt-primary tracking-tighter leading-none mt-1.5">
+                <div className={`text-[32px] number-fmt-primary tracking-tighter leading-none mt-1.5 transition-transform ${totalPulse ? 'animate-total-bounce' : ''}`}>
                   {formatNumber(totals.total)}
                 </div>
                 <div className="text-[11px] opacity-40 mt-1">ج.م</div>
@@ -898,7 +919,7 @@ export default function POSListView({ vm }) {
             </div>
 
             {paymentType === "bank_transfer" && (
-              <div className="mt-4 flex flex-col gap-1.5 rounded-xl bg-blue-50/50 border border-blue-100 p-3">
+              <div className="mt-4 flex flex-col gap-1.5 rounded-xl bg-blue-50/50 border border-blue-100 p-3 animate-slide-down">
                 <label className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5">
                   <CreditCard className="w-3 h-3" /> اختر البنك / البطاقة
                 </label>
@@ -912,12 +933,13 @@ export default function POSListView({ vm }) {
               </div>
             )}
             {paymentType === "credit" && customer && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-[11px] text-amber-800 font-bold flex items-center gap-2">
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-[11px] text-amber-800 font-bold flex items-center gap-2 animate-slide-down">
                 <Wallet className="w-4 h-4 shrink-0 text-amber-600" />
                 <span>سيتم إضافة {formatMoney(totals.total)} لرصيد {customer.name}</span>
               </div>
             )}
             {paymentType === "installments" && (
+              <div className="animate-slide-down">
               <InstallmentPlanner
                 remaining={installmentRemaining}
                 downPayment={amountPaid} setDownPayment={setAmountPaid}
@@ -929,9 +951,10 @@ export default function POSListView({ vm }) {
                 allocated={installmentAllocated} balanced={installmentBalanced}
                 customer={customer} formatMoney={formatMoney}
               />
+              </div>
             )}
             {paymentType === "multi" && (
-              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4">
+              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4 animate-slide-down">
                 <div className="text-[11px] font-black text-slate-600 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                 </div>
@@ -1336,6 +1359,7 @@ export default function POSListView({ vm }) {
             <div ref={gridNavRef} className="contents">
             <DataGrid data-help="cart" data={lines}
               rowKey={(row, i) => row.line_key || `${cartLineKey(row)}-${i}`}
+              rowClass={() => "animate-slide-up"}
               emptyMessage=""
               emptyIcon={
                 <div className="flex flex-col items-center gap-3 py-4">

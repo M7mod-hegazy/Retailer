@@ -4,6 +4,10 @@ const NotificationModel = require("../models/notification.model");
 const logger = require("../config/logger");
 const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 const { today: cairoToday } = require("../utils/datetime");
+const { isFeatureEnabled } = require("../utils/features");
+
+// How many days ahead of expiry to start warning about a batch.
+const BATCH_EXPIRY_WARNING_DAYS = 30;
 
 // node-cron does NOT catch errors thrown inside a task callback. These jobs run
 // synchronous better-sqlite3 queries that throw on a locked/corrupt DB, and an
@@ -169,10 +173,66 @@ function scanInstallmentSchedules() {
   }
 }
 
+// Warn (once/day per batch) about tracked batches within BATCH_EXPIRY_WARNING_DAYS
+// of expiry. Gated behind the feature_expiry flag; the BATCH_EXPIRY_WARNING
+// Telegram toggle previously had no code that ever fired it.
+function scanExpiringBatches() {
+  const db = getDb();
+  if (!isFeatureEnabled(db, "feature_expiry")) return;
+
+  const today = cairoToday();
+  let rows;
+  try {
+    rows = db.prepare(`
+      SELECT b.id, b.batch_no, b.expiry_date, b.quantity,
+             i.name AS product_name, i.code AS sku,
+             COALESCE(w.name, '#' || b.warehouse_id) AS warehouse_name
+      FROM item_batches b
+      JOIN items i ON i.id = b.item_id
+      LEFT JOIN warehouses w ON w.id = b.warehouse_id
+      WHERE i.track_expiry = 1
+        AND b.quantity > 0
+        AND b.expiry_date IS NOT NULL
+        AND date(b.expiry_date) <= date(?, '+' || ? || ' days')
+      ORDER BY b.expiry_date ASC
+    `).all(today, BATCH_EXPIRY_WARNING_DAYS);
+  } catch (_) {
+    return; // item_batches / warehouses table missing on un-migrated DB
+  }
+
+  for (const r of rows) {
+    // Dedupe per batch per day (body carries the batch tag).
+    const tag = `دفعة#${r.id}`;
+    const already = db.prepare(
+      "SELECT id FROM notifications WHERE body LIKE ? AND date(created_at) = date(?)"
+    ).get(`%${tag}%`, today);
+    if (already) continue;
+
+    const expired = r.expiry_date < today;
+    NotificationModel.create({
+      title: expired ? "⛔ صنف منتهي الصلاحية" : "⏳ صنف قارب على الانتهاء",
+      body: `${tag} — ${r.product_name} — دفعة ${r.batch_no || "—"} — كمية ${r.quantity} — ${expired ? "انتهت" : "تنتهي"} في ${r.expiry_date}`,
+      type: "warning",
+      link: "/stock",
+    });
+
+    try {
+      notifyOwner(TG.BATCH_EXPIRY_WARNING, {
+        productName: r.product_name || r.sku || "غير محدد",
+        batchNo: r.batch_no || "—",
+        expiryDate: r.expiry_date,
+        remainingQuantity: r.quantity,
+        warehouse: r.warehouse_name,
+      });
+    } catch (_) {}
+  }
+}
+
 function startOverdueDebtsJob() {
   return cron.schedule("0 8 * * *", () => {
     runSafely("overdueDebts", scanOverdueDebts);
     runSafely("installmentSchedules", scanInstallmentSchedules);
+    runSafely("expiringBatches", scanExpiringBatches);
   }, { scheduled: true });
 }
 
@@ -219,6 +279,7 @@ module.exports = {
   startAuditLogCleanupJob,
   scanOverdueDebts,
   scanInstallmentSchedules,
+  scanExpiringBatches,
   startOverdueDebtsJob,
   scanBirthdays,
   startBirthdayJob,

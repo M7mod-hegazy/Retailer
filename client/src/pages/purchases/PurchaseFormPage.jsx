@@ -245,6 +245,55 @@ export default function PurchaseFormPage() {
   }, []);
 
   useEffect(() => {
+    if (!priceHelpOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPriceHelpOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [priceHelpOpen]);
+
+  useEffect(() => {
+    if (!advancedSearchOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setAdvancedSearchOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [advancedSearchOpen]);
+
+  useEffect(() => {
+    if (!colSettingsOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setColSettingsOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [colSettingsOpen]);
+
+  useEffect(() => {
+    if (!supplierModalOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setSupplierModalOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [supplierModalOpen]);
+
+  useEffect(() => {
+    if (!supplierInfoOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setSupplierInfoOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [supplierInfoOpen]);
+
+  useEffect(() => {
+    if (!todayPurchOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setTodayPurchOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [todayPurchOpen]);
+
+  useEffect(() => {
+    if (!imageModalOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setImageModalOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [imageModalOpen]);
+
+  useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
     api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
 

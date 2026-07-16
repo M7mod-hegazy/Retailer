@@ -1,16 +1,15 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import TitleBar from "./TitleBar";
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function Modal({ open, title, onClose, onDetach: userOnDetach, children, maxWidth = "max-w-xl", modalType, modalState, showDetach = true }) {
   const [chromeInset, setChromeInset] = useState({ right: 0, top: 0 });
   const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
   const isDetached = typeof window !== 'undefined' && window.location.search.includes("detachedModal=1");
 
-  // A modal can be detached only when the caller wires it up: either a custom
-  // onDetach handler, or a registered modalType the detached window can rebuild
-  // as real React. Without one of those, detaching would produce a dead HTML
-  // snapshot, so we don't offer it at all (see TitleBar.canDetach).
   const canDetach = Boolean(userOnDetach || modalType);
 
   function handleDetach() {
@@ -27,11 +26,51 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
     onClose?.();
   }
 
+  // Focus trap
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Escape") {
+      onClose?.();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const container = modalRef.current;
+    if (!container) return;
+    const focusable = container.querySelectorAll(FOCUSABLE);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }, [onClose]);
+
   useEffect(() => {
-    function onKey(e) { if (e.key === "Escape") onClose?.(); }
-    if (open) window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    if (!open) return;
+    // Save the element that had focus before the modal opened
+    previousFocusRef.current = document.activeElement;
+    // Focus the first focusable element inside the modal
+    const timer = setTimeout(() => {
+      const container = modalRef.current;
+      if (!container) return;
+      const first = container.querySelector(FOCUSABLE);
+      if (first) first.focus();
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      // Restore focus when modal closes
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleKeyDown]);
 
   useEffect(() => {
     if (!open) return undefined;

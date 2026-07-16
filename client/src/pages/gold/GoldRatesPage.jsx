@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { Gem, Plus, RefreshCw } from "lucide-react";
 import Button from "../../components/ui/Button";
 import FeatureRoute from "../../components/ui/FeatureRoute";
+import PermissionGate from "../../components/ui/PermissionGate";
 
 const KARATS = [18, 21, 22, 24];
 
@@ -58,7 +59,18 @@ export default function GoldRatesPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-slate-400 py-8 text-center">جاري التحميل...</div>
+          <div className="animate-pulse rounded-xl border border-slate-200 p-6 space-y-5">
+            <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="space-y-1">
+                  <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                  <div className="h-10 bg-slate-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+            <div className="h-10 bg-slate-200 rounded w-24"></div>
+          </div>
         ) : (
           <form onSubmit={save} className="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
             <p className="text-[12px] text-slate-500 font-bold">سعر الجرام بالجنيه المصري — اتركه فارغاً إذا لم يُباع</p>
@@ -84,10 +96,12 @@ export default function GoldRatesPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={saving} className="bg-yellow-500 hover:bg-yellow-600 text-white">
-                <Plus className="h-4 w-4 me-1" />
-                {saving ? "جاري الحفظ..." : "حفظ أسعار اليوم"}
-              </Button>
+              <PermissionGate page="gold_pricing" action="add">
+                <Button type="submit" disabled={saving} loading={saving} className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                  <Plus className="h-4 w-4 me-1" />
+                  حفظ أسعار اليوم
+                </Button>
+              </PermissionGate>
               <Button type="button" variant="ghost" onClick={() => qc.invalidateQueries(["gold-rates-today"])}>
                 <RefreshCw className="h-4 w-4 me-1" />تحديث
               </Button>
@@ -124,7 +138,7 @@ function GoldRateHistory() {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {data.map(r => (
-              <tr key={r.id}>
+              <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
                 <td className="px-4 py-2 text-slate-600">{r.rate_date}</td>
                 <td className="px-4 py-2 font-bold">{KARAT_LABELS[r.karat] || r.karat}</td>
                 <td className="px-4 py-2 text-end font-black text-yellow-700">{Number(r.price_per_gram).toLocaleString()} ج.م</td>

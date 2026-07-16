@@ -102,6 +102,11 @@ function MagneticButton({ children, onClick, className, disabled }) {
 // ── Cancel invoice modal ────────────────────────────────────────────────────────
 function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
   const [reason, setReason] = useState("");
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -603,6 +608,41 @@ export default function PurchasesHubPage() {
   useEffect(() => {
     api.get("/api/settings").then(r => setPrintSettings(r.data.data || {})).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!previewTarget) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPreviewTarget(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [previewTarget]);
+
+  useEffect(() => {
+    if (!cancelTarget) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setCancelTarget(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [cancelTarget]);
+
+  useEffect(() => {
+    if (!returnsWarningOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setReturnsWarningOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [returnsWarningOpen]);
+
+  useEffect(() => {
+    if (!printTarget) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPrintTarget(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [printTarget]);
+
+  useEffect(() => {
+    if (!waSendTarget) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setWaSendTarget(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [waSendTarget]);
 
   async function handlePrintClick(row) {
     const tid = toast.loading("جاري تحميل تفاصيل الفاتورة...");

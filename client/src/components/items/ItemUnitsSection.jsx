@@ -4,9 +4,11 @@ import { Plus, Trash2, Star, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { useFeatureEnabled } from "../../hooks/useFeature";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useConfirm } from "../../hooks/useConfirm";
 
 export default function ItemUnitsSection({ itemId }) {
   const enabled = useFeatureEnabled("feature_multi_unit");
+  const { confirm } = useConfirm();
   const [units, setUnits] = useState([]);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -76,7 +78,8 @@ export default function ItemUnitsSection({ itemId }) {
   };
 
   const handleDelete = async (unitId) => {
-    if (!window.confirm("حذف هذه الوحدة؟")) return;
+    const ok = await confirm({ title: "حذف الوحدة", message: "حذف هذه الوحدة؟" });
+    if (!ok) return;
     try {
       await api.delete(`/api/items/${itemId}/units/${unitId}`);
       setUnits(prev => prev.filter(u => u.id !== unitId));

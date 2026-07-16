@@ -15,7 +15,10 @@ import {
   Search,
   ArrowUpRight,
   CreditCard,
-  Briefcase
+  Briefcase,
+  X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import TodayInvoicesButton from "../../components/pos/TodayInvoicesButton";
@@ -44,6 +47,14 @@ export default function PaymentsListPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState(null);
+
+  function handleCopy(text, id) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }
 
   async function loadRows() {
     setLoading(true);
@@ -150,13 +161,18 @@ export default function PaymentsListPage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input 
+               <input 
                 type="text"
                 placeholder="بحث في الحركات..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="rounded-sm border border-slate-200 bg-white py-1.5 pl-4 pr-10 text-2sm font-bold text-slate-600 outline-none hover:border-slate-300 focus:border-slate-800" 
+                className="rounded-sm border border-slate-200 bg-white py-1.5 pl-8 pr-10 text-2sm font-bold text-slate-600 outline-none hover:border-slate-300 focus:border-slate-800" 
               />
+              {query && (
+                <button onClick={() => setQuery("")} className="absolute left-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <PermissionGate page="payments" action="export">
               <button className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
@@ -200,6 +216,9 @@ export default function PaymentsListPage() {
                       <div className="flex items-center gap-2">
                         <div className={`h-2 w-2 rounded-full ${row.party_type === 'customer' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                         <span className="font-mono text-sm font-black text-slate-800">PAY-{String(row.id).padStart(5, '0')}</span>
+                        <button onClick={(e) => { e.stopPropagation(); handleCopy(`PAY-${String(row.id).padStart(5, '0')}`, `pay-${row.id}`); }} className="rounded p-1 hover:bg-slate-100 transition-colors">
+                          {copied === `pay-${row.id}` ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4">

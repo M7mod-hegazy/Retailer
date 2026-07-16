@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { getDb, getDbPath } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
 
 router.use(authRequired);
 
@@ -58,7 +59,7 @@ router.get("/db-health", (req, res) => {
 });
 
 // POST /api/maintenance/db-fix
-router.post("/db-fix", (req, res) => {
+router.post("/db-fix", requirePagePermission("settings", "edit"), (req, res) => {
   const db = getDb();
   const { fixType } = req.body || {};
 

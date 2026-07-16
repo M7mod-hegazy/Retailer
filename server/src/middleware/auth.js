@@ -47,6 +47,7 @@ function requireRole(role) {
     if (req.user?.role !== role && req.user?.role !== "admin" && req.user?.role !== "dev") {
       const err = new Error("غير مصرح: يتطلب صلاحيات أعلى");
       err.status = 403;
+      err.code = "permission_denied";
       return next(err);
     }
     next();

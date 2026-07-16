@@ -147,7 +147,18 @@ export default function POSDetailedView({ vm }) {
     warehouses, getFilteredWarehouses,
   } = vm;
 
+  useEffect(() => {
+    if (!staleHeldAlert) return;
+    const h = (e) => { if (e.key === "Escape") setStaleHeldAlert(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [staleHeldAlert]);
+
   const gridNavRef = useRef(null);
+  const cartScrollRef = useRef(null);
+
+  const [totalPulse, setTotalPulse] = useState(false);
+  const prevTotalRef = useRef(totals.total);
 
   const [gridDisplayMode, setGridDisplayMode] = useState(() => {
     try { return localStorage.getItem("retailer.pos.gridDisplayMode") || "cards"; } catch { return "cards"; }
@@ -198,6 +209,21 @@ export default function POSDetailedView({ vm }) {
       return () => clearTimeout(t);
     }
   }, [lines.length]);
+
+  useEffect(() => {
+    if (cartScrollRef.current) {
+      cartScrollRef.current.scrollTo({ top: cartScrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [flashAdd]);
+
+  useEffect(() => {
+    if (prevTotalRef.current !== totals.total) {
+      prevTotalRef.current = totals.total;
+      setTotalPulse(true);
+      const t = setTimeout(() => setTotalPulse(false), 400);
+      return () => clearTimeout(t);
+    }
+  }, [totals.total]);
 
   const [frequentItems, setFrequentItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem("retailer.pos.frequentItems") || "[]"); } catch { return []; }
@@ -623,7 +649,7 @@ export default function POSDetailedView({ vm }) {
                   >
                     <div className="w-full aspect-square rounded-xl bg-slate-50 overflow-hidden flex items-center justify-center border border-slate-100 relative">
                       {getItemImage(item) ? (
-                        <img src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                        <img src={getItemImage(item)} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                       ) : (
                         <ImageIcon className="w-8 h-8 text-slate-300" />
                       )}
@@ -719,7 +745,7 @@ export default function POSDetailedView({ vm }) {
                   columns={[
                     { id: "image", header: "صورة", width: detailedColWidths.image, render: (r) => (
                       <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-slate-50 overflow-hidden">
-                         {getItemImage(r) ? <img src={getItemImage(r)} className="h-full w-full object-cover" /> : <ImageIcon className="h-4 w-4 text-slate-300"/>}
+                         {getItemImage(r) ? <img src={getItemImage(r)} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-4 w-4 text-slate-300"/>}
                       </div>
                     )},
                     { id: "code", header: "الكود", width: detailedColWidths.code, render: r => <span className="font-mono text-slate-500">{r.code}</span> },
@@ -917,7 +943,7 @@ export default function POSDetailedView({ vm }) {
                 <span className="mt-1 text-2sm font-bold text-slate-400">اضغط على الأصناف لإضافتها</span>
               </div>
             ) : (
-              <div ref={gridNavRef} className="flex flex-col gap-1.5 max-h-[35vh] overflow-y-auto custom-scrollbar">
+              <div ref={(el) => { gridNavRef.current = el; cartScrollRef.current = el; }} className="flex flex-col gap-1.5 max-h-[35vh] overflow-y-auto custom-scrollbar">
                 {lines.map((line, idx) => {
                   const isExceedingStock = Number(line.quantity || 0) > Number(line.stock_quantity || 0);
                   const lineTotal = Math.max(0, Number(line.quantity || 0) * Number(line.unit_price || 0) - Number(line.line_discount || 0));
@@ -958,7 +984,7 @@ export default function POSDetailedView({ vm }) {
                             </span>
                           )}
                         </div>
-                        <button onClick={() => removeLine(line.item_id)} className="shrink-0 flex h-6 w-6 items-center justify-center rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all">
+                        <button onClick={() => removeLine(line.item_id)} className="shrink-0 flex h-8 w-8 items-center justify-center rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -983,15 +1009,16 @@ export default function POSDetailedView({ vm }) {
                         {/* Stepper */}
                         <div className="flex items-center shrink-0 rounded-md border border-slate-200 bg-white overflow-hidden">
                           <button onClick={() => updateLine(line.item_id, { quantity: Math.max(1, Number(line.quantity) - 1) })}
-                            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors"><Minus className="w-3 h-3" /></button>
+                            className="h-8 w-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors"><Minus className="w-3 h-3" /></button>
                           <input type="number" min="1" max={maxStock === Infinity ? undefined : maxStock} value={line.quantity}
                             data-grid-cell data-row={idx} data-col="quantity"
                             onChange={(e) => { const v = Number(e.target.value || 1); updateLine(line.item_id, { quantity: maxStock === Infinity ? v : Math.min(v, maxStock) }); }}
+                            onKeyDown={(e) => { if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-') { e.preventDefault(); } }}
                             className="w-9 h-6 text-center text-2sm font-black bg-transparent outline-none ring-0 border-x border-slate-100 text-slate-800" />
-                          <button
+                            <button
                             onClick={() => { const next = Number(line.quantity) + 1; if (next <= maxStock) updateLine(line.item_id, { quantity: next }); }}
                             disabled={stockAtLimit}
-                            className="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="h-8 w-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           ><Plus className="w-3 h-3" /></button>
                         </div>
 
@@ -1021,7 +1048,7 @@ export default function POSDetailedView({ vm }) {
                             className="w-12 rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[11px] font-black text-center outline-none focus:border-amber-400"
                           />
                           <button onClick={() => setDiscountModes((m) => ({...m, [line.item_id]: m[line.item_id] === "pct" ? "flat" : "pct"}))}
-                            className={`px-1 py-0.5 rounded text-[10px] font-black border ${discountModes[line.item_id] === "pct" ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-slate-100 border-slate-300 text-slate-500"}`}>
+                            className={`px-2 py-1 rounded text-[10px] font-black border ${discountModes[line.item_id] === "pct" ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-slate-100 border-slate-300 text-slate-500"}`}>
                             {discountModes[line.item_id] === "pct" ? "%" : "ج"}
                           </button>
                         </div>
@@ -1146,7 +1173,7 @@ export default function POSDetailedView({ vm }) {
                 <div className="h-px bg-slate-100 my-1" />
                 <div className="flex items-center justify-between px-1">
                   <span className="text-sm font-black text-slate-700">الإجمالي المطلوب</span>
-                  <span className="number-fmt-primary text-[28px] text-emerald-600 leading-none">{formatMoney(totals.total)}</span>
+                  <span className={`number-fmt-primary text-[28px] text-emerald-600 leading-none transition-transform ${totalPulse ? 'animate-total-bounce' : ''}`}>{formatMoney(totals.total)}</span>
                 </div>
               </div>
             </div>
@@ -1224,8 +1251,8 @@ export default function POSDetailedView({ vm }) {
                       <input ref={multiCashRef} type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { nextRef: multiVisaRef })} placeholder="0"
                         className="w-16 shrink-0 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                       <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr - (Number(multiVisa)||0)))); }}
-                        className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
-                        <Wand2 className="h-2.5 w-2.5" />
+                        className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
+                        <Wand2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     {visaMethod && (
@@ -1234,8 +1261,8 @@ export default function POSDetailedView({ vm }) {
                         <input ref={multiVisaRef} type="number" min="0" value={multiVisa} onChange={(e) => setMultiVisa(e.target.value)} onKeyDown={(e) => handleFieldNav(e, { prevRef: multiCashRef, nextRef: multiCreditRef })} placeholder="0"
                           className="w-16 shrink-0 rounded-lg border border-blue-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
                         <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiVisa(String(Math.max(0, totals.total - ca - c - cr))); }}
-                          className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all active:scale-90">
-                          <Wand2 className="h-2.5 w-2.5" />
+                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all active:scale-90">
+                          <Wand2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     )}
@@ -1245,8 +1272,8 @@ export default function POSDetailedView({ vm }) {
                         <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0"
                           className="w-16 shrink-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                         <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr - (Number(multiVisa)||0)))})); }}
-                          className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
-                          <Wand2 className="h-2.5 w-2.5" />
+                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
+                          <Wand2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
@@ -1257,8 +1284,8 @@ export default function POSDetailedView({ vm }) {
                         disabled={!customer?.id}
                         className={`w-16 shrink-0 rounded-lg px-2 py-1 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
                       <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c - (Number(multiVisa)||0)))); }}
-                        className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
-                        <Wand2 className="h-2.5 w-2.5" />
+                        className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
+                        <Wand2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -1395,7 +1422,7 @@ export default function POSDetailedView({ vm }) {
                   <tr key={item.id} className="cursor-pointer border-t border-slate-100 hover:bg-primary-600 hover:text-white transition-colors group" onClick={() => handleSelectItem(item)}>
                     <td className="p-2 border-l border-slate-50">
                       <div className="h-8 w-8 overflow-hidden rounded-sm border border-slate-200 bg-white">
-                        {getItemImage(item) ? <img src={getItemImage(item)} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-300"><ImageIcon className="h-3.5 w-3.5" /></div>}
+                        {getItemImage(item) ? <img src={getItemImage(item)} alt={item.name} loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-slate-300"><ImageIcon className="h-3.5 w-3.5" /></div>}
                       </div>
                     </td>
                     <td className="p-2 font-mono font-bold text-slate-600 group-hover:text-slate-200 border-l border-slate-50 whitespace-normal break-words leading-tight" style={{ maxWidth: `${detailedColWidths.code}px` }}>{item.code || item.item_code || "—"}</td>

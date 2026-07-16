@@ -14,6 +14,8 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatNumber } from "../../utils/currency";
 
 function formatMoney(v) {
@@ -21,6 +23,7 @@ function formatMoney(v) {
 }
 
 export default function TreasuryTransfer() {
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const [treasuries, setTreasuries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -62,7 +65,8 @@ export default function TreasuryTransfer() {
     }
     
     if (Number(formData.amount) > getSourceBalance()) {
-       if (!window.confirm("المبلغ المراد تحويله أكبر من رصيد الخزنة الحالي. هل تريد المتابعة؟")) return;
+      const ok = await confirm({ title: "تجاوز الرصيد", message: "المبلغ المراد تحويله أكبر من رصيد الخزنة الحالي. هل تريد المتابعة؟" });
+      if (!ok) return;
     }
 
     setLoading(true);
@@ -274,6 +278,14 @@ export default function TreasuryTransfer() {
            </div>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

@@ -85,6 +85,11 @@ const PTYPE_COLOR = {
 
 // Modern spring animated Modal wrapper
 function Modal({ onClose, children, width = "480px" }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -424,7 +429,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
           methodLabel: arMethod(p.method || ""),
           description: p.notes || null,
           impactAmount: Number(p.amount || 0),
-          impactDir: "subtract",
+          impactDir: p.direction === "add" ? "add" : "subtract",
           raw: p,
         });
       });
@@ -531,9 +536,16 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 animate-pulse">
-        <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
-        <span className="text-2sm font-bold">جاري تحميل سجل الحركات المالية...</span>
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
+              <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -1234,6 +1246,77 @@ export default function CustomerAccountsPage() {
       .finally(() => setDetailReturnLoading(false));
   }, [detailReturn]);
 
+  // ── Escape handlers for modals/dropdowns ───────────────────
+  useEffect(() => {
+    if (!detailInvoice) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDetailInvoice(null); setDetailData(null); setDetailInvoiceIsOriginal(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [detailInvoice]);
+
+  useEffect(() => {
+    if (!detailReturn) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDetailReturn(null); setDetailReturnData(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [detailReturn]);
+
+  useEffect(() => {
+    if (!showCreate) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowCreate(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showCreate]);
+
+  useEffect(() => {
+    if (!showEdit) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowEdit(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showEdit]);
+
+  useEffect(() => {
+    if (!showPayment) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowPayment(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showPayment]);
+
+  useEffect(() => {
+    if (!showAdjust) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowAdjust(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showAdjust]);
+
+  useEffect(() => {
+    if (!showExport) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowExport(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showExport]);
+
+  useEffect(() => {
+    if (!reportMenuOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setReportMenuOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [reportMenuOpen]);
+
+  useEffect(() => {
+    if (!printOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPrintOpen(false); setPrintAllData(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [printOpen]);
+
+  useEffect(() => {
+    if (!deleteState) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDeleteState(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [deleteState]);
+
   // ── Handlers ──────────────────────────────────────────────
   const handleCustomerCreated = (customer) => {
     toast.success("تم إضافة العميل بنجاح");
@@ -1378,9 +1461,14 @@ export default function CustomerAccountsPage() {
 
           <div data-help="search-bar" className="relative">
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-650 transition-colors stroke-[2.3px]" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               placeholder="البحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-9 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
@@ -1559,127 +1647,130 @@ export default function CustomerAccountsPage() {
         ) : (
           <>
             {/* Customer Header Panel */}
-            <div className="bg-white border-b border-slate-200/50 px-6 py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-                {/* Right Column: Customer Info & Avatar (lg:col-span-5) */}
-                <div className="lg:col-span-5 flex items-center gap-4 min-w-0">
-                  {/* Avatar */}
-                  <div className={`h-12 w-12 rounded-[18px] flex items-center justify-center text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br ${getAvatarBg(selected.name)} border-2 border-white ring-4 ring-slate-100/60`}>
-                    {selected.name?.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-[16px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
-                      <button
-                        onClick={() => setShowEdit(true)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
-                        title="تعديل بيانات الملف"
-                      >
-                        <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
-                      </button>
-                      {selected.id !== walkInId && (
-                        <PermissionGate page="customers" action="delete">
-                          <button
-                            onClick={() => handleDeleteCustomer(selected)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
-                            title="حذف / أرشفة العميل"
-                          >
-                            <Trash2 className="h-4 w-4 stroke-[2.2px]" />
-                          </button>
-                        </PermissionGate>
-                      )}
+            <div className="bg-white border-b border-slate-200/50 px-4 sm:px-6 py-4 sm:py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
+              <div className="flex flex-col gap-4">
+                {/* Top row: Customer Info + Balance (side by side on sm+) */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
+                  {/* Customer Info & Avatar */}
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    {/* Avatar */}
+                    <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-[18px] flex items-center justify-center text-[16px] sm:text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br ${getAvatarBg(selected.name)} border-2 border-white ring-4 ring-slate-100/60`}>
+                      {selected.name?.charAt(0)}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                      {selected.phone && (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
-                          <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
-                          <span className="font-mono">{selected.phone}</span>
-                          <button
-                            onClick={() => handleCopy(selected.phone, "phone")}
-                            className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
-                          >
-                            {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
-                          </button>
-                        </span>
-                      )}
-                      {selected.code && (
-                        <span className="text-[11px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
-                          <span>كود: {selected.code}</span>
-                          <button
-                            onClick={() => handleCopy(selected.code, "code")}
-                            className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
-                          >
-                            {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
-                          </button>
-                        </span>
-                      )}
-                      {selected.is_blacklisted === 1 && (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-xl shadow-sm">
-                          <AlertCircle className="h-3.5 w-3.5 text-rose-500" /> محظور
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Middle Column: Balance & Credit Limit (lg:col-span-4) */}
-                <div className="lg:col-span-4 flex flex-col justify-center min-w-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all ${
-                      bal > 0 
-                        ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
-                        : bal < 0 
-                          ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_var(--primary-glow)]" 
-                          : "bg-slate-100 border-slate-200/60 text-slate-400"
-                    }`}>
-                      {bal > 0 ? <TrendingUp className="h-5 w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-5 w-5 stroke-[2.3px]" /> : <Check className="h-5 w-5 stroke-[2.5px]" />}
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
-                        {bal > 0 ? "المبلغ اللي عليه" : bal < 0 ? "اللي ليه عندنا" : "الحساب مسوّى"}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-[14px] sm:text-[16px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                        <button
+                          onClick={() => setShowEdit(true)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                          title="تعديل بيانات الملف"
+                        >
+                          <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
+                        </button>
+                        {selected.id !== walkInId && (
+                          <PermissionGate page="customers" action="delete">
+                            <button
+                              onClick={() => handleDeleteCustomer(selected)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                              title="حذف / أرشفة العميل"
+                            >
+                              <Trash2 className="h-4 w-4 stroke-[2.2px]" />
+                            </button>
+                          </PermissionGate>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <div className={`text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
-                          {fmt(Math.abs(bal))}
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        {selected.phone && (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
+                            <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
+                            <span className="font-mono">{selected.phone}</span>
+                            <button
+                              onClick={() => handleCopy(selected.phone, "phone")}
+                              className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                            >
+                              {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                            </button>
+                          </span>
+                        )}
+                        {selected.code && (
+                          <span className="text-[11px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
+                            <span>كود: {selected.code}</span>
+                            <button
+                              onClick={() => handleCopy(selected.code, "code")}
+                              className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
+                            >
+                              {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                            </button>
+                          </span>
+                        )}
+                        {selected.is_blacklisted === 1 && (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-xl shadow-sm">
+                            <AlertCircle className="h-3.5 w-3.5 text-rose-500" /> محظور
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Balance & Credit Limit */}
+                  <div className="flex flex-col justify-center min-w-0 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all ${
+                        bal > 0 
+                          ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
+                          : bal < 0 
+                            ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_var(--primary-glow)]" 
+                            : "bg-slate-100 border-slate-200/60 text-slate-400"
+                      }`}>
+                        {bal > 0 ? <TrendingUp className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.3px]" /> : <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.5px]" />}
+                      </div>
+                      <div>
+                        <div className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
+                          {bal > 0 ? "المبلغ اللي عليه" : bal < 0 ? "اللي ليه عندنا" : "الحساب مسوّى"}
                         </div>
-                        <span className={`text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
-                        {bal > 0 ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
-                        ) : bal < 0 ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
-                        ) : null}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className={`text-[18px] sm:text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
+                            {fmt(Math.abs(bal))}
+                          </div>
+                          <span className={`text-[10px] sm:text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
+                          {bal > 0 ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
+                          ) : bal < 0 ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
+                    {creditLimit > 0 && bal > 0 && (
+                      <div className="mt-2.5 space-y-1.5">
+                        <div className="flex justify-between text-[9.5px] font-extrabold text-slate-455">
+                          <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
+                          <span className="number-fmt-primary text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+                          <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
+                              ? "bg-rose-500"
+                              : creditPct > 70
+                                ? "bg-orange-500"
+                                : "bg-emerald-500"
+                            }`} style={{ width: `${creditPct}%` }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {creditLimit > 0 && bal > 0 && (
-                    <div className="mt-2.5 space-y-1.5">
-                      <div className="flex justify-between text-[9.5px] font-extrabold text-slate-455">
-                        <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
-                        <span className="number-fmt-primary text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
-                        <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
-                            ? "bg-rose-500"
-                            : creditPct > 70
-                              ? "bg-orange-500"
-                              : "bg-emerald-500"
-                          }`} style={{ width: `${creditPct}%` }} />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Left Column: Quick Actions (lg:col-span-3) */}
-                <div className="lg:col-span-3 flex items-center justify-end gap-2.5 shrink-0">
+                {/* Bottom row: Quick Actions */}
+                <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 shrink-0">
                   <PermissionGate page="customer_accounts" action="edit">
                     <motion.button
                       data-help="collect-button"
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { loadCustomerSchedules(selected?.id); setPayForm({ amount: bal > 0 ? String(bal) : "", method_id: "", notes: "", schedule_id: "", direction: bal < 0 ? "add" : "subtract" }); setShowPayment(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4.5 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-white shadow-sm hover:shadow-[0_4px_14px_rgba(37,99,235,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
-                      <Plus className="h-4.5 w-4.5 stroke-[2.5px]" />
+                      <Plus className="h-4 w-4 stroke-[2.5px]" />
                       <span>{bal < 0 ? "رد دفعة" : "تحصيل دفعة"}</span>
                     </motion.button>
                   </PermissionGate>
@@ -1688,20 +1779,20 @@ export default function CustomerAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4.5 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
-                      <SlidersHorizontal className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
+                      <SlidersHorizontal className="h-4 w-4 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
                     </motion.button>
                   </PermissionGate>
-                  <div className="relative flex-1 lg:flex-none">
+                  <div className="relative">
                     <button
                       type="button"
                       onClick={() => setReportMenuOpen((v) => !v)}
                       disabled={!!reportExporting}
                       className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold disabled:opacity-60"
                     >
-                      <Download className="h-4.5 w-4.5 text-slate-450 stroke-[2.2px]" />
+                      <Download className="h-4 w-4 text-slate-450 stroke-[2.2px]" />
                       <span>{reportExporting ? "جاري التصدير..." : "طباعة / تصدير"}</span>
                       <ChevronDown className={`h-4 w-4 transition-transform ${reportMenuOpen ? "rotate-180" : ""}`} />
                     </button>
@@ -1712,13 +1803,13 @@ export default function CustomerAccountsPage() {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -6, scale: 0.98 }}
                           transition={{ duration: 0.14 }}
-                          className="absolute left-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                          className="absolute left-0 sm:left-auto sm:right-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
                         >
                           {[
-                            { format: "print", label: "طباعة", icon: Printer },
-                            { format: "pdf", label: "PDF", icon: FileText },
-                            { format: "excel", label: "Excel", icon: FileSpreadsheet },
-                            { format: "word", label: "Word", icon: FileText },
+                            { format: "print", label: "طباعة مباشرة", icon: Printer },
+                            { format: "pdf", label: "ملف PDF", icon: FileText },
+                            { format: "excel", label: "جدول إكسيل", icon: FileSpreadsheet },
+                            { format: "word", label: "مستند وورد", icon: FileText },
                           ].map((item) => {
                             const Icon = item.icon;
                             return (
@@ -1737,7 +1828,6 @@ export default function CustomerAccountsPage() {
                       )}
                     </AnimatePresence>
                   </div>
-
                 </div>
               </div>
             </div>

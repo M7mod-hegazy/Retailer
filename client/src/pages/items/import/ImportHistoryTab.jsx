@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Download, RotateCcw, Loader2 } from "lucide-react";
 import api from "../../../services/api";
 import { usePermission } from "../../../hooks/usePermission";
+import { DramaticDeleteConfirm } from "../../../components/ui/DramaticDeleteConfirm";
 
 const ACTIVITY_REASONS = {
   sold: "تم بيع أحد الأصناف المستوردة.",
@@ -22,6 +23,7 @@ export default function ImportHistoryTab() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [undoTarget, setUndoTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,7 +56,13 @@ export default function ImportHistoryTab() {
   };
 
   const undo = async (batch) => {
-    if (!window.confirm("سيتم التراجع عن هذه العملية وحذف الأصناف التي أُنشئت فيها. متابعة؟")) return;
+    setUndoTarget(batch);
+  };
+
+  const handleUndoConfirm = async () => {
+    if (!undoTarget) return;
+    const batch = undoTarget;
+    setUndoTarget(null);
     setBusyId(batch.id);
     try {
       await api.post(`/api/items/import/batches/${batch.id}/undo`);
@@ -148,6 +156,13 @@ export default function ImportHistoryTab() {
           </tbody>
         </table>
       </div>
+      {undoTarget && (
+        <DramaticDeleteConfirm
+          itemName={undoTarget.file_name || `#${undoTarget.id}`}
+          onConfirm={handleUndoConfirm}
+          onCancel={() => setUndoTarget(null)}
+        />
+      )}
     </div>
   );
 }

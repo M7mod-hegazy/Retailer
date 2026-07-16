@@ -45,6 +45,7 @@ import {
 import { REPORT_SOURCES, REPORT_SOURCE_KEYS } from "../../constants/reportPermissions";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
 
 const CATEGORY_ICONS = {
   sales: ShoppingCart,
@@ -99,11 +100,22 @@ const PAGE_CATEGORY_MAP = {
   employees: "hr", users: "hr", employee_adjustments: "hr",
   // system
   settings: "system", branches: "system", reports: "system", owner_statement: "system",
+  print_settings: "system",
   whatsapp_crm: "system", dashboard: "system", backup: "system", notifications: "system",
   updates: "system", history: "system",
   // feature-gated pages — anything not listed above lands here automatically
   restaurant_tables: "features", restaurant_modifiers: "features",
   gold_pricing: "features", repair_orders: "features", serial_search: "features",
+};
+
+// Maps feature-gated pages to their feature toggle setting key.
+// Pages hidden when their feature toggle is off.
+const PAGE_FEATURE_MAP = {
+  restaurant_tables: "feature_restaurant",
+  restaurant_modifiers: "feature_restaurant",
+  gold_pricing: "feature_gold",
+  repair_orders: "feature_repair_orders",
+  serial_search: "feature_serials",
 };
 
 const CATEGORY_META = [
@@ -157,6 +169,7 @@ export default function UsersPage() {
   usePageTour('users');
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "dev";
+  const settings = useAppSettingsStore((s) => s.settings);
 
   const handleKeyDown = useFieldNavigation();
   const fullNameRef = useRef(null);
@@ -284,6 +297,20 @@ export default function UsersPage() {
     setDeleteTarget(null);
     setDeleteRefs(null);
   }
+
+  useEffect(() => {
+    if (!deleteTarget) return;
+    const h = (e) => { if (e.key === "Escape") closeDeleteModal(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [deleteTarget, deleting]);
+
+  useEffect(() => {
+    if (!showCreateModal) return;
+    const h = (e) => { if (e.key === "Escape" && !isSubmitting) setShowCreateModal(false); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [showCreateModal, isSubmitting]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -482,8 +509,14 @@ export default function UsersPage() {
   }
 
   const filteredCategories = useMemo(() => {
-    if (!permSearch) return CATEGORIES;
-    return CATEGORIES.map((cat) => {
+    const filterByFeature = (pages) => pages.filter((pageKey) => {
+      const featureKey = PAGE_FEATURE_MAP[pageKey];
+      if (featureKey && settings && !(featureKey in settings ? settings[featureKey] : true)) return false;
+      return true;
+    });
+    const mapped = CATEGORIES.map((cat) => ({ ...cat, pages: filterByFeature(cat.pages) })).filter((c) => c.pages.length > 0);
+    if (!permSearch) return mapped;
+    return mapped.map((cat) => {
       const matchingPages = cat.pages.filter((pageKey) => {
         const meta = PAGE_PERMISSIONS[pageKey];
         return meta && meta.label.includes(permSearch);
@@ -493,7 +526,7 @@ export default function UsersPage() {
       }
       return null;
     }).filter(Boolean);
-  }, [permSearch]);
+  }, [permSearch, settings]);
 
   const handleToggleCategoryAll = (catPages, type) => {
     setPermissions((prev) => {
@@ -888,9 +921,14 @@ export default function UsersPage() {
               value={permSearch}
               onChange={(e) => setPermSearch(e.target.value)}
               placeholder="بحث في الصفحات والموديولات..."
-              className="w-full h-9 rounded-lg pr-9 pl-3 text-2sm font-bold outline-none border transition-all"
+              className="w-full h-9 rounded-lg pr-9 pl-9 text-2sm font-bold outline-none border transition-all"
               style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
             />
+            {permSearch && (
+              <button onClick={() => setPermSearch("")} className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Horizontal Navigation Pill Track */}
@@ -951,8 +989,16 @@ export default function UsersPage() {
           )}
 
           {permLoading ? (
-            <div className="text-center py-8 text-sm font-bold" style={{ color: "var(--text-muted)" }}>
-              جاري التحميل...
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
+                    <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -1159,7 +1205,7 @@ export default function UsersPage() {
                                         عرض
                                       </button>
                                     </SmartTooltip>
-                                    {meta.actions.length > 2 && (
+                                    {meta.actions.length > 1 && (
                                       <SmartTooltip content="كامل الصلاحيات — تمكين كل الإجراءات المتاحة">
                                         <button
                                           type="button"
@@ -1323,7 +1369,7 @@ export default function UsersPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="بحث سريع عن مستخدم..."
-                  className="w-full h-10 rounded-xl pr-10 pl-3 text-xs font-bold outline-none border transition-all"
+                  className="w-full h-10 rounded-xl pr-10 pl-9 text-xs font-bold outline-none border transition-all"
                   style={{ backgroundColor: "var(--bg-overlay)", color: "var(--text-primary)", borderColor: "var(--border-subtle)" }}
                   onFocus={(e) => { 
                     e.target.style.borderColor = "var(--primary)"; 
@@ -1334,14 +1380,28 @@ export default function UsersPage() {
                     e.target.style.boxShadow = "none"; 
                   }}
                 />
+                {query && (
+                  <button onClick={() => setQuery("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Scrollable user list with thin elegant scrollbars */}
             <div className="px-3 pb-3 space-y-3">
               {loading ? (
-                <div className="text-center py-12 text-xs font-bold animate-pulse" style={{ color: "var(--text-muted)" }}>
-                  جاري التحميل...
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center gap-4">
+                      <div className="h-11 w-11 rounded-xl bg-slate-100 animate-pulse" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
+                        <div className="h-2 bg-slate-50 rounded animate-pulse w-1/2" />
+                      </div>
+                      <div className="h-6 w-16 rounded-lg bg-slate-100 animate-pulse" />
+                    </div>
+                  ))}
                 </div>
               ) : rows.length === 0 ? (
                 <div className="text-center py-12 text-xs font-bold" style={{ color: "var(--text-muted)" }}>

@@ -111,6 +111,7 @@ const COLUMN_META = {
   scale_item_code_length: "int",
   scale_value_decimals: "int",
   telegram_enabled: "bool",
+  telegram_status_chip_enabled: "bool",
 };
 
 function isBoolCol(name) {

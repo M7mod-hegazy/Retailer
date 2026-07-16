@@ -172,7 +172,10 @@ function buildLedgerSql(startDate, endDate) {
       p.method AS raw_method,
       NULL AS resolved_method_id,
       p.amount AS amount,
-      CASE WHEN p.party_type = 'supplier' THEN 'out' ELSE 'in' END AS direction,
+      CASE
+        WHEN p.party_type = 'supplier' THEN CASE WHEN p.direction = 'add' THEN 'in' ELSE 'out' END
+        ELSE CASE WHEN p.direction = 'add' THEN 'out' ELSE 'in' END
+      END AS direction,
       p.created_at,
       p.notes AS description
     FROM payments p

@@ -5,6 +5,7 @@ const { today } = require("../utils/datetime");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { featureGate } = require("../utils/features");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 router.use(authRequired);
@@ -49,6 +50,15 @@ router.post("/rates", requirePagePermission("settings", "add"), (req, res) => {
   tx();
 
   req.audit("add", "gold_rates", { date, count: rates.length }, `تم تسجيل أسعار الذهب ليوم ${date}`);
+  try {
+    const summary = rates.map(r => `عيار ${r.karat}: ${r.price_per_gram}`).join(" | ");
+    notifyOwner(TG.PRICE_CHANGED, {
+      productName: `أسعار الذهب — ${date}`,
+      changePercent: summary,
+      userName: req.user?.name || req.user?.username,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (_) {}
   res.status(201).json({ success: true });
 });
 

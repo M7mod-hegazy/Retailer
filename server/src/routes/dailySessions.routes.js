@@ -134,8 +134,16 @@ router.get("/today/payment-methods", requirePagePermission("daily_treasury", "vi
     // Exclude payments tied to a cancelled invoice (standalone payments have invoice_id NULL → kept).
     db.prepare(`
       SELECT p.method,
-        SUM(CASE WHEN p.party_type = 'supplier' THEN 0 ELSE p.amount END) AS in_amt,
-        SUM(CASE WHEN p.party_type = 'supplier' THEN p.amount ELSE 0 END) AS out_amt
+        SUM(CASE WHEN p.party_type = 'supplier' THEN
+          CASE WHEN p.direction = 'add' THEN p.amount ELSE 0 END
+        ELSE
+          CASE WHEN p.direction = 'add' THEN 0 ELSE p.amount END
+        END) AS in_amt,
+        SUM(CASE WHEN p.party_type = 'supplier' THEN
+          CASE WHEN p.direction = 'add' THEN 0 ELSE p.amount END
+        ELSE
+          CASE WHEN p.direction = 'add' THEN p.amount ELSE 0 END
+        END) AS out_amt
       FROM payments p
       LEFT JOIN invoices i ON i.id = p.invoice_id
       WHERE p.method IS NOT NULL AND date(p.created_at) = ?
@@ -392,8 +400,12 @@ function buildUnionParts(targetDate, search) {
           SELECT py.id, COALESCE(py.reference_number, '#' || py.id) AS doc_no, py.amount, py.method AS payment_method,
                  py.created_at, c.name AS party, NULL AS status, py.notes AS description,
                  'customer_payment' AS doc_type,
-                 CASE WHEN py.method = 'cash' THEN 'in' ELSE 'account' END AS cash_direction,
-                 CASE WHEN py.method = 'cash' THEN py.amount ELSE 0 END AS cash_effect,
+                 CASE WHEN py.method = 'cash' THEN
+                   CASE WHEN py.direction = 'add' THEN 'out' ELSE 'in' END
+                 ELSE 'account' END AS cash_direction,
+                 CASE WHEN py.method = 'cash' THEN
+                   CASE WHEN py.direction = 'add' THEN -py.amount ELSE py.amount END
+                 ELSE 0 END AS cash_effect,
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
@@ -411,8 +423,12 @@ function buildUnionParts(targetDate, search) {
           SELECT py.id, COALESCE(py.reference_number, '#' || py.id) AS doc_no, py.amount, py.method AS payment_method,
                  py.created_at, s.name AS party, NULL AS status, py.notes AS description,
                  'supplier_payment' AS doc_type,
-                 CASE WHEN py.method = 'cash' THEN 'out' ELSE 'account' END AS cash_direction,
-                 CASE WHEN py.method = 'cash' THEN -py.amount ELSE 0 END AS cash_effect,
+                 CASE WHEN py.method = 'cash' THEN
+                   CASE WHEN py.direction = 'add' THEN 'in' ELSE 'out' END
+                 ELSE 'account' END AS cash_direction,
+                 CASE WHEN py.method = 'cash' THEN
+                   CASE WHEN py.direction = 'add' THEN py.amount ELSE -py.amount END
+                 ELSE 0 END AS cash_effect,
                  0 AS cash_amount, 0 AS credit_amount,
                  NULL AS invoice_id, NULL AS original_invoice_no,
                  0 AS is_cancelled, NULL AS amended_by, NULL AS amendment_of, NULL AS amendment_of_no, NULL AS amended_by_no,
@@ -654,13 +670,13 @@ function bucketIdFor(tx) {
     case "expense": return "expenses_cash";
     case "revenue": return "revenues_cash";
     case "purchase": return "purchases_payable";
-    case "supplier_payment": return "supplier_cash_payments";
+    case "supplier_payment": return ce >= 0 ? "supplier_refund_payments" : "supplier_cash_payments";
     case "sales_return":
       return ce !== 0 ? "sales_returns_cash" : "sales_returns_account";
     case "purchase_return":
       return ce !== 0 ? "purchase_returns_cash" : "purchase_returns_payable";
     case "ajal_payment": return "customer_collections";
-    case "customer_payment": return "customer_collections";
+    case "customer_payment": return ce <= 0 ? "customer_collections" : "customer_refund_payments";
     case "withdrawal": return "withdrawals";
     default: return "non_cash_movements";
   }
@@ -767,7 +783,7 @@ router.get("/today/transactions", requirePagePermission("daily_treasury", "view"
 });
 
 /** Add a withdrawal */
-router.post("/today/withdrawals", requirePagePermission("daily_treasury", "add"), (req, res) => {
+router.post("/today/withdrawals", requirePagePermission("daily_treasury", "add"), async (req, res) => {
   try {
     const db = getDb();
     const today = localDate();
@@ -789,7 +805,22 @@ router.post("/today/withdrawals", requirePagePermission("daily_treasury", "add")
       "UPDATE daily_sessions SET total_withdrawals = total_withdrawals + ? WHERE id = ?",
     ).run(Number(amount), session.id);
 
-    res.status(201).json({ success: true, data: { message: "تم تسجيل المسحوبات" } });
+    let _tgStatus = null;
+    try {
+      const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      _tgStatus = await notifyOwner(TG.WITHDRAWAL_CREATED, {
+        docNo: `يومية ${today}`,
+        amount: Number(amount),
+        category: "مسحوبات اليومية",
+        note: note || "—",
+        paymentMethod: "cash",
+        userName: userRow?.name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    res.status(201).json({ success: true, data: { message: "تم تسجيل المسحوبات" }, telegramStatus: _tgStatus });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

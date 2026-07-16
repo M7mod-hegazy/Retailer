@@ -25,7 +25,7 @@ function safeParseSettings(value) {
   }
 }
 
-router.get("/", requirePagePermission("settings", "view"), (_req, res) => {
+router.get("/", requirePagePermission("print_settings", "view"), (_req, res) => {
   try {
     const db = getDb();
     ensureTable(db);
@@ -39,7 +39,7 @@ router.get("/", requirePagePermission("settings", "view"), (_req, res) => {
   }
 });
 
-router.get("/:docType", requirePagePermission("settings", "view"), (req, res) => {
+router.get("/:docType", requirePagePermission("print_settings", "view"), (req, res) => {
   try {
     const { docType } = req.params;
     if (!LAYOUT_SCOPES.includes(docType)) {
@@ -56,7 +56,7 @@ router.get("/:docType", requirePagePermission("settings", "view"), (req, res) =>
   }
 });
 
-router.put("/:docType", requirePagePermission("settings", "edit"), (req, res) => {
+router.put("/:docType", requirePagePermission("print_settings", "edit"), (req, res) => {
   try {
     const { docType } = req.params;
     if (!LAYOUT_SCOPES.includes(docType)) {

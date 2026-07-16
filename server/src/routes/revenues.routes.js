@@ -127,8 +127,11 @@ router.post("/", requirePagePermission("revenues", "add"), (req, res) => {
     const db2 = getDb();
     const catRow = payload.category_id ? db2.prepare("SELECT name FROM revenue_categories WHERE id = ?").get(payload.category_id) : null;
     const userRow = req.user?.id ? db2.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    // doc_no is generated inside the transaction closure above — read it back
+    // from the created row rather than referencing the out-of-scope local.
+    const revRow = db2.prepare("SELECT doc_no FROM revenues WHERE id = ?").get(result.lastInsertRowid);
     notifyOwner(TG.REVENUE_CREATED, {
-      docNo,
+      docNo: revRow?.doc_no || null,
       amount: Number(payload.amount || 0),
       category: catRow?.name || null,
       description: payload.description || payload.notes || null,

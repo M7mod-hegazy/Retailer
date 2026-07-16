@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../../../services/api";
 import { usePermission } from "../../../hooks/usePermission";
 import { formatDateTime } from "../../../utils/dateHelpers";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import {
   formatMoney,
   formatSalaryDays,
@@ -35,6 +36,8 @@ export default function BonusesTab({ employee }) {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ bonus_type: "other", amount: "", amount_mode: "amount", days: "", is_recurring: false, notes: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (employee) loadBonuses();
@@ -65,6 +68,10 @@ export default function BonusesTab({ employee }) {
       toast.error("يجب إدخال مبلغ صحيح");
       return;
     }
+    setSubmitting(true);
+    const tempId = Date.now();
+    const optimistic = { id: tempId, bonus_type: form.bonus_type, amount, is_recurring: form.is_recurring, notes: form.notes, status: "active", created_at: new Date().toISOString() };
+    setBonuses(prev => [optimistic, ...prev]);
     try {
       const res = await api.post(`/api/employees/${employee.id}/bonuses`, {
         bonus_type: form.bonus_type,
@@ -78,17 +85,27 @@ export default function BonusesTab({ employee }) {
         resetForm();
         loadBonuses();
       }
-    } catch { toast.error("فشل إضافة المكافأة"); }
+    } catch { 
+      toast.error("فشل إضافة المكافأة");
+      setBonuses(prev => prev.filter(b => b.id !== tempId));
+    } finally { setSubmitting(false); }
   }
 
   async function handleCancel(id) {
+    const removed = bonuses.find(b => b.id === id);
+    setBonuses(prev => prev.filter(b => b.id !== id));
     try {
       const res = await api.delete(`/api/employees/${employee.id}/bonuses/${id}`);
       if (res.data?.success) {
         toast.success("تم إلغاء المكافأة");
         loadBonuses();
       }
-    } catch { toast.error("فشل إلغاء المكافأة"); }
+    } catch {
+      toast.error("فشل إلغاء المكافأة");
+      if (removed) {
+        setBonuses(prev => [...prev, removed]);
+      }
+    }
   }
 
   if (!employee) return null;
@@ -211,14 +228,14 @@ export default function BonusesTab({ employee }) {
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-1">
                       <span className="text-[11px] font-black text-emerald-700">
-                        الراتب اليومي: <span className="font-mono">{formatMoney(Math.round(dailySalary))} ?.?</span>
+                        الراتب اليومي: <span className="font-mono">{formatMoney(Math.round(dailySalary))} ج.م</span>
                       </span>
                       <span className="text-[11px] font-bold text-emerald-600">
-                        {label} ? {getDailySalaryBasis(employee)}
+                        {label} ؟ {getDailySalaryBasis(employee)}
                       </span>
                     </div>
                     <span className="text-xs font-black text-emerald-700 font-mono">
-                      +{formatMoney(effectiveAmount)} ?.?
+                      +{formatMoney(effectiveAmount)} ج.م
                     </span>
                   </div>
                 );
@@ -236,8 +253,10 @@ export default function BonusesTab({ employee }) {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg transition-all"
+                  disabled={submitting}
+                  className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                   تأكيد الإضافة
                 </button>
               </div>
@@ -255,7 +274,7 @@ export default function BonusesTab({ employee }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`text-[11px] font-black px-2 py-0.5 rounded-full border ${st.class}`}>{st.label}</span>
-                  <span className="text-sm font-bold text-emerald-600 font-mono">{Number(b.amount).toLocaleString()} ?.?</span>
+                  <span className="text-sm font-bold text-emerald-600 font-mono">{Number(b.amount).toLocaleString()} ج.م</span>
                   <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{typeLabel}</span>
                   {b.is_recurring ? (
                     <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1">
@@ -267,9 +286,9 @@ export default function BonusesTab({ employee }) {
                 </div>
                 {b.status === 'active' && canManage && (
                   <button
-                    onClick={() => handleCancel(b.id)}
+                    onClick={() => setDeleteTarget(b)}
                     className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all"
-                    title="تم الإلغاء"
+                    title="إلغاء المكافأة"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -315,6 +334,14 @@ export default function BonusesTab({ employee }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="إلغاء المكافأة"
+        message={`هل تريد إلغاء مكافأة "${BONUS_TYPES.find(t => t.value === deleteTarget?.bonus_type)?.label || deleteTarget?.bonus_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
+        onConfirm={() => { handleCancel(deleteTarget.id); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

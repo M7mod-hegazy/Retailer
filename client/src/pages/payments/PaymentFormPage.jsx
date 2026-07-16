@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 import { 
   Banknote, 
   Receipt, 
@@ -51,6 +52,21 @@ export default function PaymentFormPage() {
 
   const [context, setContext] = useState({ open_invoices: [], party: null });
   const [selectedAllocations, setSelectedAllocations] = useState({});
+
+  const initialFormRef = useRef(form);
+  const isDirty = useMemo(() => {
+    const init = initialFormRef.current;
+    return (
+      form.party_id !== init.party_id ||
+      form.amount !== init.amount ||
+      form.method_id !== init.method_id ||
+      form.notes !== init.notes ||
+      form.created_at !== init.created_at ||
+      Object.keys(selectedAllocations).length > 0
+    );
+  }, [form, selectedAllocations]);
+
+  useUnsavedChangesGuard(isDirty);
 
   // 1. Load Initial Data
   async function loadInitialData() {
@@ -337,7 +353,7 @@ export default function PaymentFormPage() {
                     <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">المبلغ الجاري توزيعه</span>
                     <div className="flex items-baseline gap-1 mt-1">
                        <span className="text-[20px] font-black text-emerald-600">{formatMoney(form.amount)}</span>
-                       <span className="text-[11px] font-bold text-slate-400">ج.m</span>
+                       <span className="text-[11px] font-bold text-slate-400">ج.م</span>
                     </div>
                  </div>
                  <div className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm border-r-4 border-r-slate-800">

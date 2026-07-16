@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useSpring, useMotionValue } from "framer-motion";
 import {
   History,
@@ -658,6 +658,14 @@ export default function HistoryPage() {
         <div className="text-center space-y-4">
           <Lock className="mx-auto h-12 w-12 text-zinc-300" />
           <h2 className="text-2xl font-black text-zinc-900">غير مصرح</h2>
+          <p className="text-sm text-text-secondary">ليس لديك صلاحية لعرض سجل النشاطات</p>
+          <p className="text-xs text-text-muted">تواصل مع المدير للحصول على الصلاحيات</p>
+          <button
+            onClick={() => window.history.back()}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition"
+          >
+            رجوع
+          </button>
         </div>
       </div>
     );

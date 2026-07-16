@@ -1,7 +1,7 @@
 const express = require("express");
 const { authRequired } = require("../middleware/auth");
 const { requireAnyPagePermission } = require("../middleware/permission");
-const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES, processQueue } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES, processQueue, logSentNotification } = require("../services/telegramService");
 const { getDb } = require("../config/database");
 const QRCode = require("qrcode");
 
@@ -80,6 +80,19 @@ function recipientFromBody(body) {
     notify_expense_deleted: asBool(body?.notify_expense_deleted),
     notify_revenue_edited: asBool(body?.notify_revenue_edited),
     notify_revenue_deleted: asBool(body?.notify_revenue_deleted),
+    // Return lifecycle sub-events (migration 210)
+    notify_sales_return_edited: asBool(body?.notify_sales_return_edited),
+    notify_sales_return_cancelled: asBool(body?.notify_sales_return_cancelled),
+    notify_purchase_return_edited: asBool(body?.notify_purchase_return_edited),
+    // Edit/cancel sub-events (migration 208)
+    notify_invoice_edited: asBool(body?.notify_invoice_edited),
+    notify_invoice_amended: asBool(body?.notify_invoice_amended),
+    notify_purchase_edited: asBool(body?.notify_purchase_edited),
+    notify_purchase_return_cancelled: asBool(body?.notify_purchase_return_cancelled),
+    notify_branch_transfer_edited: asBool(body?.notify_branch_transfer_edited),
+    notify_branch_transfer_cancelled: asBool(body?.notify_branch_transfer_cancelled),
+    notify_withdrawal_edited: asBool(body?.notify_withdrawal_edited),
+    notify_withdrawal_deleted: asBool(body?.notify_withdrawal_deleted),
     event_presets: parseEventPresets(body?.event_presets),
   };
 }
@@ -118,6 +131,13 @@ const RECIPIENT_WRITE_COLUMNS = [
   // New edit/delete events (migration 201)
   "notify_expense_edited", "notify_expense_deleted",
   "notify_revenue_edited", "notify_revenue_deleted",
+  // Return lifecycle sub-events (migration 210)
+  "notify_sales_return_edited", "notify_sales_return_cancelled", "notify_purchase_return_edited",
+  // Edit/cancel sub-events (migration 208)
+  "notify_invoice_edited", "notify_invoice_amended",
+  "notify_purchase_edited", "notify_purchase_return_cancelled",
+  "notify_branch_transfer_edited", "notify_branch_transfer_cancelled",
+  "notify_withdrawal_edited", "notify_withdrawal_deleted",
   "event_presets",
 ];
 
@@ -227,6 +247,7 @@ router.post("/test", requireAnyPagePermission(["settings", "whatsapp_crm"], "edi
 
     if (targetChatId) {
       await sendTelegramMessage(config, targetChatId, text);
+      logSentNotification(db, "test", targetChatId, text);
       return res.json({ success: true, message: "تم إرسال رسالة الاختبار بنجاح" });
     }
 
@@ -237,12 +258,14 @@ router.post("/test", requireAnyPagePermission(["settings", "whatsapp_crm"], "edi
         return res.status(400).json({ success: false, message: "لا يوجد مستلم — أضف Chat ID أولاً" });
       }
       await sendTelegramMessage(legacy, legacy.chatId, text);
+      logSentNotification(db, "test", legacy.chatId, text);
       return res.json({ success: true, message: "تم إرسال رسالة الاختبار بنجاح" });
     }
 
     for (const recipient of recipients) {
       if (!recipient.enabled) continue;
       await sendTelegramMessage(config, recipient.chatId, text);
+      logSentNotification(db, "test", recipient.chatId, text);
     }
     res.json({ success: true, message: "تم إرسال رسالة الاختبار للمستلمين" });
   } catch (e) {

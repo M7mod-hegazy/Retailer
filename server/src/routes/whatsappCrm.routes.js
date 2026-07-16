@@ -12,7 +12,11 @@ const router = express.Router();
 router.use(authRequired);
 
 const canView = requirePagePermission("whatsapp_crm", "view");
+const canAdd = requirePagePermission("whatsapp_crm", "add");
 const canEdit = requirePagePermission("whatsapp_crm", "edit");
+const canDelete = requirePagePermission("whatsapp_crm", "delete");
+const canSend = requirePagePermission("whatsapp_crm", "send");
+const canManageTemplates = requirePagePermission("whatsapp_crm", "manage_templates");
 
 // ─── Branch filter helper ──────────────────────────────────────────────────
 // If the user has a branch_id, scope queries to that branch.
@@ -40,7 +44,12 @@ router.get("/config", canView, (_req, res) => {
       const s = db.prepare("SELECT sms_enabled, sms_api_url FROM settings WHERE id=1").get();
       smsEnabled = Boolean(s?.sms_enabled && s?.sms_api_url);
     } catch (_) {} // columns missing → migration 170 not applied yet
-    res.json({ success: true, data: { sms_enabled: smsEnabled } });
+    let emailEnabled = false;
+    try {
+      const e = db.prepare("SELECT email_enabled FROM settings WHERE id=1").get();
+      emailEnabled = Boolean(e?.email_enabled);
+    } catch (_) {}
+    res.json({ success: true, data: { sms_enabled: smsEnabled, email_enabled: emailEnabled } });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -75,6 +84,14 @@ router.get("/stats", canView, (req, res) => {
       GROUP BY date(sent_at) ORDER BY day DESC LIMIT 14
     `).all();
 
+    // Email stats
+    let emailSentToday = 0, emailSentTotal = 0, emailPending = 0;
+    try {
+      emailSentToday = db.prepare("SELECT COUNT(*) AS c FROM email_outbox WHERE status='sent' AND date(sent_at)=date('now')").get()?.c || 0;
+      emailSentTotal = db.prepare("SELECT COUNT(*) AS c FROM email_outbox WHERE status='sent'").get()?.c || 0;
+      emailPending = db.prepare("SELECT COUNT(*) AS c FROM email_outbox WHERE status='pending'").get()?.c || 0;
+    } catch (_) {} // email_outbox table may not exist yet
+
     const engineStatus = engine ? engine.getStatus() : { status: "unavailable" };
 
     res.json({ success: true, data: {
@@ -83,6 +100,7 @@ router.get("/stats", canView, (req, res) => {
       convCount, unreadCount,
       recentMessages, sentByDay: sentByDay.reverse(),
       engine: engineStatus,
+      emailSentToday, emailSentTotal, emailPending,
     }});
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -153,7 +171,7 @@ router.post("/conversations/:jid/archive", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.delete("/messages/:id", canEdit, (req, res) => {
+router.delete("/messages/:id", canDelete, (req, res) => {
   try {
     const db = getDb();
     const msg = db.prepare("SELECT * FROM wa_messages WHERE id=?").get(req.params.id);
@@ -165,7 +183,7 @@ router.delete("/messages/:id", canEdit, (req, res) => {
 });
 
 // ─── Send message from inbox ───────────────────────────────────────────────
-router.post("/send", canEdit, async (req, res) => {
+router.post("/send", canSend, async (req, res) => {
   try {
     if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
     const { jid, text, imageBase64, caption, fileBase64, fileName, mimeType, audioBase64 } = req.body;
@@ -212,7 +230,13 @@ router.post("/contacts/resolve", canView, (req, res) => {
 router.get("/contacts", canView, (req, res) => {
   try {
     const db = getDb();
-    const { q, source, marketing, opted_out } = req.query;
+    const { q, source, marketing, opted_out, page = "1", limit = "50", sort = "id", order = "desc", tag_id } = req.query;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const lim = Math.min(200, Math.max(1, parseInt(limit) || 50));
+    const offset = (pageNum - 1) * lim;
+    const validSorts = ["id", "name", "phone", "last_message_at"];
+    const sortCol = validSorts.includes(sort) ? sort : "id";
+    const sortOrder = order === "asc" ? "ASC" : "DESC";
 
     // Safe table detection — migrations 110 and 158 may not have run yet
     const hasOutbox = !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get("wa_outbox");
@@ -225,13 +249,21 @@ router.get("/contacts", canView, (req, res) => {
     if (marketing === "1") custWhere.push("c.marketing_opt_in = 1");
     if (opted_out === "1") custWhere.push("c.whatsapp_opt_out = 1");
     else if (opted_out === "0") custWhere.push("(c.whatsapp_opt_out IS NULL OR c.whatsapp_opt_out = 0)");
+    if (tag_id) { custWhere.push("c.id IN (SELECT customer_id FROM customer_tag_map WHERE tag_id = ?)"); custParams.push(tag_id); }
     const bf = branchFilter(req.user, "c");
     if (bf.sql) { custWhere.push(bf.sql); custParams.push(...bf.params); }
 
+    const hasTags = !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get("customer_tags");
+
     const custCols = [
-      "c.id", "c.name", "c.phone", "c.marketing_opt_in", "c.whatsapp_opt_out",
+      "c.id", "c.name", "c.phone", "c.email", "c.marketing_opt_in", "c.whatsapp_opt_out",
       "c.capture_source", "c.birthday", "'customer' AS type"
     ];
+    if (hasTags) {
+      custCols.push(`(SELECT GROUP_CONCAT(t.name) FROM customer_tags t JOIN customer_tag_map ctm ON ctm.tag_id = t.id WHERE ctm.customer_id = c.id) AS tags`);
+    } else {
+      custCols.push("NULL AS tags");
+    }
     if (hasOutbox) {
       custCols.push("(SELECT MAX(created_at) FROM wa_outbox WHERE customer_id = c.id) AS last_message_at");
       custCols.push("(SELECT status FROM wa_outbox WHERE customer_id = c.id ORDER BY id DESC LIMIT 1) AS last_message_status");
@@ -244,12 +276,15 @@ router.get("/contacts", canView, (req, res) => {
       custCols.push("NULL AS last_inbound");
     }
 
+    const custCountRow = db.prepare(`SELECT COUNT(*) AS cnt FROM customers c WHERE ${custWhere.join(" AND ")}`).get(...custParams);
+    const totalCustomers = custCountRow?.cnt || 0;
+
     const customers = db.prepare(`
       SELECT ${custCols.join(",")}
       FROM customers c
       WHERE ${custWhere.join(" AND ")}
-      ORDER BY c.id DESC LIMIT 500
-    `).all(...custParams);
+      ORDER BY c.${sortCol} ${sortOrder} LIMIT ? OFFSET ?
+    `).all(...custParams, lim, offset);
 
     // Leads
     let leadWhere = ["1=1"];
@@ -261,16 +296,20 @@ router.get("/contacts", canView, (req, res) => {
     const bfLeads = branchFilter(req.user, "");
     if (bfLeads.sql) { leadWhere.push(bfLeads.sql); leadParams.push(...bfLeads.params); }
 
+    const leadCountRow = db.prepare(`SELECT COUNT(*) AS cnt FROM leads WHERE ${leadWhere.join(" AND ")}`).get(...leadParams);
+    const totalLeads = leadCountRow?.cnt || 0;
+
     const leads = db.prepare(`
-      SELECT id, name, phone_raw AS phone, 0 AS marketing_opt_in, opted_out AS whatsapp_opt_out,
+      SELECT id, name, phone_raw AS phone, NULL AS email, 0 AS marketing_opt_in, opted_out AS whatsapp_opt_out,
              'lead' AS type, source AS capture_source, birthday, NULL AS last_message_at,
              NULL AS last_message_status, NULL AS last_inbound
       FROM leads WHERE ${leadWhere.join(" AND ")}
-      ORDER BY id DESC LIMIT 200
-    `).all(...leadParams);
+      ORDER BY id ${sortOrder} LIMIT ? OFFSET ?
+    `).all(...leadParams, lim, offset);
 
     const data = [...customers, ...leads];
-    res.json({ success: true, data, count: data.length });
+    const total = totalCustomers + totalLeads;
+    res.json({ success: true, data, count: data.length, total, page: pageNum, limit: lim });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -298,12 +337,12 @@ router.get("/campaigns/:id", canView, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.post("/campaigns", canEdit, (req, res) => {
+router.post("/campaigns", canAdd, (req, res) => {
   try {
     const db = getDb();
-    const { name, body, channel = "whatsapp", scheduled_at, filters = {}, image_url } = req.body;
+    const { name, body, channel = "whatsapp", scheduled_at, filters = {}, image_url, email_subject } = req.body;
     if (!body || !body.trim()) return res.status(400).json({ success: false, message: "body required" });
-    if (!["whatsapp", "sms"].includes(channel)) return res.status(400).json({ success: false, message: "invalid channel" });
+    if (!["whatsapp", "sms", "email"].includes(channel)) return res.status(400).json({ success: false, message: "invalid channel" });
     // image_url is later read from disk by the WhatsApp engine — accept ONLY
     // the exact /uploads/<file>.<img-ext> shape our upload route produces, or
     // a crafted path could exfiltrate arbitrary files to a campaign recipient.
@@ -360,13 +399,22 @@ router.post("/campaigns", canEdit, (req, res) => {
       if (!norm) continue;
       if (!byPhone.has(norm)) byPhone.set(norm, a);
     }
-    const deduped = [...byPhone.values()];
+    let deduped = [...byPhone.values()];
+
+    // For email channel: filter to only contacts with email addresses
+    if (channel === "email") {
+      deduped = deduped.filter(a => a.email && a.email.includes("@"));
+      if (!deduped.length) {
+        return res.status(400).json({ success: false, message: "لا يوجد جهات اتصال لديها بريد إلكتروني صالح" });
+      }
+    }
 
     const audienceJson = JSON.stringify(filters);
+    const campaignStatus = scheduled_at && new Date(scheduled_at) > new Date() ? "scheduled" : "active";
     const result = db.prepare(`
-      INSERT INTO campaigns (name, body, channel, audience_json, status, total, image_url, created_at)
-      VALUES (?,?,?,?,'active',?,?,datetime('now'))
-    `).run(name?.trim() || null, body.trim(), channel, audienceJson, deduped.length, image_url || null);
+      INSERT INTO campaigns (name, body, channel, audience_json, status, total, image_url, email_subject, created_at)
+      VALUES (?,?,?,?,?,?,?,?,datetime('now'))
+    `).run(name?.trim() || null, body.trim(), channel, audienceJson, campaignStatus, deduped.length, image_url || null, email_subject?.trim() || null);
     const campaignId = result.lastInsertRowid;
 
     // Insert recipients + enqueue in wa_outbox, linked back so the drainers can
@@ -396,7 +444,18 @@ router.post("/campaigns", canEdit, (req, res) => {
         ? { text: resolved, image_url: image_url }
         : { text: resolved };
       const recipientId = ins.run(campaignId, a.lead_id || null, a.customer_id || null, norm, a.name || null, resolved, i).lastInsertRowid;
-      if (hasChannel && hasLink) {
+      if (channel === "email") {
+        // Queue email in email_outbox
+        try {
+          const emailSubject = (email_subject || name || "رسالة من المتجر")
+            .replace(/\{name\}/g, a.name || "")
+            .replace(/\{shop\}/g, shopName);
+          db.prepare(`
+            INSERT INTO email_outbox (recipient_email, recipient_name, subject, html_body, text_body, campaign_id, customer_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+          `).run(a.email, a.name || null, emailSubject, resolved, resolved, campaignId, a.customer_id || null);
+        } catch (_) {} // email_outbox table may not exist yet
+      } else if (hasChannel && hasLink) {
         outboxIns.run(norm, a.customer_id || null, a.lead_id || null, "broadcast", JSON.stringify(outboxPayload), scheduled_at || null, channel, recipientId);
       } else if (channel === "whatsapp") {
         outboxIns.run(norm, a.customer_id || null, "broadcast", JSON.stringify(outboxPayload), scheduled_at || null);
@@ -417,7 +476,7 @@ router.put("/campaigns/:id", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.delete("/campaigns/:id", canEdit, (req, res) => {
+router.delete("/campaigns/:id", canDelete, (req, res) => {
   try {
     const db = getDb();
     // Cancel queued messages first — deleting a campaign must stop its sends.
@@ -430,6 +489,57 @@ router.delete("/campaigns/:id", canEdit, (req, res) => {
     db.prepare("DELETE FROM campaign_recipients WHERE campaign_id=?").run(req.params.id);
     db.prepare("DELETE FROM campaigns WHERE id=?").run(req.params.id);
     res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── Duplicate campaign ──────────────────────────────────────────────────────
+router.post("/campaigns/:id/duplicate", canAdd, (req, res) => {
+  try {
+    const db = getDb();
+    const original = db.prepare("SELECT * FROM campaigns WHERE id=?").get(req.params.id);
+    if (!original) return res.status(404).json({ success: false, message: "الحملة غير موجودة" });
+    const result = db.prepare(`
+      INSERT INTO campaigns (name, body, channel, audience_json, status, total, image_url, email_subject, created_at)
+      VALUES (?, ?, ?, ?, 'draft', 0, ?, ?, datetime('now'))
+    `).run(`${original.name || "حملة"} — نسخة`, original.body, original.channel, original.audience_json, original.image_url, original.email_subject);
+    res.json({ success: true, data: { id: result.lastInsertRowid } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── Campaign analytics ──────────────────────────────────────────────────────
+router.get("/campaigns/:id/analytics", canView, (req, res) => {
+  try {
+    const db = getDb();
+    const campaign = db.prepare("SELECT * FROM campaigns WHERE id=?").get(req.params.id);
+    if (!campaign) return res.status(404).json({ success: false, message: "not found" });
+    const recipients = db.prepare("SELECT * FROM campaign_recipients WHERE campaign_id=?").all(req.params.id);
+    const total = recipients.length;
+    const sent = recipients.filter(r => r.status === "sent").length;
+    const delivered = recipients.filter(r => r.status === "delivered").length;
+    const failed = recipients.filter(r => r.status === "failed").length;
+    const pending = recipients.filter(r => r.status === "pending").length;
+
+    let emailStats = null;
+    if (campaign.channel === "email") {
+      const emailEvents = db.prepare(`
+        SELECT event_type, COUNT(*) AS cnt FROM email_events
+        WHERE campaign_id = ? GROUP BY event_type
+      `).all(req.params.id);
+      emailStats = { opened: 0, clicked: 0, bounced: 0 };
+      for (const ev of emailEvents) {
+        if (ev.event_type === "open") emailStats.opened = ev.cnt;
+        if (ev.event_type === "click") emailStats.clicked = ev.cnt;
+        if (ev.event_type === "bounce") emailStats.bounced = ev.cnt;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        campaign: { ...campaign, total, sent, delivered, failed, pending },
+        emailStats,
+      },
+    });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -484,6 +594,13 @@ const CATEGORY_CHANNEL = {
   telegram_employee_created: "telegram", telegram_salary_settled: "telegram",
   telegram_advance_created: "telegram", telegram_deduction_created: "telegram",
   telegram_bonus_created: "telegram",
+  // New edit/delete/cancel events
+  telegram_expense_edited: "telegram", telegram_expense_deleted: "telegram",
+  telegram_revenue_edited: "telegram", telegram_revenue_deleted: "telegram",
+  telegram_invoice_edited: "telegram", telegram_invoice_amended: "telegram",
+  telegram_purchase_edited: "telegram", telegram_purchase_return_cancelled: "telegram",
+  telegram_branch_transfer_edited: "telegram", telegram_branch_transfer_cancelled: "telegram",
+  telegram_withdrawal_edited: "telegram", telegram_withdrawal_deleted: "telegram",
 };
 
 // System kinds are auto-send triggers: body-editable via variants below,
@@ -512,7 +629,7 @@ function templatesHaveChannel(db) {
 }
 
 // Create a custom template
-router.post("/templates", canEdit, (req, res) => {
+router.post("/templates", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const { label, body, channel } = req.body;
@@ -531,7 +648,7 @@ router.post("/templates", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.put("/templates/:kind", canEdit, (req, res) => {
+router.put("/templates/:kind", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const { kind } = req.params;
@@ -549,7 +666,7 @@ router.put("/templates/:kind", canEdit, (req, res) => {
 });
 
 // Delete a custom template (system kinds are protected)
-router.delete("/templates/:kind", canEdit, (req, res) => {
+router.delete("/templates/:kind", canManageTemplates, (req, res) => {
   try {
     const { kind } = req.params;
     if (SYSTEM_TEMPLATE_KINDS.has(kind)) {
@@ -560,7 +677,7 @@ router.delete("/templates/:kind", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.post("/templates/:kind/send-test", canEdit, (req, res) => {
+router.post("/templates/:kind/send-test", canSend, (req, res) => {
   try {
     if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
     const { phone } = req.body;
@@ -587,7 +704,7 @@ router.get("/template-variants", canView, (_req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.post("/template-variants", canEdit, (req, res) => {
+router.post("/template-variants", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const { category, label, body } = req.body;
@@ -603,7 +720,7 @@ router.post("/template-variants", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.put("/template-variants/:id", canEdit, (req, res) => {
+router.put("/template-variants/:id", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const { label, body } = req.body;
@@ -620,7 +737,7 @@ router.put("/template-variants/:id", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.delete("/template-variants/:id", canEdit, (req, res) => {
+router.delete("/template-variants/:id", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const variant = db.prepare("SELECT * FROM message_template_variants WHERE id=?").get(req.params.id);
@@ -633,7 +750,7 @@ router.delete("/template-variants/:id", canEdit, (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-router.post("/template-variants/:id/activate", canEdit, (req, res) => {
+router.post("/template-variants/:id/activate", canManageTemplates, (req, res) => {
   try {
     const db = getDb();
     const variant = db.prepare("SELECT * FROM message_template_variants WHERE id=?").get(req.params.id);

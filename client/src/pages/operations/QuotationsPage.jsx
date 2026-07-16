@@ -371,7 +371,7 @@ export default function QuotationsPage() {
           <div className="flex items-center gap-3 w-full lg:w-auto">
             <div className="relative w-full lg:w-[300px]">
               <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
-              <input ref={searchRef} type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              <input autoFocus ref={searchRef} type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                 placeholder="ابحث باسم العميل أو رقم العرض..."
                 className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-sm font-black text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:bg-white transition-all outline-none"
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })} />

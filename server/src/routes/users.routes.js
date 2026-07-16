@@ -66,6 +66,15 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
         link: `/definitions/users`,
       });
     } catch (_) {}
+    try {
+      notifyOwner(TG.PERMISSION_CHANGED, {
+        targetUser: full_name || username,
+        action: "إنشاء مستخدم جديد",
+        details: `اسم الدخول: ${username} — الدور: ${role}`,
+        adminUser: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
     res.status(201).json({ success: true, data: newUser });
   } catch (error) {
     next(error);

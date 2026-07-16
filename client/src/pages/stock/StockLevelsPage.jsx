@@ -563,9 +563,14 @@ export default function StockLevelsPage() {
                <div className="flex items-center gap-4 flex-1 min-w-[300px]">
                   <div data-help="search-bar" className="relative flex-1 group">
                      <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                     <input value={levelsSearch} onChange={(e) => setLS(e.target.value)}
-                       placeholder="بحث بالاسم أو الكود أو الباركود..."
-                       className="w-full rounded-md border border-slate-200 bg-white py-2 pl-3 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                     <input autoFocus value={levelsSearch} onChange={(e) => setLS(e.target.value)}
+                        placeholder="بحث بالاسم أو الكود أو الباركود..."
+                        className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm font-bold outline-none focus:border-slate-800 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm" />
+                     {levelsSearch && (
+                       <button onClick={() => setLS("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                         <X className="h-3.5 w-3.5" />
+                       </button>
+                     )}
                   </div>
                   <div className="relative w-64 group">
                      <select value={levelsWH} onChange={(e) => setLWH(e.target.value)}
@@ -832,7 +837,12 @@ export default function StockLevelsPage() {
                      <input data-help="st-form-search"
                        type="text" value={txSearch} onChange={(e) => setTxSearch(e.target.value)}
                        placeholder="ابحث بالاسم أو الكود أو الباركود..."
-                       className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-3 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
+                       className="w-full rounded-sm border border-slate-200 bg-white py-1.5 pl-9 pr-9 text-2sm font-bold outline-none focus:border-slate-800 transition-colors shadow-sm" />
+                     {txSearch && (
+                       <button onClick={() => setTxSearch("")} className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                         <X className="h-3 w-3" />
+                       </button>
+                     )}
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-2sm font-black text-slate-500 uppercase tracking-widest">{filteredTxItems.length} صنف متاح</span>
@@ -1204,7 +1214,13 @@ export default function StockLevelsPage() {
 
       <Modal open={Boolean(movementDetails) || movementLoading} onClose={() => setMovementDetails(null)} title="تفاصيل الحركة" showDetach={false}>
         {movementLoading ? (
-          <p className="text-sm font-bold text-slate-500">جاري التحميل...</p>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex gap-3">
+                {[...Array(4)].map((_, j) => <div key={j} className="h-3 bg-slate-100 rounded animate-pulse flex-1" style={{ animationDelay: `${(i * 4 + j) * 30}ms` }} />)}
+              </div>
+            ))}
+          </div>
         ) : movementDetails ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div><span className="font-black">رقم الحركة:</span> {movementDetails.id}</div>

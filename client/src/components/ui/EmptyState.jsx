@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const PRESETS = {
   invoices:      { icon: '🧾', title_ar: 'لا توجد فواتير',        desc_ar: 'ابدأ بإنشاء أول فاتورة بيع' },
@@ -23,7 +24,7 @@ export function EmptyState({
   message,
   lang = 'ar',
   action,
-  steps, // optional teaching steps: ["أضف مخزن", "أضف صنف", ...] — turns the empty page into a mini-guide
+  steps,
 }) {
   const preset = type ? PRESETS[type] : null;
 
@@ -32,7 +33,12 @@ export function EmptyState({
   const displayDesc  = description || preset?.[`desc_${lang}`] || preset?.desc_ar || '';
 
   return (
-    <div className="empty-state">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="empty-state"
+    >
       <div className="empty-state__icon">
         <span style={{ fontSize: '1.75rem' }}>{displayIcon}</span>
       </div>
@@ -53,7 +59,7 @@ export function EmptyState({
         </ol>
       )}
       {action && <div className="mt-4">{action}</div>}
-    </div>
+    </motion.div>
   );
 }
 

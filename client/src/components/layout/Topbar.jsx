@@ -408,7 +408,7 @@ export default function Topbar() {
                 openBell ? "bg-primary text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
               }`}
             >
-              <Bell strokeWidth={2} className="h-4.5 w-4.5" />
+              <Bell strokeWidth={2} className={`h-4.5 w-4.5 ${unreadCount > 0 ? "animate-bell-ring" : ""}`} />
               {unreadCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 border-white text-[9px] font-black text-white shadow-sm">
                   {unreadCount > 9 ? "9+" : unreadCount}

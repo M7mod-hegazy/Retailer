@@ -1845,6 +1845,11 @@ export default function AnalyticsPage() {
 // -------------------------------------------------------------
 
 function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   const [tab, setTab] = useState("lowStock");
   const { lowStock, belowMargin, expiringSoon } = data;
 
@@ -2027,6 +2032,11 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
 // -------------------------------------------------------------
 
 function TopItemsModal({ items, onClose, dateLabel }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   const handleKeyDown = useFieldNavigation();
   const searchRef = useRef(null);
   const [sort, setSort] = useState({ key: "revenue", dir: "desc" });

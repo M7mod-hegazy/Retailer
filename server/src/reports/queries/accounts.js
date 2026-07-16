@@ -192,12 +192,12 @@ function customerStatementV2(startDate, endDate, opts = {}) {
     WHERE sr.customer_id = ? AND sr.status = 'active'
     UNION ALL
     SELECT p.id, p.reference_number, p.created_at, DATE(p.created_at),
-      'payment', -p.amount, 'paid', p.notes, NULL,
+      'payment', CASE WHEN p.direction = 'add' THEN p.amount ELSE -p.amount END, 'paid', p.notes, NULL,
       NULL, NULL, NULL
     FROM payments p
     WHERE p.party_type = 'customer' AND p.party_id = ? AND p.invoice_id IS NULL
     UNION ALL
-    SELECT ap.id, COALESCE(inv.invoice_no, 'AJAL-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
+    SELECT ap.id, COALESCE(inv.invoice_no, 'آجل-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
       'ajal_payment', -ap.amount, 'paid', ap.notes, inv.invoice_no,
       NULL, NULL, NULL
     FROM ajal_payments ap
@@ -294,12 +294,12 @@ function supplierStatementV2(startDate, endDate, opts = {}) {
     WHERE pr.supplier_id = ? AND pr.status = 'active'
     UNION ALL
     SELECT p.id, p.reference_number, p.created_at, DATE(p.created_at),
-      'payment', -p.amount, 'paid', p.notes, NULL,
+      'payment', CASE WHEN p.direction = 'add' THEN p.amount ELSE -p.amount END, 'paid', p.notes, NULL,
       NULL, NULL, NULL
     FROM payments p
     WHERE p.party_type = 'supplier' AND p.party_id = ? AND p.invoice_id IS NULL
     UNION ALL
-    SELECT ap.id, COALESCE(pur.doc_no, 'AJAL-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
+    SELECT ap.id, COALESCE(pur.doc_no, 'آجل-' || ad.id), COALESCE(ap.created_at, ap.payment_date), DATE(COALESCE(ap.payment_date, ap.created_at)),
       'ajal_payment', -ap.amount, 'paid', ap.notes, pur.doc_no,
       NULL, NULL, NULL
     FROM ajal_payments ap

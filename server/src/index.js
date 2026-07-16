@@ -10,6 +10,7 @@ const { startAutoBackupJob } = require("./jobs/autoBackup");
 const { startNotificationJobs, startAuditLogCleanupJob, startOverdueDebtsJob, startBirthdayJob } = require("./jobs/notificationJobs");
 const { startSyncScheduler } = require("./jobs/syncScheduler");
 const { startSmsDrainer } = require("./services/smsService");
+const { startEmailDrainer } = require("./services/emailService");
 const { startReportScheduler } = require("./services/reportScheduler");
 const { startTelegramRetryJob } = require("./services/telegramService");
 const { startTelegramDigestJob } = require("./jobs/telegramDigestJob");
@@ -210,6 +211,7 @@ async function startServer() {
       startBirthdayJob();
       startSyncScheduler();
       startSmsDrainer(); // no-op until settings.sms_enabled + gateway URL are configured
+      startEmailDrainer(); // no-op until settings.email_enabled + provider configured
       startTelegramRetryJob(); // no-op until Telegram is configured
       startTelegramDigestJob(); // weekly/monthly/yearly digests, catch-up on launch
       startReportScheduler();

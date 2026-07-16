@@ -39,6 +39,11 @@ function parseSqlDate(str) {
 
 
 function Modal({ onClose, children, width = "480px" }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -380,7 +385,7 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
           methodLabel: arMethod(p.method || ""),
           description: p.notes || null,
           impactAmount: Number(p.amount || 0),
-          impactDir: "subtract",
+          impactDir: p.direction === "add" ? "add" : "subtract",
           raw: p,
         });
       });
@@ -480,9 +485,16 @@ function MovementsTab({ party, onOpenPurchase, onOpenOriginalPurchase, onOpenRet
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3 animate-pulse">
-        <RefreshCw className="h-7 w-7 animate-spin text-orange-600" />
-        <span className="text-2sm font-bold">جاري تحميل سجل الحركات...</span>
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
+              <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -1112,6 +1124,84 @@ export default function SupplierAccountsPage() {
       .finally(() => setDetailReturnLoading(false));
   }, [detailReturn]);
 
+  // ── Escape handlers for modals/dropdowns ───────────────────
+  useEffect(() => {
+    if (!detailPurchase) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDetailPurchase(null); setDetailData(null); setDetailPurchaseIsOriginal(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [detailPurchase]);
+
+  useEffect(() => {
+    if (!detailReturn) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDetailReturn(null); setDetailReturnData(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [detailReturn]);
+
+  useEffect(() => {
+    if (!showCreate) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowCreate(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showCreate]);
+
+  useEffect(() => {
+    if (!showEdit) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowEdit(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showEdit]);
+
+  useEffect(() => {
+    if (!showPayment) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowPayment(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showPayment]);
+
+  useEffect(() => {
+    if (!showAdjust) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowAdjust(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showAdjust]);
+
+  useEffect(() => {
+    if (!showExport) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowExport(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [showExport]);
+
+  useEffect(() => {
+    if (!reportMenuOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setReportMenuOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [reportMenuOpen]);
+
+  useEffect(() => {
+    if (!printOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setPrintOpen(false); setPrintAllData(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [printOpen]);
+
+  useEffect(() => {
+    if (!deleteState) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setDeleteState(null); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [deleteState]);
+
+  useEffect(() => {
+    if (!returnsWarningOpen) return;
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setReturnsWarningOpen(false); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [returnsWarningOpen]);
+
   const handleSupplierCreated = (supplier) => {
     toast.success("تم إضافة المورد");
     loadSuppliers();
@@ -1221,9 +1311,14 @@ export default function SupplierAccountsPage() {
           </div>
           <div data-help="search-bar" className="relative">
             <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-orange-655 transition-colors stroke-[2.3px]" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-3.5 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-orange-500/80 focus:shadow-[0_4px_16px_rgba(249,115,22,0.03)] focus:ring-4 focus:ring-orange-500/[0.03]" />
+              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-9 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-orange-500/80 focus:shadow-[0_4px_16px_rgba(249,115,22,0.03)] focus:ring-4 focus:ring-orange-500/[0.03]" />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <div data-help="filter-buttons" className="flex bg-slate-250/50 p-1 rounded-xl relative">
             {[{ id: "all", label: "الكل" }, { id: "creditors", label: "ندين لهم" }, { id: "debtors", label: "يدينون لنا" }].map(f => (

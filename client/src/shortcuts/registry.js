@@ -43,6 +43,9 @@ export const SHORTCUTS = [
   { id: "pos.save",          defaultKeys: ["F9"],  scope: SCOPES.POS, group: "نقطة البيع", label: "حفظ الفاتورة", pages: ["نقطة البيع"] },
   { id: "pos.savePrint",     defaultKeys: ["F12"], scope: SCOPES.POS, group: "نقطة البيع", label: "حفظ وطباعة", pages: ["نقطة البيع"] },
 
+  // ── Invoice detail ───────────────────────────────────────────────────────────
+  { id: "invoice.print", defaultKeys: ["Ctrl", "P"], scope: SCOPES.INVOICE, group: "الفواتير", label: "طباعة الفاتورة", pages: ["تفاصيل الفاتورة"] },
+
   // ── Invoice-creation grids ──────────────────────────────────────────────────
   { id: "grid.editLast", defaultKeys: ["F8"], scope: SCOPES.INVOICE, group: "تحرير الجدول", label: "تحرير آخر صنف مضاف", pages: ["نقطة البيع", "فاتورة شراء", "أمر شراء", "مرتجع شراء", "مرتجع بيع", "عرض سعر"] },
 
@@ -84,6 +87,7 @@ export const SHORTCUT_DESC = {
   "pos.cashCheckout": "يفتح نافذة الدفع النقدي لإدخال المبلغ المستلم وحساب الباقي ثم الحفظ والطباعة (للدفع النقدي الكامل فقط).",
   "pos.save": "يحفظ الفاتورة الحالية دون طباعة.",
   "pos.savePrint": "يحفظ الفاتورة الحالية ويطبع الإيصال.",
+  "invoice.print": "يفتح نافذة معاينة الطباعة للفاتورة الحالية.",
   "grid.editLast": "ينقل المؤشر إلى خانة كمية آخر صنف مضاف؛ والضغط مرة أخرى يعيدك إلى خانة البحث عن صنف. تنقّل بين الخلايا بالأسهم.",
   "form.save": "يحفظ النموذج الحالي (فاتورة الشراء/المرتجع…).",
   "dashboard.gotoPos": "ينتقل مباشرة إلى شاشة نقطة البيع من لوحة التحكم.",

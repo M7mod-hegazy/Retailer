@@ -410,7 +410,7 @@ describe("Telegram Routes & Service", () => {
       expect(byChat["222"]).toContain("BRIEF 42");
     });
 
-    it("prefixes items with their SKU in items_table", () => {
+    it("prefixes items with their SKU in items_table (markdown-escaped)", () => {
       const db = getDb();
       db.prepare("DELETE FROM message_templates WHERE kind='telegram_new_invoice'").run();
       db.prepare("INSERT INTO message_templates (kind, body) VALUES ('telegram_new_invoice', '{items_table}')").run();
@@ -419,7 +419,101 @@ describe("Telegram Routes & Service", () => {
         { invoiceNo: 1, total: 10, lines: [{ item_name: "سماعة", item_code: "SKU-1", quantity: 1, unit_price: 10, line_total: 10 }] },
         db
       );
-      expect(text).toContain("[SKU-1] سماعة");
+      // "[" is escaped so Telegram's Markdown parser can never choke on it —
+      // it still renders as [SKU-1] in the app.
+      expect(text).toContain("\\[SKU-1] سماعة");
+    });
+  });
+
+  // Every declared event must (a) have a toggle mapping so it isn't silently
+  // dropped by isEventEnabledForRecipient's `default: return false`, and
+  // (b) actually reach Telegram through notifyOwner for an all-on recipient.
+  describe("full event coverage", () => {
+    beforeEach(() => {
+      seedSettings(getDb(), { telegram_enabled: 1, telegram_bot_token: "tok" });
+    });
+
+    it("every event type is enabled for a fully-enabled recipient", () => {
+      insertRecipient(getDb(), { chat_id: "111" }); // unset columns default to 1
+      const [recipient] = telegramService.getTelegramRecipients(getDb());
+      for (const ev of Object.values(telegramService.EVENT_TYPES)) {
+        expect({ event: ev, enabled: telegramService.isEventEnabledForRecipient(recipient, ev) })
+          .toEqual({ event: ev, enabled: true });
+      }
+    });
+
+    it("notifyOwner sends (or queues) every event type end-to-end", async () => {
+      insertRecipient(getDb(), { chat_id: "111" });
+      const db = getDb();
+      for (const ev of Object.values(telegramService.EVENT_TYPES)) {
+        fetchSpy.mockClear();
+        const result = await telegramService.notifyOwner(ev, { total: 10, amount: 5 }, db);
+        expect({ event: ev, sent: result.sent }).toEqual({ event: ev, sent: 1 });
+      }
+    });
+
+    it("sub-event toggles are independent of their parent toggle", () => {
+      const id = insertRecipient(getDb(), { chat_id: "111" });
+      getDb().prepare("UPDATE telegram_recipients SET notify_invoice_edited = 0, notify_returns_voids = 1 WHERE id = ?").run(id);
+      const [recipient] = telegramService.getTelegramRecipients(getDb());
+      expect(telegramService.isEventEnabledForRecipient(recipient, telegramService.EVENT_TYPES.INVOICE_EDITED)).toBe(false);
+      expect(telegramService.isEventEnabledForRecipient(recipient, telegramService.EVENT_TYPES.SALES_RETURN)).toBe(true);
+      expect(telegramService.isEventEnabledForRecipient(recipient, telegramService.EVENT_TYPES.INVOICE_VOIDED)).toBe(true);
+    });
+  });
+
+  describe("markdown safety & delivery fallback", () => {
+    beforeEach(() => {
+      seedSettings(getDb(), { telegram_enabled: 1, telegram_bot_token: "tok" });
+    });
+
+    it("escapes markdown entity characters in interpolated values", async () => {
+      const db = getDb();
+      db.prepare("DELETE FROM message_templates WHERE kind='telegram_return_payment'").run();
+      db.prepare("INSERT INTO message_templates (kind, body) VALUES ('telegram_return_payment', 'method: {method} | customer: {customer_name}')").run();
+      insertRecipient(db, { chat_id: "111", notify_return_payment: true });
+
+      await telegramService.notifyOwner(
+        telegramService.EVENT_TYPES.RETURN_PAYMENT,
+        { amount: 900, method: "some_raw_code", customerName: "shop*owner [vip]" },
+        db
+      );
+
+      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      expect(body.text).toContain("some\\_raw\\_code");
+      expect(body.text).toContain("shop\\*owner \\[vip]");
+    });
+
+    it("retries without parse_mode when Telegram rejects markdown entities", async () => {
+      const parseError = JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 150" });
+      fetchSpy
+        .mockResolvedValueOnce({ ok: false, status: 400, json: async () => JSON.parse(parseError), text: async () => parseError })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 2 } }), text: async () => "{\"ok\":true}" });
+
+      const result = await telegramService.sendTelegramMessage(
+        { botToken: "tok", apiBase: "https://api.telegram.org" },
+        "111",
+        "text with broken_entity"
+      );
+
+      expect(result.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const first = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      const second = JSON.parse(fetchSpy.mock.calls[1][1].body);
+      expect(first.parse_mode).toBe("Markdown");
+      expect(second.parse_mode).toBeUndefined();
+    });
+
+    it("records successful sends in pending_notifications for the history log", async () => {
+      insertRecipient(getDb(), { chat_id: "111", notify_new_invoice: true });
+
+      await telegramService.notifyOwner(telegramService.EVENT_TYPES.NEW_INVOICE, { invoiceNo: 7, total: 120 }, getDb());
+
+      const rows = getDb().prepare("SELECT event_type, status, chat_id, sent_at FROM pending_notifications WHERE status='sent'").all();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].event_type).toBe("new_invoice");
+      expect(rows[0].chat_id).toBe("111");
+      expect(rows[0].sent_at).toBeTruthy();
     });
   });
 

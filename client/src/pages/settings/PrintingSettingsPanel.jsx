@@ -6,6 +6,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { usePermission } from "../../hooks/usePermission";
 
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -149,6 +150,10 @@ function mergeRendererSettings(appSettings, docSettings, scope, family) {
 
 export default function PrintingSettingsPanel({ settings, onChange }) {
   const restaurantEnabled = useFeatureEnabled("feature_restaurant");
+  const canEdit = usePermission("print_settings", "edit");
+  const canStudio = usePermission("print_settings", "studio");
+  const canCalibrate = usePermission("print_settings", "calibrate");
+  const canDeviceProfile = usePermission("print_settings", "device_profile");
   const [docSettings, setDocSettings] = useState({});
   const [expandedDocs, setExpandedDocs] = useState([]); // array of scope keys
   const [printers, setPrinters] = useState([]);
@@ -282,20 +287,20 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             </div>
           </div>
         </div>
-        <button type="button" onClick={() => openStudio("_global")}
+        {canStudio && <button type="button" onClick={() => openStudio("_global")}
           className="flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-black text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]">
           <Maximize2 size={15} /> فتح الاستوديو
-        </button>
+        </button>}
       </section>
 
       {/* ── Printer assignment per paper size ── */}
       <section>
         <div className="flex items-center justify-between mb-1">
           <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
-          <button type="button" onClick={() => setSetupWizardOpen(true)}
+          {canEdit && <button type="button" onClick={() => setSetupWizardOpen(true)}
             className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[11px] font-black text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]">
             <Zap size={13} /> تأسيس سريع
-          </button>
+          </button>}
         </div>
         {!isElectronPrint() ? (
           <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3 py-2 text-[11px] font-bold text-[var(--warning-text)]">
@@ -343,7 +348,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                     <button
                       type="button"
                       onClick={() => openCalibrationWizard(size)}
-                      disabled={!assignedPrinter}
+                      disabled={!assignedPrinter || !canCalibrate}
                       className="flex items-center gap-1 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       <Wrench size={11} /> معايرة
@@ -361,14 +366,16 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={handleExportDeviceProfile}
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
-            <Download size={12} /> تصدير ملف الجهاز
-          </button>
-          <button type="button" onClick={() => importFileRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
-            <Upload size={12} /> استيراد ملف الجهاز
-          </button>
+          {canDeviceProfile && <>
+            <button type="button" onClick={handleExportDeviceProfile}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
+              <Download size={12} /> تصدير ملف الجهاز
+            </button>
+            <button type="button" onClick={() => importFileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-md border border-[var(--border-normal)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[10px] font-black text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-input-hover)] transition-all">
+              <Upload size={12} /> استيراد ملف الجهاز
+            </button>
+          </>}
           <input ref={importFileRef} type="file" accept="application/json" className="hidden" onChange={handleImportDeviceProfile} />
         </div>
       </section>
@@ -498,8 +505,9 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                       <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={doc.print_mode || "preview"}
-                          onChange={(e) => updateDoc(key, { print_mode: e.target.value })}
-                          className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] cursor-pointer"
+                          onChange={(e) => canEdit && updateDoc(key, { print_mode: e.target.value })}
+                          disabled={!canEdit}
+                          className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {PRINT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                         </select>
@@ -542,7 +550,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                         <span className="inline-flex items-center gap-1 rounded bg-[var(--success-bg)] border border-[var(--success-border)] px-1.5 py-0.5 text-[9px] font-black text-[var(--success-text)] shadow-sm">
                                           ✔ المقاس الافتراضي
                                         </span>
-                                        {isUserOverride && (
+                                        {isUserOverride && canEdit && (
                                           <button
                                             type="button"
                                             title="إلغاء التخصيص والعودة لافتراضي النظام"
@@ -553,7 +561,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                           </button>
                                         )}
                                       </div>
-                                    ) : (
+                                    ) : canEdit ? (
                                       <button
                                         type="button"
                                         onClick={() => updateDoc(key, { paper_size: sz })}
@@ -561,7 +569,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                       >
                                         تعيين كافتراضي
                                       </button>
-                                    )}
+                                    ) : null}
                                   </div>
 
                                   {/* Preset for this size — read-only display. All design changes go through the Studio. */}
@@ -623,14 +631,14 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                                   </button>
 
                                   {/* Studio button */}
-                                  <button
+                                  {canStudio && <button
                                     type="button"
                                     onClick={() => openStudio(key, sz)}
                                     title={`فتح الاستوديو بمقاس ${sz}`}
                                     className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border-accent)] bg-[var(--accent-soft)] py-1.5 text-[10px] font-black text-primary hover:bg-primary hover:text-white transition-all"
                                   >
                                     <Paintbrush size={11} /> الاستوديو
-                                  </button>
+                                  </button>}
                                 </div>
                               );
                             })}
@@ -829,10 +837,16 @@ function FullscreenDocPreview({ scope, size, label, docSettings, appSettings, on
   const refPxW = ROLL_REF_MM * PX_PER_MM;
 
   useEffect(() => {
-    if (isRoll) {
+    if (!isRoll) {
       setRollH(null);
     }
   }, [isRoll, scope, effectiveSize, layout, mockData]);
+
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
 
   useEffect(() => {
     const container = containerRef.current?.closest('[data-scroll-area]');

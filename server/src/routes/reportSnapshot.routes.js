@@ -1,6 +1,7 @@
 const express = require("express");
 const { getDb } = require("../config/database");
 const { authRequired } = require("../middleware/auth");
+const { requirePagePermission } = require("../middleware/permission");
 const { nowSql } = require("../utils/datetime");
 
 const router = express.Router();
@@ -10,7 +11,7 @@ const MAX_SNAPSHOT_ROWS = 1000;
 
 // --- Schedule CRUD (static paths before parameterized :id) ---
 
-router.post("/report-snapshots/schedules", (req, res, next) => {
+router.post("/report-snapshots/schedules", requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const { slug, title, config, cron, format, recipients } = req.body;
     if (!slug || !title || !config || !cron) {
@@ -41,7 +42,7 @@ router.get("/report-snapshots/schedules", (_req, res, next) => {
   }
 });
 
-router.put("/report-snapshots/schedules/:id", (req, res, next) => {
+router.put("/report-snapshots/schedules/:id", requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const { slug, title, config, cron, format, recipients, enabled } = req.body;
     const db = getDb();
@@ -68,7 +69,7 @@ router.put("/report-snapshots/schedules/:id", (req, res, next) => {
   }
 });
 
-router.delete("/report-snapshots/schedules/:id", (req, res, next) => {
+router.delete("/report-snapshots/schedules/:id", requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const db = getDb();
     const existing = db.prepare("SELECT id FROM report_schedules WHERE id = ?").get(req.params.id);
@@ -129,7 +130,7 @@ router.post("/report-snapshots/compare", (req, res, next) => {
 
 // --- Snapshot CRUD ---
 
-router.post("/report-snapshots", (req, res, next) => {
+router.post("/report-snapshots", requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const { slug, title, config, columns, rows, totals, label } = req.body;
     if (!slug || !title || !config || !rows) {
@@ -204,7 +205,7 @@ router.get("/report-snapshots/:id", (req, res, next) => {
   }
 });
 
-router.delete("/report-snapshots/:id", (req, res, next) => {
+router.delete("/report-snapshots/:id", requirePagePermission("settings", "edit"), (req, res, next) => {
   try {
     const db = getDb();
     const existing = db.prepare("SELECT id FROM report_snapshots WHERE id = ?").get(req.params.id);

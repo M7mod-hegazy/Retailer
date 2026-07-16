@@ -18,6 +18,8 @@ import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatNumber } from "../../utils/currency";
 
 const fmt = (n) => formatNumber(n);
@@ -441,6 +443,7 @@ const SplineHeader = () => (
 export default function WithdrawalsListPage() {
   usePageTour('withdrawals');
   const navigate = useNavigate();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -538,7 +541,8 @@ export default function WithdrawalsListPage() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("تأكيد حذف السحب نهائياً؟")) return;
+    const ok = await confirm({ title: "تأكيد الحذف", message: "تأكيد حذف السحب نهائياً؟" });
+    if (!ok) return;
     try {
       await api.delete(`/api/withdrawals/${id}`);
       toast.success("تم حذف السحب");
@@ -651,8 +655,13 @@ export default function WithdrawalsListPage() {
                   <input
                     value={query} onChange={e => setQuery(e.target.value)}
                     placeholder="ابحث في المسحوب له أو التصنيف أو الرقم..." 
-                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-4 text-2sm font-bold text-zinc-805 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
+                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-10 text-2sm font-bold text-zinc-805 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
                   />
+                  {query && (
+                    <button onClick={() => setQuery("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-400 hover:text-slate-600">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Custom Date Picker */}
@@ -841,6 +850,8 @@ export default function WithdrawalsListPage() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
 
     </div>
   );

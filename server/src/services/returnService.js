@@ -365,6 +365,7 @@ function createReturn(invoiceId, payload) {
         customerName: customerRow?.name || invoice.customer_name || wName || "غير محدد",
         amount: finalTotal,
         method: refundMethod,
+        reason: payload.reason || null,
         date: `${createdDate} ${toSql(new Date()).slice(11)}`,
         payments,
       });
@@ -477,6 +478,7 @@ function createGeneralReturn(payload) {
         customerName: customerRow?.name || walk_in_name || "غير محدد",
         amount: finalTotal,
         method: genRefundMethod,
+        reason: reason || null,
         date: nowSql(),
         payments,
       });

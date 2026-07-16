@@ -17,9 +17,13 @@ import {
   Database
 } from "lucide-react";
 import toast from "react-hot-toast";
+import PermissionGate from "../../components/ui/PermissionGate";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 export default function PaymentMethodsPage() {
   const handleKeyDown = useFieldNavigation();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const nameRef = useRef(null);
   const typeRef = useRef(null);
   const targetIdRef = useRef(null);
@@ -70,7 +74,8 @@ export default function PaymentMethodsPage() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("حذف هذه الطريقة سيؤدي لفقدان الارتباط في العمليات الجديدة. هل أنت متأكد؟")) return;
+    const ok = await confirm({ title: "تأكيد الحذف", message: "حذف هذه الطريقة سيؤدي لفقدان الارتباط في العمليات الجديدة. هل أنت متأكد؟" });
+    if (!ok) return;
     try {
       await api.delete(`/api/payment-methods/${id}`);
       toast.success("تم الحذف بنجاح");
@@ -90,18 +95,33 @@ export default function PaymentMethodsPage() {
           <h1 className="text-[24px] font-black" style={{ color: "var(--text-primary)" }}>قنوات الدفع والتحصيل</h1>
           <p className="text-sm font-bold" style={{ color: "var(--text-muted)" }}>إدارة كافة الوسائل المستخدمة في استلام وتوريد النقدية (خزينة، بنك، فيزا...)</p>
         </div>
-        <button 
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95"
-        >
-          <Plus className="h-4 w-4" /> تعريف قناة دفع
-        </button>
+        <PermissionGate page="payment_methods" action="add">
+          <button 
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95"
+          >
+            <Plus className="h-4 w-4" /> تعريف قناة دفع
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Methods Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {loading ? (
-           <div className="col-span-full py-20 text-center font-black animate-pulse" style={{ color: "var(--text-muted)" }}>جاري تحميل القنوات...</div>
+           <>
+              {[1,2,3].map(i => (
+                <div key={i} className="animate-pulse rounded-md border p-6 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-sm bg-slate-200"></div>
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                  <div className="mt-6 h-10 bg-slate-200 rounded"></div>
+                </div>
+              ))}
+           </>
         ) : methods.length === 0 ? (
            <div className="col-span-full py-20 text-center font-bold rounded-md border-2 border-dashed" style={{ color: "var(--text-muted)", borderColor: "var(--border-normal)" }}>لم يتم تعريف أي قنوات دفع بعد</div>
         ) : (
@@ -130,12 +150,14 @@ export default function PaymentMethodsPage() {
                </div>
                
                <div className="absolute left-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleDelete(m.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-sm transition-all hover:bg-rose-50 hover:text-rose-600" style={{ color: "var(--text-muted)" }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <PermissionGate page="payment_methods" action="delete">
+                    <button 
+                      onClick={() => handleDelete(m.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-sm transition-all hover:bg-rose-50 hover:text-rose-600" style={{ color: "var(--text-muted)" }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </PermissionGate>
                </div>
             </div>
           ))
@@ -232,12 +254,12 @@ export default function PaymentMethodsPage() {
                        disabled={isSubmitting}
                        className="flex-[1.5] flex items-center justify-center gap-3 rounded-sm bg-primary py-3 text-sm font-black text-white shadow-xl transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
                      >
-                        {isSubmitting ? 'جاري الحفظ...' : (
-                           <>
-                              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 
-                              تأكيد إضافة القناة
-                           </>
+                        {isSubmitting ? (
+                           <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                        ) : (
+                           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                         )}
+                        {isSubmitting ? 'جاري الحفظ...' : 'تأكيد إضافة القناة'}
                      </button>
                  </div>
               </form>
@@ -245,6 +267,7 @@ export default function PaymentMethodsPage() {
            <div className="flex-1 cursor-pointer rtl:order-first" onClick={() => setModalOpen(false)}></div>
         </div>
       )}
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

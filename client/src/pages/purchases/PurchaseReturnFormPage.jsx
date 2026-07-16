@@ -443,7 +443,9 @@ export default function PurchaseReturnFormPage() {
         const returnedIds = new Set((pr.lines || []).map(l => l.purchase_line_id));
         setPurchaseLines((purData.lines || []).map(l => {
           const returnLine = (pr.lines || []).find(rl => rl.purchase_line_id === l.id);
-          const alreadyReturned = Number(l.returned_quantity || 0);
+          // returned_quantity sums ALL returns including the one being edited —
+          // exclude our own quantity or a fully-returned line clamps to 0.
+          const alreadyReturned = Number(l.returned_quantity || 0) - (returnLine ? Number(returnLine.quantity) : 0);
           return {
             purchase_line_id: l.id,
             item_id: l.item_id,
@@ -455,6 +457,7 @@ export default function PurchaseReturnFormPage() {
             original_qty: Number(l.quantity),
             already_returned: alreadyReturned,
             qty_to_return: returnLine ? Number(returnLine.quantity) : 0,
+            original_return_qty: returnLine ? Number(returnLine.quantity) : 0,
             checked: !!returnLine,
             primary_image_url: l.primary_image_url || null,
           };
@@ -471,6 +474,7 @@ export default function PurchaseReturnFormPage() {
         sale_price: 0,
         primary_image_url: l.primary_image_url || null,
         quantity: Number(l.quantity),
+        original_return_qty: Number(l.quantity),
         warehouse_id: l.warehouse_id || "",
         warehouse_name: warehouses.find(w => String(w.id) === String(l.warehouse_id))?.name || "—",
         original_warehouse_id: l.warehouse_id || "",
@@ -675,12 +679,31 @@ export default function PurchaseReturnFormPage() {
   }
 
   function removeCartLine(key) { setCart(prev => prev.filter(l => l.key !== key)); }
+
+  function warnStockLimit(itemName, available) {
+    setMessage({
+      text: `⚠️ الكمية في المخزن غير كافية للصنف «${itemName}» — المتاح للإرجاع: ${available}`,
+      type: "warning",
+    });
+    setTimeout(() => setMessage({ text: "", type: "" }), 4000);
+  }
+
   function updateCartQty(key, delta) {
+    // Editing an existing return: saving reverses the old return first, so the
+    // originally-returned quantity counts as available on top of current stock.
+    // Without it, stock 0 clamps every edit to 0 and the row silently vanishes.
+    const line = cart.find(l => l.key === key);
+    if (line && delta > 0) {
+      const stockAvailable = (stockLevels[line.item_id]?.[line.warehouse_id] ?? Infinity)
+        + (Number(line.original_return_qty) || 0);
+      if (line.quantity + delta > stockAvailable) {
+        warnStockLimit(line.item_name, stockAvailable);
+        return; // never let the stock clamp zero/shrink the row silently
+      }
+    }
     setCart(prev => prev.map(l => {
       if (l.key !== key) return l;
-      const newQty = l.quantity + delta;
-      const stockAvailable = stockLevels[l.item_id]?.[l.warehouse_id] ?? Infinity;
-      return { ...l, quantity: Math.max(0, Math.min(newQty, stockAvailable)) };
+      return { ...l, quantity: Math.max(0, l.quantity + delta) };
     }).filter(l => l.quantity > 0));
   }
   function updateCartPrice(key, val) {
@@ -753,10 +776,25 @@ export default function PurchaseReturnFormPage() {
   }
 
   function setPurchaseLineQty(purchase_line_id, val) {
+    const line = purchaseLines.find(l => l.purchase_line_id === purchase_line_id);
+    if (line) {
+      const requested = Number(val) || 0;
+      const maxFromQty = line.original_qty - line.already_returned;
+      // In edit mode the old return is reversed on save, so its quantity is
+      // effectively still in stock for this line.
+      const stockAvailable = (stockLevels[line.item_id]?.[line.warehouse_id] ?? Infinity)
+        + (Number(line.original_return_qty) || 0);
+      // Warn instead of silently clamping when stock (not the purchased qty)
+      // is what blocks the requested quantity.
+      if (requested > stockAvailable && stockAvailable < maxFromQty) {
+        warnStockLimit(line.item_name, stockAvailable);
+      }
+    }
     setPurchaseLines(prev => prev.map(l => {
       if (l.purchase_line_id !== purchase_line_id) return l;
       const maxFromQty = l.original_qty - l.already_returned;
-      const stockAvailable = stockLevels[l.item_id]?.[l.warehouse_id] ?? Infinity;
+      const stockAvailable = (stockLevels[l.item_id]?.[l.warehouse_id] ?? Infinity)
+        + (Number(l.original_return_qty) || 0);
       const max = Math.min(maxFromQty, stockAvailable);
       return { ...l, qty_to_return: Math.max(0, Math.min(max, Number(val) || 0)) };
     }));
@@ -835,7 +873,9 @@ export default function PurchaseReturnFormPage() {
     if (!editReturnId) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/api/purchases/returns/${editReturnId}`);
+      // There is no DELETE route — cancellation is the delete operation
+      // (reverses stock/financials and fires the owner notification).
+      await api.post(`/api/purchases/returns/${editReturnId}/cancel`, { reason: "حذف من صفحة التعديل" });
       navigate("/purchases/returns", { replace: true });
     } catch (e) {
       setMessage({ text: e.response?.data?.message || "فشل حذف المرتجع", type: "error" });

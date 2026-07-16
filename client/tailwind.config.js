@@ -149,6 +149,15 @@ export default {
           "70%": { transform: "scale(0.98)" },
           "100%": { transform: "scale(1)" },
         },
+        bellRing: {
+          "0%": { transform: "rotate(0)" },
+          "15%": { transform: "rotate(14deg)" },
+          "30%": { transform: "rotate(-12deg)" },
+          "45%": { transform: "rotate(10deg)" },
+          "60%": { transform: "rotate(-8deg)" },
+          "75%": { transform: "rotate(4deg)" },
+          "100%": { transform: "rotate(0)" },
+        },
       },
       animation: {
         "fade-in": "fadeIn 200ms ease-out",
@@ -160,6 +169,7 @@ export default {
         spin: "spin 1s linear infinite",
         "scan-flash": "scanFlash 600ms ease-out",
         "total-bounce": "totalBounce 350ms ease-out",
+        "bell-ring": "bellRing 0.5s ease-in-out",
       },
       spacing: {
         '4.5': '1.125rem',

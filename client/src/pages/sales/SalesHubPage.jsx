@@ -4,10 +4,11 @@ import {
   X, Eye, Pencil, SlidersHorizontal, ExternalLink,
   User, FileText, Loader2, CreditCard,
   Package, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  ShoppingBag, Search, Printer, Trash2,
+  ShoppingBag, Search, Printer, Trash2, Copy,
 } from "lucide-react";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import api from "../../services/api";
+import { copyToClipboard } from "../../services/connection";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePermission } from "../../hooks/usePermission";
 import useDebounce from "../../hooks/useDebounce";
@@ -439,7 +440,8 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
   return (
     <motion.div
       variants={FADE_UP}
-      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/20 transition-colors duration-300 overflow-hidden"
+      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/20 transition-colors duration-300 overflow-hidden cursor-pointer"
+      onClick={() => onPreviewRequest(row)}
     >
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
 
@@ -450,6 +452,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base font-black text-zinc-900 font-mono tracking-tight">{row.invoice_no || `#${row.id}`}</span>
+            <button onClick={() => { copyToClipboard(row.invoice_no || `#${row.id}`); toast.success("تم النسخ"); }} className="p-1 rounded hover:bg-bg-overlay transition-colors" title="نسخ رقم الفاتورة"><Copy className="w-3.5 h-3.5 text-text-muted" /></button>
             <span className={`px-2 py-0.5 rounded-md border text-[11px] font-black ${
               row.status === "cancelled" || row.status === "voided"
                 ? "bg-zinc-100 text-zinc-400 border-zinc-200"
@@ -889,7 +892,8 @@ export default function SalesHubPage() {
                         } else if (itemQuery.trim()) {
                           setSelectedItemFilter(null); setItemLookupOpen(false); loadItemRows(itemQuery.trim());
                         }
-                      } else if (e.key === "ArrowDown") { e.preventDefault(); setActiveLookupIndex(p => Math.min(p + 1, itemResults.length - 1)); }
+                      } else if (e.key === "Escape") { e.preventDefault(); setItemLookupOpen(false); }
+                      else if (e.key === "ArrowDown") { e.preventDefault(); setActiveLookupIndex(p => Math.min(p + 1, itemResults.length - 1)); }
                       else if (e.key === "ArrowUp")   { e.preventDefault(); setActiveLookupIndex(p => Math.max(p - 1, 0)); }
                     }}
                     placeholder="ابحث باسم المنتج أو الباركود أو SKU..."

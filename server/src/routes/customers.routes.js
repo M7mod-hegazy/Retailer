@@ -152,7 +152,7 @@ router.get("/:id/delete-impact", requirePagePermission("customers", "delete"), (
   res.json({ success: true, data: buildImpact(customerRelated(db, req.params.id)) });
 });
 
-router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) => {
+router.delete("/:id", requirePagePermission("customers", "delete"), async (req, res) => {
   try {
     const db = getDb();
     const settings = db.prepare("SELECT walk_in_customer_id FROM settings WHERE id = 1").get();
@@ -160,17 +160,32 @@ router.delete("/:id", requirePagePermission("customers", "delete"), (req, res) =
       return res.status(403).json({ success: false, message: "لا يمكن حذف العميل الافتراضي للمبيعات النقدية" });
     }
 
+    const before = db.prepare("SELECT name, phone, opening_balance FROM customers WHERE id = ?").get(req.params.id);
+    const notifyDeleted = async () => {
+      try {
+        return await notifyOwner(TG.CUSTOMER_DELETED, {
+          customerName: before?.name,
+          phone: before?.phone,
+          balance: before?.opening_balance,
+          userName: req.user?.name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (_) { return null; }
+    };
+
     if (hasAnyRelated(customerRelated(db, req.params.id))) {
       // Soft delete - mark as inactive
       db.prepare("UPDATE customers SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "customers", { id: req.params.id }, `👤 تم أرشفة عميل`, `/definitions/customers/${req.params.id}`);
-      return res.json({ success: true, archived: true, message: "تم أرشفة العميل لأنه مرتبط بفواتير أو مدفوعات" });
+      const _tgStatus = await notifyDeleted();
+      return res.json({ success: true, archived: true, message: "تم أرشفة العميل لأنه مرتبط بفواتير أو مدفوعات", telegramStatus: _tgStatus });
     }
 
     // Hard delete if no transactions
     db.prepare("DELETE FROM customers WHERE id = ?").run(req.params.id);
     req.audit("delete", "customers", { id: req.params.id }, `👤 تم حذف عميل`, `/definitions/customers`);
-    res.json({ success: true });
+    const _tgStatus = await notifyDeleted();
+    res.json({ success: true, telegramStatus: _tgStatus });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) {
       return res.status(409).json({ success: false, message: "لا يمكن حذف العميل لأنه مرتبط ببيانات أخرى" });

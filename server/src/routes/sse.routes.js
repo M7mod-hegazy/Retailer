@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { authRequired } = require("../middleware/auth");
 
 const clients = [];
 
@@ -14,7 +15,16 @@ function broadcast(event, data) {
   }
 }
 
-router.get("/events", (req, res) => {
+// EventSource cannot set an Authorization header, so the client passes the
+// JWT as ?token= — promote it to the header authRequired expects.
+function tokenFromQuery(req, _res, next) {
+  if (!req.headers.authorization && req.query.token) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+}
+
+router.get("/events", tokenFromQuery, authRequired, (req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",

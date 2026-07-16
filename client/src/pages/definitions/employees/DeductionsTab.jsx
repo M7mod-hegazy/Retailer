@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../../../services/api";
 import { usePermission } from "../../../hooks/usePermission";
 import { formatDateTime } from "../../../utils/dateHelpers";
+import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 import {
   formatMoney,
   formatSalaryDays,
@@ -34,6 +35,8 @@ export default function DeductionsTab({ employee }) {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ deduction_type: "other", amount: "", amount_mode: "amount", days: "", is_recurring: false, notes: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (employee) loadDeductions();
@@ -64,6 +67,10 @@ export default function DeductionsTab({ employee }) {
       toast.error("يجب إدخال مبلغ صحيح");
       return;
     }
+    setSubmitting(true);
+    const tempId = Date.now();
+    const optimistic = { id: tempId, deduction_type: form.deduction_type, amount, is_recurring: form.is_recurring, notes: form.notes, status: "active", created_at: new Date().toISOString() };
+    setDeductions(prev => [optimistic, ...prev]);
     try {
       const res = await api.post(`/api/employees/${employee.id}/deductions`, {
         deduction_type: form.deduction_type,
@@ -77,17 +84,27 @@ export default function DeductionsTab({ employee }) {
         resetForm();
         loadDeductions();
       }
-    } catch { toast.error("فشل إضافة الخصم"); }
+    } catch { 
+      toast.error("فشل إضافة الخصم");
+      setDeductions(prev => prev.filter(d => d.id !== tempId));
+    } finally { setSubmitting(false); }
   }
 
   async function handleCancel(id) {
+    const removed = deductions.find(d => d.id === id);
+    setDeductions(prev => prev.filter(d => d.id !== id));
     try {
       const res = await api.delete(`/api/employees/${employee.id}/deductions/${id}`);
       if (res.data?.success) {
         toast.success("تم إلغاء الخصم");
         loadDeductions();
       }
-    } catch { toast.error("فشل إلغاء الخصم"); }
+    } catch {
+      toast.error("فشل إلغاء الخصم");
+      if (removed) {
+        setDeductions(prev => [...prev, removed]);
+      }
+    }
   }
 
   if (!employee) return null;
@@ -235,8 +252,10 @@ export default function DeductionsTab({ employee }) {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="h-10 px-6 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg transition-all"
+                  disabled={submitting}
+                  className="h-10 px-6 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
+                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                   تأكيد الإضافة
                 </button>
               </div>
@@ -266,7 +285,7 @@ export default function DeductionsTab({ employee }) {
                 </div>
                 {d.status === 'active' && canManage && (
                   <button
-                    onClick={() => handleCancel(d.id)}
+                    onClick={() => setDeleteTarget(d)}
                     className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all"
                     title="إلغاء الخصم"
                   >
@@ -314,6 +333,14 @@ export default function DeductionsTab({ employee }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="إلغاء الخصم"
+        message={`هل تريد إلغاء خصم "${DEDUCTION_TYPES.find(t => t.value === deleteTarget?.deduction_type)?.label || deleteTarget?.deduction_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
+        onConfirm={() => { handleCancel(deleteTarget.id); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useAuthStore } from "../stores/authStore";
 
 const SHARED = {
   es: null,
@@ -10,7 +11,16 @@ const SHARED = {
 
 function reconnect() {
   if (SHARED.es) SHARED.es.close();
-  SHARED.es = new EventSource(`${window.location.origin}/api/sse/events`);
+  // EventSource cannot send an Authorization header, so the JWT goes in the
+  // query string; the server's SSE route accepts it from there.
+  const token = useAuthStore.getState().token;
+  if (!token) {
+    // Not logged in yet — retry once a session exists instead of spamming 401s.
+    if (SHARED.reconnectTimer) clearTimeout(SHARED.reconnectTimer);
+    SHARED.reconnectTimer = setTimeout(reconnect, 5000);
+    return;
+  }
+  SHARED.es = new EventSource(`${window.location.origin}/api/sse/events?token=${encodeURIComponent(token)}`);
 
   SHARED.es.onopen = () => {
     SHARED.connected = true;
@@ -58,9 +68,11 @@ export function useSSE({ onOrderNew, onSyncCompleted, onSyncFailed } = {}) {
       } catch {}
     };
 
-    SHARED.es.addEventListener("order:new", onOrder);
-    SHARED.es.addEventListener("sync:completed", onSyncOk);
-    SHARED.es.addEventListener("sync:failed", onSyncFail);
+    if (SHARED.es) {
+      SHARED.es.addEventListener("order:new", onOrder);
+      SHARED.es.addEventListener("sync:completed", onSyncOk);
+      SHARED.es.addEventListener("sync:failed", onSyncFail);
+    }
 
     return () => {
       if (SHARED.es) {

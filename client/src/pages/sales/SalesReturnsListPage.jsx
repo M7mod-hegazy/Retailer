@@ -67,6 +67,7 @@ function MagneticButton({ children, onClick, className, disabled }) {
 }
 
 function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
+  const [cancelReason, setCancelReason] = useState("");
   return (
     <AnimatePresence>
       {row && (
@@ -92,8 +93,30 @@ function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>هذا الإجراء لا يمكن التراجع عنه.</span>
               </div>
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">سبب الإلغاء *</label>
+                <input
+                  type="text"
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="أدخل سبب الإلغاء"
+                  className="w-full h-11 px-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-all"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {["خطأ في الإدخال", "مرتجع مكرر", "طلب عميل", "بضاعة تالفة", "خطأ في السعر", "الإلغاء"].map(reason => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setCancelReason(reason)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${cancelReason === reason ? "bg-rose-100 text-rose-700 border border-rose-300" : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"}`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-3">
-                <button onClick={onConfirm} disabled={deleting}
+                <button onClick={() => onConfirm(cancelReason)} disabled={deleting || !cancelReason.trim()}
                   className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all">
                   {deleting ? "جاري الحذف..." : "نعم، احذف المرتجع"}
                 </button>
@@ -296,7 +319,8 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest, onWhatsAp
   const total     = Number(row.total         || 0);
   return (
     <motion.div variants={FADE_UP}
-      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-emerald-50/30 transition-colors duration-300 overflow-hidden">
+      onClick={() => onPreviewRequest(row)}
+      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-emerald-50/30 transition-colors duration-300 overflow-hidden cursor-pointer">
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
       <div className="flex items-center gap-5 flex-1 min-w-0 z-10">
         <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-sm transition-all duration-300">
@@ -511,11 +535,11 @@ export default function SalesReturnsListPage() {
   useEffect(() => { setPage(1); }, [rows]);
   useEffect(() => { setItemPage(1); }, [itemRows]);
 
-  async function handleConfirmDelete() {
+  async function handleConfirmDelete(reason) {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/invoices/returns/${deleteTarget.id}`);
+      await api.post(`/api/invoices/returns/${deleteTarget.id}/cancel`, { reason });
       toast.success(`تم حذف المرتجع ${deleteTarget.doc_no || `#${deleteTarget.id}`} بنجاح`);
       setDeleteTarget(null);
       loadReturns();

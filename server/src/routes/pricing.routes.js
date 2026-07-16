@@ -354,7 +354,7 @@ router.get("/overrides/frequency", requirePagePermission("bulk_price_update", "v
 });
 
 // ── Profit analysis (used by purchases modal) ─────────────────────────────────
-router.post("/profit-analysis", (req, res, next) => {
+router.post("/profit-analysis", requirePagePermission("reports", "view"), (req, res, next) => {
   try {
     const db = getDb();
     const { lines } = req.body || {};

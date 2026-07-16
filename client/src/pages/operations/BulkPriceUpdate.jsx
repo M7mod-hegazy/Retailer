@@ -28,8 +28,11 @@ import {
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { usePageTour } from "../../hooks/usePageTour";
+import PermissionGate from "../../components/ui/PermissionGate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
 import { addBodyResizeFlags, removeBodyResizeFlags } from "../../utils/bodyFlags";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const PRICE_FIELDS = [
   { value: "retail_price",    label: "سعر المستهلك",  key: "sale_price" },
@@ -134,6 +137,7 @@ export default function BulkPriceUpdatePage() {
   const priceFieldRef = useRef(null);
   const reasonRef = useRef(null);
   const handleKeyDown = useFieldNavigation();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
   // ── Data ──
   const [items, setItems] = useState([]);
@@ -812,28 +816,36 @@ export default function BulkPriceUpdatePage() {
             </label>
             <div className="flex items-center gap-1.5">
               <div className="relative">
-                <button data-help="add-to-batch" onClick={addSelectionToBatch}
-                  disabled={selected.size === 0}
-                  title={selected.size === 0 ? "اختر صنفاً واحداً على الأقل أولاً" : `أضف ${selected.size} صنف إلى الدفعة المجمّعة — يمكنك إضافة المزيد لاحقاً`}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-sm font-black text-sm shadow-sm transition-all active:scale-95 whitespace-nowrap ${
-                    selected.size === 0
-                      ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-500 text-white"
-                  }`}>
-                  <Plus className="h-4 w-4" /> إضافة إلى الدفعة
-                </button>
+                <PermissionGate page="bulk_price_update" action="edit">
+                  <button data-help="add-to-batch" onClick={addSelectionToBatch}
+                    disabled={selected.size === 0}
+                    title={selected.size === 0 ? "اختر صنفاً واحداً على الأقل أولاً" : `أضف ${selected.size} صنف إلى الدفعة المجمّعة — يمكنك إضافة المزيد لاحقاً`}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-sm font-black text-sm shadow-sm transition-all active:scale-95 whitespace-nowrap ${
+                      selected.size === 0
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                    }`}>
+                    <Plus className="h-4 w-4" /> إضافة إلى الدفعة
+                  </button>
+                </PermissionGate>
                 {selected.size > 0 && (
                   <span className="absolute -bottom-3.5 right-0 text-[9px] font-bold text-indigo-400 whitespace-nowrap leading-none">تجميع ← حفظ كعملية</span>
                 )}
               </div>
               <div className="relative">
-                <button data-help="apply-button" onClick={handleApply}
-                  disabled={loading || selected.size === 0 || (!hasBulkFormula && !hasInlineOverrides)}
-                  title={selected.size === 0 ? "اختر صنفاً واحداً على الأقل" : "تنفيذ التعديل فوراً — يُنشئ عملية منفصلة لكل صنف"}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-sm shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {loading ? "جاري التحديث..." : "تنفيذ التسعير"}
-                </button>
+                <PermissionGate page="bulk_price_update" action="edit">
+                  <button data-help="apply-button" onClick={handleApply}
+                    disabled={loading || selected.size === 0 || (!hasBulkFormula && !hasInlineOverrides)}
+                    title={selected.size === 0 ? "اختر صنفاً واحداً على الأقل" : "تنفيذ التعديل فوراً — يُنشئ عملية منفصلة لكل صنف"}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-sm font-black text-sm shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap">
+                    {loading ? (
+                      <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {loading ? "جاري التحديث..." : "تنفيذ التسعير"}
+                  </button>
+                </PermissionGate>
                 {selected.size > 0 && (
                   <span className="absolute -bottom-3.5 right-0 text-[9px] font-bold text-emerald-400 whitespace-nowrap leading-none">تطبيق فوري مباشر</span>
                 )}
@@ -989,7 +1001,12 @@ export default function BulkPriceUpdatePage() {
                   {fetchLoading ? (
                     <tr><td colSpan={8} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">يتم استدعاء الأصناف...</td></tr>
                   ) : pageItems.length === 0 ? (
-                    <tr><td colSpan={8} className="py-24 text-center text-sm font-black text-slate-300 uppercase tracking-widest animate-pulse">لا توجد أصناف مطابقة</td></tr>
+                    <tr><td colSpan={8} className="py-24 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-sm font-black text-slate-400">لا توجد أصناف مطابقة</p>
+                        <p className="text-xs text-slate-300">جرّب تغيير معايير البحث أو التصفية</p>
+                      </div>
+                    </td></tr>
                   ) : pageItems.map((item) => {
                     const isSelected = selected.has(item.id);
                     const itemOverrides = inlineOverrides[item.id];
@@ -1272,8 +1289,11 @@ export default function BulkPriceUpdatePage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button data-help="batch-clear-btn" onClick={() => {
-                      if (batchItems.length > 0 && !window.confirm('تفريغ الدفعة — هل أنت متأكد؟')) return;
+                    <button data-help="batch-clear-btn" onClick={async () => {
+                      if (batchItems.length > 0) {
+                        const ok = await confirm({ title: "تفريغ الدفعة", message: "تفريغ الدفعة — هل أنت متأكد؟" });
+                        if (!ok) return;
+                      }
                       clearBatch();
                     }}
                       title="إزالة جميع الأصناف من الدفعة"
@@ -1737,9 +1757,10 @@ export default function BulkPriceUpdatePage() {
             {/* Footer */}
             <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
               <div className="flex items-center gap-2">
-                <button onClick={() => {
+                <button onClick={async () => {
                   if (batchItems.length > 0) {
-                    if (window.confirm('هل أنت متأكد من تفريغ الدفعة بالكامل؟')) { clearBatch(); setShowBatchPreview(false); }
+                    const ok = await confirm({ title: "تفريغ الدفعة", message: "هل أنت متأكد من تفريغ الدفعة بالكامل؟" });
+                    if (ok) { clearBatch(); setShowBatchPreview(false); }
                   } else { clearBatch(); setShowBatchPreview(false); }
                 }}
                   title="إزالة جميع الأصناف من الدفعة"
@@ -1770,6 +1791,7 @@ export default function BulkPriceUpdatePage() {
         </div>
       )}
 
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

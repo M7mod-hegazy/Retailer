@@ -19,6 +19,7 @@ export default function TableMapPage() {
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [newTable, setNewTable] = useState({ name: "", section: "", capacity: "4" });
+  const [submitting, setSubmitting] = useState(false);
   const nameRef = useRef(null);
   const sectionRef = useRef(null);
   const capacityRef = useRef(null);
@@ -43,10 +44,13 @@ export default function TableMapPage() {
 
   async function addTable(e) {
     e.preventDefault();
-    await api.post("/api/restaurant/tables", { ...newTable, capacity: Number(newTable.capacity) });
-    qc.invalidateQueries(["dining-tables"]);
-    setShowAdd(false);
-    setNewTable({ name: "", section: "", capacity: "4" });
+    setSubmitting(true);
+    try {
+      await api.post("/api/restaurant/tables", { ...newTable, capacity: Number(newTable.capacity) });
+      qc.invalidateQueries(["dining-tables"]);
+      setShowAdd(false);
+      setNewTable({ name: "", section: "", capacity: "4" });
+    } catch {} finally { setSubmitting(false); }
   }
 
   return (
@@ -76,7 +80,10 @@ export default function TableMapPage() {
               <label className="text-xs font-black text-slate-500">السعة</label>
               <input ref={capacityRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" min="1" value={newTable.capacity} onChange={e => setNewTable(p => ({ ...p, capacity: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: sectionRef, onEnter: () => addTable({ preventDefault: () => {} }) })} />
             </div>
-            <Button type="submit" size="sm">حفظ</Button>
+            <Button type="submit" size="sm" disabled={submitting} className="flex items-center gap-1.5">
+              {submitting && <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+              حفظ
+            </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowAdd(false)}>إلغاء</Button>
           </form>
         )}

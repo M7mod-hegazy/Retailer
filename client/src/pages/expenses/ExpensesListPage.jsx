@@ -16,6 +16,8 @@ import useRecordOnlyMethods from "../../hooks/useRecordOnlyMethods";
 import { usePermission } from "../../hooks/usePermission";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { useConfirm } from "../../hooks/useConfirm";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatNumber } from "../../utils/currency";
 import SmartDatePicker from "../../components/ui/SmartDatePicker";
 
@@ -452,6 +454,7 @@ const SplineHeader = () => (
 export default function ExpensesListPage() {
   usePageTour('expenses');
   const navigate = useNavigate();
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -527,8 +530,16 @@ export default function ExpensesListPage() {
   async function handleSave(formData, onSuccess) {
     if (saving) return;
     setSaving(true);
+    const isEdit = Boolean(formData.id);
+    const tempId = isEdit ? formData.id : Date.now();
+    const optimisticRow = { id: tempId, ...formData, category_name: categories.find(c => c.id === Number(formData.category_id))?.name || "", created_at: new Date().toISOString() };
+    if (!isEdit) {
+      setRows(prev => [optimisticRow, ...prev]);
+    } else {
+      setRows(prev => prev.map(r => r.id === formData.id ? { ...r, ...formData } : r));
+    }
     try {
-      if (formData.id) {
+      if (isEdit) {
         await api.put(`/api/expenses/${formData.id}`, formData);
         toast.success("تم تعديل المصروف");
         setCmdOpen(false);
@@ -544,12 +555,20 @@ export default function ExpensesListPage() {
         ? "ليس لديك صلاحية التعديل على تواريخ سابقة"
         : err.response?.data?.message || "فشل الحفظ";
       toast.error(msg);
+      if (isEdit) {
+        load();
+      } else {
+        setRows(prev => prev.filter(r => r.id !== tempId));
+      }
     }
     finally { setSaving(false); }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("تأكيد حذف المصروف نهائياً؟")) return;
+    const ok = await confirm({ title: "تأكيد الحذف", message: "تأكيد حذف المصروف نهائياً؟" });
+    if (!ok) return;
+    const removedRow = rows.find(r => r.id === id);
+    setRows(prev => prev.filter(r => r.id !== id));
     try {
       await api.delete(`/api/expenses/${id}`);
       toast.success("تم حذف المصروف");
@@ -559,6 +578,9 @@ export default function ExpensesListPage() {
         ? "ليس لديك صلاحية حذف سجلات من تواريخ سابقة"
         : "فشل عملية الحذف";
       toast.error(msg);
+      if (removedRow) {
+        setRows(prev => [...prev, removedRow].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      }
     }
   }
 
@@ -664,8 +686,16 @@ export default function ExpensesListPage() {
                   <input
                     value={query} onChange={e => setQuery(e.target.value)}
                     placeholder="ابحث في البيان أو التصنيف أو الملاحظات..." 
-                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-4 text-2sm font-bold text-zinc-800 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
+                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-10 text-2sm font-bold text-zinc-800 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
                   />
+                  {query && (
+                    <button
+                      onClick={() => setQuery("")}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Custom Date Picker */}
@@ -747,7 +777,8 @@ export default function ExpensesListPage() {
                 {dateRows.map(row => (
                   <div 
                     key={row.id} 
-                    className="group relative bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    onClick={() => openEdit(row)}
+                    className="group relative bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
                   >
                     {/* Left Side: Avatar + Details */}
                     <div className="flex items-start gap-4">
@@ -860,6 +891,8 @@ export default function ExpensesListPage() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
 
     </div>
   );

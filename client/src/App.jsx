@@ -1,13 +1,19 @@
 import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import WelcomeWizard from "./components/welcome/WelcomeWizard";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
-import { MotionConfig } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { usePerformanceStore } from "./stores/performanceStore";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./services/queryClient";
 import AppShell from "./components/layout/AppShell";
 import ServerDownOverlay from "./components/ServerDownOverlay";
 import RootErrorFallback from "./pages/error/RootErrorFallback";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import ScreenLock from "./components/auth/ScreenLock";
@@ -425,6 +431,13 @@ export default function App() {
               <AppShell>
                 <QueryClientProvider client={queryClient}>
                 <RouteErrorBoundary>
+                <motion.div
+                  key={useLocation().pathname}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                <ScrollToTop />
                 <Routes>
                   <Route path="unauthorized" element={<UnauthorizedPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
@@ -531,8 +544,9 @@ export default function App() {
                     <Route path="restaurant/modifier-groups" element={<PermissionRoute page="restaurant_modifiers"><Navigate to="/settings" replace /></PermissionRoute>} />
                     <Route path="gold/rates" element={<PermissionRoute page="gold_pricing"><GoldRatesPage /></PermissionRoute>} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Routes>
-                  </RouteErrorBoundary>
+                </Routes>
+                </motion.div>
+                </RouteErrorBoundary>
                   </QueryClientProvider>
                 </AppShell>
               </WizardGate>

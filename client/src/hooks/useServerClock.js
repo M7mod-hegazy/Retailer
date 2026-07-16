@@ -7,8 +7,23 @@ const REFETCH_MS = 5 * 60 * 1000;
 const TICK_MS = 1000;
 const INITIAL_TIMEOUT_MS = 10000;
 
+// Format an absolute instant as Egypt wall-clock. When the server reports the
+// applied offset (it does — OS override on a stale-DST Win7 box, else ICU), we
+// shift the instant by that offset and read it as UTC, so the displayed clock
+// matches the server AND the Windows taskbar even where ICU disagrees with the
+// OS about Egypt DST. Before the first /api/time reply, fall back to pinning
+// Africa/Cairo (the previous behaviour).
+function formatWall(instantMs, offsetMinutes, opts) {
+  if (offsetMinutes == null) {
+    return new Intl.DateTimeFormat(DISPLAY_LOCALE, { timeZone: CAIRO_TZ, ...opts }).format(new Date(instantMs));
+  }
+  const shifted = new Date(instantMs + offsetMinutes * 60000);
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, { timeZone: "UTC", ...opts }).format(shifted);
+}
+
 export function useServerClock() {
-  const [clock, setClock] = useState(() => new Date());
+  const [clockMs, setClockMs] = useState(() => Date.now());
+  const [offset, setOffset] = useState(null);
 
   useEffect(() => {
     let delta = 0;
@@ -26,7 +41,8 @@ export function useServerClock() {
         delta = serverNow - Date.now();
         synced = true;
         retryCount = 0; // reset on success
-        setClock(new Date(Date.now() + delta));
+        if (typeof res.data.wall_offset_minutes === "number") setOffset(res.data.wall_offset_minutes);
+        setClockMs(Date.now() + delta);
       } catch {
         // keep local time if server unreachable; retry with backoff on next interval
         if (mounted && retryCount < MAX_RETRIES) retryCount++;
@@ -36,7 +52,7 @@ export function useServerClock() {
     sync();
     const refetchTimer = setInterval(sync, REFETCH_MS);
     const ticker = setInterval(() => {
-      setClock(synced ? new Date(Date.now() + delta) : new Date());
+      setClockMs(synced ? Date.now() + delta : Date.now());
     }, TICK_MS);
 
     return () => {
@@ -46,13 +62,15 @@ export function useServerClock() {
     };
   }, []);
 
-  const clockTime = useMemo(() => clock.toLocaleTimeString(DISPLAY_LOCALE, {
-    timeZone: CAIRO_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
-  }), [clock]);
+  const clockTime = useMemo(
+    () => formatWall(clockMs, offset, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }),
+    [clockMs, offset],
+  );
 
-  const clockDate = useMemo(() => clock.toLocaleDateString(DISPLAY_LOCALE, {
-    timeZone: CAIRO_TZ, weekday: "long", year: "numeric", month: "long", day: "numeric",
-  }), [clock]);
+  const clockDate = useMemo(
+    () => formatWall(clockMs, offset, { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
+    [clockMs, offset],
+  );
 
   return { clockTime, clockDate };
 }

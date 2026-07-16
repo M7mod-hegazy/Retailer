@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { usePermission } from "../../hooks/usePermission";
 import { getSyncConfig, saveSyncConfig, verifySyncConnection, getWebhookStatus, updateWebhookConfig, registerWebhook, testWebhook } from "../../services/syncService";
 import { useSyncStore } from "../../stores/syncStore";
 
@@ -81,6 +82,7 @@ const borderDef = "border-border-strong";
 export default function SyncConfig({ store: propStore = null, onSave: propOnSave = null }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const canConfigure = usePermission("sync", "configure");
   const { config, setConfig } = useSyncStore();
 
   const [step, setStep] = useState(0);
@@ -193,9 +195,9 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                 {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 اختبار
               </button>
-              <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 rounded-lg text-xs font-bold text-text-primary hover:bg-white transition border border-border-subtle/50">
+              {canConfigure && <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 rounded-lg text-xs font-bold text-text-primary hover:bg-white transition border border-border-subtle/50">
                 <Settings2 className="h-3.5 w-3.5" />تعديل
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -229,23 +231,23 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
               <h3 className="text-sm font-black text-text-primary mb-4 flex items-center gap-2"><RefreshCw className="h-4 w-4 text-primary" />المزامنة التلقائية</h3>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-text-primary">تفعيل المزامنة التلقائية</span>
-                <button onClick={() => setAutoSync(!autoSync)} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} cursor-pointer`}>
+                <button onClick={() => canConfigure && setAutoSync(!autoSync)} disabled={!canConfigure} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} ${canConfigure ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
                   <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
               </div>
               {autoSync && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-muted">مزامنة كل</span>
-                  <select value={syncInterval} onChange={(e) => setSyncInterval(Number(e.target.value))} className="bg-bg-input border border-border-subtle rounded-lg px-2 py-1.5 text-xs font-bold text-text-primary">
+                  <select value={syncInterval} onChange={(e) => canConfigure && setSyncInterval(Number(e.target.value))} disabled={!canConfigure} className="bg-bg-input border border-border-subtle rounded-lg px-2 py-1.5 text-xs font-bold text-text-primary">
                     <option value={5}>5 د</option><option value={10}>10 د</option><option value={15}>15 د</option><option value={30}>30 د</option><option value={60}>60 د</option><option value={120}>120 د</option>
                   </select>
                 </div>
               )}
               <div className="mt-4">
-                <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 transition active:scale-95">
+                {canConfigure && <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 transition active:scale-95">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   حفظ الإعدادات
-                </button>
+                </button>}
               </div>
             </div>
           </div>
@@ -428,7 +430,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
 
               {/* Test + Save section */}
               <div className="px-5 md:px-6 pb-5 space-y-3">
-                <button onClick={runTest} disabled={testing || !canTest} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl text-sm font-black hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-95">
+                <button onClick={runTest} disabled={testing || !canTest || !canConfigure} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl text-sm font-black hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-95">
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                   {testing ? "جاري اختبار الاتصال…" : "اختبار الاتصال"}
                 </button>
@@ -454,23 +456,23 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                           <RefreshCw className="h-4 w-4 text-primary" />
                           <span className="text-xs font-bold text-text-primary">مزامنة تلقائية</span>
                         </div>
-                        <button onClick={() => setAutoSync(!autoSync)} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} cursor-pointer`}>
+                        <button onClick={() => canConfigure && setAutoSync(!autoSync)} disabled={!canConfigure} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} ${canConfigure ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
                           <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
                         </button>
                       </div>
                       {autoSync && (
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-[11px] text-text-muted">كل</span>
-                          <select value={syncInterval} onChange={(e) => setSyncInterval(Number(e.target.value))} className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-text-primary">
+                          <select value={syncInterval} onChange={(e) => canConfigure && setSyncInterval(Number(e.target.value))} disabled={!canConfigure} className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-text-primary">
                             <option value={5}>5 د</option><option value={10}>10 د</option><option value={15}>15 د</option><option value={30}>30 د</option><option value={60}>60 د</option><option value={120}>120 د</option>
                           </select>
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={handleSave} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition active:scale-95">
+                      {canConfigure && <button onClick={handleSave} disabled={saving} className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition active:scale-95">
                         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}حفظ الإعدادات
-                      </button>
+                      </button>}
                       <button onClick={() => navigate("/sync")} className="inline-flex items-center gap-2 px-4 py-2.5 border border-border-strong rounded-xl text-xs font-bold text-text-secondary hover:bg-bg-base transition">
                         <ArrowLeftRight className="h-4 w-4" /> الذهاب للمزامنة
                       </button>

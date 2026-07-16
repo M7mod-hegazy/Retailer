@@ -1240,7 +1240,9 @@ function editInvoice(invoiceId, payload, userId) {
       }
     }
 
-    return db.prepare("SELECT * FROM invoices WHERE id = ?").get(invoiceId);
+    // Return the full invoice (with lines/customer_name) like createInvoice does —
+    // callers use .lines for the Telegram edit notification.
+    return getInvoiceWithLines(invoiceId);
   })();
 }
 

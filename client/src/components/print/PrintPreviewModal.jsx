@@ -238,13 +238,13 @@ export default function PrintPreviewModal({
       if (debounceTimer) clearTimeout(debounceTimer);
       ro.disconnect();
     };
-  // NOTE: renderContent is intentionally excluded from deps. It is an inline
-  // function from parent components — a new reference every render. Including
-  // it would re-run this effect (and call setSmartBreaksMm([])) on every
-  // parent re-render, causing unnecessary state churn. The effect already
-  // early-returns when renderContent is truthy, so its presence is sufficient.
+  // NOTE: renderContent and invoice are intentionally excluded from deps.
+  // Both are new references every render (inline function / default {} param).
+  // Including them would re-run this effect on every parent re-render,
+  // causing infinite setSmartBreaksMm([]) → re-render loops. The ResizeObserver
+  // below already catches DOM changes from new invoice content.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, activeTemplate, orientation, isThermal, docSettings, docSettingsLoaded, invoice, totalPrintPages, reportRowsCap]);
+  }, [open, activeTemplate, orientation, isThermal, docSettings, docSettingsLoaded, totalPrintPages, reportRowsCap]);
 
   const smartPages = smartBreaksMm.length + 1;
   const hasSmartBreaks = isPageDoc && smartBreaksMm.length > 0;

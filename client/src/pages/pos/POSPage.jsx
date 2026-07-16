@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Banknote, CreditCard, Wallet, Calendar, Layers } from "lucide-react";
 import api from "../../services/api";
 import { createDisconnectTracker, buildSupportReport, copyToClipboard } from "../../services/connection";
@@ -25,6 +26,7 @@ import PosCashCheckoutModal from "../../components/pos/PosCashCheckoutModal";
 import VariantPickerModal from "../../components/pos/VariantPickerModal";
 import QuickItemModal from "../../components/pos/QuickItemModal";
 import LineConfigModal from "../../components/pos/LineConfigModal";
+import PromptModal from "../../components/ui/PromptModal";
 import { generateInstallments } from "../../components/pos/InstallmentPlanner";
 import {
   resolveImageUrl,
@@ -37,7 +39,6 @@ import { addBodyResizeFlags, removeBodyResizeFlags, resetBodyFlags } from "../..
 import { printContent, getPrinterForPageSize } from "../../services/printService";
 import LayoutRenderer from "../../components/print/LayoutRenderer";
 import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
-import { useTelegramStatus } from "../../components/ui/TelegramStatusChip";
 
 const PAYMENT_TYPES = [
   { type: "cash",          label: "نقدي",      desc: "نقد فوري بالصندوق", Icon: Banknote   },
@@ -80,7 +81,6 @@ const pickVisaMethod = (methods = []) => {
 
 export default function POSPage() {
   usePageTour("pos");
-  const { showTelegramStatus, TelegramStatusChip } = useTelegramStatus();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -143,10 +143,15 @@ export default function POSPage() {
   const handleHold = () => {
     if (!lines.length) return;
     const fallback = customer?.name || new Intl.DateTimeFormat("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date());
-    const label = window.prompt("اسم الفاتورة المعلقة", fallback);
-    holdCurrentInvoice(label || fallback);
+    setHoldPromptFallback(fallback);
+    setHoldPromptOpen(true);
+  };
+
+  const handleHoldConfirm = (label) => {
+    holdCurrentInvoice(label);
     toast.success("تم تعليق الفاتورة");
     setHeldDropdownOpen(false);
+    setHoldPromptOpen(false);
   };
 
   // Stale held invoice popup (shown once per session)
@@ -156,6 +161,8 @@ export default function POSPage() {
   // UI state
   const [openShiftModal, setOpenShiftModal]   = useState(false);
   const [closeShiftModal, setCloseShiftModal] = useState(false);
+  const [holdPromptOpen, setHoldPromptOpen] = useState(false);
+  const [holdPromptFallback, setHoldPromptFallback] = useState("");
   const [customers, setCustomers]         = useState([]);
   const [items, setItems]                 = useState([]);
   const [itemCategories, setItemCategories] = useState([]);
@@ -1411,7 +1418,10 @@ export default function POSPage() {
       }
       return;
     }
-    if (e.key === "Escape") setItemLookupOpen(false);
+    if (e.key === "Escape") {
+      if (itemLookupOpen) { setItemLookupOpen(false); }
+      else { setItemNameQuery(""); setItemCodeQuery(""); }
+    }
   }
 
   function handlePickCustomer(c) {
@@ -1639,8 +1649,7 @@ export default function POSPage() {
       let response;
       if (amendInvoiceId) {
         response = await api.put(`/api/invoices/${amendInvoiceId}`, payload);
-        // Show Telegram chip for amend
-        showTelegramStatus(response.data?.telegramStatus);
+        // Telegram chip: shown globally via the api.js interceptor + AppShell
         const savedData = response.data?.data;
         const savedNo = savedData?.invoice_no || amendContext?.prefill?.invoice_no || String(amendInvoiceId);
         const receiptSnap = {
@@ -1679,8 +1688,7 @@ export default function POSPage() {
         return;
       } else {
         response = await api.post("/api/invoices", payload);
-        // Show Telegram chip for new invoice
-        showTelegramStatus(response.data?.telegramStatus);
+        // Telegram chip: shown globally via the api.js interceptor + AppShell
       }
       const savedInvoiceNo = response.data?.data?.invoice_no || response.data?.data?.new_invoice?.invoice_no || invoiceNumber;
       const buildPaymentsSnap = () => {
@@ -2040,7 +2048,17 @@ export default function POSPage() {
 
   return (
     <>
-      {viewMode === "list" ? <POSListView vm={vm} /> : <POSDetailedView vm={vm} />}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={viewMode}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {viewMode === "list" ? <POSListView vm={vm} /> : <POSDetailedView vm={vm} />}
+        </motion.div>
+      </AnimatePresence>
       <PosCashCheckoutModal
         open={cashCheckoutOpen}
         total={totals.total}
@@ -2090,7 +2108,14 @@ export default function POSPage() {
           </div>
         </div>
       )}
-      <TelegramStatusChip />
+      <PromptModal
+        open={holdPromptOpen}
+        title="اسم الفاتورة المعلقة"
+        defaultValue={holdPromptFallback}
+        onConfirm={handleHoldConfirm}
+        onCancel={() => setHoldPromptOpen(false)}
+        placeholder="اسم الفاتورة"
+      />
     </>
   );
 }

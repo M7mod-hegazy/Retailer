@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Textarea from "../../components/ui/Textarea";
 import Select from "../../components/ui/Select";
+import { usePermission } from "../../hooks/usePermission";
 
 const PRIORITIES = ["low", "normal", "high", "urgent"];
 const PRIORITY_LABELS = { low: "منخفضة", normal: "عادية", high: "عالية", urgent: "عاجلة" };
@@ -15,6 +16,7 @@ export default function RepairOrderForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const canEdit = usePermission("repair_orders", isEdit ? "edit" : "add");
 
   const [form, setForm] = useState({
     customer_id: "", device_type: "", device_brand: "", device_model: "",
@@ -131,9 +133,12 @@ export default function RepairOrderForm() {
       <Textarea label="ملاحظات" value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} />
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={saving}>{saving ? "جاري الحفظ..." : "حفظ"}</Button>
+        <Button type="submit" disabled={saving || !canEdit}>{saving ? "جاري الحفظ..." : "حفظ"}</Button>
         <Button type="button" variant="ghost" onClick={() => navigate(-1)}>إلغاء</Button>
       </div>
+      {!canEdit && (
+        <p className="text-xs text-danger text-center mt-2">ليس لديك صلاحية {isEdit ? "تعديل" : "إضافة"} أوامر الصيانة</p>
+      )}
     </form>
   );
 }

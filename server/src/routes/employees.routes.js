@@ -117,19 +117,33 @@ router.get("/:id/delete-impact", requirePagePermission("employees", "delete"), (
   res.json({ success: true, data: buildImpact(employeeRelated(getDb(), req.params.id)) });
 });
 
-router.delete("/:id", requirePagePermission("employees", "delete"), (req, res) => {
+router.delete("/:id", requirePagePermission("employees", "delete"), async (req, res) => {
   try {
     const db = getDb();
+
+    const before = db.prepare("SELECT name, job_title FROM employees WHERE id = ?").get(req.params.id);
+    const notifyDeleted = async () => {
+      try {
+        return await notifyOwner(TG.EMPLOYEE_DELETED, {
+          employeeName: before?.name,
+          jobTitle: before?.job_title,
+          userName: req.user?.name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (_) { return null; }
+    };
 
     if (hasAnyRelated(employeeRelated(db, req.params.id))) {
       db.prepare("UPDATE employees SET is_active = 0 WHERE id = ?").run(req.params.id);
       req.audit("delete", "employees", { id: req.params.id }, `👤 تم أرشفة موظف`);
-      return res.json({ success: true, archived: true, message: "تم أرشفة الموظف لأنه مرتبط بعمليات أخرى" });
+      const _tgStatus = await notifyDeleted();
+      return res.json({ success: true, archived: true, message: "تم أرشفة الموظف لأنه مرتبط بعمليات أخرى", telegramStatus: _tgStatus });
     }
 
     db.prepare("DELETE FROM employees WHERE id = ?").run(req.params.id);
     req.audit("delete", "employees", { id: req.params.id }, `👤 تم حذف موظف`);
-    res.json({ success: true });
+    const _tgStatus = await notifyDeleted();
+    res.json({ success: true, telegramStatus: _tgStatus });
   } catch (err) {
     if (err.message?.includes("FOREIGN KEY")) return res.status(409).json({ success: false, message: "لا يمكن حذف الموظف لأنه مرتبط ببيانات أخرى" });
     res.status(500).json({ success: false, message: "تعذر الحذف" });

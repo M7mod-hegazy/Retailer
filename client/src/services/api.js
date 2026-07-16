@@ -68,6 +68,18 @@ api.interceptors.response.use(
     // Any successful response proves the server is reachable — reset disconnect state.
     consecutiveDisconnects = 0;
     overlayDispatched = false;
+    // Any mutation that fired an owner notification reports its outcome here —
+    // GlobalTelegramStatusChip (AppShell) renders it app-wide, so no page has
+    // to wire the chip individually.
+    const tgStatus = response?.data?.telegramStatus;
+    if (tgStatus && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("telegram:status", {
+        detail: {
+          status: tgStatus,
+          context: { url: response.config?.url || "", method: (response.config?.method || "").toUpperCase() },
+        },
+      }));
+    }
     return response;
   },
   (error) => {
@@ -142,7 +154,9 @@ api.interceptors.response.use(
         };
         const pageLabel = PAGE_LABEL_FALLBACK[page] || page || "هذه الصفحة";
         const actionLabel = ACTION_AR[action] || action;
-        const msg = actionLabel
+        const msg = !page && data.message
+          ? data.message
+          : actionLabel
           ? `ليس لديك صلاحية ${actionLabel} على «${pageLabel}» — تواصل مع المدير.`
           : `ليس لديك صلاحية الوصول إلى «${pageLabel}» — تواصل مع المدير.`;
         toast.error(msg, { id: `403-perm-${page}`, duration: 5000 });
