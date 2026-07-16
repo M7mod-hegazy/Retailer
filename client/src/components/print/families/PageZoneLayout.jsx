@@ -46,6 +46,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
   const barcode = byType("barcode");
   const signatures = byType("signature_lines");
   const watermark = byType("watermark");
+  const vendorBranding = byType("vendor_branding");
 
   const metaAlign = s.header_meta_align || (layout && layout.headerMetaAlign) || (s.layout && s.layout.page && s.layout.page.headerMetaAlign) || "left";
   const reportTitles = {
@@ -374,6 +375,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
             </div>
           )}
           {signatures}
+          {vendorBranding}
         </div>
         {bottomAddr.length > 0 && (
           <div style={{ marginTop: "8px", fontSize: "10px", color: "#475569", fontWeight: 600, textAlign: "center", borderTop: `1px solid ${accent}22`, paddingTop: "4px" }}>{bottomAddr}</div>
@@ -484,6 +486,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
             </div>
           )}
           {signatures}
+          {vendorBranding}
         </div>
         {bottomAddr.length > 0 && (
           <div style={{ marginTop: "8px", fontSize: "10px", color: "#475569", textAlign: "center" }}>{bottomAddr}</div>
@@ -572,6 +575,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
             {signatures}
             <div>{barcode}</div>
           </div>
+          {vendorBranding}
         </div>
 
         {bottomAddr.length > 0 && (
@@ -678,6 +682,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
             </div>
           )}
           {signatures}
+          {vendorBranding}
         </div>
         {bottomAddr.length > 0 && (
           <div style={{ marginTop: "8px", fontSize: "10px", color: "#475569", textAlign: "center" }}>{bottomAddr}</div>
@@ -767,6 +772,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
           <div data-zone="footer" style={{ marginTop: "14px", borderTop: `1px solid ${accent}22`, paddingTop: "10px" }}>
             {footerText}
             {signatures}
+            {vendorBranding}
           </div>
         </div>
       </div>
@@ -872,6 +878,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
             {signatures}
             {barcode}
           </div>
+          {vendorBranding}
         </div>
 
         {bottomAddr.length > 0 && (
@@ -1195,6 +1202,7 @@ export default function PageZoneLayout({ items, invoice = {}, settings: s, layou
           </div>
         )}
         {signatures}
+        {vendorBranding}
       </div>
 
       {bottomAddr.length > 0 && (

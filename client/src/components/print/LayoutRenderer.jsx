@@ -56,7 +56,14 @@ export default function LayoutRenderer({ family = "roll", invoice = {}, settings
       if (ov.fontSize != null && ov.fontSize !== "") ov.fontSize = rollClampFontPx(ov.fontSize, ROLL_MIN_TABLE_PX);
     }
     const props = { ...(entry.defaultProps || {}), ...ov, ...(extraProps || {}) };
-    let node = <Block key={`${type}-${key++}`} invoice={invoice} settings={settings} props={props} family={family} editing={editing} />;
+    const blockSettings = {
+      ...settings,
+      layout: {
+        ...(settings.layout || {}),
+        [family]: famLayout,
+      }
+    };
+    let node = <Block key={`${type}-${key++}`} invoice={invoice} settings={blockSettings} props={props} family={family} editing={editing} />;
     const css = overrideCss(ov, `[data-ov="${selKey}"]`);
     const box = overrideBox(ov);
     if (css || box) {

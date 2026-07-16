@@ -428,8 +428,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#1e40af",
@@ -454,8 +455,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#1e293b", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "bank_statement_metrics", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -479,8 +481,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "bank_statement_metrics", "report_table"],
+        order: ["doc_title", "doc_date", "bank_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -503,8 +506,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "bank_statement_metrics", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "bank_statement_metrics", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#059669",
@@ -526,8 +530,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["bank_statement_metrics", "report_table", "footer_text"],
+        order: ["bank_statement_metrics", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -551,8 +556,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["bank_statement_metrics", "report_table"],
+        order: ["bank_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: true,
@@ -576,8 +582,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#7c3aed",
@@ -599,8 +606,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "simple"],
       flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table"],
+        order: ["doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -621,8 +629,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#1d4ed8", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -645,8 +654,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#d97706", print_font: "Cairo", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#d97706",
@@ -667,8 +677,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#dc2626", print_font: "Tajawal", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["ajal_party", "ajal_statement_metrics", "report_table", "signature_lines"],
+        order: ["ajal_party", "ajal_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -691,8 +702,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#059669", print_font: "Cairo", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["ajal_statement_metrics", "report_table"],
+        order: ["ajal_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -715,8 +727,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#0284c7", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#0284c7",
@@ -740,8 +753,9 @@ export const SCOPE_PRESETS = {
       tags: ["simple", "minimal"],
       flat: { accent_color: "#1e293b", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "ajal_party", "report_table"],
+        order: ["doc_title", "doc_date", "ajal_party", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -764,8 +778,9 @@ export const SCOPE_PRESETS = {
       tags: ["formal", "classic"],
       flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#dc2626",
@@ -788,8 +803,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_party", "ajal_schedule_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#059669",
@@ -812,8 +828,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["ajal_schedule_metrics", "report_table", "signature_lines"],
+        order: ["ajal_schedule_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -838,8 +855,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["ajal_schedule_metrics", "report_table"],
+        order: ["ajal_schedule_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -863,8 +881,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#0f172a", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "customer", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "customer", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#0f172a",
@@ -887,8 +906,9 @@ export const SCOPE_PRESETS = {
       tags: ["simple", "modern"],
       flat: { accent_color: "#0891b2", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "daily_treasury_metrics", "report_table"],
+        order: ["doc_title", "doc_date", "daily_treasury_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -909,8 +929,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#800000", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#800000",
@@ -933,8 +954,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#059669",
@@ -955,8 +977,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines"],
+        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -980,8 +1003,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#047857", print_font: "Tajawal", item_font_size: 12, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table"],
+        order: ["daily_treasury_metrics", "daily_treasury_summaries", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1003,8 +1027,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#1e3a8a", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#1e3a8a",
@@ -1029,8 +1054,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "simple"],
       flat: { accent_color: "#4f46e5", print_font: "Tajawal", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "report_table"],
+        order: ["doc_title", "doc_date", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1053,8 +1079,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#374151", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "cheque_register_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#374151",
@@ -1078,8 +1105,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "cheque_register_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "cheque_register_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#d97706",
@@ -1102,8 +1130,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["cheque_register_metrics", "report_table", "signature_lines"],
+        order: ["cheque_register_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1128,8 +1157,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["report_table"],
+        order: ["report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -1153,8 +1183,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#6d28d9",
@@ -1180,8 +1211,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1206,8 +1238,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "payment_methods_report_metrics", "report_table"],
+        order: ["doc_title", "doc_date", "payment_methods_report_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -1228,8 +1261,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#1e3a8a", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "payment_methods_report_metrics", "payment_methods_by_method", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#1e3a8a",
@@ -1251,8 +1285,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["payment_methods_report_metrics", "payment_methods_by_method", "report_table"],
+        order: ["payment_methods_report_metrics", "payment_methods_by_method", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1276,8 +1311,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#7c3aed", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["payment_methods_report_metrics", "report_table"],
+        order: ["payment_methods_report_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1303,8 +1339,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#9f1239", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#9f1239",
@@ -1327,8 +1364,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#1e3a8a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "ajal_full_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1351,8 +1389,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "ajal_full_statement_metrics", "report_table"],
+        order: ["doc_title", "doc_date", "ajal_full_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           report_table: {
             tableBorder: "none",
             zebra: false,
@@ -1373,8 +1412,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "ajal_full_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "grid",
             headerBg: "#059669",
@@ -1395,8 +1435,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["ajal_full_statement_metrics", "report_table", "signature_lines"],
+        order: ["ajal_full_statement_metrics", "report_table", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1419,8 +1460,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["ajal_full_statement_metrics", "report_table"],
+        order: ["ajal_full_statement_metrics", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           report_table: {
             tableBorder: "lines",
             zebra: true,
@@ -1444,8 +1486,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_date", "report_table", "notes", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           doc_title: { variant: "standard" },
           company_name: { variant: "standard" },
           report_table: { tableBorder: "grid", headerBg: "#1e40af", headerColor: "#ffffff", lineColor: "#bfdbfe", rowPad: 6 },
@@ -1460,8 +1503,9 @@ export const SCOPE_PRESETS = {
       tags: ["cards", "modern"],
       flat: { accent_color: "#7c3aed", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           company_name: { variant: "boxed" },
           doc_title: { variant: "badge" },
           report_table: { variant: "bordered-cards", headerVariant: "none", lineColor: "#c4b5fd", rowPad: 6 },
@@ -1476,8 +1520,9 @@ export const SCOPE_PRESETS = {
       tags: ["ledger", "accounting"],
       flat: { accent_color: "#059669", print_font: "monospace", item_font_size: 11 },
       layout: {
-        order: ["company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           company_name: { variant: "minimal" },
           doc_title: { variant: "ruled" },
           report_table: { variant: "ledger", tableBorder: "grid", headerBg: "#059669", headerColor: "#ffffff", lineColor: "#a7f3d0", rowPad: 4 },
@@ -1492,8 +1537,9 @@ export const SCOPE_PRESETS = {
       tags: ["accent-stripe", "bold"],
       flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           company_name: { variant: "underline-accent" },
           doc_title: { variant: "standard" },
           report_table: { variant: "accent-stripe", headerVariant: "light", lineColor: "#fecaca", rowPad: 6 },
@@ -1508,8 +1554,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "clean"],
       flat: { accent_color: "#d97706", print_font: "Tajawal", item_font_size: 10 },
       layout: {
-        order: ["company_name", "doc_title", "doc_date", "report_table"],
+        order: ["company_name", "doc_title", "doc_date", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           company_name: { variant: "minimal" },
           doc_title: { variant: "inline" },
           report_table: { variant: "compact-row", tableBorder: "none", headerVariant: "light", zebra: true, rowPad: 2 },
@@ -1524,8 +1571,9 @@ export const SCOPE_PRESETS = {
       tags: ["list", "minimal"],
       flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10 },
       layout: {
-        order: ["doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           doc_title: { variant: "ruled" },
           report_table: { variant: "minimalist-list", headerVariant: "none", lineColor: "#e2e8f0", rowPad: 3 },
         }
@@ -1539,8 +1587,9 @@ export const SCOPE_PRESETS = {
       tags: ["warm", "cards"],
       flat: { accent_color: "#be185d", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           company_name: { variant: "retro-brutalist" },
           doc_title: { variant: "badge" },
           report_table: { variant: "cards", headerVariant: "none", lineColor: "#fbcfe8", rowPad: 8 },
@@ -1555,8 +1604,9 @@ export const SCOPE_PRESETS = {
       tags: ["numbered", "executive"],
       flat: { accent_color: "#1e3a5f", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "notes", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           company_name: { variant: "stacked-bilingual" },
           doc_title: { variant: "brutalist" },
           doc_number: { show: true, variant: "boxed", label: "رقم التقرير" },
@@ -1572,8 +1622,9 @@ export const SCOPE_PRESETS = {
       tags: ["highlighted", "natural"],
       flat: { accent_color: "#166534", print_font: "Tajawal", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           company_name: { variant: "initial-cap" },
           doc_title: { variant: "standard" },
           report_table: { variant: "highlighted", tableBorder: "lines", headerBg: "#166534", headerColor: "#ffffff", lineColor: "#bbf7d0", rowPad: 6 },
@@ -1588,8 +1639,9 @@ export const SCOPE_PRESETS = {
       tags: ["split-label", "clean"],
       flat: { accent_color: "#6d28d9", print_font: "Tajawal", item_font_size: 11 },
       layout: {
-        order: ["company_name", "doc_title", "doc_date", "report_table"],
+        order: ["company_name", "doc_title", "doc_date", "report_table", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           company_name: { variant: "minimal" },
           doc_title: { variant: "badge" },
           report_table: { variant: "split-label", headerVariant: "none", lineColor: "#c4b5fd", rowPad: 5 },
@@ -1604,8 +1656,9 @@ export const SCOPE_PRESETS = {
       tags: ["bordered-cards", "colorful"],
       flat: { accent_color: "#ea580c", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "report_table", "footer_text", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           company_name: { variant: "boxed" },
           doc_title: { variant: "ruled" },
           report_table: { variant: "bordered-cards", headerVariant: "none", lineColor: "#fed7aa", rowPad: 6 },
@@ -1620,8 +1673,9 @@ export const SCOPE_PRESETS = {
       tags: ["formal", "accent-stripe"],
       flat: { accent_color: "#9f1239", print_font: "Cairo", item_font_size: 11 },
       layout: {
-        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "report_table", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "ribbon" },
           company_name: { variant: "underline-accent" },
           doc_title: { variant: "brutalist" },
           report_table: { variant: "accent-stripe", tableBorder: "lines", headerBg: "#9f1239", headerColor: "#ffffff", lineColor: "#fecdd3", rowPad: 6 },
@@ -1638,8 +1692,9 @@ export const SCOPE_PRESETS = {
       tags: ["standard", "default", "on-screen"],
       flat: { accent_color: "#1e40af", print_font: "Tajawal", body_font_size: 11, item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           account_statement_ledger: {
             tableBorder: "lines", zebra: true, headerVariant: "dark",
             columns: [
@@ -1662,8 +1717,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "warm", "ledger"],
       flat: { accent_color: "#92400e", print_font: "Cairo", body_font_size: 11, item_font_size: 11, header_style: "boxed", page_layout_type: "letterhead" },
       layout: {
-        order: ["watermark", "logo", "company_name", "tax_id", "account_statement_party", "account_statement_ledger", "account_statement_summary", "signature_lines"],
+        order: ["watermark", "logo", "company_name", "tax_id", "account_statement_party", "account_statement_ledger", "account_statement_summary", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           account_statement_ledger: {
             tableBorder: "lines", lineColor: "#d6d3d1", lineWidth: 2,
             zebra: true, headerVariant: "light", headerBg: "#fef3c7",
@@ -1691,8 +1747,9 @@ export const SCOPE_PRESETS = {
       tags: ["compact", "minimal", "quick"],
       flat: { accent_color: "#0369a1", print_font: "Tajawal", body_font_size: 10, item_font_size: 9, header_style: "band", page_layout_type: "minimal-top" },
       layout: {
-        order: ["doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
+        order: ["doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           account_statement_ledger: {
             tableBorder: "none", zebra: true, headerVariant: "light",
             columns: [
@@ -1715,8 +1772,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "formal", "executive"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", body_font_size: 11, item_font_size: 11, header_style: "centered", page_layout_type: "executive" },
       layout: {
-        order: ["watermark", "logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "notes", "footer_text", "signature_lines"],
+        order: ["watermark", "logo", "company_name", "branch", "address", "doc_title", "doc_number", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "notes", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           account_statement_ledger: {
             tableBorder: "grid", zebra: false, headerVariant: "dark", headerBg: "#6d28d9",
             columns: [
@@ -1739,8 +1797,9 @@ export const SCOPE_PRESETS = {
       tags: ["sidebar", "modern", "whitespace"],
       flat: { accent_color: "#d97706", print_font: "Tajawal", body_font_size: 11, item_font_size: 10, header_style: "minimal", page_layout_type: "sidebar" },
       layout: {
-        order: ["logo", "company_name", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
+        order: ["logo", "company_name", "account_statement_party", "account_statement_ledger", "account_statement_summary", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           account_statement_ledger: {
             tableBorder: "none", zebra: false, headerVariant: "light",
             columns: [
@@ -1763,8 +1822,9 @@ export const SCOPE_PRESETS = {
       tags: ["card", "compact", "colorful"],
       flat: { accent_color: "#be123c", print_font: "Tajawal", body_font_size: 11, item_font_size: 10, header_style: "band", page_layout_type: "split-header" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "account_statement_party", "account_statement_ledger", "account_statement_summary", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "badge" },
           account_statement_ledger: {
             tableBorder: "grid", zebra: true, headerVariant: "dark", headerBg: "#be123c",
             columns: [
@@ -1791,8 +1851,10 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#dc2626", print_font: "Cairo", item_font_size: 11, header_style: "band" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
-        perBlock: {}
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+        }
       }
     },
     {
@@ -1803,8 +1865,10 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
-        perBlock: {}
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "ribbon" },
+        }
       }
     },
     {
@@ -1815,8 +1879,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "elegant"],
       flat: { accent_color: "#2563eb", print_font: "Tajawal", item_font_size: 11, header_style: "band" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "badge" },
           kitchen_order_header: { variant: "badge" },
           kitchen_order_meta: { variant: "badge" },
           kitchen_items: { variant: "cards" },
@@ -1832,8 +1897,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_items", "kitchen_order_footer"],
+        order: ["kitchen_order_header", "kitchen_items", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           kitchen_order_header: { variant: "minimal" },
           kitchen_items: { variant: "minimal" },
           kitchen_order_footer: { variant: "minimal" },
@@ -1848,8 +1914,9 @@ export const SCOPE_PRESETS = {
       tags: ["formal", "classic"],
       flat: { accent_color: "#f59e0b", print_font: "Cairo", item_font_size: 11, header_style: "band" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer"],
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_notes", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "ribbon" },
           kitchen_notes: { variant: "alert" },
         }
       }
@@ -1862,8 +1929,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#7c3aed", print_font: "Tajawal", item_font_size: 11, header_style: "band" },
       layout: {
-        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
+        order: ["kitchen_order_header", "kitchen_order_meta", "kitchen_items", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           kitchen_order_header: { variant: "striped" },
           kitchen_items: { variant: "numbered" },
           kitchen_order_meta: { variant: "compact" },
@@ -1878,8 +1946,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "thermal"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 9, header_style: "minimal" },
       layout: {
-        order: ["kitchen_order_meta", "kitchen_items", "kitchen_order_footer"],
+        order: ["kitchen_order_meta", "kitchen_items", "kitchen_order_footer", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           kitchen_order_meta: { variant: "compact" },
           kitchen_items: { variant: "ticket" },
           kitchen_order_footer: { variant: "centered" },
@@ -1900,8 +1969,9 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date",
           "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow",
-          "owner_net_profit", "owner_period_comparison", "notes", "signature_lines"],
+          "owner_net_profit", "owner_period_comparison", "notes", "signature_lines", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "stamp" },
           owner_dashboard_metrics: { variant: "stripe" },
           owner_assets_liabilities: { variant: "stripe" },
           owner_payment_flow: { variant: "standard" }
@@ -1917,8 +1987,9 @@ export const SCOPE_PRESETS = {
       flat: { accent_color: "#1e40af", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
         order: ["logo", "company_name", "doc_title", "doc_date",
-          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison"],
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "ribbon" },
           owner_dashboard_metrics: { variant: "accent-band" },
           owner_assets_liabilities: { variant: "accent-band" },
           owner_net_profit: { variant: "band" },
@@ -1935,8 +2006,9 @@ export const SCOPE_PRESETS = {
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
         order: ["doc_title", "doc_date",
-          "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow"],
+          "owner_assets_liabilities", "owner_net_profit", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           owner_assets_liabilities: { variant: "minimal-rule" },
           owner_net_profit: { variant: "minimal" },
           owner_revenue_breakdown: { variant: "minimal" },
@@ -1954,8 +2026,9 @@ export const SCOPE_PRESETS = {
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
         order: ["logo", "company_name", "doc_title", "doc_date",
-          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_payment_flow", "owner_net_profit", "owner_period_comparison", "signature_lines"],
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_payment_flow", "owner_net_profit", "owner_period_comparison", "signature_lines", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "badge" },
           owner_dashboard_metrics: { variant: "minimal-rule" },
           owner_assets_liabilities: { variant: "minimal-rule" },
           owner_net_profit: { variant: "stripe" },
@@ -1973,8 +2046,9 @@ export const SCOPE_PRESETS = {
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
         order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_date",
-          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison", "signature_lines"],
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_net_profit", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison", "signature_lines", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "stamp" },
           owner_dashboard_metrics: { variant: "boxed" },
           owner_assets_liabilities: { variant: "boxed" },
           owner_net_profit: { variant: "boxed" },
@@ -1993,8 +2067,9 @@ export const SCOPE_PRESETS = {
       flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "strip", page_layout_type: "standard" },
       layout: {
         order: ["logo", "company_name", "doc_title", "doc_date",
-          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_net_profit", "owner_expense_categories", "owner_payment_flow"],
+          "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_net_profit", "owner_expense_categories", "owner_payment_flow", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           owner_dashboard_metrics: { variant: "stripe" },
           owner_assets_liabilities: { variant: "stripe" },
           owner_revenue_breakdown: { variant: "bar" },
@@ -2013,8 +2088,9 @@ export const SCOPE_PRESETS = {
       layout: {
         order: ["logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date",
           "owner_net_profit", "owner_dashboard_metrics", "owner_assets_liabilities", "owner_revenue_breakdown", "owner_expense_categories", "owner_payment_flow", "owner_period_comparison",
-          "notes", "footer_text", "signature_lines"],
+          "notes", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "ribbon" },
           owner_net_profit: { variant: "standard" },
           owner_dashboard_metrics: { variant: "standard" },
           owner_assets_liabilities: { variant: "standard" },
@@ -2037,8 +2113,9 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
       layout: {
-        order: ["watermark", "logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "signature_lines", "receiver_signature"],
+        order: ["watermark", "logo", "company_name", "branch", "address", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "signature_lines", "receiver_signature", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "ribbon" },
           items_table: {
             tableBorder: "grid", zebra: false, headerBg: "#1e40af", headerColor: "#ffffff",
           }
@@ -2053,8 +2130,9 @@ export const SCOPE_PRESETS = {
       tags: ["modern", "simple"],
       flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "ribbon" },
           items_table: {
             tableBorder: "lines", zebra: true, headerBg: "#0f172a", headerColor: "#ffffff",
           }
@@ -2069,8 +2147,9 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "whitespace"],
       flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
       layout: {
-        order: ["doc_title", "doc_date", "items_table", "receiver_signature"],
+        order: ["doc_title", "doc_date", "items_table", "receiver_signature", "vendor_branding"],
         perBlock: {
+          vendor_branding: { variant: "minimal" },
           items_table: {
             tableBorder: "none", zebra: false, headerVariant: "light",
           }
@@ -2085,8 +2164,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "modern"],
       flat: { accent_color: "#059669", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_date", "items_table", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_date", "items_table", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "badge" },
           items_table: {
             tableBorder: "grid", headerBg: "#059669", headerColor: "#ffffff",
           }
@@ -2101,8 +2181,9 @@ export const SCOPE_PRESETS = {
       tags: ["elegant", "classic"],
       flat: { accent_color: "#6d28d9", print_font: "Cairo", item_font_size: 11, header_style: "boxed", page_layout_type: "executive" },
       layout: {
-        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "signature_lines", "receiver_signature"],
+        order: ["logo", "company_name", "branch", "tax_id", "doc_title", "doc_number", "doc_date", "items_table", "notes", "signature_lines", "receiver_signature", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "stamp" },
           items_table: {
             tableBorder: "lines", zebra: true, headerBg: "#6d28d9", headerColor: "#ffffff",
           }
@@ -2117,8 +2198,9 @@ export const SCOPE_PRESETS = {
       tags: ["warm", "elegant"],
       flat: { accent_color: "#b45309", print_font: "Tajawal", item_font_size: 11, header_style: "strip", page_layout_type: "standard" },
       layout: {
-        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "footer_text", "signature_lines"],
+        order: ["logo", "company_name", "doc_title", "doc_number", "doc_date", "items_table", "footer_text", "signature_lines", "vendor_branding"],
         perBlock: {
+                  vendor_branding: { variant: "minimal" },
           items_table: {
             tableBorder: "rows", zebra: true, headerBg: "#b45309", headerColor: "#ffffff",
           }
@@ -2133,8 +2215,10 @@ export const SCOPE_PRESETS = {
       tags: ["minimal", "thermal"],
       flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 10, header_style: "minimal" },
       layout: {
-        order: ["company_name", "branch", "doc_number", "doc_date", "items_table", "receiver_signature"],
-        perBlock: {}
+        order: ["company_name", "branch", "doc_number", "doc_date", "items_table", "receiver_signature", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+        }
       }
     },
     {
@@ -2145,8 +2229,10 @@ export const SCOPE_PRESETS = {
       tags: ["classic", "formal"],
       flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "band" },
       layout: {
-        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature"],
-        perBlock: {}
+        order: ["logo", "company_name", "branch", "address", "tax_id", "doc_number", "doc_date", "items_table", "notes", "footer_text", "receiver_signature", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+        }
       }
     },
   ],
