@@ -10,7 +10,7 @@ export default function ProgressBar({ value = 0, max = 100, color = "blue", show
   };
   return (
     <div className="w-full">
-      <div className="h-2 overflow-hidden rounded-full bg-white/8">
+      <div className="h-2 overflow-hidden rounded-full bg-bg-surface/8">
         <div
           className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${colors[color] || colors.blue}`}
           style={{ width: `${pct}%` }}

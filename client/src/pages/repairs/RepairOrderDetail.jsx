@@ -21,13 +21,13 @@ const STATUS_LABELS = {
 
 function StatusBadge({ status }) {
   const colors = {
-    received: "bg-slate-100 text-slate-700", diagnosing: "bg-blue-100 text-blue-700",
+    received: "bg-bg-overlay text-text-primary", diagnosing: "bg-blue-100 text-blue-700",
     waiting_parts: "bg-amber-100 text-amber-700", in_repair: "bg-indigo-100 text-indigo-700",
     waiting_customer: "bg-purple-100 text-purple-700", ready: "bg-emerald-100 text-emerald-700",
     delivered: "bg-green-100 text-green-700", cancelled: "bg-red-100 text-red-600",
   };
   return (
-    <span className={`inline-block rounded-full px-3 py-1 text-[12px] font-black ${colors[status] || "bg-slate-100 text-slate-600"}`}>
+    <span className={`inline-block rounded-full px-3 py-1 text-[12px] font-black ${colors[status] || "bg-bg-overlay text-text-secondary"}`}>
       {STATUS_LABELS[status] || status}
     </span>
   );
@@ -73,23 +73,23 @@ export default function RepairOrderDetail() {
 
   if (isLoading) return (
     <div className="space-y-4 animate-pulse p-6">
-      <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+      <div className="h-8 bg-border-normal rounded w-1/3"></div>
       <div className="grid grid-cols-2 gap-4">
         {[1,2,3,4].map(i => (
           <div key={i} className="space-y-2">
-            <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-            <div className="h-10 bg-slate-200 rounded"></div>
+            <div className="h-4 bg-border-normal rounded w-1/2"></div>
+            <div className="h-10 bg-border-normal rounded"></div>
           </div>
         ))}
       </div>
       <div className="space-y-2">
-        <div className="h-5 bg-slate-200 rounded w-1/4"></div>
-        <div className="h-24 bg-slate-200 rounded"></div>
-        <div className="h-24 bg-slate-200 rounded"></div>
+        <div className="h-5 bg-border-normal rounded w-1/4"></div>
+        <div className="h-24 bg-border-normal rounded"></div>
+        <div className="h-24 bg-border-normal rounded"></div>
       </div>
       <div className="flex gap-3">
-        <div className="h-10 bg-slate-200 rounded w-32"></div>
-        <div className="h-10 bg-slate-200 rounded w-32"></div>
+        <div className="h-10 bg-border-normal rounded w-32"></div>
+        <div className="h-10 bg-border-normal rounded w-32"></div>
       </div>
     </div>
   );
@@ -184,8 +184,8 @@ export default function RepairOrderDetail() {
           </h2>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <StatusBadge status={order.status} />
-            {order.customer_name && <span className="text-sm text-slate-600">العميل: <strong>{order.customer_name}</strong></span>}
-            {order.customer_phone && <span className="text-sm text-slate-500">{order.customer_phone}</span>}
+            {order.customer_name && <span className="text-sm text-text-secondary">العميل: <strong>{order.customer_name}</strong></span>}
+            {order.customer_phone && <span className="text-sm text-text-secondary">{order.customer_phone}</span>}
           </div>
         </div>
         <div className="flex gap-2">
@@ -212,21 +212,21 @@ export default function RepairOrderDetail() {
       </div>
 
       {/* Device info */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 grid gap-3 md:grid-cols-2 text-sm">
-        <div><span className="text-slate-500">الجهاز:</span> <strong>{[order.device_brand, order.device_model, order.device_type].filter(Boolean).join(" — ") || "—"}</strong></div>
-        <div><span className="text-slate-500">السيريال:</span> <strong>{order.serial_number || "—"}</strong></div>
-        <div className="md:col-span-2"><span className="text-slate-500">العطل:</span> <span>{order.reported_issue}</span></div>
-        {order.diagnosis && <div className="md:col-span-2"><span className="text-slate-500">التشخيص:</span> <span>{order.diagnosis}</span></div>}
-        {order.notes && <div className="md:col-span-2"><span className="text-slate-500">ملاحظات:</span> <span>{order.notes}</span></div>}
+      <div className="rounded-xl border border-border-normal bg-bg-surface p-5 grid gap-3 md:grid-cols-2 text-sm">
+        <div><span className="text-text-secondary">الجهاز:</span> <strong>{[order.device_brand, order.device_model, order.device_type].filter(Boolean).join(" — ") || "—"}</strong></div>
+        <div><span className="text-text-secondary">السيريال:</span> <strong>{order.serial_number || "—"}</strong></div>
+        <div className="md:col-span-2"><span className="text-text-secondary">العطل:</span> <span>{order.reported_issue}</span></div>
+        {order.diagnosis && <div className="md:col-span-2"><span className="text-text-secondary">التشخيص:</span> <span>{order.diagnosis}</span></div>}
+        {order.notes && <div className="md:col-span-2"><span className="text-text-secondary">ملاحظات:</span> <span>{order.notes}</span></div>}
       </div>
 
       {/* Parts */}
       <section className="space-y-3">
-        <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">قطع الغيار</h3>
+        <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">قطع الغيار</h3>
         {(order.parts || []).length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-xl border border-border-normal bg-bg-surface overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b text-[11px] font-black uppercase text-slate-500">
+              <thead className="bg-bg-overlay border-b text-[11px] font-black uppercase text-text-secondary">
                 <tr>
                   <th className="px-4 py-2 text-start">القطعة</th>
                   <th className="px-4 py-2 text-end">الكمية</th>
@@ -235,16 +235,16 @@ export default function RepairOrderDetail() {
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-border-subtle">
                 {order.parts.map(p => (
-                  <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={p.id} className="hover:bg-bg-overlay/60 transition-colors">
                     <td className="px-4 py-2">{p.part_name}</td>
                     <td className="px-4 py-2 text-end">{p.quantity}</td>
                     <td className="px-4 py-2 text-end">{Number(p.unit_cost).toLocaleString()}</td>
                     <td className="px-4 py-2 text-end font-bold">{(p.quantity * p.unit_cost).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => deletePart(p.id)} disabled={partDeleting === p.id} className="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                        {partDeleting === p.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
+                      <button onClick={() => deletePart(p.id)} disabled={partDeleting === p.id} className="text-text-muted hover:text-red-500 transition-colors disabled:opacity-50">
+                        {partDeleting === p.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-border-strong border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
                       </button>
                     </td>
                   </tr>
@@ -257,22 +257,22 @@ export default function RepairOrderDetail() {
           <form onSubmit={addPart} className="space-y-3">
             <div className="flex gap-2 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
-                <input ref={partNameRef} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm ps-8" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => { setPartForm(p => ({ ...p, part_name: e.target.value })); setItemSearch(e.target.value); setShowItemPicker(e.target.value.length >= 2); }} required onKeyDown={e => handleKeyDown(e, { nextRef: partQtyRef })} />
-                <Search className="absolute start-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input ref={partNameRef} className="w-full rounded-lg border border-border-normal px-3 py-2 text-sm ps-8" placeholder="اسم القطعة" value={partForm.part_name} onChange={e => { setPartForm(p => ({ ...p, part_name: e.target.value })); setItemSearch(e.target.value); setShowItemPicker(e.target.value.length >= 2); }} required onKeyDown={e => handleKeyDown(e, { nextRef: partQtyRef })} />
+                <Search className="absolute start-2 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 {showItemPicker && searchResults?.length > 0 && (
-                  <div className="absolute z-20 top-full mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-elevated max-h-48 overflow-y-auto">
+                  <div className="absolute z-20 top-full mt-1 w-full rounded-lg border border-border-normal bg-bg-surface shadow-elevated max-h-48 overflow-y-auto">
                     {searchResults.map(item => (
-                      <button key={item.id} type="button" className="w-full px-3 py-2 text-right text-sm hover:bg-slate-50 flex justify-between" onClick={() => { setPartForm(p => ({ ...p, part_name: item.name, item_id: String(item.id), unit_cost: item.cost_price || p.unit_cost })); setShowItemPicker(false); }}>
+                      <button key={item.id} type="button" className="w-full px-3 py-2 text-right text-sm hover:bg-bg-overlay flex justify-between" onClick={() => { setPartForm(p => ({ ...p, part_name: item.name, item_id: String(item.id), unit_cost: item.cost_price || p.unit_cost })); setShowItemPicker(false); }}>
                         <span className="font-bold">{item.name}</span>
-                        <span className="text-slate-400">{item.item_code || item.barcode}</span>
+                        <span className="text-text-muted">{item.item_code || item.barcode}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              <input ref={partQtyRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partCostRef, prevRef: partNameRef })} />
-              <input ref={partCostRef} className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partWarehouseRef, prevRef: partQtyRef })} />
-              <select ref={partWarehouseRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" value={partForm.warehouse_id} onChange={e => setPartForm(p => ({ ...p, warehouse_id: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: partCostRef, onEnter: () => addPart(e) })}>
+              <input ref={partQtyRef} className="w-20 rounded-lg border border-border-normal px-3 py-2 text-sm" type="number" placeholder="الكمية" min="0.001" step="0.001" value={partForm.quantity} onChange={e => setPartForm(p => ({ ...p, quantity: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partCostRef, prevRef: partNameRef })} />
+              <input ref={partCostRef} className="w-28 rounded-lg border border-border-normal px-3 py-2 text-sm" type="number" placeholder="السعر" min="0" step="0.01" value={partForm.unit_cost} onChange={e => setPartForm(p => ({ ...p, unit_cost: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: partWarehouseRef, prevRef: partQtyRef })} />
+              <select ref={partWarehouseRef} className="rounded-lg border border-border-normal px-3 py-2 text-sm" value={partForm.warehouse_id} onChange={e => setPartForm(p => ({ ...p, warehouse_id: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: partCostRef, onEnter: () => addPart(e) })}>
                 <option value="">المخزن</option>
                 {(warehouses || []).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
@@ -284,25 +284,25 @@ export default function RepairOrderDetail() {
 
       {/* Labor */}
       <section className="space-y-3">
-        <h3 className="text-sm font-black text-slate-600 uppercase tracking-widest">تكاليف العمالة</h3>
+        <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">تكاليف العمالة</h3>
         {(order.labor || []).length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-xl border border-border-normal bg-bg-surface overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b text-[11px] font-black uppercase text-slate-500">
+              <thead className="bg-bg-overlay border-b text-[11px] font-black uppercase text-text-secondary">
                 <tr>
                   <th className="px-4 py-2 text-start">البيان</th>
                   <th className="px-4 py-2 text-end">المبلغ</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-border-subtle">
                 {order.labor.map(l => (
-                  <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={l.id} className="hover:bg-bg-overlay/60 transition-colors">
                     <td className="px-4 py-2">{l.description}</td>
                     <td className="px-4 py-2 text-end font-bold">{Number(l.amount).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <button onClick={() => deleteLabor(l.id)} disabled={laborDeleting === l.id} className="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                        {laborDeleting === l.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
+                      <button onClick={() => deleteLabor(l.id)} disabled={laborDeleting === l.id} className="text-text-muted hover:text-red-500 transition-colors disabled:opacity-50">
+                        {laborDeleting === l.id ? <span className="block h-4 w-4 animate-spin rounded-full border-2 border-border-strong border-t-red-500" /> : <Trash2 className="h-4 w-4" />}
                       </button>
                     </td>
                   </tr>
@@ -313,8 +313,8 @@ export default function RepairOrderDetail() {
         )}
         {order.status !== "delivered" && order.status !== "cancelled" && (
           <form onSubmit={addLabor} className="flex gap-2 flex-wrap">
-            <input ref={laborDescRef} className="flex-1 min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="وصف العمالة (أجرة تركيب، فحص...)" value={laborForm.description} onChange={e => setLaborForm(p => ({ ...p, description: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: laborAmountRef })} />
-            <input ref={laborAmountRef} className="w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" placeholder="المبلغ" min="0" step="0.01" value={laborForm.amount} onChange={e => setLaborForm(p => ({ ...p, amount: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { prevRef: laborDescRef, onEnter: () => addLabor(e) })} />
+            <input ref={laborDescRef} className="flex-1 min-w-[200px] rounded-lg border border-border-normal px-3 py-2 text-sm" placeholder="وصف العمالة (أجرة تركيب، فحص...)" value={laborForm.description} onChange={e => setLaborForm(p => ({ ...p, description: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { nextRef: laborAmountRef })} />
+            <input ref={laborAmountRef} className="w-32 rounded-lg border border-border-normal px-3 py-2 text-sm" type="number" placeholder="المبلغ" min="0" step="0.01" value={laborForm.amount} onChange={e => setLaborForm(p => ({ ...p, amount: e.target.value }))} required onKeyDown={e => handleKeyDown(e, { prevRef: laborDescRef, onEnter: () => addLabor(e) })} />
             <Button type="submit" size="sm"><Plus className="h-4 w-4 me-1" />إضافة</Button>
           </form>
         )}
@@ -322,10 +322,10 @@ export default function RepairOrderDetail() {
 
       {/* Cost summary */}
       <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 space-y-1 text-sm">
-        <div className="flex justify-between"><span className="text-slate-600">قطع الغيار:</span><strong>{partsTotal.toLocaleString()}</strong></div>
-        <div className="flex justify-between"><span className="text-slate-600">عمالة:</span><strong>{laborTotal.toLocaleString()}</strong></div>
+        <div className="flex justify-between"><span className="text-text-secondary">قطع الغيار:</span><strong>{partsTotal.toLocaleString()}</strong></div>
+        <div className="flex justify-between"><span className="text-text-secondary">عمالة:</span><strong>{laborTotal.toLocaleString()}</strong></div>
         <div className="flex justify-between border-t border-orange-200 pt-2 text-base font-black"><span>الإجمالي:</span><span className="text-orange-700">{subtotal.toLocaleString()}</span></div>
-        <div className="flex justify-between text-slate-500"><span>الإيداع المدفوع:</span><span>−{Number(order.deposit_amount || 0).toLocaleString()}</span></div>
+        <div className="flex justify-between text-text-secondary"><span>الإيداع المدفوع:</span><span>−{Number(order.deposit_amount || 0).toLocaleString()}</span></div>
         <div className="flex justify-between font-black text-emerald-700"><span>المتبقي:</span><span>{Math.max(0, subtotal - Number(order.deposit_amount || 0)).toLocaleString()}</span></div>
       </div>
     </div>

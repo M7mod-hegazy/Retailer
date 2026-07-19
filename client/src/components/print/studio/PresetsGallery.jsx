@@ -306,7 +306,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
                     title="العودة لوراثة التصميم العام المشترك"
                     className="relative flex flex-col items-center justify-center bg-[var(--bg-input)] p-6 text-center cursor-pointer select-none" style={{ height: THUMB_H }}>
                     
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-600 mb-4 group-hover:scale-110 transition-transform">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-border-normal text-text-secondary mb-4 group-hover:scale-110 transition-transform">
                       <RotateCcw size={28} />
                     </div>
                     
@@ -317,7 +317,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
 
                     {isApplied ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-[var(--primary)]/10 backdrop-blur-[0.5px]">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg border border-white/20">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg border border-border-normal/20">
                           <Check size={28} strokeWidth={3} />
                         </div>
                       </div>
@@ -378,7 +378,7 @@ export default function PresetsGallery({ open, onClose, family, size, merged, cu
 
                   {isApplied ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-[var(--primary)]/10 backdrop-blur-[0.5px]">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg border border-white/20">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-lg border border-border-normal/20">
                         <Check size={28} strokeWidth={3} />
                       </div>
                     </div>

@@ -37,7 +37,7 @@ export default function EmployeesPage() {
   // Simple add/edit form fields
   const [showForm, setShowForm] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
-  const [form, setForm] = useState({ name: "", role: "", phone: "", address: "", phones: [] });
+  const [form, setForm] = useState({ name: "", role: "", phone: "", address: "", phones: [], salary: 0, salary_period: "monthly", working_days_per_month: 26 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Permissions
@@ -83,6 +83,7 @@ export default function EmployeesPage() {
       const phonesStr = e.phones ? JSON.parse(e.phones).join(" ") : (e.phone || "");
       return (e.name || "").toLowerCase().includes(q) ||
         (e.role || "").toLowerCase().includes(q) ||
+        (e.job_title || "").toLowerCase().includes(q) ||
         (e.phone || "").toLowerCase().includes(q) ||
         (e.address || "").toLowerCase().includes(q) ||
         phonesStr.toLowerCase().includes(q);
@@ -91,14 +92,14 @@ export default function EmployeesPage() {
 
   function startCreate() {
     setEditingRow(null);
-    setForm({ name: "", role: "", phone: "", address: "", phones: [] });
+    setForm({ name: "", role: "", phone: "", address: "", phones: [], salary: 0, salary_period: "monthly", working_days_per_month: 26 });
     setShowForm(true);
   }
 
   function startEdit(row) {
     const phones = row.phones ? JSON.parse(row.phones) : (row.phone ? [row.phone] : []);
     setEditingRow(row);
-    setForm({ name: row.name || "", role: row.role || "", phone: row.phone || "", address: row.address || "", phones });
+    setForm({ name: row.name || "", role: row.job_title || row.role || "", phone: row.phone || "", address: row.address || "", phones, salary: row.salary || 0, salary_period: row.salary_period || "monthly", working_days_per_month: row.working_days_per_month || 26 });
     setShowForm(true);
   }
 
@@ -108,22 +109,23 @@ export default function EmployeesPage() {
     setIsSubmitting(true);
     const payload = {
       ...form,
+      job_title: form.role,
       phones: (form.phones || []).filter(p => p.trim() !== ""),
       phone: (form.phones || []).find(p => p.trim() !== "") || form.phone || "",
     };
     try {
       if (editingRow) {
         await api.put(`/api/employees/${editingRow.id}`, payload);
-        toast.success("تم التحديث");
+        toast.success("اتحفظ بنجاح");
       } else {
         await api.post("/api/employees", payload);
-        toast.success("تمت الإضافة");
+        toast.success("اتضاف بنجاح");
       }
       setShowForm(false);
       setEditingRow(null);
-      setForm({ name: "", role: "", phone: "", address: "", phones: [] });
+      setForm({ name: "", role: "", phone: "", address: "", phones: [], salary: 0, salary_period: "monthly", working_days_per_month: 26 });
       loadEmployees();
-    } catch { toast.error("فشل الحفظ"); }
+    } catch { toast.error("الحفظ ما نجحش"); }
     finally { setIsSubmitting(false); }
   }
 
@@ -162,7 +164,7 @@ export default function EmployeesPage() {
       id: "index",
       header: "#",
       accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
-      cell: (info) => <span className="text-[11px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
+      cell: (info) => <span className="text-[11px] font-black text-text-muted font-mono">{info.getValue()}</span>,
       size: 50,
     },
     {
@@ -175,13 +177,13 @@ export default function EmployeesPage() {
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
               {(row.name || "?")?.charAt(0)}
             </div>
-            <span className="text-sm font-bold text-slate-800">{row.name}</span>
+            <span className="text-sm font-bold text-text-primary">{row.name}</span>
           </div>
         );
       },
     },
-    { accessorKey: "role", header: "المسمى", cell: (info) => <span className="text-sm font-bold text-slate-500">{info.getValue() || "-"}</span> },
-    { accessorKey: "phone", header: "الهاتف", cell: (info) => <span className="text-sm font-bold text-slate-600 font-mono">{info.getValue() || "-"}</span> },
+    { id: "role", header: "المسمى", accessorFn: (row) => row.job_title || row.role || "-", cell: (info) => <span className="text-sm font-bold text-text-secondary">{info.getValue()}</span> },
+    { accessorKey: "phone", header: "الهاتف", cell: (info) => <span className="text-sm font-bold text-text-secondary font-mono">{info.getValue() || "-"}</span> },
     {
       accessorKey: "salary",
       header: "الراتب",
@@ -189,7 +191,7 @@ export default function EmployeesPage() {
         const val = info.getValue();
         return val > 0
           ? <span className="text-sm font-black text-emerald-700 font-mono">{Number(val).toLocaleString()}</span>
-          : <span className="text-xs text-slate-300">-</span>;
+          : <span className="text-xs text-text-muted">-</span>;
       },
     },
     {
@@ -197,7 +199,7 @@ export default function EmployeesPage() {
       header: "الدورة",
       cell: (info) => {
         const period = info.getValue() || "monthly";
-        return <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{PERIOD_LABELS[period] || period}</span>;
+        return <span className="text-xs font-bold text-text-muted bg-bg-overlay px-2 py-0.5 rounded">{PERIOD_LABELS[period] || period}</span>;
       },
     },
     {
@@ -211,7 +213,7 @@ export default function EmployeesPage() {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-zinc-900 transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted hover:bg-bg-overlay hover:text-zinc-900 transition-all"
               >
                 <Edit3 className="h-4 w-4" />
               </motion.button>
@@ -222,7 +224,7 @@ export default function EmployeesPage() {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
               </motion.button>
@@ -379,7 +381,7 @@ export default function EmployeesPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {emp.role && <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{emp.role}</span>}
+                        {(emp.job_title || emp.role) && <span className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>{emp.job_title || emp.role}</span>}
                         {emp.phone && <span className="text-[10px] font-bold font-mono" style={{ color: "var(--text-muted)" }}>{emp.phone}</span>}
                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded" style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)" }}>
                           {PERIOD_LABELS[emp.salary_period] || "شهري"}
@@ -427,42 +429,67 @@ export default function EmployeesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+            className="bg-bg-surface rounded-3xl shadow-2xl max-w-md w-full p-6"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="text-xl font-black text-slate-800 mb-6">
+            <h3 className="text-xl font-black text-text-primary mb-6">
               {editingRow ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">اسم الموظف <span className="text-rose-500">*</span></label>
+                <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">اسم الموظف <span className="text-rose-500">*</span></label>
                 <input
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                   required
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">المسمى الوظيفي</label>
+                <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">المسمى الوظيفي</label>
                 <input
                   value={form.role}
                   onChange={e => setForm({ ...form, role: e.target.value })}
-                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">الراتب الأساسي</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.salary}
+                    onChange={e => setForm({ ...form, salary: Number(e.target.value) || 0 })}
+                    className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">فترة الدفع</label>
+                  <select
+                    value={form.salary_period}
+                    onChange={e => setForm({ ...form, salary_period: e.target.value })}
+                    className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all appearance-none"
+                  >
+                    <option value="monthly">شهري</option>
+                    <option value="weekly">أسبوعي</option>
+                    <option value="daily">يومي</option>
+                  </select>
+                </div>
+              </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">العنوان</label>
+                <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">العنوان</label>
                 <input
                   value={form.address}
                   onChange={e => setForm({ ...form, address: e.target.value })}
-                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  className="w-full h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                   placeholder="العنوان (اختياري)"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider">أرقام الهاتف</label>
+                <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider">أرقام الهاتف</label>
                 {(form.phones || []).map((ph, idx) => (
                   <div key={idx} className="flex gap-2">
                     <input
@@ -472,7 +499,7 @@ export default function EmployeesPage() {
                         updated[idx] = e.target.value;
                         setForm({ ...form, phones: updated });
                       }}
-                      className="flex-1 h-12 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                      className="flex-1 h-12 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                       placeholder={`رقم ${idx + 1}`}
                     />
                     {form.phones.length > 1 && (
@@ -498,7 +525,7 @@ export default function EmployeesPage() {
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setEditingRow(null); }}
-                  className="flex-1 h-12 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-black transition-all"
+                  className="flex-1 h-12 bg-bg-surface border border-border-normal text-text-secondary rounded-xl text-sm font-black transition-all"
                 >
                   إلغاء
                 </button>
@@ -508,7 +535,7 @@ export default function EmployeesPage() {
                   className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {isSubmitting ? "جاري الحفظ..." : editingRow ? "حفظ التعديلات" : "إضافة"}
+                  {isSubmitting ? "بيتحفظ..." : editingRow ? "حفظ التعديلات" : "إضافة"}
                 </button>
               </div>
             </form>

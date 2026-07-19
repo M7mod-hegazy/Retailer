@@ -151,14 +151,14 @@ export default function SimpleCrudPage({
         id: "index",
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
-        cell: (info) => <span className="text-[11px] font-black text-slate-300 font-mono">{info.getValue()}</span>,
+        cell: (info) => <span className="text-[11px] font-black text-text-muted font-mono">{info.getValue()}</span>,
         size: 50,
       },
       ...columnDefs.map(col => ({
         accessorKey: col.key,
         header: col.label,
         cell: (info) => (
-          <span className={`text-sm font-bold text-slate-800 ${col.key === 'code' ? 'font-mono' : ''}`}>
+          <span className={`text-sm font-bold text-text-primary ${col.key === 'code' ? 'font-mono' : ''}`}>
             {col.render
               ? col.render(info.getValue(), info.row.original)
               : <Highlight text={String(info.getValue() ?? '-')} query={queryRef.current} />}
@@ -177,7 +177,7 @@ export default function SimpleCrudPage({
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); startEditRef.current(info.row.original); }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                    className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-text-muted hover:bg-bg-overlay hover:text-zinc-900'}`}
                   >
                     <Edit3 className="h-4 w-4" />
                   </motion.button>
@@ -186,7 +186,7 @@ export default function SimpleCrudPage({
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); startEditRef.current(info.row.original); }}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRef.current?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-text-muted hover:bg-bg-overlay hover:text-zinc-900'}`}
                 >
                   <Edit3 className="h-4 w-4" />
                 </motion.button>
@@ -198,7 +198,7 @@ export default function SimpleCrudPage({
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); handleDeleteRef.current(info.row.original.id); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
                   >
                     <Trash2 className="h-4 w-4" />
                   </motion.button>
@@ -207,7 +207,7 @@ export default function SimpleCrudPage({
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); handleDeleteRef.current(info.row.original.id); }}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
                 >
                   <Trash2 className="h-4 w-4" />
                 </motion.button>
@@ -512,10 +512,10 @@ export default function SimpleCrudPage({
                         <button
                           type="button"
                           onClick={() => setForm(prev => ({ ...prev, [field.name]: prev[field.name] ? 0 : 1 }))}
-                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form[field.name] ? "bg-emerald-500" : "bg-slate-300"}`}
+                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form[field.name] ? "bg-emerald-500" : "bg-border-strong"}`}
                           style={{ outline: "none" }}
                         >
-                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form[field.name] ? "translate-x-6" : "translate-x-1"}`} />
+                          <span className={`inline-block h-5 w-5 transform rounded-full bg-bg-surface shadow transition-transform ${form[field.name] ? "translate-x-6" : "translate-x-1"}`} />
                         </button>
                       ) : (
                         <input
@@ -545,15 +545,15 @@ export default function SimpleCrudPage({
                             ? "bg-rose-50/80 border-rose-200/60"
                             : isCredit
                             ? "bg-emerald-50/80 border-emerald-200/60"
-                            : "bg-slate-50/80 border-slate-200/60"
+                            : "bg-bg-overlay/80 border-border-normal/60"
                         }`}>
                           <span className={`text-[11px] font-black uppercase tracking-wider ${
-                            isDebit ? "text-rose-500" : isCredit ? "text-emerald-600" : "text-slate-400"
+                            isDebit ? "text-rose-500" : isCredit ? "text-emerald-600" : "text-text-muted"
                           }`}>
                             {isDebit ? "عليه رصيد (مديون)" : isCredit ? "له رصيد (دائن)" : "رصيد مسوّى"}
                           </span>
                           <span className={`text-[15px] font-black font-mono ${
-                            isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-slate-400"
+                            isDebit ? "text-rose-600" : isCredit ? "text-emerald-600" : "text-text-muted"
                           }`}>
                             {formatNumber(Math.abs(bal))}
                             <span className="text-[11px] font-bold mr-1 opacity-70">ج.م</span>

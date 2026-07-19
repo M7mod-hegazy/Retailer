@@ -174,7 +174,7 @@ export default function PDFExportDialog({
                     className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       orientation === opt
                         ? "bg-primary text-white border-primary"
-                        : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+                        : "bg-bg-surface text-zinc-600 border-zinc-200 hover:bg-zinc-50"
                     }`}
                   >
                     {opt === "portrait" ? "طولي" : "عرضي"}
@@ -208,7 +208,7 @@ export default function PDFExportDialog({
                     className={`flex-1 px-3 py-2 rounded-xl text-2sm font-bold border transition-all ${
                       fontSize === f.id
                         ? "bg-primary text-white border-primary"
-                        : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+                        : "bg-bg-surface text-zinc-600 border-zinc-200 hover:bg-zinc-50"
                     }`}
                   >
                     {f.label}
@@ -228,7 +228,7 @@ export default function PDFExportDialog({
                   }`}
                 >
                   <div
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-bg-surface shadow transition-transform ${
                       showTotals ? "translate-x-5" : "translate-x-0.5"
                     }`}
                   />
@@ -243,7 +243,7 @@ export default function PDFExportDialog({
                   }`}
                 >
                   <div
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-bg-surface shadow transition-transform ${
                       showPageNumbers ? "translate-x-5" : "translate-x-0.5"
                     }`}
                   />

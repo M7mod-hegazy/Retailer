@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageTour } from "../../hooks/usePageTour";
 import {
   RefreshCw, Link2, Settings2, Download, Upload,
   CheckCircle2, XCircle, AlertCircle, Clock, Loader2, Search,
@@ -249,7 +250,7 @@ function ProductRow({ product, fields, onFieldToggle, onPreviewImages, imageCoun
                     ? "bg-gray-50 border-gray-200 text-text-muted cursor-default"
                     : on
                       ? "bg-primary border-primary text-white shadow-sm"
-                      : "bg-white border-gray-200 text-text-muted hover:border-gray-300"
+                      : "bg-bg-surface border-gray-200 text-text-muted hover:border-gray-300"
                 }`}
                 title={isMatched ? `${f.label}: مطابق ✓` : `${f.label}: ${on ? "نشط" : "معطل"}`}
               >
@@ -260,7 +261,7 @@ function ProductRow({ product, fields, onFieldToggle, onPreviewImages, imageCoun
                   </span>
                 ) : (
                   <>
-                    <span className={`text-[9px] px-1 py-0.5 rounded ${on ? "bg-white/20" : "bg-gray-100"}`}>{on ? "ON" : "OFF"}</span>
+                    <span className={`text-[9px] px-1 py-0.5 rounded ${on ? "bg-bg-surface/20" : "bg-gray-100"}`}>{on ? "ON" : "OFF"}</span>
                     <span className={`text-[10px] opacity-80 ${on ? "text-white/80" : "text-text-muted"}`}>{f.ecom}</span>
                   </>
                 )}
@@ -643,7 +644,7 @@ function SyncLogDetailModal({ log, onClose }) {
                 </h4>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {errorItems.map((err, i) => (
-                    <div key={i} className="bg-white rounded-lg px-3 py-2 text-xs border border-danger-border/10">
+                    <div key={i} className="bg-bg-surface rounded-lg px-3 py-2 text-xs border border-danger-border/10">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-text-primary">{err.sku || err.product || `#${i + 1}`}</span>
                         <span className="text-danger-text">{err.error || err.message || "خطأ غير معروف"}</span>
@@ -663,7 +664,7 @@ function SyncLogDetailModal({ log, onClose }) {
                 </h4>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {errorItems.failed.map((err, i) => (
-                    <div key={i} className="bg-white rounded-lg px-3 py-2 text-xs border border-danger-border/10">
+                    <div key={i} className="bg-bg-surface rounded-lg px-3 py-2 text-xs border border-danger-border/10">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-text-primary">{err.sku || err.product || `#${i + 1}`}</span>
                         <span className="text-danger-text">{err.error || err.message || "خطأ غير معروف"}</span>
@@ -682,26 +683,26 @@ function SyncLogDetailModal({ log, onClose }) {
                   لقطة احتياطية مرفقة
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white rounded-lg px-3 py-2">
+                  <div className="bg-bg-surface rounded-lg px-3 py-2">
                     <span className="text-text-muted">عدد العناصر: </span>
                     <span className="font-bold text-text-primary">{snapshot.items_count || 0}</span>
                   </div>
                   {snapshot.metadata && (
                     <>
                       {snapshot.metadata.pricesChanged != null && (
-                        <div className="bg-white rounded-lg px-3 py-2">
+                        <div className="bg-bg-surface rounded-lg px-3 py-2">
                           <span className="text-text-muted">تغيرات الأسعار: </span>
                           <span className="font-bold text-text-primary">{snapshot.metadata.pricesChanged}</span>
                         </div>
                       )}
                       {snapshot.metadata.stockChanged != null && (
-                        <div className="bg-white rounded-lg px-3 py-2">
+                        <div className="bg-bg-surface rounded-lg px-3 py-2">
                           <span className="text-text-muted">تغيرات المخزون: </span>
                           <span className="font-bold text-text-primary">{snapshot.metadata.stockChanged}</span>
                         </div>
                       )}
                       {snapshot.metadata.namesChanged != null && (
-                        <div className="bg-white rounded-lg px-3 py-2">
+                        <div className="bg-bg-surface rounded-lg px-3 py-2">
                           <span className="text-text-muted">تغيرات الأسماء: </span>
                           <span className="font-bold text-text-primary">{snapshot.metadata.namesChanged}</span>
                         </div>
@@ -709,7 +710,7 @@ function SyncLogDetailModal({ log, onClose }) {
                     </>
                   )}
                   {snapshot.size_bytes && (
-                    <div className="bg-white rounded-lg px-3 py-2">
+                    <div className="bg-bg-surface rounded-lg px-3 py-2">
                       <span className="text-text-muted">حجم البيانات: </span>
                       <span className="font-bold text-text-primary">{(snapshot.size_bytes / 1024).toFixed(1)} ك.ب</span>
                     </div>
@@ -831,7 +832,7 @@ function ImportanceBanner() {
   ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6 animate-fade-in">
+    <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6 animate-fade-in">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/30 transition-colors duration-200"
@@ -866,7 +867,7 @@ function ImportanceBanner() {
               return (
                 <div
                   key={i}
-                  className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-300"
+                  className="bg-bg-surface rounded-xl border border-gray-200 p-4 hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-300"
                   style={{ transitionDelay: `${i * 50}ms` }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center mb-3">
@@ -957,13 +958,13 @@ function VideoShowcase({ t }) {
       >
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 25% 30%, rgba(255,255,255,0.35) 0%, transparent 55%), radial-gradient(circle at 75% 75%, rgba(255,255,255,0.2) 0%, transparent 50%)" }} />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm border border-white/40 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300 shadow-xl">
+          <div className="w-20 h-20 rounded-full bg-bg-surface/20 backdrop-blur-sm border border-border-normal/40 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-bg-surface/30 transition-all duration-300 shadow-xl">
             <Play className="h-9 w-9 ltr:ml-1 rtl:mr-1 fill-white" />
           </div>
           <span className="text-lg font-black">{t("sync.market.watchVideo")}</span>
           {!STORE_VIDEO_URL && <span className="text-xs text-white/70 mt-1.5">{t("sync.market.videoHint")}</span>}
         </div>
-        <span className="absolute top-3 rtl:right-3 ltr:left-3 text-[10px] font-bold bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full">{t("sync.market.videoPlaceholder")}</span>
+        <span className="absolute top-3 rtl:right-3 ltr:left-3 text-[10px] font-bold bg-bg-surface/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-full">{t("sync.market.videoPlaceholder")}</span>
       </a>
     </div>
   );
@@ -985,7 +986,7 @@ function StoreAbout({ t }) {
   return (
     <div className="max-w-5xl mx-auto px-6 mb-10">
       {/* Big explanation */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-7 md:p-9 mb-6">
+      <div className="bg-bg-surface rounded-3xl shadow-sm border border-gray-200 p-7 md:p-9 mb-6">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-info-bg/50 text-info-text text-xs font-black mb-4">
           <Globe className="h-3.5 w-3.5" />
           {t("sync.market.aboutBadge")}
@@ -1012,7 +1013,7 @@ function StoreAbout({ t }) {
           const Icon = s.icon;
           return (
             <div key={i} className="group">
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-bg-surface">
                 {/* browser chrome */}
                 <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 border-b border-gray-200">
                   <span className="w-2 h-2 rounded-full bg-danger-border" />
@@ -1060,11 +1061,11 @@ function NotConfiguredBranding({ onGoToConfig }) {
       {/* ── Branded Hero ── */}
       <div className="relative bg-gradient-to-br from-primary via-primary-600 to-primary/80 text-white overflow-hidden">
         <div className="absolute inset-0 hero-glow-anim opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 60%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.15) 0%, transparent 50%)' }} />
-        <div className="absolute top-10 left-10 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-[float_12s_ease-in-out_infinite]" />
-        <div className="absolute bottom-10 right-10 w-48 h-48 bg-white/5 rounded-full blur-3xl animate-[float-reverse_10s_ease-in-out_infinite]" />
+        <div className="absolute top-10 left-10 w-64 h-64 bg-bg-surface/5 rounded-full blur-3xl animate-[float_12s_ease-in-out_infinite]" />
+        <div className="absolute bottom-10 right-10 w-48 h-48 bg-bg-surface/5 rounded-full blur-3xl animate-[float-reverse_10s_ease-in-out_infinite]" />
 
         <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 backdrop-blur-sm rounded-full text-sm font-bold mb-6 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-bg-surface/15 backdrop-blur-sm rounded-full text-sm font-bold mb-6 animate-fade-in">
             <Globe className="h-4 w-4" />
             {t("sync.market.badge")}
           </div>
@@ -1082,7 +1083,7 @@ function NotConfiguredBranding({ onGoToConfig }) {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 animate-slide-up" style={{ animationDelay: "300ms" }}>
             <button
               onClick={onGoToConfig}
-              className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-white text-primary rounded-2xl text-sm font-black hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-primary/20"
+              className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-bg-surface text-primary rounded-2xl text-sm font-black hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-primary/20"
             >
               <Settings2 className="h-4 w-4" />
               {t("sync.market.ctaSetup")}
@@ -1093,7 +1094,7 @@ function NotConfiguredBranding({ onGoToConfig }) {
                 href={STORE_PROMO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2.5 px-7 py-3.5 border-2 border-white/30 backdrop-blur-sm rounded-2xl text-sm font-black hover:bg-white/10 hover:border-white/50 active:scale-95 transition-all duration-300"
+                className="inline-flex items-center gap-2.5 px-7 py-3.5 border-2 border-border-normal/30 backdrop-blur-sm rounded-2xl text-sm font-black hover:bg-bg-surface/10 hover:border-border-normal/50 active:scale-95 transition-all duration-300"
               >
                 <ShoppingBag className="h-4 w-4" />
                 {t("sync.market.ctaGetStore")}
@@ -1118,7 +1119,7 @@ function NotConfiguredBranding({ onGoToConfig }) {
 
       {/* ── Website Capabilities ── */}
       <div className="max-w-5xl mx-auto px-6 relative z-10 mb-8">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
+        <div className="bg-bg-surface/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-info-bg/60 flex items-center justify-center">
               <Globe className="h-4 w-4 text-info-text" />
@@ -1147,7 +1148,7 @@ function NotConfiguredBranding({ onGoToConfig }) {
         </div>
 
         {/* ── Sync Capabilities ── */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-bg-surface/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center">
               <ArrowLeftRight className="h-4 w-4 text-primary" />
@@ -1211,6 +1212,7 @@ function NotConfiguredBranding({ onGoToConfig }) {
 
 /* ─── Main Page ─── */
 export default function SyncPage() {
+  usePageTour('sync_page');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const canView = usePermission("sync", "view");
@@ -1629,7 +1631,7 @@ export default function SyncPage() {
           </div>
           <div className="animate-shimmer w-32 h-8 rounded-full" />
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <SyncSkeleton rows={6} />
         </div>
       </div>
@@ -1739,7 +1741,7 @@ export default function SyncPage() {
           ].map((card, i) => {
             const Icon = card.icon;
             return (
-              <div key={card.label} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 animate-fade-in hover:shadow-elevated transition-all duration-300" style={{ animationDelay: `${i * 80}ms` }}>
+              <div key={card.label} className="bg-bg-surface rounded-xl shadow-sm border border-gray-200 p-4 animate-fade-in hover:shadow-elevated transition-all duration-300" style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">{card.label}</span>
                   <Icon className={`h-4 w-4 ${card.color.split(" ")[1]} ${i === 0 ? "animate-pulse" : ""}`} />
@@ -1854,7 +1856,7 @@ export default function SyncPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             {ordersLoading && onlineOrders.length === 0 ? (
               <div className="p-10 text-center text-sm text-text-muted"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
             ) : onlineOrders.length === 0 ? (
@@ -1946,7 +1948,7 @@ export default function SyncPage() {
 
       {/* ── Tab: Existing products (with changes) ── */}
       {activeTab === "available" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
+        <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
           {/* ── Search + active badge inside tab ── */}
           <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3 flex-wrap">
             <div className="relative flex-[1] min-w-[180px]">
@@ -2022,7 +2024,7 @@ export default function SyncPage() {
                       <button onClick={enableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary text-white hover:opacity-90 transition">
                         تشغيل الكل
                       </button>
-                      <button onClick={disableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-gray-200 text-text-muted hover:bg-gray-100 transition">
+                      <button onClick={disableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-bg-surface border border-gray-200 text-text-muted hover:bg-gray-100 transition">
                         إيقاف الكل
                       </button>
                       <span className="w-px h-4 bg-border-subtle" />
@@ -2049,8 +2051,8 @@ export default function SyncPage() {
                               onClick={isNew ? toggleNewBatch : () => toggleColumn(col.key)}
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
                                 count > 0
-                                  ? "bg-white border-primary text-primary"
-                                  : "bg-white border-gray-200 text-text-muted"
+                                  ? "bg-bg-surface border-primary text-primary"
+                                  : "bg-bg-surface border-gray-200 text-text-muted"
                               }`}
                             >
                               <Icon className="h-3 w-3" />
@@ -2173,7 +2175,7 @@ export default function SyncPage() {
 
       {/* ── Tab: New products ── */}
       {activeTab === "newproducts" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
+        <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
           <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3 flex-wrap">
             <div className="relative flex-[1] min-w-[180px]">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -2227,7 +2229,7 @@ export default function SyncPage() {
                       <button onClick={enableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary text-white hover:opacity-90 transition">
                         تشغيل الكل
                       </button>
-                      <button onClick={disableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-gray-200 text-text-muted hover:bg-gray-100 transition">
+                      <button onClick={disableAllForAll} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-bg-surface border border-gray-200 text-text-muted hover:bg-gray-100 transition">
                         إيقاف الكل
                       </button>
                       <span className="w-px h-4 bg-border-subtle" />
@@ -2247,8 +2249,8 @@ export default function SyncPage() {
                               onClick={() => toggleColumn(col.key)}
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
                                 count > 0
-                                  ? "bg-white border-primary text-primary"
-                                  : "bg-white border-gray-200 text-text-muted"
+                                  ? "bg-bg-surface border-primary text-primary"
+                                  : "bg-bg-surface border-gray-200 text-text-muted"
                               }`}
                             >
                               <Icon className="h-3 w-3" />
@@ -2381,7 +2383,7 @@ export default function SyncPage() {
 
       {/* ── Tab: Pending changes ── */}
       {activeTab === "pending" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
+        <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
           {/* ── Search inside pending tab ── */}
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="relative max-w-xs">
@@ -2410,7 +2412,7 @@ export default function SyncPage() {
                   </thead>
                   <tbody>
                     {filteredPending.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-8 text-sm text-slate-400">
+                      <tr><td colSpan={5} className="text-center py-8 text-sm text-text-muted">
                         {searchQ ? "لا توجد نتائج مطابقة" : "لا توجد تغييرات معلقة"}
                       </td></tr>
                     ) : filteredPending.map((change, i) => (
@@ -2459,7 +2461,7 @@ export default function SyncPage() {
 
       {/* ── Tab: Logs ── */}
       {activeTab === "logs" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
+        <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-slide-up">
           {/* ── Filters inside logs tab ── */}
           <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3 flex-wrap">
             <div className="relative flex-[1] min-w-[160px]">
@@ -2666,7 +2668,7 @@ function RollbackTab({
 
   if (snapshotsLoading && snapshots.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center animate-slide-up">
+      <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 p-12 text-center animate-slide-up">
         <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
         <p className="text-sm text-text-muted">جاري تحميل لقطات الاسترجاع...</p>
       </div>
@@ -2735,7 +2737,7 @@ function RollbackTab({
 
       {/* Snapshots list */}
       {snapshots.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center animate-slide-up">
+        <div className="bg-bg-surface rounded-2xl shadow-sm border border-gray-200 p-12 text-center animate-slide-up">
           <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
             <Undo2 className="h-7 w-7 text-text-muted" />
           </div>

@@ -10,8 +10,6 @@ function requirePermission(flag) {
     }
     const err = new Error("ليس لديك صلاحية للوصول إلى هذا المورد");
     err.status = 403;
-    // The client's axios interceptor shows its permission toast only when it
-    // sees this code — without it the action fails silently.
     err.code = "permission_denied";
     return next(err);
   };
@@ -54,8 +52,16 @@ function logPermissionDenial(userId, page, action, method, path, req) {
       JSON.stringify({ action, method, path })
     );
   } catch {
-    // non-fatal — don't let logging failure break the response
+    // non-fatal
   }
+}
+
+function checkHasPermission(user, page, action) {
+  if (!user) return false;
+  if (user.role === "dev") return true;
+  if (user.page_permissions === null || user.page_permissions === undefined) return true;
+  const perms = getUserPermissions(user);
+  return perms[page]?.includes(action) ?? false;
 }
 
 function requirePagePermission(page, action) {
@@ -63,12 +69,7 @@ function requirePagePermission(page, action) {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
 
-    // dev and admin have full access
-    if (user.role === "dev" || user.role === "admin") return next();
-
-    const perms = getUserPermissions(user);
-
-    if (perms[page]?.includes(action)) return next();
+    if (checkHasPermission(user, page, action)) return next();
 
     logPermissionDenial(user.id, page, action, req.method, req.path, req);
 
@@ -77,41 +78,28 @@ function requirePagePermission(page, action) {
 }
 
 function userHasPagePermission(user, page, action) {
-  if (!user) return false;
-  if (user.role === "dev" || user.role === "admin") return true;
-  const perms = getUserPermissions(user);
-  return perms[page]?.includes(action) ?? false;
+  return checkHasPermission(user, page, action);
 }
 
-// Pass when the user holds the action on ANY of the listed pages. Used for
-// shared resources (e.g. the WhatsApp engine is driven from both the settings
-// page and the WhatsApp CRM page).
 function requireAnyPagePermission(pages, action) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (user.role === "dev" || user.role === "admin") return next();
 
-    const perms = getUserPermissions(user);
-    if (pages.some((page) => perms[page]?.includes(action))) return next();
+    if (pages.some((page) => checkHasPermission(user, page, action))) return next();
 
     logPermissionDenial(user.id, pages[0], action, req.method, req.path, req);
     return res.status(403).json({ error: "permission_denied", page: pages[0], action });
   };
 }
 
-// Like requireAnyPagePermission but accepts a map of { page: action } so
-// different pages can require different actions.
-// e.g. requireAnyPageAction({ settings: "edit", whatsapp_crm: "manage_templates" })
 function requireAnyPageAction(pageActionMap) {
   const entries = Object.entries(pageActionMap);
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (user.role === "dev" || user.role === "admin") return next();
 
-    const perms = getUserPermissions(user);
-    if (entries.some(([page, action]) => perms[page]?.includes(action))) return next();
+    if (entries.some(([page, action]) => checkHasPermission(user, page, action))) return next();
 
     logPermissionDenial(user.id, entries[0][0], entries[0][1], req.method, req.path, req);
     return res.status(403).json({ error: "permission_denied", page: entries[0][0], action: entries[0][1] });

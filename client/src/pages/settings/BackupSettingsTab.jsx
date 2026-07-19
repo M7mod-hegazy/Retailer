@@ -16,10 +16,10 @@ function InfoTip({ text }) {
   if (!text) return null;
   return (
     <span className="group relative cursor-help shrink-0">
-      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
-      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+      <Info className="h-3 w-3 text-text-muted hover:text-text-secondary transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-900 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
         {text}
-        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-900" />
       </div>
     </span>
   );
@@ -27,25 +27,25 @@ function InfoTip({ text }) {
 
 function Card({ tone = "slate", icon, title, desc, children }) {
   const toneMap = {
-    slate: "border-slate-200 bg-white",
+    slate: "border-border-normal bg-bg-surface",
     rose: "border-rose-200 bg-rose-50/40",
     emerald: "border-emerald-200 bg-emerald-50/30",
   };
   const iconMap = {
-    slate: "bg-slate-100 text-slate-600",
+    slate: "bg-bg-overlay text-text-secondary",
     rose: "bg-rose-100 text-rose-600",
     emerald: "bg-emerald-100 text-emerald-600",
   };
   return (
-    <div className={`rounded-sm border p-5 shadow-sm transition-all ${toneMap[tone]}`}>
+    <div className={`rounded-lg border p-5 shadow-sm transition-all ${toneMap[tone]}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm ${iconMap[tone]}`}>
+          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconMap[tone]}`}>
             {icon}
           </div>
           <div>
-            <div className="text-sm font-black uppercase tracking-widest text-slate-800">{title}</div>
-            {desc && <p className="mt-1 max-w-[460px] text-[11px] font-bold leading-relaxed text-slate-500">{desc}</p>}
+            <div className="text-sm font-black uppercase tracking-widest text-text-primary">{title}</div>
+            {desc && <p className="mt-1 max-w-[460px] text-[11px] font-bold leading-relaxed text-text-secondary">{desc}</p>}
           </div>
         </div>
         {children}
@@ -197,7 +197,7 @@ export default function BackupSettingsTab() {
 
   if (!canView) {
     return (
-      <div className="rounded-sm border border-slate-200 bg-white p-8 text-center text-xs font-bold text-slate-400">
+      <div className="rounded-lg border border-border-normal bg-bg-surface p-8 text-center text-xs font-bold text-text-muted">
         ليس لديك صلاحية لعرض النسخ الاحتياطية.
       </div>
     );
@@ -210,46 +210,46 @@ export default function BackupSettingsTab() {
         <Card
           tone="slate"
           icon={<HardDrive className="h-4 w-4" />}
-          title="إنشاء نسخة احتياطية"
-          desc="يحفظ النظام نسخة كاملة من قاعدة البيانات والصور. ستظهر معاينة دقيقة لمحتوى النسخة قبل التأكيد."
+          title="تاخد نسخة احتياطية (باك أب)"
+          desc="النظام هيحفظ نسخة كاملة من كل الداتا والصور بتاعتك. وهتشوف تفاصيل النسخة قبل ما تأكد."
         >
           <button
             type="button"
             onClick={() => setPreviewOpen(true)}
             className="flex h-9 shrink-0 items-center justify-center rounded-sm bg-primary px-6 text-2sm font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-primary-600 active:scale-95"
           >
-            إنشاء نسخة الآن
+            خد نسخة دلوقتي
           </button>
         </Card>
       )}
 
       {canCreate && (
-        <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-1 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
-            <Clock className="h-4 w-4 text-slate-500" /> أخر النسخ التلقائي
+        <div className="rounded-lg border border-border-normal bg-bg-surface p-5 shadow-sm">
+          <div className="mb-1 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-text-primary">
+            <Clock className="h-4 w-4 text-text-secondary" /> إعدادات الباك أب التلقائي
           </div>
-          <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
-            يأخذ النظام نسخة احتياطية عند فتح البرنامج، وعند إغلاقه، ودورياً أثناء التشغيل — متى مضى على آخر نسخة أكثر من الفترة المحددة. لا يعتمد على توقيت ثابت قد لا يعمل إذا كان الجهاز مغلقاً.
+          <p className="mb-4 text-[11px] font-bold leading-relaxed text-text-secondary">
+            النظام بياخد باك أب لوحده أول ما تفتح البرنامج ولما تقفله، وكمان وهو شغال لو عدّى وقت طويل على آخر نسخة. مش بيعتمد على وقت معين عشان ميقعش لو الجهاز مقفول.
             {settings.last_auto_backup_at && (
-              <span className="mt-1 block text-slate-400">آخر نسخة تلقائية: {formatDateTime(settings.last_auto_backup_at)}</span>
+              <span className="mt-1 block text-text-muted">آخر نسخة تلقائية: {formatDateTime(settings.last_auto_backup_at)}</span>
             )}
           </p>
           {backupSummary && backupSummary.totalSnapshots > 0 && (
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-sm border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-[11px] font-bold text-slate-600">
-              <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-bg-overlay/50 px-4 py-2.5 text-[11px] font-bold text-text-secondary">
+              <BarChart3 className="h-3.5 w-3.5 text-text-muted" />
               <span>{backupSummary.totalSnapshots} مستند</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-text-muted">·</span>
               <span>{formatBytes(backupSummary.totalSize)} حجم</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-text-muted">·</span>
               <span>{backupSummary.totalDays} مجموعات</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-text-muted">·</span>
               <span>{backupSummary.triggerGroups} نسخة</span>
             </div>
           )}
           <div className="grid gap-4 md:grid-cols-3">
-            <label className="flex items-center justify-between rounded-sm border border-slate-200 px-3 py-2 group">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-                تفعيل النسخ التلقائي
+            <label className="flex items-center justify-between rounded-md border border-border-normal bg-bg-input px-3 py-2 group hover:border-border-strong focus-within:bg-bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all cursor-pointer">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-text-secondary">
+                شغّل الباك أب التلقائي
                 <InfoTip text={getHint("auto_backup_enabled")} />
               </span>
               <input
@@ -259,10 +259,10 @@ export default function BackupSettingsTab() {
                 className="h-4 w-4 accent-slate-900"
               />
             </label>
-            <label className="rounded-sm border border-slate-200 px-3 py-2 group">
-              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-slate-500">
-                الفترة بين النسخ (ساعات)
-                <InfoTip text="أقل مدة تمر قبل أخذ نسخة تلقائية جديدة. الافتراضي 24 ساعة (نسخة يومية)." />
+            <label className="rounded-md border border-border-normal bg-bg-input px-3 py-2 group hover:border-border-strong focus-within:bg-bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all cursor-text">
+              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-text-secondary">
+                ياخد نسخة كل كام ساعة؟
+                <InfoTip text="أقل مدة عشان ياخد نسخة جديدة لوحده. الافتراضي 24 ساعة (يعني كل يوم نسخة)." />
               </span>
               <input
                 type="number"
@@ -270,12 +270,12 @@ export default function BackupSettingsTab() {
                 max={168}
                 value={settings.auto_backup_interval_hours ?? 24}
                 onChange={(e) => setSettings((s) => ({ ...s, auto_backup_interval_hours: e.target.value }))}
-                className="w-full text-sm font-black text-slate-800 outline-none"
+                className="w-full text-sm font-black text-text-primary bg-transparent outline-none"
               />
             </label>
-            <div className="rounded-sm border border-slate-200 px-3 py-2 group">
-              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-slate-500">
-                مجلد الحفظ
+            <div className="rounded-md border border-border-normal bg-bg-input px-3 py-2 group hover:border-border-strong focus-within:bg-bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all cursor-text">
+              <span className="flex items-center gap-1.5 mb-1 block text-[11px] font-bold text-text-secondary">
+                المكان اللي بيتحفظ فيه الباك أب
                 <InfoTip text={getHint("auto_backup_path")} />
               </span>
               <div className="flex items-center gap-2">
@@ -288,11 +288,11 @@ export default function BackupSettingsTab() {
                       : ""
                   }
                   onChange={(e) => setSettings((s) => ({ ...s, auto_backup_path: e.target.value }))}
-                  placeholder="افتراضي: backups/"
-                  className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-700 outline-none ltr:text-left"
+                  placeholder="المكان الطبيعي: backups/"
+                  className="min-w-0 flex-1 truncate text-[11px] font-bold text-text-primary bg-transparent outline-none ltr:text-left"
                 />
                 {isDesktop() && (
-                  <button type="button" onClick={choosePath} className="shrink-0 text-slate-400 hover:text-slate-700">
+                  <button type="button" onClick={choosePath} className="shrink-0 text-text-muted hover:text-text-primary">
                     <Folder className="h-4 w-4" />
                   </button>
                 )}
@@ -310,7 +310,7 @@ export default function BackupSettingsTab() {
                   auto_backup_interval_hours: Number(settings.auto_backup_interval_hours) || 24,
                 })
               }
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 px-5 text-2sm font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-sm border border-border-strong px-5 text-2sm font-black uppercase tracking-widest text-text-primary transition-all hover:bg-bg-overlay active:scale-95 disabled:opacity-50"
             >
               {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               حفظ الإعدادات
@@ -320,13 +320,13 @@ export default function BackupSettingsTab() {
       )}
 
       {/* 2. Restore browser */}
-      <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-800">
-          <History className="h-4 w-4 text-slate-500" /> الاستعادة من نقطة زمنية
+      <div className="rounded-lg border border-border-normal bg-bg-surface p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-text-primary">
+          <History className="h-4 w-4 text-text-secondary" /> الاسترجاع (ترجّع داتا قديمة)
         </div>
-        <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
-          تصفّح النسخ حسب السنة ثم الشهر ثم اليوم. كل نقطة تمثل حالة كاملة للنظام حتى ذلك التاريخ.
-          {canExport && " يمكنك أيضاً تصدير أي نقطة كملف محمول."}
+        <p className="mb-4 text-[11px] font-bold leading-relaxed text-text-secondary">
+          دور في النسخ القديمة بالسنة والشهر واليوم. كل نقطة من دول بترجعلك النظام زي ما كان بالظبط في الوقت ده.
+          {canExport && " وممكن كمان تصدر أي نسخة لملف عشان تنقله لجهاز تاني."}
         </p>
         <RestoreBrowser
           onRestore={setRestoreTarget}
@@ -342,11 +342,11 @@ export default function BackupSettingsTab() {
         <Card
           tone="slate"
           icon={<UploadCloud className="h-4 w-4" />}
-          title="استيراد من ملف خارجي"
-          desc="استعد من ملف نسخة محفوظ خارج النظام (.zip كامل بالصور أو .db فقط). يتم إنشاء نسخة أمان تلقائية أولاً."
+          title="استيراد داتا من ملف خارجي"
+          desc="لو معاك ملف باك أب (.zip فيه صور أو .db بس) تقدر ترجعه هنا. والنظام هياخد باك أب احتياطي الأول عشان الأمان."
         >
-          <label className="flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-slate-300 px-5 text-2sm font-black uppercase tracking-widest text-slate-700 transition-all hover:bg-slate-50 active:scale-95">
-            اختيار ملف
+          <label className="flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-border-strong px-5 text-2sm font-black uppercase tracking-widest text-text-primary transition-all hover:bg-bg-overlay active:scale-95">
+            اختار الملف
             <input
               type="file"
               accept=".db,.zip"
@@ -383,15 +383,15 @@ export default function BackupSettingsTab() {
         <Card
           tone="rose"
           icon={<Eraser className="h-4 w-4" />}
-          title="تفريغ قاعدة البيانات"
-          desc="اختر بالتحديد ما تريد حذفه — كل نوع بيانات على حدة (مبيعات، مشتريات، مخزون، عملاء...). تُنشأ نسخة احتياطية إجبارية أولاً، ويتطلب كلمة مرور المالك."
+          title="تصفير البرنامج (امسح الداتا)"
+          desc="اختار بالظبط اللي عايز تمسحه (مبيعات، مشتريات، مخزن، أو عملاء). قبل ما يمسح هياخد باك أب غصب عنه للحماية، ولازم باسورد صاحب المحل."
         >
           <button
             type="button"
             onClick={() => setEmptyOpen(true)}
             className="flex h-9 shrink-0 items-center justify-center rounded-sm bg-rose-600 px-6 text-2sm font-black uppercase tracking-widest text-white shadow-md transition-all hover:bg-rose-700 active:scale-95"
           >
-            تفريغ قاعدة البيانات
+            امسح الداتا
           </button>
         </Card>
       )}

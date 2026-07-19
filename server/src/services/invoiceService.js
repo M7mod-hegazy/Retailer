@@ -525,8 +525,8 @@ function createInvoice(payload) {
           }
 
           const payment = db.prepare(`
-            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
-            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
+            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id, direction)
+            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?, 'add')
           `).run(
             payload.customer_id || 0,
             amount,
@@ -595,8 +595,8 @@ function createInvoice(payload) {
             userId: payload.user_id || 1, source: "pos_sale", refType: "invoice", refId: inv.lastInsertRowid,
           });
           const payment = db.prepare(`
-            INSERT INTO payments (party_type, party_id, amount, method, notes, bank_id, allocated_amount, unallocated_amount, invoice_id)
-            VALUES ('customer', ?, ?, 'bank_transfer', ?, ?, ?, 0, ?)
+            INSERT INTO payments (party_type, party_id, amount, method, notes, bank_id, allocated_amount, unallocated_amount, invoice_id, direction)
+            VALUES ('customer', ?, ?, 'bank_transfer', ?, ?, ?, 0, ?, 'add')
           `).run(payload.customer_id || 0, amountReceived, `دفعة مقدمة - ${invoiceNo}`, payload.bank_id, amountReceived, inv.lastInsertRowid);
           db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)")
             .run(payment.lastInsertRowid, inv.lastInsertRowid, amountReceived);
@@ -607,8 +607,8 @@ function createInvoice(payload) {
           if (treasuryId) {
             db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amountReceived, treasuryId);
             const payment = db.prepare(`
-              INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id)
-              VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?)
+              INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id, direction)
+              VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?, 'add')
             `).run(payload.customer_id || 0, amountReceived, `دفعة مقدمة - ${invoiceNo}`, treasuryId, amountReceived, inv.lastInsertRowid);
             db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)")
               .run(payment.lastInsertRowid, inv.lastInsertRowid, amountReceived);
@@ -1159,8 +1159,8 @@ function editInvoice(invoiceId, payload, userId) {
           if (method.type === 'cash' && method.target_id) db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(amt, method.target_id);
           else if (method.type === 'bank' && method.target_id) recordBankMovement(db, { bankId: method.target_id, type: "deposit", amount: amt, reference: invoice.invoice_no, notes: `تعديل فاتورة ${invoice.invoice_no}`, userId: userId || 1, source: "pos_sale", refType: "invoice", refId: invoiceId });
           const payment = db.prepare(`
-            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id)
-            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?)
+            INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, bank_id, allocated_amount, unallocated_amount, invoice_id, direction)
+            VALUES ('customer', ?, ?, ?, ?, ?, ?, ?, 0, ?, 'add')
           `).run(newCustomerId || 0, amt, method.type === 'cash' ? 'cash' : method.type === 'credit' ? 'credit' : (method.name || method.type || method.category), `Invoice ${invoice.invoice_no}`, method.type === 'cash' ? method.target_id : null, method.type === 'bank' ? method.target_id : null, amt, invoiceId);
           db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)").run(payment.lastInsertRowid, invoiceId, amt);
         }
@@ -1193,8 +1193,8 @@ function editInvoice(invoiceId, payload, userId) {
       if (tId && netInstallmentCash > 0) {
         db.prepare("UPDATE treasuries SET balance = balance + ? WHERE id = ?").run(netInstallmentCash, tId);
         const pmt = db.prepare(`
-          INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id)
-          VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?)
+          INSERT INTO payments (party_type, party_id, amount, method, notes, treasury_id, allocated_amount, unallocated_amount, invoice_id, direction)
+          VALUES ('customer', ?, ?, 'cash', ?, ?, ?, 0, ?, 'add')
         `).run(newCustomerId || 0, netInstallmentCash, `دفعة مقدمة - ${invoice.invoice_no}`, tId, netInstallmentCash, invoiceId);
         db.prepare("INSERT INTO payment_allocations (payment_id, invoice_id, amount) VALUES (?, ?, ?)").run(pmt.lastInsertRowid, invoiceId, netInstallmentCash);
       }

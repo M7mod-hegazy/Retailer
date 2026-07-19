@@ -4,6 +4,7 @@ import { ArrowRight, History, Upload, Trash2, Loader2, CheckCircle2, AlertTriang
 import { useAccountImportWizard } from "./useAccountImportWizard";
 import { useFieldNavigation } from "../../../hooks/useFieldNavigation";
 import AccountImportHistoryTab from "./AccountImportHistoryTab";
+import { usePageTour } from '../../../hooks/usePageTour';
 
 const FIELD_LABELS = {
   name: "الاسم",
@@ -13,6 +14,7 @@ const FIELD_LABELS = {
 };
 
 export default function AccountImportPage({ entityType }) {
+  usePageTour('account_import');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get("tab") === "history" ? "history" : "upload");
@@ -35,33 +37,33 @@ export default function AccountImportPage({ entityType }) {
 
   return (
     <div className="space-y-6 p-6 w-full" dir="rtl">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-5">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => navigate(listPath)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 active:scale-95 hover:translate-x-1"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-border-normal/80 bg-bg-surface text-text-secondary shadow-sm transition-all duration-200 hover:bg-bg-overlay hover:text-text-primary hover:border-border-strong active:scale-95 hover:translate-x-1"
             title="رجوع للقائمة"
           >
             <ArrowRight className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 font-display">{pageTitle}</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500 font-title">استيراد الحسابات من Excel/CSV مع معاينة وسجل قابل للتراجع.</p>
+            <h1 className="text-2xl font-black tracking-tight text-text-primary font-display">{pageTitle}</h1>
+            <p className="mt-1 text-sm font-medium text-text-secondary font-title">استيراد الحسابات من Excel/CSV مع معاينة وسجل قابل للتراجع.</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200/60 bg-slate-50 p-1.5 shadow-inner">
+        <div className="flex items-center gap-1.5 rounded-xl border border-border-normal/60 bg-bg-overlay p-1.5 shadow-inner">
           <button
             type="button"
             onClick={() => switchTab("upload")}
-            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all duration-250 ${tab === "upload" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-100" : "text-slate-500 hover:text-slate-800"}`}
+            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all duration-250 ${tab === "upload" ? "bg-bg-surface text-text-primary shadow-sm ring-1 ring-slate-100" : "text-text-secondary hover:text-text-primary"}`}
           >
             <Upload className="h-4.5 w-4.5" /> رفع جديد
           </button>
           <button
             type="button"
             onClick={() => switchTab("history")}
-            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all duration-250 ${tab === "history" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-100" : "text-slate-500 hover:text-slate-800"}`}
+            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold transition-all duration-250 ${tab === "history" ? "bg-bg-surface text-text-primary shadow-sm ring-1 ring-slate-100" : "text-text-secondary hover:text-text-primary"}`}
           >
             <History className="h-4.5 w-4.5" /> السجل
           </button>
@@ -84,8 +86,8 @@ export default function AccountImportPage({ entityType }) {
                 const isActive = wizard.step === s.num;
                 const isDone = wizard.step > s.num || (s.num === 4 && wizard.result);
                 return (
-                  <div key={s.num} className={`rounded-xl border p-3 text-center transition-all duration-300 ${isActive ? "border-primary bg-primary text-white shadow-md" : isDone ? "border-emerald-150 bg-emerald-50/50 text-emerald-800" : "border-slate-200 bg-slate-50/50 text-slate-400"}`}>
-                    <div className={`text-[10px] font-black font-mono ${isActive ? "text-emerald-400" : isDone ? "text-emerald-600" : "text-slate-400"}`}>
+                  <div key={s.num} className={`rounded-xl border p-3 text-center transition-all duration-300 ${isActive ? "border-primary bg-primary text-white shadow-md" : isDone ? "border-emerald-150 bg-emerald-50/50 text-emerald-800" : "border-border-normal bg-bg-overlay/50 text-text-muted"}`}>
+                    <div className={`text-[10px] font-black font-mono ${isActive ? "text-emerald-400" : isDone ? "text-emerald-600" : "text-text-muted"}`}>
                       {isDone ? "✓" : `#${s.num}`}
                     </div>
                     <div className="mt-1 text-xs font-black">{s.label}</div>
@@ -127,7 +129,7 @@ export default function AccountImportPage({ entityType }) {
 
 function StepUpload({ wizard, theme, onBack }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm">
+    <div className="rounded-2xl border border-border-normal/80 bg-bg-surface p-8 shadow-sm">
       <input
         ref={wizard.fileInputRef}
         type="file"
@@ -144,25 +146,25 @@ function StepUpload({ wizard, theme, onBack }) {
         onClick={() => wizard.fileInputRef.current?.click()}
         className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
           wizard.dragActive
-            ? "border-slate-500 bg-slate-50/80 ring-4 ring-slate-100/50"
-            : "border-slate-200 bg-slate-50/50 hover:border-slate-350 hover:bg-slate-50/80"
+            ? "border-border-subtle0 bg-bg-overlay/80 ring-4 ring-slate-100/50"
+            : "border-border-normal bg-bg-overlay/50 hover:border-slate-350 hover:bg-bg-overlay/80"
         }`}
       >
         {wizard.reading ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-10 w-10 animate-spin text-slate-600" />
-            <p className="text-sm font-bold text-slate-600">جاري قراءة الملف...</p>
+            <Loader2 className="h-10 w-10 animate-spin text-text-secondary" />
+            <p className="text-sm font-bold text-text-secondary">جاري قراءة الملف...</p>
           </div>
         ) : (
           <>
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-600 mb-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-bg-overlay text-text-secondary mb-4">
               <Upload className="h-8 w-8" />
             </div>
-            <h3 className="text-xl font-black text-slate-900 font-display">اسحب الملف هنا أو اضغط للاختيار</h3>
-            <p className="mt-2 text-xs font-semibold text-slate-500">يدعم ملفات xlsx, xls, csv — حتى 5000 صف</p>
+            <h3 className="text-xl font-black text-text-primary font-display">اسحب الملف هنا أو اضغط للاختيار</h3>
+            <p className="mt-2 text-xs font-semibold text-text-secondary">يدعم ملفات xlsx, xls, csv — حتى 5000 صف</p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono">xlsx / xls / csv</span>
-              <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono">حتى 5000 صف</span>
+              <span className="rounded-lg bg-bg-surface border border-border-normal/80 px-2.5 py-1 text-[10px] font-black text-text-secondary font-mono">xlsx / xls / csv</span>
+              <span className="rounded-lg bg-bg-surface border border-border-normal/80 px-2.5 py-1 text-[10px] font-black text-text-secondary font-mono">حتى 5000 صف</span>
             </div>
           </>
         )}
@@ -178,7 +180,7 @@ function StepUpload({ wizard, theme, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-sm font-bold text-text-secondary shadow-sm transition hover:bg-bg-overlay"
         >
           <ArrowRight className="h-4 w-4" /> العودة للقائمة
         </button>
@@ -205,11 +207,11 @@ function StepColumns({ wizard }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-xl font-black text-slate-900 font-display">ربط أعمدة الملف</h3>
-              <p className="mt-1 text-sm font-medium text-slate-500 font-title">
+              <h3 className="text-xl font-black text-text-primary font-display">ربط أعمدة الملف</h3>
+              <p className="mt-1 text-sm font-medium text-text-secondary font-title">
                 اختر حقل النظام المناسب لكل عمود من ملفك. الأعمدة غير المربوطة لن تُستورد.
               </p>
             </div>
@@ -225,35 +227,35 @@ function StepColumns({ wizard }) {
 
           <div className="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-4">
             {[
-              ["الأعمدة", totalColumns, "text-slate-900"],
+              ["الأعمدة", totalColumns, "text-text-primary"],
               ["المربوط", mappedCount, "text-emerald-700"],
-              ["غير مستورد", ignoredColumns, "text-slate-500"],
+              ["غير مستورد", ignoredColumns, "text-text-secondary"],
               ["البيانات", wizard.totalDataRows, "text-indigo-650"],
             ].map(([label, value, colorClass]) => (
-              <div key={label} className="rounded-xl border border-slate-150 bg-slate-50/60 p-4 transition-all duration-200 hover:bg-slate-50">
-                <div className="text-[10px] font-black text-slate-400 font-mono tracking-wider">{label}</div>
+              <div key={label} className="rounded-xl border border-slate-150 bg-bg-overlay/60 p-4 transition-all duration-200 hover:bg-bg-overlay">
+                <div className="text-[10px] font-black text-text-muted font-mono tracking-wider">{label}</div>
                 <div className={`mt-1.5 text-2xl font-black ${colorClass}`}>{value}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 shadow-inner">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-900 font-title">
-            <Eye className="h-4.5 w-4.5 text-slate-500" />
+        <div className="rounded-2xl border border-border-normal/80 bg-bg-overlay/50 p-5 shadow-inner">
+          <div className="flex items-center gap-2 text-sm font-black text-text-primary font-title">
+            <Eye className="h-4.5 w-4.5 text-text-secondary" />
             ماذا يعني كل حقل؟
           </div>
-          <div className="mt-4 space-y-3 text-xs font-bold leading-relaxed text-slate-600">
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">
+          <div className="mt-4 space-y-3 text-xs font-bold leading-relaxed text-text-secondary">
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">
               <span className="text-emerald-700">الاسم</span> — اسم العميل/المورد (مطلوب)
             </div>
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">
-              <span className="text-slate-700">الهاتف</span> — رقم الجوال أو الهاتف
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">
+              <span className="text-text-primary">الهاتف</span> — رقم الجوال أو الهاتف
             </div>
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">
-              <span className="text-slate-700">العنوان</span> — عنوان الحساب
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">
+              <span className="text-text-primary">العنوان</span> — عنوان الحساب
             </div>
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">
               <span className="text-sky-700">الرصيد</span> — الرصيد الافتتاحي (رقم فقط)
             </div>
           </div>
@@ -284,25 +286,25 @@ function StepColumns({ wizard }) {
           return (
             <div
               key={`${header}-${index}`}
-              className={`rounded-2xl border bg-white p-4.5 shadow-sm transition-all duration-300 ${
+              className={`rounded-2xl border bg-bg-surface p-4.5 shadow-sm transition-all duration-300 ${
                 field
                   ? "border-emerald-250 ring-1 ring-emerald-50/40"
                   : hasUsefulData
                   ? "border-amber-250 ring-1 ring-amber-50/40"
-                  : "border-slate-200 hover:border-slate-350"
+                  : "border-border-normal hover:border-slate-350"
               }`}
             >
               <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-black font-mono text-slate-500">عمود {index + 1}</span>
-                    <h4 className="truncate text-base font-black text-slate-900 font-display">{String(header || `بدون عنوان ${index + 1}`)}</h4>
+                    <span className="rounded-lg bg-bg-overlay px-2.5 py-1 text-[10px] font-black font-mono text-text-secondary">عمود {index + 1}</span>
+                    <h4 className="truncate text-base font-black text-text-primary font-display">{String(header || `بدون عنوان ${index + 1}`)}</h4>
                     {field ? (
                       <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200/50 shadow-sm">
                         <Link2 className="h-3.5 w-3.5" /> {selectedField?.label || field}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-bg-overlay px-2.5 py-1 text-xs font-black text-text-secondary">
                         <MinusCircle className="h-3.5 w-3.5" /> غير مستورد
                       </span>
                     )}
@@ -310,23 +312,23 @@ function StepColumns({ wizard }) {
 
                   <div className="mt-4 grid gap-2.5 sm:grid-cols-4">
                     {samples.length ? samples.map((sample, sampleIndex) => (
-                      <div key={`${sampleIndex}-${sample}`} className="min-h-[44px] rounded-xl border border-slate-150 bg-slate-50/40 px-3 py-2.5 text-xs font-bold text-slate-650 transition hover:bg-slate-50">
-                        <div className="text-[9px] font-black text-slate-400 font-mono tracking-wide">عينة {sampleIndex + 1}</div>
-                        <div className="mt-1 truncate font-mono text-slate-700" title={String(sample)}>{String(sample)}</div>
+                      <div key={`${sampleIndex}-${sample}`} className="min-h-[44px] rounded-xl border border-slate-150 bg-bg-overlay/40 px-3 py-2.5 text-xs font-bold text-slate-650 transition hover:bg-bg-overlay">
+                        <div className="text-[9px] font-black text-text-muted font-mono tracking-wide">عينة {sampleIndex + 1}</div>
+                        <div className="mt-1 truncate font-mono text-text-primary" title={String(sample)}>{String(sample)}</div>
                       </div>
                     )) : (
-                      <div className="rounded-xl border border-slate-100 bg-slate-50/40 px-3 py-3 text-xs font-bold text-slate-400 md:col-span-4 text-center">لا توجد عينات واضحة.</div>
+                      <div className="rounded-xl border border-border-subtle bg-bg-overlay/40 px-3 py-3 text-xs font-bold text-text-muted md:col-span-4 text-center">لا توجد عينات واضحة.</div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col justify-center border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0 lg:border-r lg:pr-4">
-                  <label className="mb-1.5 block text-xs font-black text-slate-500 font-title">حقل النظام</label>
+                <div className="flex flex-col justify-center border-t border-border-subtle pt-3 lg:border-t-0 lg:pt-0 lg:border-r lg:pr-4">
+                  <label className="mb-1.5 block text-xs font-black text-text-secondary font-title">حقل النظام</label>
                   <select
                     ref={el => { columnRefs.current[index] = el; }}
                     value={field}
                     onChange={(event) => wizard.updateMapping(index, event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-350 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                    className="w-full rounded-xl border border-border-normal bg-bg-surface px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-350 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                     onKeyDown={e => {
                       const next = columnRefs.current[index + 1];
                       const prev = columnRefs.current[index - 1];
@@ -346,7 +348,7 @@ function StepColumns({ wizard }) {
                       ? "bg-emerald-50/70 text-emerald-700 ring-emerald-100/50"
                       : hasUsefulData
                       ? "bg-amber-50/70 text-amber-700 ring-amber-100/50"
-                      : "bg-slate-50 text-slate-400 ring-slate-100"
+                      : "bg-bg-overlay text-text-muted ring-slate-100"
                   }`}>
                     {field ? `سيستخدم كحقل: ${selectedField?.label || field}` : hasUsefulData ? "هذا العمود سيترك خارج الاستيراد." : "يمكن تركه خارج الاستيراد."}
                   </div>
@@ -357,15 +359,15 @@ function StepColumns({ wizard }) {
         })}
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sticky bottom-4 z-10">
+      <div className="flex items-center justify-between rounded-2xl border border-border-normal bg-bg-surface p-4 shadow-sm sticky bottom-4 z-10">
         <button
           type="button"
           onClick={() => wizard.setStep(1)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-sm font-bold text-text-secondary shadow-sm transition hover:bg-bg-overlay"
         >
           رجوع
         </button>
-        <div className="text-sm font-bold text-slate-500">
+        <div className="text-sm font-bold text-text-secondary">
           {mappedName ? "✓ تم ربط الاسم. يمكنك المتابعة." : "اربط حقل الاسم أولا"}
         </div>
         <button
@@ -386,7 +388,7 @@ function StepColumns({ wizard }) {
 function StepPreview({ wizard, theme }) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-normal bg-bg-surface px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-black text-emerald-700">
             {wizard.counts.new} جديد
@@ -402,7 +404,7 @@ function StepPreview({ wizard, theme }) {
           <button
             type="button"
             onClick={() => wizard.setStep(2)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-sm font-bold text-text-secondary shadow-sm transition hover:bg-bg-overlay"
           >
             رجوع للأعمدة
           </button>
@@ -418,11 +420,11 @@ function StepPreview({ wizard, theme }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-right text-sm border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-black text-slate-450">
+              <tr className="border-b border-border-subtle bg-bg-overlay/50 text-xs font-black text-slate-450">
                 <th className="px-4 py-3.5">#</th>
                 <th className="px-4 py-3.5">الاسم</th>
                 <th className="px-4 py-3.5">الهاتف</th>
@@ -432,14 +434,14 @@ function StepPreview({ wizard, theme }) {
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {wizard.rows.map((row) => (
-                <tr key={row.__rowNumber} className="transition-colors hover:bg-slate-50/40 text-slate-700 font-semibold">
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{row.__rowNumber}</td>
-                  <td className="px-4 py-3 font-black text-slate-900">{row.name || <span className="text-rose-400 italic text-xs">بدون اسم</span>}</td>
-                  <td className="px-4 py-3 text-slate-500">{row.phone || "—"}</td>
-                  <td className="px-4 py-3 text-slate-500 max-w-[180px] truncate">{row.address || "—"}</td>
-                  <td className="px-4 py-3 text-center font-mono text-slate-700">{row.opening_balance || 0}</td>
+                <tr key={row.__rowNumber} className="transition-colors hover:bg-bg-overlay/40 text-text-primary font-semibold">
+                  <td className="px-4 py-3 text-text-muted font-mono text-xs">{row.__rowNumber}</td>
+                  <td className="px-4 py-3 font-black text-text-primary">{row.name || <span className="text-rose-400 italic text-xs">بدون اسم</span>}</td>
+                  <td className="px-4 py-3 text-text-secondary">{row.phone || "—"}</td>
+                  <td className="px-4 py-3 text-text-secondary max-w-[180px] truncate">{row.address || "—"}</td>
+                  <td className="px-4 py-3 text-center font-mono text-text-primary">{row.opening_balance || 0}</td>
                   <td className="px-4 py-3">
                     {row.status === "new" && (
                       <span className="inline-flex rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-2xs font-black text-emerald-700">جديد</span>
@@ -455,7 +457,7 @@ function StepPreview({ wizard, theme }) {
                     <button
                       type="button"
                       onClick={() => wizard.removeRow(row.__rowNumber)}
-                      className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
+                      className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-border-normal bg-bg-surface text-text-muted shadow-sm transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
                       title="حذف الصف"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -484,33 +486,33 @@ function StepDuplicates({ wizard, theme }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-right text-sm border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-black text-slate-450">
+              <tr className="border-b border-border-subtle bg-bg-overlay/50 text-xs font-black text-slate-450">
                 <th className="px-5 py-3.5">الاسم</th>
                 <th className="px-5 py-3.5 text-center">الرصيد الحالي</th>
                 <th className="px-5 py-3.5 text-center">الرصيد في الملف</th>
                 <th className="px-5 py-3.5 text-center">الإجراء</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border-subtle">
               {duplicateRows.map((row) => {
                 const nameKey = String(row.name || "").trim().toLowerCase().replace(/\s+/g, " ");
                 const existing = byName.get(nameKey);
                 const action = wizard.duplicateActions[nameKey] || "skip";
                 return (
-                  <tr key={row.__rowNumber} className={`transition-colors hover:bg-slate-50/40 font-semibold ${action === "update" ? "bg-blue-50/40" : "text-slate-700"}`}>
-                    <td className="px-5 py-3.5 font-black text-slate-900">{row.name}</td>
-                    <td className="px-5 py-3.5 text-center font-mono text-slate-500">{existing?.opening_balance ?? "—"}</td>
-                    <td className="px-5 py-3.5 text-center font-mono text-slate-700">{row.opening_balance}</td>
+                  <tr key={row.__rowNumber} className={`transition-colors hover:bg-bg-overlay/40 font-semibold ${action === "update" ? "bg-blue-50/40" : "text-text-primary"}`}>
+                    <td className="px-5 py-3.5 font-black text-text-primary">{row.name}</td>
+                    <td className="px-5 py-3.5 text-center font-mono text-text-secondary">{existing?.opening_balance ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-center font-mono text-text-primary">{row.opening_balance}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
                           onClick={() => wizard.setDuplicateAction(nameKey, "skip")}
-                          className={`rounded-lg border px-3 py-1.5 text-xs font-black transition inline-flex items-center gap-1.5 ${action === "skip" ? "bg-primary text-white border-slate-800" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}
+                          className={`rounded-lg border px-3 py-1.5 text-xs font-black transition inline-flex items-center gap-1.5 ${action === "skip" ? "bg-primary text-white border-slate-800" : "bg-bg-surface text-text-secondary border-border-normal hover:bg-bg-overlay"}`}
                         >
                           {action === "skip" ? <CheckCircle2 className="h-3 w-3" /> : null}
                           تخطي
@@ -518,7 +520,7 @@ function StepDuplicates({ wizard, theme }) {
                         <button
                           type="button"
                           onClick={() => wizard.setDuplicateAction(nameKey, "update")}
-                          className={`rounded-lg border px-3 py-1.5 text-xs font-black transition inline-flex items-center gap-1.5 ${action === "update" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"}`}
+                          className={`rounded-lg border px-3 py-1.5 text-xs font-black transition inline-flex items-center gap-1.5 ${action === "update" ? "bg-blue-600 text-white border-blue-600" : "bg-bg-surface text-blue-600 border-blue-200 hover:bg-blue-50"}`}
                         >
                           {action === "update" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                           تحديث
@@ -537,7 +539,7 @@ function StepDuplicates({ wizard, theme }) {
         <button
           type="button"
           onClick={() => wizard.setStep(3)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-sm font-bold text-text-secondary shadow-sm transition hover:bg-bg-overlay"
         >
           رجوع للمعاينة
         </button>
@@ -562,7 +564,7 @@ function StepResult({ wizard, theme, onBackToList }) {
   const skipped = wizard.result?.skipped ?? 0;
 
   return (
-    <div className="flex flex-col items-center gap-8 rounded-2xl border border-slate-200 bg-white p-12 shadow-sm text-center">
+    <div className="flex flex-col items-center gap-8 rounded-2xl border border-border-normal bg-bg-surface p-12 shadow-sm text-center">
       <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100/40">
         <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -570,8 +572,8 @@ function StepResult({ wizard, theme, onBackToList }) {
       </div>
 
       <div>
-        <h2 className="text-2xl font-black text-slate-900 font-display">تم الاستيراد بنجاح</h2>
-        <p className="mt-2 text-sm font-medium text-slate-500">اكتملت عملية استيراد الحسابات.</p>
+        <h2 className="text-2xl font-black text-text-primary font-display">تم الاستيراد بنجاح</h2>
+        <p className="mt-2 text-sm font-medium text-text-secondary">اكتملت عملية استيراد الحسابات.</p>
       </div>
 
       <div className="flex flex-wrap justify-center gap-3">
@@ -581,7 +583,7 @@ function StepResult({ wizard, theme, onBackToList }) {
         <span className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-black text-blue-700">
           تم تحديث {updated}
         </span>
-        <span className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-black text-slate-600">
+        <span className="inline-flex items-center rounded-xl border border-border-normal bg-bg-overlay px-5 py-3 text-sm font-black text-text-secondary">
           تم تخطي {skipped}
         </span>
       </div>
@@ -590,7 +592,7 @@ function StepResult({ wizard, theme, onBackToList }) {
         <button
           type="button"
           onClick={onBackToList}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-5 py-2.5 text-sm font-bold text-text-secondary shadow-sm transition hover:bg-bg-overlay"
         >
           <ArrowRight className="h-4 w-4" /> العودة للقائمة
         </button>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import api from "../../services/api";
+import { usePageTour } from "../../hooks/usePageTour";
 import { Gem, Plus, RefreshCw } from "lucide-react";
 import Button from "../../components/ui/Button";
 import FeatureRoute from "../../components/ui/FeatureRoute";
@@ -12,6 +13,7 @@ const KARATS = [18, 21, 22, 24];
 const KARAT_LABELS = { 18: "عيار 18", 21: "عيار 21", 22: "عيار 22", 24: "عيار 24 (خالص)" };
 
 export default function GoldRatesPage() {
+  usePageTour('gold_rates');
   const qc = useQueryClient();
   const [rates, setRates] = useState({ 18: "", 21: "", 22: "", 24: "" });
   const [saving, setSaving] = useState(false);
@@ -59,37 +61,37 @@ export default function GoldRatesPage() {
         </div>
 
         {isLoading ? (
-          <div className="animate-pulse rounded-xl border border-slate-200 p-6 space-y-5">
-            <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+          <div className="animate-pulse rounded-xl border border-border-normal p-6 space-y-5">
+            <div className="h-4 bg-border-normal rounded w-2/3"></div>
             <div className="grid gap-4 md:grid-cols-2">
               {[1,2,3,4].map(i => (
                 <div key={i} className="space-y-1">
-                  <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-                  <div className="h-10 bg-slate-200 rounded"></div>
+                  <div className="h-4 bg-border-normal rounded w-1/2"></div>
+                  <div className="h-10 bg-border-normal rounded"></div>
                 </div>
               ))}
             </div>
-            <div className="h-10 bg-slate-200 rounded w-24"></div>
+            <div className="h-10 bg-border-normal rounded w-24"></div>
           </div>
         ) : (
-          <form onSubmit={save} className="rounded-xl border border-slate-200 bg-white p-6 space-y-5">
-            <p className="text-[12px] text-slate-500 font-bold">سعر الجرام بالجنيه المصري — اتركه فارغاً إذا لم يُباع</p>
+          <form onSubmit={save} className="rounded-xl border border-border-normal bg-bg-surface p-6 space-y-5">
+            <p className="text-[12px] text-text-secondary font-bold">سعر الجرام بالجنيه المصري — اتركه فارغاً إذا لم يُباع</p>
 
             <div className="grid gap-4 md:grid-cols-2">
               {KARATS.map(k => (
                 <div key={k} className="space-y-1">
-                  <label className="text-sm font-black text-slate-700">{KARAT_LABELS[k]}</label>
+                  <label className="text-sm font-black text-text-primary">{KARAT_LABELS[k]}</label>
                   <div className="relative">
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      className="w-full rounded-lg border border-slate-200 pe-12 ps-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      className="w-full rounded-lg border border-border-normal pe-12 ps-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                       placeholder="0.00"
                       value={rates[k]}
                       onChange={e => setRates(p => ({ ...p, [k]: e.target.value }))}
                     />
-                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">ج.م</span>
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-text-muted font-bold">ج.م</span>
                   </div>
                 </div>
               ))}
@@ -126,20 +128,20 @@ function GoldRateHistory() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">آخر 20 سعر</h3>
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">آخر 20 سعر</h3>
+      <div className="rounded-xl border border-border-normal bg-bg-surface overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b text-[11px] font-black uppercase text-slate-500">
+          <thead className="bg-bg-overlay border-b text-[11px] font-black uppercase text-text-secondary">
             <tr>
               <th className="px-4 py-2 text-start">التاريخ</th>
               <th className="px-4 py-2 text-start">العيار</th>
               <th className="px-4 py-2 text-end">سعر الجرام</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-border-subtle">
             {data.map(r => (
-              <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
-                <td className="px-4 py-2 text-slate-600">{r.rate_date}</td>
+              <tr key={r.id} className="hover:bg-bg-overlay/60 transition-colors">
+                <td className="px-4 py-2 text-text-secondary">{r.rate_date}</td>
                 <td className="px-4 py-2 font-bold">{KARAT_LABELS[r.karat] || r.karat}</td>
                 <td className="px-4 py-2 text-end font-black text-yellow-700">{Number(r.price_per_gram).toLocaleString()} ج.م</td>
               </tr>

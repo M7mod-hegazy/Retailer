@@ -50,7 +50,7 @@ export default function SalesReturnFormBottomBar({
         {/* Row 1: Customer + Discount/Increase + Tax + Total */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
           <div className="relative shrink-0 z-[70]">
-            <div className="flex items-center gap-0.5 rounded-lg bg-white/80 border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div className="flex items-center gap-0.5 rounded-lg bg-bg-surface/80 border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -95,7 +95,7 @@ export default function SalesReturnFormBottomBar({
             )}
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
+          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-border-normal/40 shrink-0">
             <ShoppingCart className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
             <span className="text-[10px] font-bold text-zinc-500">أصناف</span>
@@ -108,7 +108,7 @@ export default function SalesReturnFormBottomBar({
               disabled={isLocked}
               onChange={e => onHeaderDiscountChange?.(Math.max(0, Number(e.target.value) || 0))}
               placeholder="0"
-              className="min-w-[30px] rounded border border-rose-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400" />
+              className="min-w-[30px] rounded border border-rose-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400" />
             <span className="text-[10px] font-bold text-rose-600 whitespace-nowrap">خصم</span>
           </label>
           <label className="flex items-center gap-1 shrink-0 bg-emerald-50/50 rounded-lg px-1.5 py-0.5 border border-emerald-100/50">
@@ -116,7 +116,7 @@ export default function SalesReturnFormBottomBar({
               disabled={isLocked}
               onChange={e => onHeaderIncreaseChange?.(Math.max(0, Number(e.target.value) || 0))}
               placeholder="0"
-              className="min-w-[30px] rounded border border-emerald-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-emerald-400" />
+              className="min-w-[30px] rounded border border-emerald-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-emerald-400" />
             <span className="text-[10px] font-bold text-emerald-600 whitespace-nowrap">زيادة</span>
           </label>
           {taxFeatureOn && (
@@ -158,7 +158,7 @@ export default function SalesReturnFormBottomBar({
                       ? "bg-emerald-600 text-white border-transparent shadow-sm"
                       : noCustomerBlocked
                         ? "cursor-not-allowed bg-red-50 border-dashed border-red-300 text-red-400"
-                        : "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
+                        : "opacity-35 cursor-not-allowed bg-bg-overlay border-border-subtle text-text-muted"
                   }`}>
                   {opt.label}
                 </button>
@@ -169,11 +169,11 @@ export default function SalesReturnFormBottomBar({
           <span className="h-4 w-px bg-zinc-200 shrink-0" />
 
           {refundMethod === "split" && refundTotal > 0 && (
-            <div className="flex items-center gap-1 bg-white/80 rounded-lg border border-zinc-200 px-2 py-0.5 shadow-sm shrink-0">
-              <span className="text-2sm font-bold text-slate-600">المبلغ النقدي</span>
+            <div className="flex items-center gap-1 bg-bg-surface/80 rounded-lg border border-zinc-200 px-2 py-0.5 shadow-sm shrink-0">
+              <span className="text-2sm font-bold text-text-secondary">المبلغ النقدي</span>
               <input type="number" min="0" max={refundTotal} step="0.01"
                 value={splitCashAmount} onChange={e => onSplitCashAmountChange?.(e.target.value)}
-                className="w-16 rounded border border-zinc-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-zinc-700 outline-none focus:border-emerald-400" />
+                className="w-16 rounded border border-zinc-200 bg-bg-surface px-1 py-0.5 text-center font-mono text-2sm font-black text-zinc-700 outline-none focus:border-emerald-400" />
               <button type="button" title="املأ المتبقي"
                 onClick={() => onSplitCashAmountChange?.(String(Math.max(0, refundTotal)))}
                 className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 active:scale-90 transition-all">
@@ -210,7 +210,7 @@ export default function SalesReturnFormBottomBar({
         <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="sales_returns" action="print">
             <button onClick={onPrint} disabled={!total}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-bg-surface/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>

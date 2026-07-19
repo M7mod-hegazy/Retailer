@@ -151,7 +151,7 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
                    }}>
                 <div className="flex items-center justify-between w-full">
                   <span className="text-[10px] font-black" style={{ color: "var(--text-secondary)" }}>{metric.title}</span>
-                  <div className="p-1.5 rounded-xl border border-white/5" style={{ backgroundColor: "var(--bg-input)", color: metric.color }}>
+                  <div className="p-1.5 rounded-xl border border-border-normal/5" style={{ backgroundColor: "var(--bg-input)", color: metric.color }}>
                     <Icon className="h-4 w-4" />
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
     indigo: "border-indigo-500 text-indigo-700 bg-indigo-50",
   };
 
-  const tabInactive = "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50";
+  const tabInactive = "border-transparent text-text-muted hover:text-text-secondary hover:bg-bg-overlay";
 
   const badgeStyles = {
     advances: "bg-amber-100 text-amber-700",
@@ -207,22 +207,22 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
             {employee.name?.charAt(0) || "?"}
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800">{employee.name}</h2>
+            <h2 className="text-xl font-black text-text-primary">{employee.name}</h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {employee.role && (
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                  <Briefcase className="h-3 w-3" /> {employee.role}
+              {(employee.job_title || employee.role) && (
+                <span className="flex items-center gap-1 text-xs font-bold text-text-secondary">
+                  <Briefcase className="h-3 w-3" /> {employee.job_title || employee.role}
                 </span>
               )}
               {employee.address && (
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <span className="flex items-center gap-1 text-xs font-bold text-text-secondary">
                   <MapPin className="h-3 w-3" /> {employee.address}
                 </span>
               )}
               {(() => {
                 const phones = employee.phones ? JSON.parse(employee.phones) : (employee.phone ? [employee.phone] : []);
                 return phones.length > 0 && (
-                  <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                  <span className="flex items-center gap-1 text-xs font-bold text-text-secondary">
                     <Phone className="h-3 w-3" /> {phones.join(" - ")}
                   </span>
                 );
@@ -230,7 +230,7 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
               {employee.salary > 0 && (
                 <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
                   <DollarSign className="h-3 w-3" /> {Number(employee.salary).toLocaleString()} ج.م
-                  <span className="text-slate-400 mr-1">
+                  <span className="text-text-muted mr-1">
                     / {employee.salary_period === 'monthly' ? 'شهر' : employee.salary_period === 'weekly' ? 'أسبوع' : 'يوم'}
                   </span>
                 </span>
@@ -242,13 +242,13 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
           <button
             onClick={() => togglePageTour("employees")}
             title="شرح الصفحة"
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-text-muted hover:bg-blue-50 hover:text-blue-600 transition-all shrink-0"
           >
             <HelpCircle className="h-5 w-5" />
           </button>
           <button
             onClick={onClose}
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-text-muted hover:bg-bg-overlay hover:text-text-primary transition-all shrink-0"
           >
             <X className="h-5 w-5" />
           </button>
@@ -256,7 +256,7 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
       </div>
 
       {/* Tabs */}
-      <div className="px-6 mt-6 border-b border-slate-100 shrink-0">
+      <div className="px-6 mt-6 border-b border-border-subtle shrink-0">
         <div className="flex gap-1 overflow-x-auto scrollbar-none">
           {TABS.map(tab => {
             const Icon = tab.icon;
@@ -273,7 +273,7 @@ export default function EmployeeDetail({ employee, employees, onStartCreate, onC
                 <Icon className="h-4 w-4" />
                 {tab.label}
                 {count > 0 && (
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${badgeStyles[tab.id] || "bg-slate-100 text-slate-700"}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${badgeStyles[tab.id] || "bg-bg-overlay text-text-primary"}`}>
                     {count}
                   </span>
                 )}

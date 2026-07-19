@@ -4,6 +4,7 @@ import { Truck, Phone, Mail, ChevronLeft, Plus } from "lucide-react";
 import api from "../../services/api";
 import { formatNumber } from "../../utils/currency";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -15,6 +16,7 @@ const BASE_TABS = [
 const CHEQUES_TAB = { id: "cheques", label: "الشيكات" };
 
 export default function SupplierProfilePage() {
+  usePageTour('supplier_profile');
   const { id } = useParams();
   const chequesEnabled = useFeatureEnabled("feature_cheques");
   const TABS = chequesEnabled ? [...BASE_TABS, CHEQUES_TAB] : BASE_TABS;
@@ -56,7 +58,7 @@ export default function SupplierProfilePage() {
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--bg-base)" }} dir="rtl" data-help-root="supplier_profile">
       <div className="flex items-center gap-2 px-4 lg:px-6 py-3 border-b text-2sm font-bold shrink-0" style={{ backgroundColor: "var(--bg-surface)", borderBottomColor: "var(--border-subtle)", color: "var(--text-secondary)" }} data-help="breadcrumb">
-        <Link to="/accounts/suppliers" className="flex items-center gap-1 hover:text-slate-800"><ChevronLeft className="h-3.5 w-3.5" /> حسابات الموردين</Link>
+        <Link to="/accounts/suppliers" className="flex items-center gap-1 hover:text-text-primary"><ChevronLeft className="h-3.5 w-3.5" /> حسابات الموردين</Link>
         <span>/</span><span style={{ color: "var(--text-primary)" }}>{supplier.name}</span>
       </div>
 
@@ -91,7 +93,7 @@ export default function SupplierProfilePage() {
       <div className="flex gap-1 px-3 lg:px-4 mt-4 shrink-0" data-help="profile-tabs">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2 rounded-xl text-2sm font-black transition-colors ${activeTab === t.id ? "bg-orange-600 text-white shadow-md" : "border hover:bg-slate-50"}`}
+            className={`px-4 py-2 rounded-xl text-2sm font-black transition-colors ${activeTab === t.id ? "bg-orange-600 text-white shadow-md" : "border hover:bg-bg-overlay"}`}
             style={activeTab === t.id ? {} : { backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}>
             {t.label}
           </button>
@@ -115,7 +117,7 @@ export default function SupplierProfilePage() {
               </thead>
               <tbody>
                 {tabData.map((row) => (
-                  <tr key={row.id} className="border-b hover:bg-slate-50" style={{ borderBottomColor: "var(--border-subtle)" }}>
+                  <tr key={row.id} className="border-b hover:bg-bg-overlay" style={{ borderBottomColor: "var(--border-subtle)" }}>
                     {activeTab === "purchases" && <>
                       <td className="px-4 py-3 font-mono text-[11px] text-orange-700">{row.doc_no || `#${row.id}`}</td>
                       <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(row.created_at)}</td>

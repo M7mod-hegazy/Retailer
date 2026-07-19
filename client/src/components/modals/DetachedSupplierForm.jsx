@@ -59,9 +59,9 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-white" dir="rtl">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 className="truncate text-sm font-bold text-slate-800">إضافة مورد جديد</h3>
+    <div className="flex h-dvh flex-col bg-bg-surface" dir="rtl">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-normal bg-bg-overlay px-4 py-3">
+        <h3 className="truncate text-sm font-bold text-text-primary">إضافة مورد جديد</h3>
         <button
           type="button"
           onClick={() => window.close()}
@@ -77,12 +77,12 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">
+          <label className="block text-xs font-semibold text-text-secondary mb-1">
             اسم المورد <span className="text-red-500">*</span>
           </label>
           <input
             ref={nameRef}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+            className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
             placeholder="أدخل اسم المورد"
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -91,12 +91,12 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">أرقام الهاتف</label>
+          <label className="block text-xs font-semibold text-text-secondary mb-1.5">أرقام الهاتف</label>
           <div className="space-y-2">
             {form.phones.map((phone, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                   placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                   value={phone}
                   onChange={e => setPhone(i, e.target.value)}
@@ -106,7 +106,7 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
                   <button
                     type="button"
                     onClick={() => removePhone(i)}
-                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -127,12 +127,12 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">العناوين</label>
+          <label className="block text-xs font-semibold text-text-secondary mb-1.5">العناوين</label>
           <div className="space-y-2">
             {form.addresses.map((addr, i) => (
               <div key={i} className="flex items-start gap-2">
                 <input
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                   placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                   value={addr}
                   onChange={e => setAddress(i, e.target.value)}
@@ -141,7 +141,7 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
                   <button
                     type="button"
                     onClick={() => removeAddress(i)}
-                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
+                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -162,10 +162,10 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">الرصيد الافتتاحي</label>
+          <label className="block text-xs font-semibold text-text-secondary mb-1">الرصيد الافتتاحي</label>
           <input
             type="number"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+            className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
             placeholder="0"
             value={form.opening_balance}
             onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
@@ -173,9 +173,9 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
+          <label className="block text-xs font-semibold text-text-secondary mb-1">ملاحظات</label>
           <textarea
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+            className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
             placeholder="اختياري"
             rows={2}
             value={form.notes}
@@ -184,7 +184,7 @@ export default function DetachedSupplierForm({ initialState, sendAction, token }
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 shrink-0">
+      <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
         <Button variant="danger" size="sm" onClick={() => window.close()}>إلغاء</Button>
         <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
           {saving ? "جاري الحفظ..." : "حفظ"}

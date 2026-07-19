@@ -69,17 +69,17 @@ function BankModal({ bank, mode, onClose, onDone }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 10 }}
         transition={{ duration: 0.15 }}
-        className="w-full max-w-[400px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden"
+        className="w-full max-w-[400px] rounded-[24px] p-1.5 bg-border-normal border border-slate-350 shadow-modal overflow-hidden"
       >
-        <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-5">
+        <div className="rounded-[calc(24px-0.375rem)] p-6 bg-bg-surface flex flex-col gap-5">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-sm font-black text-slate-900">
+              <h2 className="text-sm font-black text-text-primary">
                 {mode === "deposit" ? "إيداع نقدي مباشر" : "سحب نقدي مباشر"}
               </h2>
               <p className="text-[10px] text-slate-450 font-bold mt-0.5">حساب: {bank.name}</p>
             </div>
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+            <button onClick={onClose} className="p-1 rounded-full hover:bg-bg-overlay text-text-muted hover:text-text-primary transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -94,7 +94,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 autoFocus 
                 onKeyDown={(e) => handleKeyDown(e, { nextRef: referenceRef })} 
-                className="w-full h-11 rounded-xl border border-slate-250 bg-slate-100 px-4 text-center font-mono text-base font-black text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                className="w-full h-11 rounded-xl border border-slate-250 bg-bg-overlay px-4 text-center font-mono text-base font-black text-text-primary outline-none focus:border-indigo-650 transition-colors"
                 placeholder="0.00"
               />
             </div>
@@ -106,7 +106,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
                 value={form.reference} 
                 onChange={e => setForm(f => ({ ...f, reference: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, { nextRef: notesRef, prevRef: amountRef })} 
-                className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-4 text-2sm text-text-primary outline-none focus:border-indigo-650 transition-colors" 
                 placeholder="تحويل بنكي / شيك / إشعار..." 
               />
             </div>
@@ -118,7 +118,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
                 value={form.notes} 
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: referenceRef })} 
-                className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-4 text-2sm text-text-primary outline-none focus:border-indigo-650 transition-colors"
                 placeholder="بيان تفصيلي للحركة..."
               />
             </div>
@@ -135,7 +135,7 @@ function BankModal({ bank, mode, onClose, onDone }) {
               }`}
             >
               <span>{saving ? "جاري الحفظ..." : "تأكيد وتسجيل الحركة"}</span>
-              <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+              <div className="h-5 w-5 rounded-full bg-bg-surface/20 flex items-center justify-center">
                 <Check className="h-3 text-white" />
               </div>
             </button>
@@ -211,12 +211,12 @@ function StatementPanel({ bank, onClose }) {
         animate={{ x: 0 }}
         exit={{ x: "-100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="relative w-full max-w-[500px] h-full bg-slate-100 border-r border-slate-205 shadow-modal flex flex-col z-10"
+        className="relative w-full max-w-[500px] h-full bg-bg-overlay border-r border-slate-205 shadow-modal flex flex-col z-10"
         dir="rtl"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-150 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-normal bg-slate-150 shrink-0">
           <div>
-            <h2 className="text-sm font-black text-slate-900">كشف حركات الحساب</h2>
+            <h2 className="text-sm font-black text-text-primary">كشف حركات الحساب</h2>
             <p className="text-[10px] text-slate-450 mt-0.5">{bank.name}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -227,56 +227,56 @@ function StatementPanel({ bank, onClose }) {
             >
               <Printer className="h-3.5 w-3.5" /> طباعة
             </button>
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">
+            <button onClick={onClose} className="p-1 rounded-full hover:bg-border-normal text-text-muted hover:text-text-secondary transition-colors">
               <X className="h-4.5 w-4.5" />
             </button>
           </div>
         </div>
 
         {/* Date Filter Bar */}
-        <div className="flex items-end gap-3 p-4 border-b border-slate-200 bg-slate-100 shrink-0">
+        <div className="flex items-end gap-3 p-4 border-b border-border-normal bg-bg-overlay shrink-0">
           <div className="flex-1">
-            <label className="text-[9px] font-black text-slate-400 block mb-1">من تاريخ</label>
+            <label className="text-[9px] font-black text-text-muted block mb-1">من تاريخ</label>
             <input 
               ref={fromRef} 
               type="date" 
               value={from} 
               onChange={e => setFrom(e.target.value)} 
               onKeyDown={(e) => handleKeyDown(e, { nextRef: toRef })} 
-              className="h-9 w-full rounded-lg border border-slate-300 bg-slate-200 px-3 text-2sm text-slate-900 outline-none focus:border-slate-450 transition-colors" 
+              className="h-9 w-full rounded-lg border border-border-strong bg-border-normal px-3 text-2sm text-text-primary outline-none focus:border-slate-450 transition-colors" 
             />
           </div>
           <div className="flex-1">
-            <label className="text-[9px] font-black text-slate-400 block mb-1">إلى تاريخ</label>
+            <label className="text-[9px] font-black text-text-muted block mb-1">إلى تاريخ</label>
             <input 
               ref={toRef} 
               type="date" 
               value={to} 
               onChange={e => setTo(e.target.value)} 
               onKeyDown={(e) => handleKeyDown(e, { nextRef: searchBtnRef, prevRef: fromRef })} 
-              className="h-9 w-full rounded-lg border border-slate-300 bg-slate-200 px-3 text-2sm text-slate-900 outline-none focus:border-slate-450 transition-colors" 
+              className="h-9 w-full rounded-lg border border-border-strong bg-border-normal px-3 text-2sm text-text-primary outline-none focus:border-slate-450 transition-colors" 
             />
           </div>
           <button 
             ref={searchBtnRef} 
             onClick={load} 
             onKeyDown={(e) => handleKeyDown(e, { nextRef: fromRef, onEnter: load })} 
-            className="h-9 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-350 px-4 text-2sm font-black border border-slate-350 transition-colors shrink-0"
+            className="h-9 rounded-lg bg-border-normal text-text-primary hover:bg-slate-350 px-4 text-2sm font-black border border-slate-350 transition-colors shrink-0"
           >
             بحث
           </button>
         </div>
 
         {/* Live Balance Summary */}
-        <div className="px-5 py-3 border-b border-slate-200 bg-slate-100/50 flex justify-between items-center shrink-0">
-          <span className="text-[11px] font-black text-slate-400">الرصيد الدفتري الحالي</span>
+        <div className="px-5 py-3 border-b border-border-normal bg-bg-overlay/50 flex justify-between items-center shrink-0">
+          <span className="text-[11px] font-black text-text-muted">الرصيد الدفتري الحالي</span>
           <span className="text-sm font-mono font-black text-indigo-650">{fmt(bank.balance)} ج.م</span>
         </div>
 
         {/* Activity Stream */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-200 bg-slate-100">
+        <div className="flex-1 overflow-y-auto divide-y divide-border-normal bg-bg-overlay">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 font-black animate-pulse">جاري تحميل الحركات...</div>
+            <div className="flex items-center justify-center h-40 text-text-muted font-black animate-pulse">جاري تحميل الحركات...</div>
           ) : txs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-slate-350 gap-2 p-6">
               <Activity className="h-8 w-8" />
@@ -293,15 +293,15 @@ function StatementPanel({ bank, onClose }) {
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-800">
+                      <span className="text-xs font-black text-text-primary">
                         {tx.type === "deposit" ? "إيداع" : "سحب"}
                       </span>
-                      <span className="rounded bg-slate-200 px-1 py-0.2 text-[9px] font-bold text-slate-500">
+                      <span className="rounded bg-border-normal px-1 py-0.2 text-[9px] font-bold text-text-secondary">
                         {SOURCE_LABELS[tx.source] || "يدوي"}
                       </span>
                     </div>
                     {tx.reference && <div className="text-[10px] text-slate-450 font-mono mt-0.5">مرجع: {tx.reference}</div>}
-                    {tx.notes && <div className="text-[10px] text-slate-500 mt-0.5">{tx.notes}</div>}
+                    {tx.notes && <div className="text-[10px] text-text-secondary mt-0.5">{tx.notes}</div>}
                   </div>
                 </div>
 
@@ -312,13 +312,13 @@ function StatementPanel({ bank, onClose }) {
                     }`}>
                       {tx.type === "deposit" ? "+" : "-"}{fmt(tx.amount)}
                     </div>
-                    <div className="text-[9px] text-slate-400 mt-0.5">{tx.created_at?.slice(0, 10)}</div>
+                    <div className="text-[9px] text-text-muted mt-0.5">{tx.created_at?.slice(0, 10)}</div>
                   </div>
 
                   <button
                     onClick={() => toggleReconcile(tx.id, tx.reconciled)}
                     className={`h-6 w-6 rounded flex items-center justify-center text-xs transition-colors shrink-0 ${
-                      tx.reconciled ? "bg-teal-100 text-teal-600 font-black" : "bg-slate-200 text-slate-400 hover:bg-slate-250"
+                      tx.reconciled ? "bg-teal-100 text-teal-600 font-black" : "bg-border-normal text-text-muted hover:bg-slate-250"
                     }`}
                     title={tx.reconciled ? "تم التسوية" : "بانتظار التسوية"}
                   >
@@ -447,20 +447,20 @@ export default function BankOperationsPage() {
   ).length;
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden" dir="rtl">
+    <div className="flex flex-col h-full bg-bg-overlay relative overflow-hidden" dir="rtl">
       
       {/* Decorative Top Ambient Aura */}
       <div className="absolute top-0 right-0 left-0 h-48 bg-gradient-to-b from-indigo-50/10 to-transparent pointer-events-none z-0" />
 
       {/* Top Header Section */}
-      <header className="bg-white border-b border-slate-200 px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-6 shrink-0 relative z-10">
+      <header className="bg-bg-surface border-b border-border-normal px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-6 shrink-0 relative z-10">
         <div className="flex items-center gap-3.5">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100/50 shadow-sm">
             <Landmark className="h-5.5 w-5.5" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">إدارة الحسابات البنكية</h1>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5 font-sans">مراقبة الأرصدة المصرفية، السحب والإيداع والتسويات للدفاتر</p>
+            <h1 className="text-xl font-black text-text-primary tracking-tight">إدارة الحسابات البنكية</h1>
+            <p className="text-[10px] font-bold text-text-muted mt-0.5 font-sans">مراقبة الأرصدة المصرفية، السحب والإيداع والتسويات للدفاتر</p>
           </div>
         </div>
 
@@ -468,7 +468,7 @@ export default function BankOperationsPage() {
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button 
             onClick={load} 
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 active:scale-95 transition-all shadow-sm shrink-0"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay active:scale-95 transition-all shadow-sm shrink-0"
             title="تحديث البيانات"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -478,7 +478,7 @@ export default function BankOperationsPage() {
             <button 
               data-help="transfer-btn" 
               onClick={() => setTransferOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-xl bg-slate-200 border border-slate-350 px-4 text-2sm font-black text-slate-850 hover:bg-slate-300 transition-colors shadow-sm active:scale-98"
+              className="flex h-9 items-center gap-2 rounded-xl bg-border-normal border border-slate-350 px-4 text-2sm font-black text-slate-850 hover:bg-border-strong transition-colors shadow-sm active:scale-98"
             >
               <ArrowLeftRight className="h-3.5 w-3.5 text-slate-650" /> تحويل بين حسابات
             </button>
@@ -502,16 +502,16 @@ export default function BankOperationsPage() {
         {/* RIGHT AREA (xl:col-span-8): Active Accounts Deck (Grid of double-bezel cards) */}
         <div className="xl:col-span-8 flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider font-sans">بطاقات الحسابات المصرفية المتاحة</span>
-            <span className="text-[9px] font-black font-mono bg-slate-200 text-slate-500 rounded px-2 py-0.5">
+            <span className="text-[11px] font-black text-text-muted uppercase tracking-wider font-sans">بطاقات الحسابات المصرفية المتاحة</span>
+            <span className="text-[9px] font-black font-mono bg-border-normal text-text-secondary rounded px-2 py-0.5">
               COUNT: {banks.length}
             </span>
           </div>
 
           {loading && banks.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-slate-400 font-black animate-pulse">جاري تحميل الحسابات البنكية...</div>
+            <div className="flex items-center justify-center h-48 text-text-muted font-black animate-pulse">جاري تحميل الحسابات البنكية...</div>
           ) : banks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-60 text-slate-350 gap-2 border border-dashed border-slate-300 rounded-3xl bg-white/50">
+            <div className="flex flex-col items-center justify-center h-60 text-slate-350 gap-2 border border-dashed border-border-strong rounded-3xl bg-bg-surface/50">
               <Landmark className="h-8 w-8" />
               <span className="text-xs font-black">لا توجد حسابات بنكية مضافة بعد</span>
             </div>
@@ -525,11 +525,11 @@ export default function BankOperationsPage() {
                 return (
                   <div 
                     key={bank.id}
-                    className="rounded-[28px] p-1.5 bg-slate-100 border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+                    className="rounded-[28px] p-1.5 bg-bg-overlay border border-border-normal hover:border-border-strong shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
                   >
                     {/* Inner Card (Double Bezel Concentric structure) */}
                     <div className={`rounded-[calc(28px-0.375rem)] p-5 flex flex-col justify-between h-[215px] relative overflow-hidden group ${
-                      hasAlert ? "bg-amber-50/15" : "bg-white"
+                      hasAlert ? "bg-amber-50/15" : "bg-bg-surface"
                     }`}>
                       {/* Visual Card Accent Gradient Overlay */}
                       <div 
@@ -543,17 +543,17 @@ export default function BankOperationsPage() {
                         {/* Card Header */}
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-xs font-black text-slate-800 tracking-tight leading-tight">
+                            <h3 className="text-xs font-black text-text-primary tracking-tight leading-tight">
                               {bank.name}
                             </h3>
                             {bank.code && (
-                              <span className="inline-block text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.2 rounded bg-slate-200 text-slate-500 mt-1">
+                              <span className="inline-block text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.2 rounded bg-border-normal text-text-secondary mt-1">
                                 كود: {bank.code}
                               </span>
                             )}
                           </div>
                           <div className={`h-8 w-8 rounded-xl flex items-center justify-center border shrink-0 ${
-                            hasAlert ? "bg-amber-100 border-amber-250 text-amber-700" : "bg-slate-100 border-slate-200 text-slate-500"
+                            hasAlert ? "bg-amber-100 border-amber-250 text-amber-700" : "bg-bg-overlay border-border-normal text-text-secondary"
                           }`}>
                             <Landmark className="h-4 w-4" />
                           </div>
@@ -561,9 +561,9 @@ export default function BankOperationsPage() {
 
                         {/* Card Balance */}
                         <div className="mt-1">
-                          <span className="text-[9px] font-black text-slate-400 block mb-0.5">الرصيد الدفتري الجاري</span>
+                          <span className="text-[9px] font-black text-text-muted block mb-0.5">الرصيد الدفتري الجاري</span>
                           <div className={`text-2xl font-mono font-black tracking-tight leading-none ${
-                            Number(bank.balance) >= 0 ? "text-slate-900" : "text-rose-600"
+                            Number(bank.balance) >= 0 ? "text-text-primary" : "text-rose-600"
                           }`}>
                             {fmt(bank.balance)} <span className="text-2sm font-sans font-bold text-slate-450 mr-0.5">ج.م</span>
                           </div>
@@ -607,7 +607,7 @@ export default function BankOperationsPage() {
                             <button 
                               onClick={() => recompute(bank)} 
                               title="إعادة تدقيق وتحديث الرصيد"
-                              className="h-8.5 w-8.5 rounded-full bg-slate-200 hover:bg-slate-350 text-slate-500 flex items-center justify-center transition-colors active:scale-90"
+                              className="h-8.5 w-8.5 rounded-full bg-border-normal hover:bg-slate-350 text-text-secondary flex items-center justify-center transition-colors active:scale-90"
                             >
                               <RefreshCw className="h-4 w-4" />
                             </button>
@@ -631,13 +631,13 @@ export default function BankOperationsPage() {
 
         {/* LEFT AREA (xl:col-span-4): General Wealth, Insights & Distribution (Resolves empty screen space) */}
         <div className="xl:col-span-4 flex flex-col gap-6">
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider font-sans">توزيع السيولة والتحليل المالي</span>
+          <span className="text-[11px] font-black text-text-muted uppercase tracking-wider font-sans">توزيع السيولة والتحليل المالي</span>
           
           {/* Liquidity Distribution Panel */}
-          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
+          <div className="bg-bg-surface border border-border-normal rounded-[28px] p-6 shadow-sm flex flex-col gap-5">
             <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">إجمالي الأرصدة البنكية المتاحة</span>
-              <div className="text-3xl font-mono font-black text-slate-900 tracking-tighter leading-none">
+              <span className="text-[9px] font-black text-text-muted uppercase block mb-1">إجمالي الأرصدة البنكية المتاحة</span>
+              <div className="text-3xl font-mono font-black text-text-primary tracking-tighter leading-none">
                 {fmt(totalBalance)} <span className="text-xs font-sans font-bold text-slate-450 mr-0.5">ج.م</span>
               </div>
             </div>
@@ -645,7 +645,7 @@ export default function BankOperationsPage() {
             {/* Distribution chart bar */}
             {banks.length > 0 && totalBalance > 0 && (
               <div className="space-y-4">
-                <div className="flex h-3 rounded-full overflow-hidden bg-slate-200">
+                <div className="flex h-3 rounded-full overflow-hidden bg-border-normal">
                   {banks.map((b, i) => {
                     const pct = (Number(b.balance || 0) / totalBalance) * 100;
                     if (pct <= 0) return null;
@@ -673,10 +673,10 @@ export default function BankOperationsPage() {
                             className="w-2.5 h-2.5 rounded-full shrink-0" 
                             style={{ backgroundColor: getDistributionColor(i) }}
                           />
-                          <span className="font-bold text-slate-700 truncate max-w-[150px]">{b.name}</span>
+                          <span className="font-bold text-text-primary truncate max-w-[150px]">{b.name}</span>
                         </div>
-                        <div className="text-left font-mono font-bold text-slate-600">
-                          {pct.toFixed(1)}% <span className="text-[10px] text-slate-400">({fmt(b.balance)} ج.م)</span>
+                        <div className="text-left font-mono font-bold text-text-secondary">
+                          {pct.toFixed(1)}% <span className="text-[10px] text-text-muted">({fmt(b.balance)} ج.م)</span>
                         </div>
                       </div>
                     );
@@ -686,16 +686,16 @@ export default function BankOperationsPage() {
             )}
 
             {banks.length > 0 && totalBalance === 0 && (
-              <div className="text-center py-4 text-xs font-bold text-slate-400">
+              <div className="text-center py-4 text-xs font-bold text-text-muted">
                 لا توجد سيولة نقدية موزعة حالياً
               </div>
             )}
           </div>
 
           {/* Quick Info Box */}
-          <div className="bg-slate-100 border border-slate-200 rounded-[28px] p-6 text-2sm text-slate-500 flex flex-col gap-3">
-            <h3 className="font-black text-slate-700 text-xs flex items-center gap-1.5">
-              <Activity className="h-4 w-4 text-slate-500" /> ملخص حالة الرصيد
+          <div className="bg-bg-overlay border border-border-normal rounded-[28px] p-6 text-2sm text-text-secondary flex flex-col gap-3">
+            <h3 className="font-black text-text-primary text-xs flex items-center gap-1.5">
+              <Activity className="h-4 w-4 text-text-secondary" /> ملخص حالة الرصيد
             </h3>
             {lowBalanceCount > 0 ? (
               <div className="flex items-start gap-2 bg-amber-50 border border-amber-250/50 p-3 rounded-xl text-amber-800 font-bold text-[11px] leading-relaxed">
@@ -722,16 +722,16 @@ export default function BankOperationsPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
               transition={{ duration: 0.15 }}
-              className="w-full max-w-[440px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden animate-fade-in"
+              className="w-full max-w-[440px] rounded-[24px] p-1.5 bg-border-normal border border-slate-350 shadow-modal overflow-hidden animate-fade-in"
               dir="rtl"
             >
-              <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="rounded-[calc(24px-0.375rem)] p-6 bg-bg-surface flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-border-subtle pb-2">
                   <div className="flex items-center gap-1.5 text-indigo-650 font-black">
                     <Sparkles className="h-4 w-4" />
                     <span className="text-sm">إضافة حساب بنكي جديد</span>
                   </div>
-                  <button onClick={() => setNewBankOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                  <button onClick={() => setNewBankOpen(false)} className="p-1 rounded-full hover:bg-bg-overlay text-text-muted hover:text-text-primary transition-colors">
                     <X className="h-4.5 w-4.5" />
                   </button>
                 </div>
@@ -745,7 +745,7 @@ export default function BankOperationsPage() {
                       onChange={e => setNewBank(f => ({ ...f, name: e.target.value }))} 
                       autoFocus 
                       onKeyDown={(e) => handleKeyDown(e, { nextRef: bankCodeRef })} 
-                      className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm text-text-primary outline-none focus:border-indigo-650 transition-colors"
                       placeholder="مثال: البنك الأهلي - جاري"
                     />
                   </div>
@@ -757,7 +757,7 @@ export default function BankOperationsPage() {
                       value={newBank.code} 
                       onChange={e => setNewBank(f => ({ ...f, code: e.target.value }))} 
                       onKeyDown={(e) => handleKeyDown(e, { nextRef: bankBalanceRef, prevRef: bankNameRef })} 
-                      className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                      className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm text-text-primary outline-none focus:border-indigo-650 transition-colors"
                       placeholder="مثال: NBE-JARI"
                     />
                   </div>
@@ -771,7 +771,7 @@ export default function BankOperationsPage() {
                         value={newBank.balance} 
                         onChange={e => setNewBank(f => ({ ...f, balance: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: bankAlertRef, prevRef: bankCodeRef })} 
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-center font-mono text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm text-center font-mono text-text-primary outline-none focus:border-indigo-650 transition-colors" 
                         placeholder="0.00"
                       />
                     </div>
@@ -784,13 +784,13 @@ export default function BankOperationsPage() {
                         value={newBank.alert_threshold} 
                         onChange={e => setNewBank(f => ({ ...f, alert_threshold: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: bankSaveRef, prevRef: bankBalanceRef })} 
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm text-center font-mono text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm text-center font-mono text-text-primary outline-none focus:border-indigo-650 transition-colors" 
                         placeholder="1000"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                  <div className="flex justify-end pt-3 border-t border-border-subtle">
                     <PermissionGate page="bank_operations" action="add">
                       <button 
                         ref={bankSaveRef} 
@@ -823,30 +823,30 @@ export default function BankOperationsPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 10 }}
                 transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-                className="w-full max-w-[480px] rounded-[24px] p-1.5 bg-slate-200 border border-slate-350 shadow-modal overflow-hidden"
+                className="w-full max-w-[480px] rounded-[24px] p-1.5 bg-border-normal border border-slate-350 shadow-modal overflow-hidden"
                 dir="rtl"
               >
-                <div className="rounded-[calc(24px-0.375rem)] p-6 bg-white flex flex-col gap-5">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="rounded-[calc(24px-0.375rem)] p-6 bg-bg-surface flex flex-col gap-5">
+                  <div className="flex items-center justify-between border-b border-border-subtle pb-2">
                     <div className="flex items-center gap-2">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100/50 shadow-sm">
                         <ArrowLeftRight className="h-4.5 w-4.5" />
                       </div>
-                      <h2 className="text-sm font-black text-slate-800">تحويل مالي بين الحسابات</h2>
+                      <h2 className="text-sm font-black text-text-primary">تحويل مالي بين الحسابات</h2>
                     </div>
-                    <button onClick={() => setTransferOpen(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
+                    <button onClick={() => setTransferOpen(false)} className="p-1 rounded-full hover:bg-bg-overlay text-text-muted hover:text-text-primary transition-colors">
                       <X className="h-4.5 w-4.5" />
                     </button>
                   </div>
 
                   {/* Visual Connection Diagram of money flow */}
-                  <div className="flex items-center justify-between bg-slate-50 border border-slate-250/70 rounded-2xl p-4 gap-2">
-                    <div className="flex-1 flex flex-col justify-between h-20 bg-slate-100 border border-slate-200 p-3 rounded-xl min-w-0">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">من حساب (المصدر)</span>
-                      <span className="text-[11px] font-black text-slate-700 truncate">
+                  <div className="flex items-center justify-between bg-bg-overlay border border-slate-250/70 rounded-2xl p-4 gap-2">
+                    <div className="flex-1 flex flex-col justify-between h-20 bg-bg-overlay border border-border-normal p-3 rounded-xl min-w-0">
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">من حساب (المصدر)</span>
+                      <span className="text-[11px] font-black text-text-primary truncate">
                         {fromBank ? fromBank.name : "لم يتم الاختيار"}
                       </span>
-                      <span className="text-[10px] font-mono font-bold text-slate-500">
+                      <span className="text-[10px] font-mono font-bold text-text-secondary">
                         {fromBank ? `${fmt(fromBank.balance)} ج.م` : "—"}
                       </span>
                     </div>
@@ -860,12 +860,12 @@ export default function BankOperationsPage() {
                       )}
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-between h-20 bg-slate-100 border border-slate-200 p-3 rounded-xl min-w-0">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block text-left">إلى حساب (الوجهة)</span>
-                      <span className="text-[11px] font-black text-slate-700 truncate text-left">
+                    <div className="flex-1 flex flex-col justify-between h-20 bg-bg-overlay border border-border-normal p-3 rounded-xl min-w-0">
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block text-left">إلى حساب (الوجهة)</span>
+                      <span className="text-[11px] font-black text-text-primary truncate text-left">
                         {toBank ? toBank.name : "لم يتم الاختيار"}
                       </span>
-                      <span className="text-[10px] font-mono font-bold text-slate-500 text-left">
+                      <span className="text-[10px] font-mono font-bold text-text-secondary text-left">
                         {toBank ? `${fmt(toBank.balance)} ج.م` : "—"}
                       </span>
                     </div>
@@ -879,7 +879,7 @@ export default function BankOperationsPage() {
                         value={transferForm.from_id} 
                         onChange={e => setTransferForm(f => ({ ...f, from_id: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: transferToRef })}
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm font-bold text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm font-bold text-text-primary outline-none focus:border-indigo-650 transition-colors"
                       >
                         <option value="">اختر حساب المصدر</option>
                         {banks.map(b => (
@@ -897,7 +897,7 @@ export default function BankOperationsPage() {
                         value={transferForm.to_id} 
                         onChange={e => setTransferForm(f => ({ ...f, to_id: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: transferAmountRef, prevRef: transferFromRef })}
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-3 text-2sm font-bold text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-3 text-2sm font-bold text-text-primary outline-none focus:border-indigo-650 transition-colors"
                       >
                         <option value="">اختر حساب الوجهة</option>
                         {banks.filter(b => b.id !== Number(transferForm.from_id)).map(b => (
@@ -916,7 +916,7 @@ export default function BankOperationsPage() {
                         value={transferForm.amount}
                         onChange={e => setTransferForm(f => ({ ...f, amount: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: transferNotesRef, prevRef: transferToRef })}
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-center font-mono text-sm font-black text-slate-900 outline-none focus:border-indigo-650 transition-colors" 
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-4 text-center font-mono text-sm font-black text-text-primary outline-none focus:border-indigo-650 transition-colors" 
                         placeholder="0.00"
                       />
                     </div>
@@ -928,12 +928,12 @@ export default function BankOperationsPage() {
                         value={transferForm.notes} 
                         onChange={e => setTransferForm(f => ({ ...f, notes: e.target.value }))} 
                         onKeyDown={(e) => handleKeyDown(e, { nextRef: transferSubmitRef, prevRef: transferAmountRef })}
-                        className="w-full h-10 rounded-xl border border-slate-250 bg-slate-100 px-4 text-2sm text-slate-900 outline-none focus:border-indigo-650 transition-colors"
+                        className="w-full h-10 rounded-xl border border-slate-250 bg-bg-overlay px-4 text-2sm text-text-primary outline-none focus:border-indigo-650 transition-colors"
                         placeholder="بيان حركة التحويل..."
                       />
                     </div>
 
-                    <div className="flex justify-end pt-3 border-t border-slate-100">
+                    <div className="flex justify-end pt-3 border-t border-border-subtle">
                       <button 
                         ref={transferSubmitRef} 
                         onClick={handleTransfer} 

@@ -247,7 +247,7 @@ function ToggleSwitch({ checked, onChange }) {
       onClick={() => { setOptimistic(!optimistic); onChange(); }}
       className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${optimistic ? "bg-primary" : "bg-zinc-300"}`}
     >
-      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${optimistic ? "translate-x-4" : "translate-x-0"}`} />
+      <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-bg-surface shadow-sm transition-transform duration-200 ${optimistic ? "translate-x-4" : "translate-x-0"}`} />
     </button>
   );
 }

@@ -30,7 +30,7 @@ export default function Overlay({ open, title, subtitle, icon, accent = "slate",
           />
           <motion.div
             dir="rtl"
-            className={`relative w-full ${maxWidth} max-h-[88vh] overflow-hidden rounded-sm border border-slate-200 bg-white shadow-2xl flex flex-col`}
+            className={`relative w-full ${maxWidth} max-h-[88vh] overflow-hidden rounded-sm border border-border-normal bg-bg-surface shadow-2xl flex flex-col`}
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}

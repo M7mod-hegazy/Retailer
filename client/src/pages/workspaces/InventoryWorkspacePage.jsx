@@ -6,6 +6,7 @@ import StockLevelsPage from "../stock/StockLevelsPage";
 import StockMovementsPage from "../stock/StockMovementsPage";
 import StockTransferPage from "../stock/StockTransferPage";
 import PhysicalCountPage from "../stock/PhysicalCountPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const tabs = [
   { value: "levels", label: "أرصدة المخزون", icon: Package2 },
@@ -15,6 +16,7 @@ const tabs = [
 ];
 
 export default function InventoryWorkspacePage() {
+  usePageTour('inventory_workspace');
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabs.some((tab) => tab.value === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -27,14 +29,14 @@ export default function InventoryWorkspacePage() {
   return (
     <div className="h-full flex flex-col p-4" data-help-root="inventory_workspace">
       <section className="space-y-4 h-full flex flex-col">
-        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm shrink-0">
+        <div className="rounded-[28px] border border-border-normal bg-bg-surface px-5 py-5 shadow-sm shrink-0">
           <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <Boxes className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">مركز المخزون</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-black text-text-primary">مركز المخزون</h1>
+              <p className="mt-1 text-sm text-text-secondary">
                 متابعة الرصيد والحركة والتحويل والجرد من مساحة واحدة أسرع وأسهل للمراجعة اليومية.
               </p>
             </div>

@@ -512,16 +512,19 @@ function salesByPayment(startDate, endDate, opts = {}) {
 
   const merged = new Map();
   for (const row of [...nonMulti, ...multiSplits]) {
-    if (!merged.has(row.payment_type)) {
-      merged.set(row.payment_type, {
-        payment_type: row.payment_type,
+    let pt = row.payment_type || "cash";
+    if (pt === "نقدي" || pt.includes("نقدي -") || pt.includes("نقدي")) pt = "cash";
+
+    if (!merged.has(pt)) {
+      merged.set(pt, {
+        payment_type: pt,
         invoice_count: Number(row.invoice_count || 0),
         total_sales: Number(row.total_sales || 0),
         total_discount: Number(row.total_discount || 0),
         returns_amount: Number(row.returns_amount || 0),
       });
     } else {
-      const e = merged.get(row.payment_type);
+      const e = merged.get(pt);
       e.invoice_count  += Number(row.invoice_count || 0);
       e.total_sales    += Number(row.total_sales || 0);
       e.total_discount += Number(row.total_discount || 0);

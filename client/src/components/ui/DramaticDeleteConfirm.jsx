@@ -104,7 +104,7 @@ export function DramaticDeleteConfirm({ itemName, onConfirm, onCancel, lang = 'a
         </p>
 
         <input
-          className="bg-white"
+          className="bg-bg-surface"
           type="text"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}

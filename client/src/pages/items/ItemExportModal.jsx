@@ -54,25 +54,25 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
               type="button"
               onClick={() => setScope(item.key)}
               className={`rounded-sm border px-4 py-3 text-right transition-all ${
-                scope === item.key ? "border-primary bg-primary text-white shadow-lg" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                scope === item.key ? "border-primary bg-primary text-white shadow-lg" : "border-border-normal bg-bg-surface text-text-primary hover:bg-bg-overlay"
               }`}
             >
               <span className="block text-sm font-black">{item.label}</span>
-              <span className={`mt-1 block text-[11px] font-bold ${scope === item.key ? "text-white/70" : "text-slate-400"}`}>{item.count} صنف</span>
+              <span className={`mt-1 block text-[11px] font-bold ${scope === item.key ? "text-white/70" : "text-text-muted"}`}>{item.count} صنف</span>
             </button>
           ))}
         </div>
 
-        <div className="rounded-sm border border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="rounded-sm border border-border-normal">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-bg-overlay px-4 py-3">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-black text-slate-800">حقول ملف التصدير</span>
+              <span className="text-sm font-black text-text-primary">حقول ملف التصدير</span>
             </div>
             <button
               type="button"
               onClick={() => setSelectedFields(selectedFields.length === EXPORT_FIELDS.length ? [] : EXPORT_FIELDS.map((field) => field.key))}
-              className="text-[11px] font-black text-slate-500 hover:text-slate-900"
+              className="text-[11px] font-black text-text-secondary hover:text-text-primary"
             >
               {selectedFields.length === EXPORT_FIELDS.length ? "إلغاء الكل" : "تحديد الكل"}
             </button>
@@ -86,19 +86,19 @@ export default function ItemExportModal({ open, onClose, items, filteredItems, s
                   type="button"
                   onClick={() => toggleField(field.key)}
                   className={`flex items-center justify-between rounded-sm border px-3 py-2 text-2sm font-bold transition-all ${
-                    checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                   }`}
                 >
                   <span>{field.label}</span>
-                  {checked ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-300" />}
+                  {checked ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-text-muted" />}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <div className="text-2sm font-bold text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+          <div className="text-2sm font-bold text-text-secondary">
             سيتم تصدير {exportRows.length} صنف مع {selectedFields.length} حقل بصيغة Excel قابلة للاستيراد مرة أخرى.
           </div>
           <button

@@ -481,7 +481,7 @@ export function ColumnToggleList({ catId, colVisibility, onChange, report }) {
               className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${on ? "bg-primary" : "bg-border-strong"}`}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${on ? "translate-x-4" : "translate-x-0.5"}`}
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg-surface shadow-sm transition-transform duration-200 ${on ? "translate-x-4" : "translate-x-0.5"}`}
               />
             </button>
           </div>
@@ -790,16 +790,22 @@ export function DimensionFilter({ dimension, value, onChange, formatLabel }) {
   }
   if (dimension.type === "select") {
     const opts = dimension.dynamic ? (dynamicOptions.length > 0 ? dynamicOptions : (dimension.options || [])) : (dimension.options || []);
+    const rSelectOptions = [
+      { value: "", label: "الكل" },
+      ...opts.map(opt => ({
+        value: opt.value,
+        label: formatReportCellValue(dimension.key, opt.label || opt.label_key || opt.value)
+      }))
+    ];
     return (
       <div className="space-y-1.5">
         <label className="block text-[11px] font-bold text-text-secondary">{fmt(dimension.label)}</label>
-        <select value={value || ""} onChange={(e) => onChange(dimension.key, e.target.value)}
-          className="w-full h-10 px-3 rounded-xl border border-border bg-bg-base text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium">
-          <option value="">الكل</option>
-          {opts.map((opt) => (
-            <option key={opt.value} value={opt.value}>{formatReportCellValue(dimension.key, opt.label || opt.label_key || opt.value)}</option>
-          ))}
-        </select>
+        <RSelect 
+          value={value || ""} 
+          onChange={(val) => onChange(dimension.key, val)}
+          options={rSelectOptions}
+          placeholder="اختر..."
+        />
       </div>
     );
   }

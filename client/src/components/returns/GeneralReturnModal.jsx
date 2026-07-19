@@ -156,22 +156,22 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm" dir="rtl">
-      <div className="w-[720px] max-h-[88vh] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-[720px] max-h-[88vh] rounded-2xl bg-bg-surface shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <TitleBar title="مرتجع مبيعات عام" subtitle="إرجاع أصناف بدون ربطها بفاتورة محددة" onClose={onClose} onDetach={handleDetach} />
 
         <div data-modal-content className="flex-1 overflow-auto p-5 flex flex-col gap-4">
           {/* Customer search (optional) */}
           <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
-              العميل <span className="text-slate-300 font-normal normal-case">(اختياري)</span>
+            <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider block mb-1.5">
+              العميل <span className="text-text-muted font-normal normal-case">(اختياري)</span>
             </label>
             {customer ? (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <span className="flex-1 text-sm font-black text-slate-800">{customer.name}</span>
+              <div className="flex items-center gap-2 rounded-xl border border-border-normal bg-bg-overlay px-3 py-2.5">
+                <span className="flex-1 text-sm font-black text-text-primary">{customer.name}</span>
                 <button
                   onClick={() => { setCustomer(null); setRefundMethod("cash_back"); }}
-                  className="text-slate-400 hover:text-rose-600 transition-colors"
+                  className="text-text-muted hover:text-rose-600 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -182,10 +182,10 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                   value={customerQuery}
                   onChange={e => setCustomerQuery(e.target.value)}
                   placeholder="ابحث عن عميل..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 bg-white"
+                  className="w-full rounded-xl border border-border-strong px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 bg-bg-surface"
                 />
                 {customerResults.length > 0 && (
-                  <div className="absolute top-full right-0 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-44 overflow-auto">
+                  <div className="absolute top-full right-0 left-0 z-20 bg-bg-surface border border-border-normal rounded-xl shadow-lg mt-1 max-h-44 overflow-auto">
                     {customerResults.map(c => (
                       <button
                         key={c.id}
@@ -203,14 +203,14 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
           {/* Refund method */}
           <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">طريقة الاسترداد</label>
+            <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider block mb-1.5">طريقة الاسترداد</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setRefundMethod("cash_back")}
                 className={`flex-1 rounded-xl border py-2.5 text-sm font-black transition-colors ${
                   refundMethod === "cash_back"
                     ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    : "border-border-normal text-text-secondary hover:bg-bg-overlay"
                 }`}
               >
                 نقدي — استرداد من الخزينة
@@ -225,7 +225,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                     ? "border-amber-500 bg-amber-50 text-amber-800"
                     : !customer
                       ? "border-rose-300 border-dashed text-rose-500 bg-rose-50 cursor-not-allowed"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      : "border-border-normal text-text-secondary hover:bg-bg-overlay"
                 }`}
               >
                 {!customer ? (
@@ -237,13 +237,13 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
           {/* Reason */}
           <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">سبب الإرجاع</label>
+            <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider block mb-1.5">سبب الإرجاع</label>
             <select
               ref={reasonRef}
               value={reason}
               onChange={e => setReason(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: notesRef })}
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 bg-white"
+              className="w-full rounded-xl border border-border-strong px-4 py-2.5 text-sm font-bold outline-none focus:border-rose-400 bg-bg-surface"
             >
               {REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
@@ -251,7 +251,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
           {/* Item search */}
           <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">إضافة أصناف</label>
+            <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider block mb-1.5">إضافة أصناف</label>
             <ProductSearchField
               query={itemQuery}
               onQueryChange={(val) => setItemQuery(val)}
@@ -272,19 +272,19 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
           {/* Lines table */}
           {lines.length > 0 && (
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="rounded-xl border border-border-normal overflow-hidden">
               <table className="w-full text-2sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-bg-overlay border-b border-border-normal">
                   <tr>
                     {["الصنف", "الكمية", "السعر", "الإجمالي", ""].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-right font-black text-slate-500">{h}</th>
+                      <th key={i} className="px-4 py-2.5 text-right font-black text-text-secondary">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {lines.map((line, i) => (
-                    <tr key={i} className="border-b border-slate-50 last:border-0">
-                      <td className="px-4 py-2.5 font-bold text-slate-800">{line.name}</td>
+                    <tr key={i} className="border-b border-border-subtle last:border-0">
+                      <td className="px-4 py-2.5 font-bold text-text-primary">{line.name}</td>
                       <td className="px-4 py-2.5">
                         <input
                           type="number"
@@ -292,7 +292,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                           step="0.001"
                           value={line.quantity}
                           onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, quantity: Number(e.target.value) } : l))}
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-rose-400 bg-white"
+                          className="w-20 rounded-lg border border-border-strong px-2 py-1 text-2sm font-black outline-none focus:border-rose-400 bg-bg-surface"
                         />
                       </td>
                       <td className="px-4 py-2.5">
@@ -302,14 +302,14 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
                           step="0.01"
                           value={line.unit_price}
                           onChange={e => setLines(ls => ls.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) } : l))}
-                          className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-2sm font-black outline-none focus:border-rose-400 bg-white"
+                          className="w-24 rounded-lg border border-border-strong px-2 py-1 text-2sm font-black outline-none focus:border-rose-400 bg-bg-surface"
                         />
                       </td>
                       <td className="px-4 py-2.5 number-fmt text-rose-700">
                         {fmt(line.quantity * line.unit_price)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <button onClick={() => setLines(ls => ls.filter((_, j) => j !== i))} className="text-slate-300 hover:text-rose-500 transition-colors">
+                        <button onClick={() => setLines(ls => ls.filter((_, j) => j !== i))} className="text-text-muted hover:text-rose-500 transition-colors">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -328,7 +328,7 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
           )}
 
           {lines.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-center text-slate-400">
+            <div className="rounded-xl border-2 border-dashed border-border-normal bg-bg-overlay py-8 text-center text-text-muted">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm font-bold">ابحث عن صنف وأضفه للمرتجع</p>
             </div>
@@ -336,20 +336,20 @@ export default function GeneralReturnModal({ open, onClose, onSuccess }) {
 
           {/* Notes */}
           <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">ملاحظات</label>
+            <label className="text-[11px] font-black text-text-secondary uppercase tracking-wider block mb-1.5">ملاحظات</label>
             <input
               ref={notesRef}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: reasonRef })}
               placeholder="ملاحظات اختيارية..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-rose-400 bg-white"
+              className="w-full rounded-xl border border-border-strong px-4 py-2.5 text-sm outline-none focus:border-rose-400 bg-bg-surface"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
+        <div className="flex gap-3 px-6 py-4 border-t border-border-normal bg-bg-overlay shrink-0">
           <button
             onClick={onClose}
             className="btn-danger flex-1 rounded-xl py-3 text-sm font-black transition-colors"

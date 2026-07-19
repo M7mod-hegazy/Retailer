@@ -62,7 +62,7 @@ export default function GalleryModal({ open, onClose, images, initialIdx = 0, in
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="px-3 py-1.5 rounded-sm bg-slate-600 text-slate-300 text-[11px] font-bold hover:bg-slate-500 transition-colors"
+            className="px-3 py-1.5 rounded-sm bg-slate-600 text-text-muted text-[11px] font-bold hover:bg-bg-overlay0 transition-colors"
           >
             100%
           </button>
@@ -84,14 +84,14 @@ export default function GalleryModal({ open, onClose, images, initialIdx = 0, in
                 type="button"
                 onClick={() => { setIdx(i); setZoom(1); }}
                 className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  i === idx ? "bg-white" : "bg-slate-600 hover:bg-slate-400"
+                  i === idx ? "bg-bg-surface" : "bg-slate-600 hover:bg-text-muted"
                 }`}
               />
             ))}
           </div>
         )}
         {images.length > 1 && (
-          <span className="text-slate-400 text-[11px] font-mono">{idx + 1} / {images.length}</span>
+          <span className="text-text-muted text-[11px] font-mono">{idx + 1} / {images.length}</span>
         )}
       </div>
     </Modal>

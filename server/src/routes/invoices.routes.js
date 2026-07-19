@@ -89,8 +89,49 @@ router.get("/", requirePagePermission("pos", "view"), (req, res) => {
       ORDER BY ${safeSort} ${safeDir}
       LIMIT 100
     `).all(...params);
-    const summary = rows.reduce((acc, r) => ({ count: acc.count + 1, total: acc.total + Number(r.total || 0) }), { count: 0, total: 0 });
-    res.json({ success: true, data: rows, summary });
+    const summary = rows.reduce((acc, r) => {
+      const t = Number(r.total || 0);
+      acc.count += 1;
+      acc.total += t;
+      // Per-payment-method breakdown — multi invoices are unwound into their actual sub-methods
+      if (r.payment_type === 'multi' && r.payment_splits) {
+        const splits = r.payment_splits.split('|||').filter(Boolean).map(s => {
+          const idx = s.indexOf(':');
+          if (idx === -1) return null;
+          const m = s.slice(0, idx).trim();
+          const a = Number(s.slice(idx + 1));
+          return { method: m, amount: a };
+        }).filter(s => s && s.amount > 0);
+        for (const s of splits) {
+          const key = s.method || 'other';
+          acc.byMethod[key] = (acc.byMethod[key] || 0) + s.amount;
+        }
+      } else if (r.payment_type === 'installments' && r.payment_splits) {
+        const splits = r.payment_splits.split('|||').filter(Boolean).map(s => {
+          const idx = s.indexOf(':');
+          if (idx === -1) return null;
+          const m = s.slice(0, idx).trim();
+          const a = Number(s.slice(idx + 1));
+          return { method: m, amount: a };
+        }).filter(s => s && s.amount > 0);
+        for (const s of splits) {
+          const key = s.method || 'other';
+          acc.byMethod[key] = (acc.byMethod[key] || 0) + s.amount;
+        }
+      } else {
+        const key = r.payment_type || 'other';
+        acc.byMethod[key] = (acc.byMethod[key] || 0) + t;
+      }
+      return acc;
+    }, { count: 0, total: 0, byMethod: {} });
+
+    // Fetch payment_methods so client can map stored method names → labels + icons
+    let paymentMethods = [];
+    try {
+      paymentMethods = db.prepare('SELECT id, name, category, icon, type FROM payment_methods ORDER BY id ASC').all();
+    } catch (_) {}
+
+    res.json({ success: true, data: rows, summary, paymentMethods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -676,6 +717,8 @@ router.put("/:id", requirePagePermission("pos", "edit"), async (req, res, next) 
         newLines: result?.lines,
         oldPaymentType: invoiceBefore?.payment_type,
         newPaymentType: result?.payment_type,
+        oldPayments: invoiceBefore?.payments,
+        newPayments: result?.payments,
         oldCustomerName: invoiceBefore?.customer_name,
         newCustomerName: result?.customer_name,
         userName: userRow?.name || req.user?.full_name || req.user?.username,

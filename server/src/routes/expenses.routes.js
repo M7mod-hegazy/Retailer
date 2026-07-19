@@ -135,11 +135,18 @@ router.post("/", requirePagePermission("expenses", "add"), async (req, res) => {
       });
     }
     const categoryRow = db.prepare("SELECT name FROM expense_categories WHERE id=?").get(payload.category_id || null);
+    const createdExpense = db.prepare("SELECT doc_no FROM expenses WHERE id = ?").get(result.lastInsertRowid);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
     _tgStatus = await notifyOwner(TG.EXPENSE_CREATED, {
+      docNo: createdExpense?.doc_no || null,
       category: categoryRow?.name || "غير مصنف",
       amount: expenseAmount,
       date: createdDate,
+      description: payload.description || null,
       notes: payload.description || payload.notes || null,
+      paymentMethod: payload.payment_method || "cash",
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
     });
   } catch (_) {}
   res.status(201).json({

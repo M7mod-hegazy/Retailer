@@ -45,7 +45,7 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
   return (
     <div className="flex flex-col gap-4">
       {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+        <div className="flex items-center justify-center h-32 text-text-muted font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
           <div className={`rounded-xl px-5 py-4 flex flex-wrap gap-x-6 gap-y-2 text-sm ${isReceive ? "bg-emerald-50 border border-emerald-200" : "bg-blue-50 border border-blue-200"}`}>
@@ -53,55 +53,55 @@ function TransferDetailPreview({ transfer, onClose, onEdit }) {
             <span className={`px-2 py-0.5 rounded text-[11px] font-black ${isReceive ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
               {isReceive ? "استلام" : "تسليم"}
             </span>
-            {d.partner_branch && <span className="text-slate-600">الفرع: <strong>{d.partner_branch}</strong></span>}
-            <span className="text-slate-500">{d.created_at ? fmtDateTime(d.created_at) : "—"}</span>
+            {d.partner_branch && <span className="text-text-secondary">الفرع: <strong>{d.partner_branch}</strong></span>}
+            <span className="text-text-secondary">{d.created_at ? fmtDateTime(d.created_at) : "—"}</span>
           </div>
 
-          <div className="max-h-[280px] overflow-auto rounded-xl border border-slate-200">
+          <div className="max-h-[280px] overflow-auto rounded-xl border border-border-normal">
             <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+              <thead className="bg-bg-overlay border-b border-border-normal sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
-                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الوحدة</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">المخزن</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">السعر</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكود</th>
+                  <th className="px-4 py-2.5 text-right font-black text-text-secondary">الصنف</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الوحدة</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">المخزن</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكمية</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">السعر</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
                 {(d.lines || []).map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.barcode || "—"}</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-500">{l.unit_name || "—"}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-500">{l.warehouse_name || "—"}</td>
-                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{fmtQty(l.quantity)}</td>
-                    <td className="px-3 py-2.5 text-center number-fmt text-slate-600">{fmtMoney(l.unit_cost)}</td>
-                    <td className="px-3 py-2.5 text-center number-fmt text-slate-700">{fmtMoney(l.quantity * l.unit_cost)}</td>
+                  <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay">
+                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-text-secondary">{l.item_code || l.barcode || "—"}</td>
+                    <td className="px-4 py-2.5 font-bold text-text-primary">{l.item_name}</td>
+                    <td className="px-3 py-2.5 text-center text-text-secondary">{l.unit_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-center text-text-secondary">{l.warehouse_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-text-primary">{fmtQty(l.quantity)}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-text-secondary">{fmtMoney(l.unit_cost)}</td>
+                    <td className="px-3 py-2.5 text-center number-fmt text-text-primary">{fmtMoney(l.quantity * l.unit_cost)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 px-5 py-3">
-            <span className="text-2sm font-black text-slate-500">إجمالي الكمية</span>
-            <span className="number-fmt-primary text-[18px] text-slate-900">
+          <div className="flex items-center justify-between bg-bg-overlay rounded-xl border border-border-normal px-5 py-3">
+            <span className="text-2sm font-black text-text-secondary">إجمالي الكمية</span>
+            <span className="number-fmt-primary text-[18px] text-text-primary">
               {fmtQty((d.lines || []).reduce((s, l) => s + Number(l.quantity || 0), 0))}
             </span>
           </div>
 
           {d.notes && (
-            <div className="rounded-xl border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
-              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
+            <div className="rounded-xl border border-border-normal bg-amber-50 px-4 py-2.5 text-2sm text-text-secondary">
+              <span className="font-black text-text-secondary text-[11px] uppercase tracking-widest">ملاحظات: </span>{d.notes}
             </div>
           )}
         </>
       )}
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+      <div className="flex items-center justify-between border-t border-border-normal pt-4">
+        <button onClick={onClose} className="rounded-xl border border-border-normal px-5 py-2 text-sm font-bold text-text-secondary hover:bg-bg-overlay">رجوع</button>
         <button onClick={() => onEdit(transfer.id)} className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2 text-sm font-black text-white hover:bg-primary-600 transition-colors">
           <Pencil className="h-4 w-4" /> تعديل المستند
         </button>
@@ -202,13 +202,13 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
   const columns = [
     {
       id: "ref", header: "رقم المستند", width: 170, sortable: true,
-      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 font-mono text-2sm font-black text-slate-800",
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-3 font-mono text-2sm font-black text-text-primary",
       render: (r) => r.reference_no,
     },
     {
       id: "type", header: "النوع", width: 100, sortable: true,
-      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-secondary",
       cellClass: "px-3 text-center",
       render: (r) => r.type === "receive"
         ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200"><ArrowDownToLine className="h-3 w-3" /> استلام</span>
@@ -216,26 +216,26 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
     },
     {
       id: "partner_branch", header: "الفرع", width: 130, sortable: true,
-      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-2sm font-bold text-slate-600",
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-3 text-2sm font-bold text-text-secondary",
       render: (r) => r.partner_branch || "—",
     },
     {
       id: "line_count", header: "الأصناف", width: 80, sortable: true,
-      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-center text-2sm font-bold text-slate-600",
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-3 text-center text-2sm font-bold text-text-secondary",
       render: (r) => r.line_count,
     },
     {
       id: "total_qty", header: "الكمية", width: 90, sortable: true,
-      headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-center number-fmt text-sm text-slate-800",
+      headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-3 text-center number-fmt text-sm text-text-primary",
       render: (r) => fmtQty(r.total_qty),
     },
     {
       id: "created_at", header: "التاريخ والوقت", width: 160, sortable: true,
-      headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500",
-      cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap",
+      headerClass: "text-right px-3 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-3 text-[11px] text-text-secondary number-fmt whitespace-nowrap",
       render: (r) => fmtDateTime(r.created_at),
     },
     {
@@ -244,7 +244,7 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
       render: (r) => (
         <button
           onClick={(e) => { e.stopPropagation(); handleEdit(r.id); }}
-          className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+          className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600"
           title="تعديل"
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -259,16 +259,16 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
         <div className="flex flex-col gap-4">
           {/* Search bar */}
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-xl border border-slate-700 flex-wrap">
-            <span className="text-[11px] font-black text-slate-400 shrink-0">رقم المستند:</span>
+            <span className="text-[11px] font-black text-text-muted shrink-0">رقم المستند:</span>
             <input
               ref={docSearchRef}
               value={docSearch}
               onChange={e => setDocSearch(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: itemSearchRef })}
               placeholder="BT-R-..."
-              className="w-[160px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
+              className="w-[160px] rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
             />
-            <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
+            <span className="text-[11px] font-black text-text-muted shrink-0">بحث صنف:</span>
             <div className="relative flex-1 min-w-[160px]">
               <input
                 ref={itemSearchRef}
@@ -289,10 +289,10 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
                   else if (e.key === "Escape") setItemLookupOpen(false);
                 }}
                 placeholder="اسم الصنف أو SKU..."
-                className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400"
               />
               {itemLookupOpen && filteredItemSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl">
+                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-xl">
                   <div className="max-h-[200px] overflow-y-auto p-1">
                     {filteredItemSuggestions.map((item, i) => (
                       <button
@@ -300,11 +300,11 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
                         type="button"
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => { setItemSearch(item.item_code || item.name); setItemLookupOpen(false); }}
-                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start ${activeItemIdx === i ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start ${activeItemIdx === i ? "bg-bg-overlay" : "hover:bg-bg-overlay"}`}
                       >
-                        <Package className="w-4 h-4 text-slate-300 shrink-0" />
-                        <span className="text-2sm font-bold text-slate-800">{item.name}</span>
-                        <span className="text-[11px] font-mono text-slate-400 mr-auto">{item.item_code || ""}</span>
+                        <Package className="w-4 h-4 text-text-muted shrink-0" />
+                        <span className="text-2sm font-bold text-text-primary">{item.name}</span>
+                        <span className="text-[11px] font-mono text-text-muted mr-auto">{item.item_code || ""}</span>
                       </button>
                     ))}
                   </div>
@@ -321,24 +321,24 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
 
           {/* Filters row */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-200">
+            <div className="flex items-center gap-2 bg-bg-overlay rounded-xl p-2 border border-border-normal">
               <input ref={dateFromRef} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
-                className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
-              <span className="text-slate-300 text-[11px]">—</span>
+                className="rounded-lg bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-secondary outline-none border border-border-subtle focus:border-indigo-300" />
+              <span className="text-text-muted text-[11px]">—</span>
               <input ref={dateToRef} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: dateFromRef })}
-                className="rounded-lg bg-white px-3 py-1.5 text-2sm font-bold text-slate-600 outline-none border border-slate-100 focus:border-indigo-300" />
+                className="rounded-lg bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-secondary outline-none border border-border-subtle focus:border-indigo-300" />
             </div>
             <div className="flex items-center gap-1">
               {[["all", "الكل"], ["receive", "استلام"], ["send", "تسليم"]].map(([v, l]) => (
                 <button key={v} onClick={() => setTypeFilter(v)}
-                  className={`rounded-full px-4 py-1.5 text-2sm font-black transition-all ${typeFilter === v ? "bg-primary text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  className={`rounded-full px-4 py-1.5 text-2sm font-black transition-all ${typeFilter === v ? "bg-primary text-white" : "bg-bg-overlay text-text-secondary hover:bg-border-normal"}`}>
                   {l}
                 </button>
               ))}
             </div>
-            <span className="text-[11px] font-bold text-slate-400 mr-auto">{data.length} مستند</span>
+            <span className="text-[11px] font-bold text-text-muted mr-auto">{data.length} مستند</span>
           </div>
 
           {/* Grid */}
@@ -349,8 +349,8 @@ export default function BranchTransferTodayModal({ open, onClose, initialFilters
             loading={loading}
             onRowClick={handleRowClick}
             emptyMessage="لا توجد مستندات في هذا النطاق"
-            emptyIcon={<Package className="h-10 w-10 text-slate-300 mb-2" />}
-            containerClass="max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 bg-white"
+            emptyIcon={<Package className="h-10 w-10 text-text-muted mb-2" />}
+            containerClass="max-h-[400px] overflow-y-auto rounded-xl border border-border-normal bg-bg-surface"
             className="border-0"
           />
         </div>

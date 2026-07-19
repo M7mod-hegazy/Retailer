@@ -85,7 +85,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40" dir="rtl">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[480px] mx-4 flex flex-col max-h-[90vh]">
+      <div className="bg-bg-surface rounded-xl shadow-2xl w-full max-w-[480px] mx-4 flex flex-col max-h-[90vh]">
 
         <TitleBar title="إضافة مورد جديد" onClose={handleClose} onDetach={handleDetach} />
 
@@ -97,12 +97,12 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-text-secondary mb-1">
               اسم المورد <span className="text-red-500">*</span>
             </label>
             <input
               ref={nameRef}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               placeholder="أدخل اسم المورد"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -113,13 +113,13 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
           {/* Phones */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">أرقام الهاتف</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1.5">أرقام الهاتف</label>
             <div className="space-y-2">
               {form.phones.map((phone, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
                     ref={i === 0 ? phoneRef : undefined}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                    className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                     placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                     value={phone}
                     onChange={e => setPhone(i, e.target.value)}
@@ -130,7 +130,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
                     <button
                       type="button"
                       onClick={() => removePhone(i)}
-                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -152,13 +152,13 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
           {/* Addresses */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">العناوين</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1.5">العناوين</label>
             <div className="space-y-2">
               {form.addresses.map((addr, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <input
                     ref={i === 0 ? addressRef : undefined}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                    className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                     placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                     value={addr}
                     onChange={e => setAddress(i, e.target.value)}
@@ -168,7 +168,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
                     <button
                       type="button"
                       onClick={() => removeAddress(i)}
-                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -190,11 +190,11 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
           {/* Opening balance */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">الرصيد الافتتاحي</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">الرصيد الافتتاحي</label>
             <input
               ref={balanceRef}
               type="number"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               placeholder="0"
               value={form.opening_balance}
               onChange={e => setForm(f => ({ ...f, opening_balance: e.target.value }))}
@@ -204,10 +204,10 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
+            <label className="block text-xs font-semibold text-text-secondary mb-1">ملاحظات</label>
             <textarea
               ref={notesRef}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+              className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
               placeholder="اختياري"
               rows={2}
               value={form.notes}
@@ -218,7 +218,7 @@ export default function AddSupplierModal({ open, onClose, onCreated }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 shrink-0">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-subtle shrink-0">
           <Button variant="danger" size="sm" onClick={handleClose}>إلغاء</Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
             {saving ? "جاري الحفظ..." : "حفظ"}

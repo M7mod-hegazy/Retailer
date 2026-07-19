@@ -67,7 +67,7 @@ export default function MobileLayout({ children, branding }) {
               }`}
               style={!active ? { background: "transparent" } : to === "/settings" ? { background: "var(--primary-50)" } : undefined}
             >
-              <span className={`flex ${isPos ? "h-11 w-11 rounded-full border border-white/10" : "h-9 w-9"} items-center justify-center ${active && isPos ? "bg-white/10" : ""}`}>
+              <span className={`flex ${isPos ? "h-11 w-11 rounded-full border border-border-normal/10" : "h-9 w-9"} items-center justify-center ${active && isPos ? "bg-bg-surface/10" : ""}`}>
                 <Icon className={`transition-transform ${isPos ? "h-7 w-7" : "h-5 w-5"} ${active ? "scale-110" : ""}`} />
               </span>
               <span className="text-[11px] font-medium">{label}</span>

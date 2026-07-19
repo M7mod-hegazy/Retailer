@@ -5,7 +5,7 @@ export const QUOTATION_STATUS = {
     label: "مسودة",
     shortLabel: "مسودة",
     hint: "لم يُرسل للعميل بعد — ما زال قيد الإعداد",
-    cls: "bg-slate-100 text-slate-700 border-slate-200",
+    cls: "bg-bg-overlay text-text-primary border-border-normal",
   },
   sent: {
     label: "مُرسل للعميل",

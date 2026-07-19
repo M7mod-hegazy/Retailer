@@ -7,6 +7,7 @@ import api from "../../services/api";
 import { useNotificationStore } from "../../stores/notificationStore";
 import PermissionGate from "../../components/ui/PermissionGate";
 import PageWrapper from "../../components/ui/PageWrapper";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const TYPE_OPTS = [
   { value: "all", label: "الكل" },
@@ -151,6 +152,7 @@ function NotifRow({ note, onMarkRead, onDelete, index }) {
 }
 
 export default function NotificationsPage() {
+  usePageTour('notifications');
   const { i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const { markAsRead, markAllAsRead, dismissNotification, deleteAllRead } = useNotificationStore();

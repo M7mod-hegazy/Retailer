@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { X, RefreshCw, ArrowUpDown, Pencil, Trash2, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import PermissionGate from "../ui/PermissionGate";
 import { formatNumber } from "../../utils/currency";
 import { invoiceCustomerText } from "./WalkInCustomer";
+import { parseSplits, resolvePaymentStyle, calculatePaymentBreakdown } from "../../utils/paymentMethodDisplay";
 
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 import { todayCairo } from "../../utils/dateHelpers";
@@ -31,13 +32,13 @@ function toDateInput(date = new Date()) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-text-muted shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
   }
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
       <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
         {items.map((item, i) => (
           <button
@@ -45,17 +46,17 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-slate-200/80" : "hover:bg-slate-50"}`}
+            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-border-normal/80" : "hover:bg-bg-overlay"}`}
           >
             <div className="flex items-center gap-2">
               {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
+                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-border-normal" />
               ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300" /></div>
+                <div className="w-8 h-8 rounded-md bg-bg-overlay flex items-center justify-center border border-border-normal"><Package className="w-4 h-4 text-text-muted" /></div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-sm font-black ${activeIndex === i ? "text-slate-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[11px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-text-primary" : "text-text-primary"}`}><Highlight text={item.name} query={query} /></span>
+                <span className="font-mono text-[11px] text-text-muted font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
               </div>
             </div>
           </button>
@@ -77,7 +78,7 @@ const STATUS_STYLES = {
   paid:    { label: "مدفوع",   cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   partial: { label: "جزئي",    cls: "bg-amber-50 text-amber-700 border-amber-200" },
   unpaid:  { label: "آجل",     cls: "bg-rose-50 text-rose-700 border-rose-200" },
-  voided:  { label: "ملغي",    cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  voided:  { label: "ملغي",    cls: "bg-bg-overlay text-text-secondary border-border-normal" },
 };
 
 
@@ -128,7 +129,8 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
     },
   });
   const [data, setData] = useState([]);
-  const [summary, setSummary] = useState({ count: 0, total: 0 });
+  const [summary, setSummary] = useState({ count: 0, total: 0, byMethod: {} });
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
   const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
@@ -226,7 +228,9 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
         }
         setData(d);
         setRawItems([]);
-        setSummary(r.data.summary || { count: 0, total: 0 });
+        const s = r.data.summary || { count: 0, total: 0, byMethod: {} };
+        setSummary({ ...s, byMethod: s.byMethod || {} });
+        if (r.data.paymentMethods) setPaymentMethods(r.data.paymentMethods);
       }
     } catch (e) { console.error("load error:", e); }
     finally { setLoading(false); }
@@ -268,75 +272,124 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
   }
 
   const docColumns = [
-    { id: "invoice_no", header: "رقم الفاتورة", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.invoice_no },
-    { id: "customer_name", header: "العميل", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => invoiceCustomerText(inv) },
-    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (inv) => formatMoney(inv.total) },
-    { id: "payment_type", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
-      const PSTYLE = { cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }, bank_transfer: { label: "بنك / فيزا", cls: "bg-sky-50 text-sky-700 border-sky-200" }, credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" }, installments: { label: "أقساط", cls: "bg-purple-50 text-purple-700 border-purple-200" }, multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" } };
-      if (inv.payment_splits) {
-        const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);
-        if (splits.length) return (
-          <div className="flex flex-col gap-0.5">
-            {splits.map((s, i) => { const info = PSTYLE[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
-              <div key={i} className="flex items-center gap-1">
-                <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
-              </div>
-            ); })}
+    { id: "invoice_no",   header: "رقم الفاتورة", width: 148, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 font-mono text-2sm font-black text-text-primary text-center",
+      render: (inv) => inv.invoice_no },
+    { id: "customer_name", header: "العميل", width: 150, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 text-2sm font-bold text-text-primary text-center",
+      render: (inv) => invoiceCustomerText(inv) },
+    { id: "items_count", header: "الأصناف", width: 72, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 text-center text-2sm font-bold text-text-secondary",
+      render: (inv) => inv.items_count },
+    { id: "total", header: "الإجمالي", width: 110, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 number-fmt-primary text-sm text-emerald-700 text-center",
+      render: (inv) => formatMoney(inv.total) },
+    { id: "payment_type", header: "الدفع", width: 160, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass:   "px-2",
+      render: (inv) => {
+        if (inv.payment_splits) {
+          const splits = parseSplits(inv.payment_splits);
+          if (splits.length) return (
+            <div className="flex flex-col gap-0.5 items-center">
+              {splits.map((s, i) => {
+                const info = resolvePaymentStyle(s.method, paymentMethods);
+                return (
+                  <div key={i} className="flex items-center gap-1">
+                    <span className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+                    <span className="text-[11px] font-mono font-bold text-text-secondary">{formatMoney(s.amount)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+        const info = resolvePaymentStyle(inv.payment_type, paymentMethods);
+        return (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+            <span className="text-[11px] font-mono font-bold text-text-secondary">{formatMoney(inv.total)}</span>
           </div>
         );
-      }
-      const info = PSTYLE[inv.payment_type] || { label: inv.payment_type || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" };
-      return (
-        <div className="flex flex-col gap-0.5">
-          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
+      } },
+    { id: "created_by", header: "المستخدم", width: 100, sortable: false,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 text-[11px] font-bold text-text-secondary whitespace-nowrap text-center",
+      render: (inv) => inv.created_by_username || "—" },
+    { id: "created_at", header: "الوقت", width: 140, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass:   "px-2 text-[11px] text-text-secondary number-fmt whitespace-nowrap text-center",
+      render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
+    { id: "actions", header: "", width: 70, headerClass: "px-2", cellClass: "px-2",
+      render: (inv) => (
+        <div className="flex gap-1 justify-center">
+          <PermissionGate page="pos" action="view">
+            <button onClick={() => gotoTarget(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+          </PermissionGate>
+          <PermissionGate page="pos" action="void">
+            <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
+          </PermissionGate>
         </div>
-      );
-    } },
-    { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
-    { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
-      <div className="flex gap-1">
-        <PermissionGate page="pos" action="view">
-          <button onClick={() => gotoTarget(`/invoices/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
-        </PermissionGate>
-        <PermissionGate page="pos" action="void">
-          <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
-        </PermissionGate>
-      </div>
-    )},
+      )},
   ];
 
   const itemColumns = [
-    { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.item_code || "—" },
-    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
-    { id: "invoice_no", header: "الفاتورة", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.invoice_no || "—" },
-    { id: "customer_name", header: "العميل", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => invoiceCustomerText(r) },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_price", header: "السعر", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_price) },
-    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
-    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
-    { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
-      <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); gotoTarget(`/invoices/${r.invoice_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
-      </div>
-    )},
+    { id: "item_code", header: "كود الصنف", width: 100,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 font-mono text-[11px] font-bold text-text-secondary text-center",
+      render: (r) => r.item_code || "—" },
+    { id: "item_name", header: "اسم الصنف", width: 170,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 text-2sm font-bold text-text-primary text-center",
+      render: (r) => r.item_name || "—" },
+    { id: "invoice_no", header: "الفاتورة", width: 130,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 font-mono text-[11px] font-black text-text-primary text-center",
+      render: (r) => r.invoice_no || "—" },
+    { id: "customer_name", header: "العميل", width: 120,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 text-[11px] font-bold text-text-secondary text-center",
+      render: (r) => invoiceCustomerText(r) },
+    { id: "quantity", header: "الكمية", width: 70,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 text-center number-fmt text-2sm text-text-secondary",
+      render: (r) => Number(r.quantity) },
+    { id: "unit_price", header: "السعر", width: 95,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 number-fmt text-2sm text-text-primary text-center",
+      render: (r) => formatMoney(r.unit_price) },
+    { id: "line_total", header: "الإجمالي", width: 105,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 number-fmt text-sm text-emerald-700 text-center",
+      render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_price) * Number(r.quantity))) },
+    { id: "created_at", header: "التاريخ", width: 135,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-secondary",
+      cellClass: "px-2 text-[11px] text-text-secondary number-fmt whitespace-nowrap text-center",
+      render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "actions", header: "", width: 50, cellClass: "px-2",
+      render: (r) => (
+        <div className="flex gap-1 justify-center">
+          <button onClick={(e) => { e.stopPropagation(); gotoTarget(`/invoices/${r.invoice_id || r.id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="فتح"><Pencil className="h-3.5 w-3.5" /></button>
+        </div>
+      )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="فواتير اليوم" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="post-today">
+      <Modal open={open} onClose={onClose} title="فواتير اليوم" maxWidth="max-w-7xl" onDetach={handleDetach} showDetach={true} modalType="post-today">
         <div className="flex flex-col gap-4">
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-sm border border-slate-700">
-            <span className="text-[11px] font-black text-slate-400 shrink-0">بحث برقم فاتورة:</span>
+            <span className="text-[11px] font-black text-text-muted shrink-0">بحث برقم فاتورة:</span>
             <input ref={docSearchRef} value={docSearch} onChange={e => setDocSearch(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: itemSearchRef })}
               placeholder="INV-0001..."
-              className="flex-1 rounded-sm border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400" />
-            <span className="text-[11px] font-black text-slate-400 shrink-0">بحث صنف:</span>
+              className="flex-1 rounded-sm border border-slate-600 bg-slate-900 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400" />
+            <span className="text-[11px] font-black text-text-muted shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
               <input ref={itemSearchRef}
                 value={itemSearch}
@@ -350,7 +403,7 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-slate-600 bg-slate-800 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400" />
+                className="w-full rounded-sm border border-slate-600 bg-slate-900 px-3 py-1.5 text-2sm font-bold text-white outline-none focus:border-slate-400" />
               {itemLookupOpen && (
                 <LookupList items={filteredItems} onPick={(item) => { setItemSearch(item.code || item.barcode || item.name); setItemLookupOpen(false); }}
                   activeIndex={activeItemIndex} query={itemSearch} />
@@ -363,45 +416,45 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
           {/* Filters */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">من</label>
+              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest">من</label>
               <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
-                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
+                className="rounded-sm border border-border-normal bg-bg-surface px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إلى</label>
+              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest">إلى</label>
               <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: sortRef, prevRef: dateFromRef })}
-                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
+                className="rounded-sm border border-border-normal bg-bg-surface px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800" />
             </div>
             <div className="flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ترتيب</label>
+              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest">ترتيب</label>
               <select ref={sortRef} value={sort} onChange={(e) => setSort(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateToRef })}
-                className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
+                className="rounded-sm border border-border-normal bg-bg-surface px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="invoice_no">رقم الفاتورة</option>
                 <option value="payment_type">طريقة الدفع</option>
               </select>
               <button onClick={() => setDir((d) => d === "asc" ? "desc" : "asc")}
-                className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
-                <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+                className="flex h-8 w-8 items-center justify-center rounded-sm border border-border-normal bg-bg-surface hover:bg-bg-overlay transition-colors">
+                <ArrowUpDown className="h-3.5 w-3.5 text-text-secondary" />
               </button>
             </div>
             {usersList.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المستخدم</label>
+                <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest">المستخدم</label>
                 <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, { nextRef: customerQueryRef, prevRef: sortRef })}
-                  className="rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
+                  className="rounded-sm border border-border-normal bg-bg-surface px-2 py-1.5 text-2sm font-bold outline-none focus:border-slate-800">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
               </div>
             )}
             <div className="relative flex items-center gap-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</label>
+              <label className="text-[11px] font-black text-text-secondary uppercase tracking-widest">العميل</label>
               <input ref={customerQueryRef} type="text" value={customerQuery}
                 onChange={(e) => { setCustomerQuery(e.target.value); setCustomerLookupOpen(true); setActiveCustomerIndex(0); if (!e.target.value) setCustomerId(""); }}
                 onFocus={() => setCustomerLookupOpen(true)}
@@ -418,9 +471,9 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
                   handleKeyDown(e, { nextRef: submitBtnRef, prevRef: userSelectRef });
                 }}
                 placeholder="كل العملاء..."
-                className="w-[140px] rounded-sm border border-slate-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-slate-800 focus:ring-2 focus:ring-slate-100" />
+                className="w-[140px] rounded-sm border border-border-normal bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-slate-800 focus:ring-2 focus:ring-slate-100" />
               {customerQuery && (
-                <button onClick={() => { setCustomerQuery(""); setCustomerId(""); }} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => { setCustomerQuery(""); setCustomerId(""); }} className="text-text-muted hover:text-text-secondary">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -431,24 +484,33 @@ export default function POSTodayModal({ open, onClose, onNavigate: propNavigate,
             </div>
             <button ref={submitBtnRef} onClick={loadData}
               onKeyDown={e => handleKeyDown(e, { prevRef: customerQueryRef })}
-              className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-600 hover:border-slate-800 hover:text-slate-900 transition-colors">
+              className="flex items-center gap-1.5 rounded-sm border border-border-normal bg-bg-surface px-3 py-1.5 text-2sm font-black text-text-secondary hover:border-slate-800 hover:text-text-primary transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>
           </div>
           {/* Summary strip */}
-          <div className="flex items-center gap-4 rounded-sm bg-slate-950 px-4 py-3">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">عدد الفواتير</span>
-              <span className="font-mono text-[20px] font-black text-white leading-none">{summary.count}</span>
+          <div className="flex items-center gap-0 w-full overflow-x-auto rounded-[8px] bg-bg-overlay border border-border-normal shadow-sm mb-4 flex-nowrap hide-scrollbar">
+            <div className="flex flex-col items-center justify-center px-6 py-3 bg-primary/5 shrink-0">
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">عدد الفواتير</span>
+              <span className="font-mono text-[22px] font-black text-text-primary leading-none">{summary.count || 0}</span>
             </div>
-            <div className="h-8 w-px bg-slate-800" />
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">إجمالي الإيرادات</span>
-              <span className="font-mono text-[20px] font-black text-emerald-400 leading-none">{formatMoney(summary.total)}</span>
+            
+            <div className="flex flex-col items-center justify-center px-6 py-3 shrink-0 border-r border-border-subtle">
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">الإجمالي</span>
+              <span className="font-mono text-[22px] font-black text-text-primary leading-none">{formatMoney(summary.total || 0)}</span>
             </div>
+
+            {Object.entries(calculatePaymentBreakdown(data, 'payment_type', paymentMethods)).map(([method, amount]) => {
+               const info = resolvePaymentStyle(method, paymentMethods);
+               return (
+                 <div key={method} className="flex flex-col items-center justify-center px-6 py-3 shrink-0 border-r border-border-subtle bg-bg-base">
+                   <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{info.label}</span>
+                   <span className="font-mono text-[16px] font-black text-text-secondary leading-none">{formatMoney(amount)}</span>
+                 </div>
+               );
+            })}
           </div>
-          {/* Table */}
-          <div className="max-h-[420px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[420px] overflow-auto rounded-sm border border-border-normal">
             <DataGrid
               data={loading ? [] : (itemSearch.trim() ? rawItems : data)}
               rowKey={itemSearch.trim() ? (r, i) => `${r.id || r.item_id}-${i}` : "id"}

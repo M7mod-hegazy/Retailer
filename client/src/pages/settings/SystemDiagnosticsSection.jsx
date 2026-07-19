@@ -149,7 +149,7 @@ export default function SystemDiagnosticsSection() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-[var(--primary)]" />
-          <h3 className="text-base font-black text-[var(--text-primary)]">حالة النظام والتشخيص</h3>
+          <h3 className="text-base font-black text-[var(--text-primary)]">حالة السيستم والتشخيص</h3>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -253,9 +253,8 @@ export default function SystemDiagnosticsSection() {
 
       {/* Auto-solve scope note */}
       <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-        يُصلح البرنامج تلقائياً الأعطال المؤقتة (توقف الخادم، تغيّر المنفذ، تضخّم WAL). مشاكل قاعدة البيانات تُصلَح
-        بضغطة زر أعلاه. أما مشاكل النظام (الصلاحيات/EPERM، حجب برنامج الحماية للاتصال المحلي، نقص مكتبات التشغيل) فيتم
-        اكتشافها وشرح الحل المطلوب — لأنها خارج تحكّم البرنامج.
+        البرنامج بيحل الأعطال المؤقتة لوحده (زي إن السيرفر يقع أو بورت يتغير). ومشاكل الداتابيز بتتحل بضغطة زرار من فوق. 
+        أما لو فيه مشكلة في الويندوز نفسه (زي الصلاحيات أو الأنتي فيرس قافل الاتصال) فبيقولك إيه المشكلة بالظبط عشان تحلها إنت، لإن دي حاجات برة تحكم البرنامج.
       </p>
     </section>
   );

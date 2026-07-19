@@ -7,19 +7,19 @@ const FIX_ACTIONS = [
   {
     key: "vacuum",
     label: "ضغط قاعدة البيانات",
-    desc: "يزيل المساحة الهالكة ويقلّص حجم الملف (يستغرق لحظات)",
+    desc: "بينضف المساحة الفاضية ويصغر حجم الداتا (بياخد ثواني)",
     dangerous: false,
   },
   {
     key: "wal-checkpoint",
-    label: "تفريغ سجل WAL",
-    desc: "يدمج ملف التسجيل المؤقت في الملف الرئيسي",
+    label: "حفظ السجلات",
+    desc: "بيدمج التعديلات المؤقتة في الملف الرئيسي عشان مفيش حاجة تضيع",
     dangerous: false,
   },
   {
     key: "reindex",
-    label: "إعادة بناء الفهارس",
-    desc: "يعيد بناء جميع فهارس البحث — مفيد إذا كانت الاستعلامات بطيئة",
+    label: "تظبيط الفهارس",
+    desc: "بيرتب ملفات البحث من تاني — مفيد جداً لو البرنامج حاسه تقيل أو بطيء",
     dangerous: false,
   },
 ];
@@ -78,8 +78,8 @@ export default function DatabaseHealthSection() {
             <Database className="h-5 w-5 text-[var(--primary)]" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-[var(--text-primary)]">فحص قاعدة البيانات</h3>
-            <p className="text-xs text-[var(--text-muted)]">تشخيص الحالة وتنفيذ إصلاحات أمنة</p>
+            <h3 className="text-sm font-black text-[var(--text-primary)]">فحص الداتابيز (قاعدة البيانات)</h3>
+            <p className="text-xs text-[var(--text-muted)]">بنكشف على الداتا ونظبطها لو فيها مشكلة</p>
           </div>
         </div>
         <button

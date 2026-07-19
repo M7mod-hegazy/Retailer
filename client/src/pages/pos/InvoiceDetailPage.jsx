@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import { PAYMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
+import { usePageTour } from '../../hooks/usePageTour';
 
 function CancelReasonModal({ title, onConfirm, onClose }) {
   const [reason, setReason] = useState("");
@@ -39,18 +40,18 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+      <div className="bg-bg-surface rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[16px] font-black text-slate-800">{title}</h3>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
+          <h3 className="text-[16px] font-black text-text-primary">{title}</h3>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-bg-overlay text-text-muted hover:text-text-primary"><X className="h-4 w-4" /></button>
         </div>
-        <p className="text-2sm text-slate-500 mb-3">اختر سبباً أو اكتب سبباً مخصصاً:</p>
+        <p className="text-2sm text-text-secondary mb-3">اختر سبباً أو اكتب سبباً مخصصاً:</p>
         <div className="flex flex-wrap gap-2 mb-3">
           {presets.map(p => (
             <button
               key={p}
               onClick={() => setReason(p)}
-              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "btn-danger" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "btn-danger" : "border-border-normal text-text-secondary hover:border-rose-300"}`}
             >
               {p}
             </button>
@@ -60,7 +61,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
           value={reason}
           onChange={e => setReason(e.target.value)}
           placeholder="أو اكتب السبب..."
-          className="w-full border border-slate-200 rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300"
+          className="w-full border border-border-normal rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300"
         />
         <div className="flex gap-2 mt-4">
           <button
@@ -70,7 +71,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
           >
             تأكيد
           </button>
-          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors">
+          <button onClick={onClose} className="flex-1 border border-border-normal rounded-xl py-2.5 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-colors">
             رجوع
           </button>
         </div>
@@ -84,6 +85,7 @@ function fmt(n) {
 }
 
 export default function InvoiceDetailPage() {
+  usePageTour('invoice_detail');
   const { id } = useParams();
   const navigate = useNavigate();
   const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
@@ -221,18 +223,18 @@ export default function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50">
-        <div className="text-sm font-black text-slate-400 animate-pulse">جاري تحميل الفاتورة...</div>
+      <div className="flex h-full items-center justify-center bg-bg-overlay">
+        <div className="text-sm font-black text-text-muted animate-pulse">جاري تحميل الفاتورة...</div>
       </div>
     );
   }
 
   if (!invoice) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 flex-col gap-3">
-        <ShoppingCart className="h-12 w-12 text-slate-300" />
-        <p className="text-sm font-black text-slate-400">الفاتورة غير موجودة</p>
-        <button onClick={() => navigate(-1)} className="text-2sm font-bold text-slate-500 underline">عودة</button>
+      <div className="flex h-full items-center justify-center bg-bg-overlay flex-col gap-3">
+        <ShoppingCart className="h-12 w-12 text-text-muted" />
+        <p className="text-sm font-black text-text-muted">الفاتورة غير موجودة</p>
+        <button onClick={() => navigate(-1)} className="text-2sm font-bold text-text-secondary underline">عودة</button>
       </div>
     );
   }
@@ -243,7 +245,7 @@ export default function InvoiceDetailPage() {
   const isAmendment = !!invoice.amendment_of; // is itself a replacement of an older invoice
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
+    <div className="flex h-full min-h-[600px] flex-col bg-bg-overlay font-sans overflow-hidden pb-6" dir="rtl">
       {/* Header */}
       <DocumentHeaderBar
         onBack={() => navigate(-1)}
@@ -292,18 +294,18 @@ export default function InvoiceDetailPage() {
         {/* Left */}
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-hidden">
           {/* Info bar */}
-          <section className="grid grid-cols-5 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
+          <section className="grid grid-cols-5 gap-3 rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">العميل</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">العميل</span>
               {invoice.customer_name ? (
-                <span className="text-sm font-black text-slate-800">{invoice.customer_name}</span>
+                <span className="text-sm font-black text-text-primary">{invoice.customer_name}</span>
               ) : (
                 <div className="flex flex-col gap-0.5">
                   <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black">
                     🚶 عميل نقدي
                   </span>
                   {invoice.walk_in_phone && (
-                    <span className="text-xs font-bold text-slate-600">
+                    <span className="text-xs font-bold text-text-secondary">
                       {invoice.walk_in_name ? `${invoice.walk_in_name} — ` : ""}
                       <span className="font-mono" dir="ltr">{invoice.walk_in_phone}</span>
                     </span>
@@ -312,44 +314,44 @@ export default function InvoiceDetailPage() {
               )}
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
-              <span className="text-sm font-black text-slate-800">
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">التاريخ</span>
+              <span className="text-sm font-black text-text-primary">
                 {invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">الوقت</span>
-              <span className="text-sm font-black text-slate-800 font-mono">
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">الوقت</span>
+              <span className="text-sm font-black text-text-primary font-mono">
                 {invoice.created_at ? new Date(invoice.created_at).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
               </span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">طريقة الدفع</span>
-              <span className="text-sm font-black text-slate-800">{PAYMENT_LABELS[invoice.payment_type] || invoice.payment_type || "—"}</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">طريقة الدفع</span>
+              <span className="text-sm font-black text-text-primary">{PAYMENT_LABELS[invoice.payment_type] || invoice.payment_type || "—"}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1">
                 <User className="h-3 w-3" /> بواسطة
               </span>
-              <span className="text-sm font-black text-slate-800">{invoice.created_by_username || "—"}</span>
+              <span className="text-sm font-black text-text-primary">{invoice.created_by_username || "—"}</span>
             </div>
           </section>
 
           {/* Lines */}
           <div className="flex items-center justify-between shrink-0 px-2">
-            <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الأصناف ({(invoice.lines || []).length})</span>
+            <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest">الأصناف ({(invoice.lines || []).length})</span>
             <div className="relative" ref={colSettingsRef}>
               <button
                 onClick={() => setColSettingsOpen((v) => !v)}
-                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-border-normal bg-bg-surface text-text-muted hover:text-text-primary hover:border-border-strong transition-all"
               >
                 <Settings2 className="h-3.5 w-3.5" />
               </button>
               {colSettingsOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-2">
-                  <div className="text-[10px] font-black text-slate-400 px-2 pb-1 border-b border-slate-100 mb-1">إظهار الأعمدة</div>
+                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-border-normal bg-bg-surface shadow-lg p-2">
+                  <div className="text-[10px] font-black text-text-muted px-2 pb-1 border-b border-border-subtle mb-1">إظهار الأعمدة</div>
                   {ALL_COLUMNS.map((col) => (
-                    <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                    <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-bg-overlay cursor-pointer text-2sm font-bold text-text-primary">
                       <input
                         type="checkbox"
                         checked={visibleColumns.includes(col)}
@@ -375,32 +377,32 @@ export default function InvoiceDetailPage() {
             emptyMessage="لا يوجد أصناف"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 min-h-0"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-bg-surface scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-border-strong min-h-0"
             columns={[
-              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
-              { id: "code", header: "الكود", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] font-black text-slate-500 border-l border-slate-100",
+              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center number-fmt text-[11px] text-text-muted border-l border-border-subtle", sortable: false, render: (_, i) => i + 1 },
+              { id: "code", header: "الكود", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] font-black text-text-secondary border-l border-border-subtle",
                 render: (l) => l.item_code || l.code || l.barcode || "—" },
-              { id: "name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-3", headerClass: "text-right px-3",
+              { id: "name", header: "الصنف", width: 220, sortable: true, cellClass: "font-black text-text-primary border-l border-border-subtle px-3", headerClass: "text-right px-3",
                 render: (l) => <div className="flex items-center gap-2 py-1">{l.primary_image_url ? <img src={resolveImageUrl(l.primary_image_url)} alt="" className="w-[22px] h-[22px] rounded object-cover shrink-0" /> : null}<p className="text-sm font-black">{l.item_name || l.name}{l.sold_unit_name ? <span className="text-[11px] font-bold text-sky-600"> — {l.sold_unit_qty ?? ""} {l.sold_unit_name}</span> : null}</p></div> },
-              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt text-sm border-l border-slate-100", render: (l) => l.quantity },
-              { id: "unit_price", header: "السعر", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-slate-700", render: (l) => fmt(l.unit_price) },
-              { id: "discount", header: "خصم", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-slate-100 text-amber-700", render: (l) => l.discount > 0 ? fmt(l.discount) : "—" },
-              { id: "line_total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100", render: (l) => fmt(l.line_total) },
+              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt text-sm border-l border-border-subtle", render: (l) => l.quantity },
+              { id: "unit_price", header: "السعر", width: 110, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-border-subtle text-text-primary", render: (l) => fmt(l.unit_price) },
+              { id: "discount", header: "خصم", width: 90, sortable: true, headerClass: "text-center", cellClass: "text-center number-fmt-primary text-sm border-l border-border-subtle text-amber-700", render: (l) => l.discount > 0 ? fmt(l.discount) : "—" },
+              { id: "line_total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-left px-2", cellClass: "text-left px-2 number-fmt-primary text-sm text-text-primary bg-bg-overlay/50 border-l border-border-subtle", render: (l) => fmt(l.line_total) },
             ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
           />
 
           {/* Amendment timeline */}
           {timeline.length > 1 && (
-            <div className="mt-2 border border-slate-200 rounded-xl p-4 bg-white shrink-0">
-              <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <div className="mt-2 border border-border-normal rounded-xl p-4 bg-bg-surface shrink-0">
+              <h4 className="text-[11px] font-black text-text-secondary uppercase tracking-widest mb-3 flex items-center gap-2">
                 <History className="h-3.5 w-3.5" /> سجل التعديلات
               </h4>
               <div className="flex flex-col gap-2">
                 {timeline.map((inv) => (
-                  <div key={inv.id} className={`flex items-center gap-3 text-2sm ${inv.id === invoice.id ? "font-black text-slate-900" : "text-slate-400"}`}>
+                  <div key={inv.id} className={`flex items-center gap-3 text-2sm ${inv.id === invoice.id ? "font-black text-text-primary" : "text-text-muted"}`}>
                     <span className={`w-2 h-2 rounded-full shrink-0 ${inv.status === "cancelled" ? "bg-rose-400" : "bg-emerald-400"}`} />
                     <span className="font-mono">{inv.invoice_no}</span>
-                    <span className="text-slate-400">{inv.created_at?.slice(0, 10)}</span>
+                    <span className="text-text-muted">{inv.created_at?.slice(0, 10)}</span>
                     {inv.status === "cancelled" && <span className="text-rose-500 text-[11px] truncate max-w-[160px]">{inv.cancel_reason}</span>}
                     {inv.id !== invoice.id && (
                       <button onClick={() => navigate(`/pos/invoices/${inv.id}`)} className="text-indigo-500 text-[11px] underline mr-auto">عرض</button>
@@ -415,36 +417,36 @@ export default function InvoiceDetailPage() {
         {/* Right Sidebar */}
         <aside className="w-[260px] shrink-0 flex flex-col gap-3">
           {/* Summary */}
-          <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100">ملخص الفاتورة</h3>
+          <div className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+            <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest border-b pb-2 border-border-subtle">ملخص الفاتورة</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-2sm">
-                <span className="font-bold text-slate-500">عدد الأصناف</span>
-                <span className="font-black text-slate-800">{(invoice.lines || []).length}</span>
+                <span className="font-bold text-text-secondary">عدد الأصناف</span>
+                <span className="font-black text-text-primary">{(invoice.lines || []).length}</span>
               </div>
               <div className="flex justify-between text-2sm">
-                <span className="font-bold text-slate-500">المجموع الفرعي</span>
-                <span className="number-fmt-primary text-slate-800">{fmt(invoice.subtotal)}</span>
+                <span className="font-bold text-text-secondary">المجموع الفرعي</span>
+                <span className="number-fmt-primary text-text-primary">{fmt(invoice.subtotal)}</span>
               </div>
               {Number(invoice.discount) > 0 && (
                 <div className="flex justify-between text-2sm">
-                  <span className="font-bold text-slate-500">الخصم</span>
+                  <span className="font-bold text-text-secondary">الخصم</span>
                   <span className="number-fmt-primary text-rose-600">- {fmt(invoice.discount)}</span>
                 </div>
               )}
               {Number(invoice.increase) > 0 && (
                 <div className="flex justify-between text-2sm">
-                  <span className="font-bold text-slate-500">زيادة</span>
+                  <span className="font-bold text-text-secondary">زيادة</span>
                   <span className="number-fmt-primary text-emerald-600">+ {fmt(invoice.increase)}</span>
                 </div>
               )}
               {Number(invoice.tax_amount) > 0 && (
                 <div className="flex justify-between text-2sm">
-                  <span className="font-bold text-slate-500">ضريبة ({invoice.tax_rate}%)</span>
+                  <span className="font-bold text-text-secondary">ضريبة ({invoice.tax_rate}%)</span>
                   <span className="number-fmt-primary text-indigo-600">+ {fmt(invoice.tax_amount)}</span>
                 </div>
               )}
-              <div className="h-px bg-slate-100" />
+              <div className="h-px bg-bg-overlay" />
               <div className="rounded-sm bg-slate-900 p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">الإجمالي</div>
                 <div className="text-[26px] number-fmt-primary tracking-tighter">{fmt(invoice.total)}</div>
@@ -455,13 +457,13 @@ export default function InvoiceDetailPage() {
 
           {/* Payments */}
           {invoice.payments?.length > 0 && (
-            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">المدفوعات</h3>
+            <div className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest">المدفوعات</h3>
               <div className="space-y-2">
                 {invoice.payments.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-sm bg-slate-50 border border-slate-200 px-3 py-2">
-                    <span className="text-[11px] font-bold text-slate-600">{p.method_name || PAYMENT_LABELS[p.method] || p.method}</span>
-                    <span className="number-fmt-primary text-2sm text-slate-800">{fmt(p.amount)}</span>
+                  <div key={i} className="flex items-center justify-between rounded-sm bg-bg-overlay border border-border-normal px-3 py-2">
+                    <span className="text-[11px] font-bold text-text-secondary">{p.method_name || PAYMENT_LABELS[p.method] || p.method}</span>
+                    <span className="number-fmt-primary text-2sm text-text-primary">{fmt(p.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -470,9 +472,9 @@ export default function InvoiceDetailPage() {
 
           {/* Notes */}
           {invoice.notes && (
-            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-              <h3 className="mb-2 text-[11px] font-black text-slate-400 uppercase tracking-widest">ملاحظات</h3>
-              <p className="text-2sm font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
+            <div className="rounded-md border border-border-normal bg-bg-surface p-4 shadow-sm">
+              <h3 className="mb-2 text-[11px] font-black text-text-muted uppercase tracking-widest">ملاحظات</h3>
+              <p className="text-2sm font-medium text-text-primary whitespace-pre-wrap leading-relaxed">{invoice.notes}</p>
             </div>
           )}
 

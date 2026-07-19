@@ -50,7 +50,6 @@ export const useShortcutStore = create((set, get) => ({
     if (conflict) return { ok: false, conflict };
     const overrides = { ...get().overrides, [id]: keys };
     set({ overrides });
-    get()._persist(overrides);
     return { ok: true };
   },
 
@@ -58,15 +57,22 @@ export const useShortcutStore = create((set, get) => ({
     const overrides = { ...get().overrides };
     delete overrides[id];
     set({ overrides });
-    get()._persist(overrides);
   },
 
   resetAll: () => {
     set({ overrides: {} });
-    get()._persist({});
   },
 
-  _persist: (overrides) => {
-    api.put("/api/settings/shortcuts-config", { config: overrides }).catch(() => {});
+  snapshot: () => {
+    return JSON.parse(JSON.stringify(get().overrides));
+  },
+
+  restoreSnapshot: (snapshot) => {
+    set({ overrides: snapshot || {} });
+  },
+
+  persist: (overrides) => {
+    const target = overrides ?? get().overrides;
+    return api.put("/api/settings/shortcuts-config", { config: target });
   },
 }));

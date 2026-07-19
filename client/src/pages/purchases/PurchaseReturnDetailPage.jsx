@@ -11,6 +11,7 @@ import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { SETTLEMENT_LABELS, statusBadge } from "../../components/operations/docHelpers";
 import { formatNumber } from "../../utils/currency";
+import { usePageTour } from '../../hooks/usePageTour';
 
 function fmt(n) {
   return formatNumber(n, { decimals: 2 });
@@ -26,24 +27,24 @@ function CancelReasonModal({ onConfirm, onClose }) {
   }, [onClose]);
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+      <div className="bg-bg-surface rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[16px] font-black text-slate-800">سبب إلغاء مرتجع الشراء</h3>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
+          <h3 className="text-[16px] font-black text-text-primary">سبب إلغاء مرتجع الشراء</h3>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-bg-overlay text-text-muted hover:text-text-primary"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
           {PRESETS.map(p => (
             <button key={p} onClick={() => setReason(p)}
-              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-border-normal text-text-secondary hover:border-rose-300"}`}
             >{p}</button>
           ))}
         </div>
         <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="أو اكتب السبب..."
-          className="w-full border border-slate-200 rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300" />
+          className="w-full border border-border-normal rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300" />
         <div className="flex gap-2 mt-4">
           <button onClick={() => reason.trim() && onConfirm(reason)} disabled={!reason.trim()}
             className="flex-1 bg-rose-600 text-white rounded-xl py-2.5 text-sm font-black disabled:opacity-40 hover:bg-rose-700 transition-colors">تأكيد</button>
-          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors">رجوع</button>
+          <button onClick={onClose} className="flex-1 border border-border-normal rounded-xl py-2.5 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-colors">رجوع</button>
         </div>
       </div>
     </div>
@@ -51,6 +52,7 @@ function CancelReasonModal({ onConfirm, onClose }) {
 }
 
 export default function PurchaseReturnDetailPage() {
+  usePageTour('purchase_return_detail');
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -128,36 +130,36 @@ export default function PurchaseReturnDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
-        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-slate-300 bg-white px-6">
-          <div className="h-8 w-8 rounded-sm bg-slate-100 animate-pulse" />
-          <div className="h-4 w-48 bg-slate-200 rounded animate-pulse" />
-          <div className="h-6 w-16 rounded-full bg-slate-100 animate-pulse" />
+      <div className="flex h-full min-h-[600px] flex-col bg-bg-overlay font-sans overflow-hidden pb-6" dir="rtl">
+        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border-strong bg-bg-surface px-6">
+          <div className="h-8 w-8 rounded-sm bg-bg-overlay animate-pulse" />
+          <div className="h-4 w-48 bg-border-normal rounded animate-pulse" />
+          <div className="h-6 w-16 rounded-full bg-bg-overlay animate-pulse" />
         </header>
         <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
           <div className="flex flex-1 flex-col gap-3 min-w-0">
-            <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-200 bg-white p-4 shrink-0">
+            <section className="grid grid-cols-4 gap-3 rounded-md border border-border-normal bg-bg-surface p-4 shrink-0">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <div className="h-2 w-16 bg-slate-100 rounded animate-pulse" />
-                  <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4" style={{ animationDelay: `${i * 40}ms` }} />
+                  <div className="h-2 w-16 bg-bg-overlay rounded animate-pulse" />
+                  <div className="h-4 bg-border-normal rounded animate-pulse w-3/4" style={{ animationDelay: `${i * 40}ms` }} />
                 </div>
               ))}
             </section>
-            <div className="rounded-md border border-slate-200 bg-white overflow-hidden flex-1">
-              <div className="bg-slate-50 border-b px-4 py-3 flex gap-4">
-                {[...Array(4)].map((_, i) => <div key={i} className="h-3 bg-slate-200 rounded animate-pulse flex-1" />)}
+            <div className="rounded-md border border-border-normal bg-bg-surface overflow-hidden flex-1">
+              <div className="bg-bg-overlay border-b px-4 py-3 flex gap-4">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-3 bg-border-normal rounded animate-pulse flex-1" />)}
               </div>
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="px-4 py-3 flex gap-4 border-b border-slate-50">
-                  {[...Array(4)].map((_, j) => <div key={j} className="h-3 bg-slate-100 rounded animate-pulse flex-1" style={{ animationDelay: `${(i * 4 + j) * 30}ms` }} />)}
+                <div key={i} className="px-4 py-3 flex gap-4 border-b border-border-subtle">
+                  {[...Array(4)].map((_, j) => <div key={j} className="h-3 bg-bg-overlay rounded animate-pulse flex-1" style={{ animationDelay: `${(i * 4 + j) * 30}ms` }} />)}
                 </div>
               ))}
             </div>
           </div>
           <div className="w-72 shrink-0 space-y-3">
-            <div className="rounded-md border border-slate-200 bg-white p-4 space-y-3">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-slate-100 rounded animate-pulse w-full" />)}
+            <div className="rounded-md border border-border-normal bg-bg-surface p-4 space-y-3">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-bg-overlay rounded animate-pulse w-full" />)}
             </div>
           </div>
         </main>
@@ -167,10 +169,10 @@ export default function PurchaseReturnDetailPage() {
 
   if (!doc) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50 flex-col gap-3">
-        <RotateCcw className="h-12 w-12 text-slate-300" />
-        <p className="text-sm font-black text-slate-400">مرتجع الشراء غير موجود</p>
-        <button onClick={() => navigate(-1)} className="text-2sm font-bold text-slate-500 underline">عودة</button>
+      <div className="flex h-full items-center justify-center bg-bg-overlay flex-col gap-3">
+        <RotateCcw className="h-12 w-12 text-text-muted" />
+        <p className="text-sm font-black text-text-muted">مرتجع الشراء غير موجود</p>
+        <button onClick={() => navigate(-1)} className="text-2sm font-bold text-text-secondary underline">عودة</button>
       </div>
     );
   }
@@ -181,19 +183,19 @@ export default function PurchaseReturnDetailPage() {
   const isAmendment = !!doc.amendment_of;
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6" dir="rtl">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-6">
+    <div className="flex h-full min-h-[600px] flex-col bg-bg-overlay font-sans overflow-hidden pb-6" dir="rtl">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-strong bg-bg-surface px-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+          <button onClick={() => navigate(-1)} className="flex h-8 w-8 items-center justify-center rounded-sm border border-border-normal text-text-secondary hover:bg-bg-overlay transition-colors">
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-sm font-black text-slate-800">مرتجع شراء #{doc.doc_no}
-              <button onClick={() => handleCopy(doc.doc_no, "doc")} className="inline-flex ms-1 rounded p-1 hover:bg-slate-100 transition-colors align-middle">
-                {copied === "doc" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
+            <h1 className="text-sm font-black text-text-primary">مرتجع شراء #{doc.doc_no}
+              <button onClick={() => handleCopy(doc.doc_no, "doc")} className="inline-flex ms-1 rounded p-1 hover:bg-bg-overlay transition-colors align-middle">
+                {copied === "doc" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-text-muted" />}
               </button>
             </h1>
-            <span className="text-[11px] font-bold text-slate-400">
+            <span className="text-[11px] font-bold text-text-muted">
               {doc.purchase_id ? `من فاتورة شراء #${doc.purchase_id}` : "مرتجع عام"}
             </span>
           </div>
@@ -214,7 +216,7 @@ export default function PurchaseReturnDetailPage() {
         <div className="flex items-center gap-3">
           <PermissionGate page="purchase_returns" action="print">
             <button onClick={() => setPrintOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all">
+              className="flex h-9 items-center gap-2 rounded-sm border border-border-strong bg-bg-surface px-4 text-sm font-black text-text-primary hover:bg-bg-overlay transition-all">
               <Printer className="h-4 w-4" /> طباعة
             </button>
           </PermissionGate>
@@ -247,59 +249,59 @@ export default function PurchaseReturnDetailPage() {
 
       <main className="flex min-h-0 flex-1 gap-4 p-4 overflow-hidden">
         <div className="flex flex-1 flex-col gap-3 min-w-0 overflow-auto">
-          <section className="grid grid-cols-4 gap-3 rounded-md border border-slate-300 bg-white p-4 shadow-sm shrink-0">
+          <section className="grid grid-cols-4 gap-3 rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">المورد</span>
-              <span className="text-sm font-black text-slate-800">{doc.supplier_name || "—"}</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">المورد</span>
+              <span className="text-sm font-black text-text-primary">{doc.supplier_name || "—"}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التاريخ</span>
-              <span className="text-sm font-black text-slate-800">{new Date(doc.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">التاريخ</span>
+              <span className="text-sm font-black text-text-primary">{new Date(doc.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">التسوية</span>
-              <span className="text-sm font-black text-slate-800">{SETTLEMENT_LABELS[doc.settlement_type] || doc.settlement_type}</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">التسوية</span>
+              <span className="text-sm font-black text-text-primary">{SETTLEMENT_LABELS[doc.settlement_type] || doc.settlement_type}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">السبب</span>
-              <span className="text-sm font-black text-slate-800">{doc.reason || "—"}</span>
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">السبب</span>
+              <span className="text-sm font-black text-text-primary">{doc.reason || "—"}</span>
             </div>
           </section>
 
-          <section className="rounded-md border border-slate-300 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 px-4 py-3">
-              <h2 className="text-sm font-black text-slate-700 flex items-center gap-2"><Package className="h-4 w-4" /> الأصناف المرتجعة</h2>
+          <section className="rounded-md border border-border-strong bg-bg-surface shadow-sm overflow-hidden">
+            <div className="border-b border-border-subtle px-4 py-3">
+              <h2 className="text-sm font-black text-text-primary flex items-center gap-2"><Package className="h-4 w-4" /> الأصناف المرتجعة</h2>
             </div>
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-bg-overlay">
                 <tr>
-                  <th className="px-4 py-2 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-4 py-2 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-4 py-2 text-center font-black text-slate-500">تكلفة الوحدة</th>
-                  <th className="px-4 py-2 text-left font-black text-slate-500">الإجمالي</th>
+                  <th className="px-4 py-2 text-right font-black text-text-secondary">الصنف</th>
+                  <th className="px-4 py-2 text-center font-black text-text-secondary">الكمية</th>
+                  <th className="px-4 py-2 text-center font-black text-text-secondary">تكلفة الوحدة</th>
+                  <th className="px-4 py-2 text-left font-black text-text-secondary">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
                 {(doc.lines || []).map((l, i) => (
-                  <tr key={i} className="border-t border-slate-50 hover:bg-slate-50/50">
+                  <tr key={i} className="border-t border-border-subtle hover:bg-bg-overlay/50">
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col">
-                        {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
-                        <span className="font-bold text-slate-800">{l.item_name_ar || l.item_name || l.item_id}</span>
+                        {(l.item_code || l.code) && <span className="font-mono text-[11px] text-text-muted">{l.item_code || l.code}</span>}
+                        <span className="font-bold text-text-primary">{l.item_name_ar || l.item_name || l.item_id}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-center text-slate-700">{l.quantity}</td>
-                    <td className="px-4 py-2.5 text-center text-slate-700">{fmt(l.unit_cost)}</td>
-                    <td className="px-4 py-2.5 text-left font-black text-slate-800">{fmt(l.line_total)}</td>
+                    <td className="px-4 py-2.5 text-center text-text-primary">{l.quantity}</td>
+                    <td className="px-4 py-2.5 text-center text-text-primary">{fmt(l.unit_cost)}</td>
+                    <td className="px-4 py-2.5 text-left font-black text-text-primary">{fmt(l.line_total)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+              <tfoot className="border-t-2 border-border-normal bg-bg-overlay">
                 {(Number(doc.discount) > 0 || Number(doc.increase) > 0) && (
                   <>
                     <tr>
-                      <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
-                      <td className="px-4 py-1.5 text-left font-bold text-slate-600">{fmt((doc.lines || []).reduce((a, l) => a + Number(l.line_total || 0), 0))} ج.م</td>
+                      <td colSpan={3} className="px-4 py-1.5 text-right font-bold text-text-secondary">إجمالي الأصناف</td>
+                      <td className="px-4 py-1.5 text-left font-bold text-text-secondary">{fmt((doc.lines || []).reduce((a, l) => a + Number(l.line_total || 0), 0))} ج.م</td>
                     </tr>
                     {Number(doc.discount) > 0 && (
                       <tr>
@@ -316,8 +318,8 @@ export default function PurchaseReturnDetailPage() {
                   </>
                 )}
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right font-black text-slate-700">صافي المرتجع</td>
-                  <td className="px-4 py-3 text-left font-black text-slate-900 text-sm">{fmt(doc.total)} ج.م</td>
+                  <td colSpan={3} className="px-4 py-3 text-right font-black text-text-primary">صافي المرتجع</td>
+                  <td className="px-4 py-3 text-left font-black text-text-primary text-sm">{fmt(doc.total)} ج.م</td>
                 </tr>
               </tfoot>
             </table>
@@ -325,30 +327,30 @@ export default function PurchaseReturnDetailPage() {
 
           {/* Notes */}
           {doc.notes && (
-            <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-slate-400 mb-1">ملاحظات</p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{doc.notes}</p>
+            <section className="rounded-md border border-border-normal bg-bg-surface p-4 shadow-sm">
+              <p className="text-[11px] font-bold text-text-muted mb-1">ملاحظات</p>
+              <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">{doc.notes}</p>
             </section>
           )}
         </div>
 
         {timeline.length > 1 && (
-          <aside className="w-64 shrink-0 overflow-auto rounded-md border border-slate-300 bg-white p-4 shadow-sm flex flex-col gap-3">
-            <h3 className="text-2sm font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2">سلسلة التعديلات</h3>
+          <aside className="w-64 shrink-0 overflow-auto rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm flex flex-col gap-3">
+            <h3 className="text-2sm font-black text-text-secondary uppercase tracking-wider border-b border-border-subtle pb-2">سلسلة التعديلات</h3>
             {timeline.map((t, i) => {
               const timelineStatus = statusBadge(t.status, "active");
               return (
                 <div key={t.id}
                   onClick={() => navigate(`/purchases/returns/${t.id}`)}
-                  className={`cursor-pointer rounded-lg border p-3 transition-all ${t.id === doc.id ? "border-indigo-300 bg-indigo-50" : "border-slate-200 hover:border-slate-300 bg-white"}`}
+                  className={`cursor-pointer rounded-lg border p-3 transition-all ${t.id === doc.id ? "border-indigo-300 bg-indigo-50" : "border-border-normal hover:border-border-strong bg-bg-surface"}`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-black text-slate-700">{t.doc_no}</span>
-                    {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">الأصلي</span>}
+                    <span className="text-[11px] font-black text-text-primary">{t.doc_no}</span>
+                    {i === 0 && timeline.length > 1 && <span className="text-[9px] font-black text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">الأصلي</span>}
                     {i === timeline.length - 1 && i !== 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">الأحدث</span>}
                   </div>
-                  <div className="text-[11px] text-slate-500">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
-                  <div className="text-[11px] font-bold text-slate-500">{fmt(t.total)} ج.م</div>
+                  <div className="text-[11px] text-text-secondary">{new Date(t.created_at).toLocaleDateString("ar-EG-u-nu-latn")}</div>
+                  <div className="text-[11px] font-bold text-text-secondary">{fmt(t.total)} ج.م</div>
                   <span className={`inline-flex mt-1 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-black ${timelineStatus.cls}`}>
                     {timelineStatus.label}
                   </span>

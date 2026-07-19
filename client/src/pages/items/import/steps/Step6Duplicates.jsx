@@ -109,10 +109,10 @@ export default function Step6Duplicates({ wizard }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm flex flex-col justify-between">
+        <div className="rounded-2xl border border-amber-200 bg-bg-surface p-5 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h3 className="text-xl font-black text-slate-900 font-display">تكرارات المخزون</h3>
+              <h3 className="text-xl font-black text-text-primary font-display">تكرارات المخزون</h3>
               <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black ring-1 ${
                 confirmed
                   ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
@@ -124,18 +124,18 @@ export default function Step6Duplicates({ wizard }) {
                 {confirmed ? "مؤكد" : `${decidedCount} / ${duplicateGroups.length} مقرر`}
               </span>
             </div>
-            <p className="mt-1.5 text-sm font-semibold text-slate-500 font-title">
+            <p className="mt-1.5 text-sm font-semibold text-text-secondary font-title">
               وجدنا {duplicateGroups.length} صنف ظهر في أكثر من صف. لكل مجموعة اختر: <strong>دمج الكميات</strong> في صف واحد، أو <strong>توزيع</strong> كل صف على مخزن منفصل.
             </p>
           </div>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200">
-            <span className={`h-2 w-2 rounded-full ${effectiveMode === "warehouse" ? "bg-indigo-500" : "bg-slate-500"}`} />
+          <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-bg-overlay px-4 py-2 text-xs font-black text-text-primary ring-1 ring-slate-200">
+            <span className={`h-2 w-2 rounded-full ${effectiveMode === "warehouse" ? "bg-indigo-500" : "bg-bg-overlay0"}`} />
             القرار العام: {effectiveMode === "warehouse" ? "توزيع على المخازن" : "دمج الكميات"}
             {pendingMode != null && <span className="text-[10px] text-amber-600 font-bold">(معلق)</span>}
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4.5 shadow-inner">
+        <div className="grid gap-3 rounded-2xl border border-border-normal bg-bg-overlay/60 p-4.5 shadow-inner">
           <button
             type="button"
             onClick={() => handleBulk("combine")}
@@ -144,16 +144,16 @@ export default function Step6Duplicates({ wizard }) {
                 ? "ring-2 ring-emerald-400 bg-emerald-700 text-white shadow-md"
                 : effectiveMode === "combine" && pendingMode == null
                 ? "bg-primary text-white shadow-md shadow-slate-900/10"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-[0.98]"
+                : "border border-border-normal bg-bg-surface text-text-primary hover:bg-bg-overlay active:scale-[0.98]"
             }`}
           >
             {pendingMode === "combine" ? <CheckCircle2 className="h-4 w-4" /> : null}
             دمج كل التكرارات
           </button>
-          <div className="text-center text-[10px] font-bold leading-normal text-slate-500">
+          <div className="text-center text-[10px] font-bold leading-normal text-text-secondary">
             يجمع كميات نفس الصنف في صف واحد ويستخدم مخزنا واحدا.
           </div>
-          <div className="h-px bg-slate-200/60" />
+          <div className="h-px bg-border-normal/60" />
           <button
             type="button"
             onClick={() => handleBulk("warehouse")}
@@ -162,16 +162,16 @@ export default function Step6Duplicates({ wizard }) {
                 ? "ring-2 ring-indigo-400 bg-indigo-600 text-white shadow-md"
                 : effectiveMode === "warehouse" && pendingMode == null
                 ? "bg-primary text-white shadow-md shadow-slate-900/10"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-[0.98]"
+                : "border border-border-normal bg-bg-surface text-text-primary hover:bg-bg-overlay active:scale-[0.98]"
             }`}
           >
             {pendingMode === "warehouse" ? <CheckCircle2 className="h-4 w-4" /> : null}
             توزيع كل التكرارات على المخازن
           </button>
-          <div className="text-center text-[10px] font-bold leading-normal text-slate-500">
+          <div className="text-center text-[10px] font-bold leading-normal text-text-secondary">
             يحافظ على كل صف مخزون، وكل صف يحتاج مخزنا موجودا أو منشأ الآن.
           </div>
-          <div className="h-px bg-slate-200/60" />
+          <div className="h-px bg-border-normal/60" />
           {confirmed ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ export default function Step6Duplicates({ wizard }) {
               <button
                 type="button"
                 onClick={handleChangeDecisions}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 transition-all"
+                className="rounded-xl border border-border-normal bg-bg-surface px-3 py-2 text-[10px] font-black text-text-secondary hover:bg-bg-overlay transition-all"
               >
                 <RotateCcw className="h-3 w-3 inline-block ml-1" />
                 تغيير
@@ -197,7 +197,7 @@ export default function Step6Duplicates({ wizard }) {
                   <button
                     type="button"
                     onClick={handleResetAll}
-                    className="text-[10px] font-black text-slate-500 hover:text-slate-700 transition-colors"
+                    className="text-[10px] font-black text-text-secondary hover:text-text-primary transition-colors"
                   >
                     إلغاء الكل
                   </button>
@@ -315,16 +315,16 @@ export default function Step6Duplicates({ wizard }) {
                   ? policy === "warehouse"
                     ? "border-indigo-300 bg-indigo-50/40 ring-2 ring-indigo-200"
                     : "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-200"
-                  : "border-slate-200 bg-white hover:shadow-md"
+                  : "border-border-normal bg-bg-surface hover:shadow-md"
               }`}>
                 <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-lg font-black text-slate-900 font-display">{row.name || row.code}</span>
+                      <span className="text-lg font-black text-text-primary font-display">{row.name || row.code}</span>
                       <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-black ring-1 ${
                         policy === "warehouse"
                           ? "bg-indigo-50 text-indigo-700 ring-indigo-200"
-                          : "bg-slate-100 text-slate-600 ring-slate-200"
+                          : "bg-bg-overlay text-text-secondary ring-slate-200"
                       }`}>
                         {isChosen || confirmed ? <CheckCircle2 className="h-3 w-3" /> : null}
                         {policy === "warehouse" ? "موزع على عدة مخازن" : "مدمج (كمية واحدة)"}
@@ -345,21 +345,21 @@ export default function Step6Duplicates({ wizard }) {
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-xs font-bold text-slate-500">
+                    <div className="mt-2 flex flex-wrap gap-4 text-xs font-bold text-text-secondary">
                       <span>{group.length} صفوف</span>
                       <span>إجمالي الكمية: {totalQty}</span>
                     </div>
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {group.map((item) => (
-                        <div key={item.__rowNumber} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                        <div key={item.__rowNumber} className="rounded-xl border border-border-normal bg-bg-surface p-3 shadow-sm">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[11px] font-black text-slate-400">صف {item.__rowNumber}</span>
-                            <span className="text-xs font-black text-slate-700">{item.store_name || "مخزن الملف"}</span>
+                            <span className="font-mono text-[11px] font-black text-text-muted">صف {item.__rowNumber}</span>
+                            <span className="text-xs font-black text-text-primary">{item.store_name || "مخزن الملف"}</span>
                           </div>
                           <div className="mt-1.5 flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-500">الكمية</span>
-                            <span className="text-sm font-black text-slate-900">{Number(item.stock_quantity || 0)}</span>
+                            <span className="text-xs font-bold text-text-secondary">الكمية</span>
+                            <span className="text-sm font-black text-text-primary">{Number(item.stock_quantity || 0)}</span>
                           </div>
                         </div>
                       ))}
@@ -368,7 +368,7 @@ export default function Step6Duplicates({ wizard }) {
 
                   {!confirmed && (
                     <div className="flex flex-col justify-center gap-3">
-                      <div className="text-xs font-black text-slate-600 mb-1">اختر قرار هذه المجموعة:</div>
+                      <div className="text-xs font-black text-text-secondary mb-1">اختر قرار هذه المجموعة:</div>
                       <button
                         type="button"
                         onClick={() => handleGroup(row, "combine")}
@@ -377,7 +377,7 @@ export default function Step6Duplicates({ wizard }) {
                             ? "bg-emerald-700 text-white shadow-md ring-2 ring-emerald-300"
                             : pendingMap[key] !== "warehouse" && pendingMode == null && wizard.duplicatePolicies[key] === "combine"
                             ? "bg-primary text-white shadow-md shadow-slate-900/10"
-                            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-[0.98]"
+                            : "border border-border-normal bg-bg-surface text-text-primary hover:bg-bg-overlay active:scale-[0.98]"
                         }`}
                       >
                         {pendingMap[key] === "combine" ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
@@ -391,7 +391,7 @@ export default function Step6Duplicates({ wizard }) {
                             ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400"
                             : pendingMap[key] !== "combine" && pendingMode == null && wizard.duplicatePolicies[key] === "warehouse"
                             ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10 ring-2 ring-indigo-400"
-                            : "border border-slate-200 bg-white text-slate-700 hover:bg-indigo-50 hover:border-indigo-200 active:scale-[0.98]"
+                            : "border border-border-normal bg-bg-surface text-text-primary hover:bg-indigo-50 hover:border-indigo-200 active:scale-[0.98]"
                         }`}
                       >
                         {pendingMap[key] === "warehouse" ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
@@ -401,7 +401,7 @@ export default function Step6Duplicates({ wizard }) {
                         <button
                           type="button"
                           onClick={() => handleClearGroup(row)}
-                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-[11px] font-black text-slate-500 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                          className="w-full rounded-xl border border-border-normal bg-bg-surface py-2.5 text-[11px] font-black text-text-secondary hover:bg-bg-overlay transition-all active:scale-[0.98]"
                         >
                           تراجع عن القرار الفردي
                         </button>
@@ -441,7 +441,7 @@ export default function Step6Duplicates({ wizard }) {
               <button
                 type="button"
                 onClick={handleChangeDecisions}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all"
+                className="inline-flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-overlay transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 تغيير القرارات
@@ -467,7 +467,7 @@ export default function Step6Duplicates({ wizard }) {
                   <button
                     type="button"
                     onClick={handleResetAll}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all"
+                    className="rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-xs font-black text-text-secondary hover:bg-bg-overlay transition-all"
                   >
                     إلغاء الكل
                   </button>

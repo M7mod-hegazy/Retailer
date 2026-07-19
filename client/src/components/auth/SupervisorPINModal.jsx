@@ -43,7 +43,7 @@ export default function SupervisorPINModal({ open, action, details, onSuccess, o
             maxLength={6}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="input code w-48 rounded-[20px] p-3 text-center text-3xl tracking-[1em] bg-white"
+            className="input code w-48 rounded-[20px] p-3 text-center text-3xl tracking-[1em] bg-bg-surface"
             placeholder="••••"
             dir="ltr"
             required

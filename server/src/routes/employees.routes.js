@@ -78,6 +78,9 @@ router.put("/:id", requirePagePermission("employees", "edit"), (req, res, next) 
     const phones = Array.isArray(payload.phones) ? payload.phones : [];
     const primaryPhone = phones[0] || payload.phone || null;
 
+    // Read old values before update for Telegram notification
+    const oldRow = db.prepare(`SELECT name, salary, ${roleColumn} AS job_title, phone FROM employees WHERE id = ?`).get(req.params.id);
+
     const wd = Number(payload.working_days_per_month) || 26;
     db
       .prepare(`UPDATE employees SET name = ?, phone = ?, ${roleColumn} = ?, salary = ?, salary_period = ?, address = ?, phones = ?, working_days_per_month = ? WHERE id = ?`)
@@ -94,6 +97,28 @@ router.put("/:id", requirePagePermission("employees", "edit"), (req, res, next) 
       );
 
     req.audit("update", "employees", { id: req.params.id }, `👤 تم تعديل موظف: ${payload.name || ''}`);
+
+    // Telegram notification for employee edit
+    try {
+      const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      const newSalary = Number(payload.salary || 0);
+      const oldSalary = Number(oldRow?.salary || 0);
+      const newJobTitle = payload.job_title || payload.role || null;
+      const oldJobTitle = oldRow?.job_title || null;
+      if (oldSalary !== newSalary || oldJobTitle !== newJobTitle || (oldRow?.name || "") !== (payload.name || "")) {
+        notifyOwner(TG.EMPLOYEE_EDITED, {
+          employeeName: payload.name || oldRow?.name || "غير محدد",
+          oldSalary,
+          newSalary,
+          oldJobTitle,
+          newJobTitle,
+          phone: primaryPhone,
+          userName: userRow?.name || null,
+          createdAt: new Date().toISOString(),
+        }, db);
+      }
+    } catch (_) { /* non-critical */ }
+
     res.json({
       success: true,
       data: db.prepare("SELECT * FROM employees WHERE id = ?").get(req.params.id),
@@ -175,6 +200,21 @@ router.post("/:id/adjustments", requirePagePermission("employees", "add"), (req,
     );
 
   req.audit("create", "employees", { id: info.lastInsertRowid }, `👤 تم تسجيل ${payload.adjustment_type === 'incentive' ? 'حافز' : 'خصم'} للموظف`);
+
+  // Telegram notification for adjustment
+  try {
+    const empRow = getDb().prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? getDb().prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.ADJUSTMENT_CREATED, {
+      employeeName: empRow?.name || "غير محدد",
+      adjustmentType: payload.adjustment_type,
+      amount,
+      reason: payload.reason || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, getDb());
+  } catch (_) { /* non-critical */ }
+
   res.status(201).json({
     success: true,
     data: getDb().prepare("SELECT * FROM employee_adjustments WHERE id = ?").get(info.lastInsertRowid),
@@ -265,10 +305,91 @@ router.post("/:id/advances/:advanceId/pay", requirePagePermission("employees", "
   })();
 
   req.audit("update", "employee_advances", { id: req.params.advanceId }, `💰 تم تسديد قسط سلفة بقيمة ${amount}`);
+
+  // Telegram notification — money coming back into the drawer.
+  try {
+    const emp = db.prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.ADVANCE_PAYMENT, {
+      employeeName: emp?.name || "غير محدد",
+      amount,
+      remaining: newRemaining,
+      notes: req.body?.notes || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
   res.json({
     success: true,
     data: db.prepare("SELECT * FROM employee_advances WHERE id = ?").get(req.params.advanceId),
   });
+});
+
+// Delete/cancel an advance
+router.get("/:id/advances/:advanceId/linked-expense", requirePagePermission("employees", "manage_advances"), (req, res) => {
+  const db = getDb();
+  const advance = db.prepare("SELECT * FROM employee_advances WHERE id = ? AND employee_id = ?").get(req.params.advanceId, req.params.id);
+  if (!advance) return res.status(404).json({ success: false, message: "السلفة غير موجودة" });
+
+  const expense = db.prepare(
+    `SELECT id, doc_no, amount, description, notes, category_id, created_at
+     FROM expenses
+     WHERE employee_id = ? AND amount = ?
+       AND (description LIKE '%سلفة%' OR notes LIKE '%سلفة%')
+     ORDER BY ABS(julianday(created_at) - julianday(?)) ASC
+     LIMIT 1`
+  ).get(req.params.id, advance.amount, advance.created_at);
+
+  res.json({ success: true, data: expense || null });
+});
+
+router.delete("/:id/advances/:advanceId", requirePagePermission("employees", "manage_advances"), (req, res) => {
+  const db = getDb();
+  const advance = db.prepare("SELECT * FROM employee_advances WHERE id = ? AND employee_id = ?").get(req.params.advanceId, req.params.id);
+  if (!advance) return res.status(404).json({ success: false, message: "السلفة غير موجودة" });
+
+  const paymentCount = db.prepare("SELECT COUNT(*) AS c FROM employee_advance_payments WHERE advance_id = ?").get(req.params.advanceId);
+
+  let expense_deleted = false;
+  if (req.query.delete_expense === "true") {
+    const expense = db.prepare(
+      `SELECT id FROM expenses WHERE employee_id = ? AND amount = ? AND (description LIKE '%سلفة%' OR notes LIKE '%سلفة%') ORDER BY ABS(julianday(created_at) - julianday(?)) ASC LIMIT 1`
+    ).get(req.params.id, advance.amount, advance.created_at);
+    if (expense) {
+      try {
+        db.prepare("UPDATE salary_settlements SET expense_id = NULL WHERE expense_id = ?").run(expense.id);
+        db.prepare("DELETE FROM expenses WHERE id = ?").run(expense.id);
+        expense_deleted = true;
+      } catch (_) { /* FK constraint — skip */ }
+    }
+  }
+
+  const hardDeleted = paymentCount.c === 0;
+  if (!hardDeleted) {
+    db.prepare("UPDATE employee_advances SET status = 'cancelled', remaining_balance = 0 WHERE id = ?").run(req.params.advanceId);
+    req.audit("delete", "employee_advances", { id: req.params.advanceId }, `💰 تم إلغاء سلفة بمبلغ ${advance.amount} (تحتوي على مدفوعات)`);
+  } else {
+    db.prepare("DELETE FROM employee_advances WHERE id = ?").run(req.params.advanceId);
+    req.audit("delete", "employee_advances", { id: req.params.advanceId }, `💰 تم حذف سلفة بمبلغ ${advance.amount}`);
+  }
+
+  // Telegram notification — deleting an advance can hide taken money.
+  try {
+    const emp = db.prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.ADVANCE_DELETED, {
+      employeeName: emp?.name || "غير محدد",
+      amount: Number(advance.amount || 0),
+      remaining: Number(advance.remaining_balance || 0),
+      hardDeleted,
+      expenseDeleted: expense_deleted,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
+  res.json({ success: true, hard_deleted: hardDeleted, expense_deleted });
 });
 
 // ============================================================
@@ -333,6 +454,20 @@ router.delete("/:id/deductions/:deductionId", requirePagePermission("employees",
 
   db.prepare("UPDATE employee_deductions SET status = 'cancelled', cancelled_at = ? WHERE id = ?").run(nowSql(), req.params.deductionId);
   req.audit("delete", "employee_deductions", { id: req.params.deductionId }, `💰 تم إلغاء خصم`);
+
+  // Telegram notification — cancelling a deduction raises the payout.
+  try {
+    const emp = db.prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.DEDUCTION_DELETED, {
+      employeeName: emp?.name || "غير محدد",
+      amount: Number(existing.amount || 0),
+      deductionType: existing.deduction_type || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
   res.json({ success: true });
 });
 
@@ -398,6 +533,20 @@ router.delete("/:id/bonuses/:bonusId", requirePagePermission("employees", "manag
 
   db.prepare("UPDATE employee_bonuses SET status = 'cancelled', cancelled_at = ? WHERE id = ?").run(nowSql(), req.params.bonusId);
   req.audit("delete", "employee_bonuses", { id: req.params.bonusId }, `🎁 تم إلغاء مكافأة`);
+
+  // Telegram notification
+  try {
+    const emp = db.prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.BONUS_DELETED, {
+      employeeName: emp?.name || "غير محدد",
+      amount: Number(existing.amount || 0),
+      bonusType: existing.bonus_type || null,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
   res.json({ success: true });
 });
 
@@ -565,27 +714,105 @@ router.post("/:id/settle", requirePagePermission("employees", "settle_payroll"),
     : `💰 تم صرف راتب للموظف ${employee.name} — صافي ${result.netSalary}`;
   req.audit("create", "salary_settlements", { id: result.settleId }, auditMsg);
 
-  // Telegram notification
+  // Telegram notification — a partial payout is its own event so the owner
+  // sees the paid/remaining split and what happens to the remainder.
   try {
     const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
-    notifyOwner(TG.SALARY_SETTLED, {
-      employeeName: employee.name,
-      period: `${periodStart} → ${periodEnd}`,
-      baseSalary,
-      bonuses: totalBonuses,
-      deductions: totalDeductionsAll,
-      advanceDeductions,
-      netSalary: result.netSalary,
-      paidAmount: result.paidAmount,
-      userName: userRow?.name || null,
-      createdAt: new Date().toISOString(),
-    }, db);
+    if (result.status === 'partial') {
+      notifyOwner(TG.SALARY_PARTIAL_PAID, {
+        kindLabel: "صرف جزئي للراتب",
+        employeeName: employee.name,
+        period: `${periodStart} → ${periodEnd}`,
+        netSalary: result.netSalary,
+        paidAmount: result.paidAmount,
+        remaining: result.remainingBalance,
+        carryForward,
+        paymentMethod: payload.payment_method || 'cash',
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } else {
+      notifyOwner(TG.SALARY_SETTLED, {
+        employeeName: employee.name,
+        period: `${periodStart} → ${periodEnd}`,
+        baseSalary,
+        bonuses: totalBonuses,
+        deductions: totalDeductionsAll,
+        advanceDeductions,
+        netSalary: result.netSalary,
+        paidAmount: result.paidAmount,
+        userName: userRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    }
   } catch (_) { /* non-critical */ }
 
   res.status(201).json({
     success: true,
     data: db.prepare("SELECT * FROM salary_settlements WHERE id = ?").get(result.settleId),
   });
+});
+
+// ============================================================
+// Delete Salary Settlement (smart reversal)
+// ============================================================
+
+router.delete("/:id/settlements/:settlementId", requirePagePermission("employees", "settle_payroll"), (req, res) => {
+  const db = getDb();
+  const settlement = db.prepare("SELECT * FROM salary_settlements WHERE id = ? AND employee_id = ?").get(req.params.settlementId, req.params.id);
+  if (!settlement) return res.status(404).json({ success: false, message: "سجل الصرف غير موجود" });
+
+  const deleteExpense = req.query.delete_expense === 'true';
+
+  const result = db.transaction(() => {
+    const reversed_advances = [];
+    const reversed_deductions = [];
+    const reversed_bonuses = [];
+
+    const advancePayments = db.prepare("SELECT * FROM employee_advance_payments WHERE notes LIKE ? AND payment_date >= ? AND payment_date <= ?")
+      .all(`%تسوية راتب%`, settlement.period_start, settlement.settled_at);
+
+    for (const ap of advancePayments) {
+      const advance = db.prepare("SELECT * FROM employee_advances WHERE id = ?").get(ap.advance_id);
+      if (advance) {
+        const newRemaining = Number(advance.remaining_balance) + Number(ap.amount);
+        const newStatus = newRemaining > 0 ? 'active' : advance.status;
+        db.prepare("UPDATE employee_advances SET remaining_balance = ?, status = ? WHERE id = ?")
+          .run(newRemaining, newStatus, advance.id);
+        db.prepare("DELETE FROM employee_advance_payments WHERE id = ?").run(ap.id);
+        reversed_advances.push({ advance_id: advance.id, amount: ap.amount });
+      }
+    }
+
+    if (settlement.expense_id && deleteExpense) {
+      db.prepare("UPDATE salary_settlements SET expense_id = NULL WHERE id = ?").run(req.params.settlementId);
+      db.prepare("DELETE FROM expenses WHERE id = ?").run(settlement.expense_id);
+    }
+
+    db.prepare("DELETE FROM salary_settlements WHERE id = ?").run(req.params.settlementId);
+
+    return { reversed_advances, reversed_deductions, reversed_bonuses, expense_deleted: deleteExpense && !!settlement.expense_id };
+  })();
+
+  req.audit("delete", "salary_settlements", { id: req.params.settlementId }, `💰 تم إلغاء صرف راتب للموظف — أُعيد ${result.reversed_advances.length} قسط سلفة`);
+
+  // Telegram notification — reversing a payroll settlement moves real money.
+  try {
+    const emp = db.prepare("SELECT name FROM employees WHERE id = ?").get(req.params.id);
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.SALARY_SETTLEMENT_DELETED, {
+      employeeName: emp?.name || "غير محدد",
+      period: `${settlement.period_start || "—"} → ${settlement.period_end || "—"}`,
+      paidAmount: Number(settlement.paid_amount ?? settlement.net_salary ?? 0),
+      netSalary: Number(settlement.net_salary || 0),
+      expenseDeleted: result.expense_deleted,
+      reversedAdvances: result.reversed_advances.length,
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+
+  res.json({ success: true, data: result });
 });
 
 router.get("/:id/salary-balance", requirePagePermission("employees", "settle_payroll"), (req, res) => {
@@ -675,6 +902,23 @@ router.post("/:id/pay-outstanding", requirePagePermission("employees", "settle_p
 
   const auditMsg = `💰 سداد رصيد متبقي لـ ${employee.name} — ${result.paidOff.toLocaleString()} ج.م`;
   req.audit("update", "salary_settlements", { employee_id: Number(req.params.id) }, auditMsg);
+
+  // Telegram notification — settling a previously-carried salary remainder.
+  try {
+    const userRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+    notifyOwner(TG.SALARY_PARTIAL_PAID, {
+      kindLabel: "سداد متبقي راتب",
+      employeeName: employee.name,
+      period: "مستحقات سابقة",
+      netSalary: totalOutstanding,
+      paidAmount: result.paidOff,
+      remaining: totalOutstanding - result.paidOff,
+      carryForward: null,
+      paymentMethod: payload.payment_method || 'cash',
+      userName: userRow?.name || null,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
 
   res.json({ success: true, data: { paid_off: result.paidOff } });
 });

@@ -40,16 +40,16 @@ export const STATUS_CLASSES = {
   partial: "bg-amber-50 text-amber-700 border-amber-200",
   unpaid: "bg-rose-50 text-rose-700 border-rose-200",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  cancelled: "bg-slate-100 text-slate-500 border-slate-200",
-  voided: "bg-slate-100 text-slate-500 border-slate-200",
-  locked: "bg-slate-100 text-slate-600 border-slate-200",
+  cancelled: "bg-bg-overlay text-text-secondary border-border-normal",
+  voided: "bg-bg-overlay text-text-secondary border-border-normal",
+  locked: "bg-bg-overlay text-text-secondary border-border-normal",
 };
 
 export function statusBadge(status, fallback = "active") {
   const key = STATUS_LABELS[status] ? status : fallback;
   return {
     label: STATUS_LABELS[status] || STATUS_LABELS[fallback] || status || "—",
-    cls: STATUS_CLASSES[key] || STATUS_CLASSES[fallback] || "bg-slate-100 text-slate-600 border-slate-200",
+    cls: STATUS_CLASSES[key] || STATUS_CLASSES[fallback] || "bg-bg-overlay text-text-secondary border-border-normal",
   };
 }
 

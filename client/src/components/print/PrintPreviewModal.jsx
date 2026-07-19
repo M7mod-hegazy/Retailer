@@ -560,7 +560,11 @@ export default function PrintPreviewModal({
   // so originals and the on-screen preview stay clean. Roll gets a bordered
   // line up top; page gets a corner badge (WatermarkBlock covers full-page
   // watermarking separately).
+  // Global override: when _global scope has reprint_stamp === false, the stamp
+  // is blocked for ALL documents regardless of per-doc settings.
   const stampEnabled = (() => {
+    const globalStampVal = globalScopeSettings?.reprint_stamp;
+    if (globalStampVal === false) return false;
     const v = combinedSettings.reprint_stamp;
     return !(v === undefined || v === null || v === false || v === 0 || v === "0" || v === "false" || v === "");
   })();

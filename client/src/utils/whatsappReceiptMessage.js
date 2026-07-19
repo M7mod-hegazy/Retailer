@@ -3,12 +3,14 @@
 // {payment_type}, {discount}, {items_count}, {cashier}, {items_table},
 // {payment_breakdown}
 import { PAYMENT_LABELS } from "../components/operations/docHelpers";
+export { normalizePhone } from "./countryCodes";
 
 export function resolveTemplate(body, vars) {
   if (!body) return "";
   return body.replace(/\{(\w+)\}/g, (_, key) => (vars[key] !== undefined ? vars[key] : `{${key}}`));
 }
 
+/** @deprecated Use normalizePhone from countryCodes instead */
 export function normalizeEgyptPhone(raw) {
   if (!raw) return "";
   let d = String(raw).replace(/\D/g, "");

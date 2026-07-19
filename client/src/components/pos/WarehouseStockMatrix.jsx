@@ -11,8 +11,8 @@ export default function WarehouseStockMatrix({
   if (!selectedItem) {
     return (
       <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-bold text-slate-500">سحب المخزون من المستودع</label>
-        <div className="flex items-center min-h-[46px] px-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-400 text-sm font-bold opacity-60 pointer-events-none">
+        <label className="text-[11px] font-bold text-text-secondary">سحب المخزون من المستودع</label>
+        <div className="flex items-center min-h-[46px] px-3 border border-border-normal rounded-xl bg-bg-overlay text-text-muted text-sm font-bold opacity-60 pointer-events-none">
           حدد صنفاً لعرض أصدة المستودعات
         </div>
       </div>
@@ -32,18 +32,18 @@ export default function WarehouseStockMatrix({
   return (
     <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-bold text-slate-500">سحب المخزون من المستودع</label>
+        <label className="text-[11px] font-bold text-text-secondary">سحب المخزون من المستودع</label>
         <span className="text-[11px] font-black tracking-widest text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full" style={{ fontFamily: "Outfit" }}>MATRIX ACTIVE</span>
       </div>
       
       {/* Scrollable Matrix Block */}
-      <div className="flex gap-2 p-1.5 bg-slate-100 rounded-xl overflow-x-auto scrollbar-none border border-slate-200 shadow-inner">
+      <div className="flex gap-2 p-1.5 bg-bg-overlay rounded-xl overflow-x-auto scrollbar-none border border-border-normal shadow-inner">
         {warehouses.map((warehouse) => {
           const qty = stockDistribution[warehouse.id] || 0;
           const isSelected = String(warehouse.id) === String(selectedWarehouseId);
           
-          let statusStyle = "border-slate-200 bg-white text-slate-600 hover:border-slate-300";
-          let badgeStyle = "bg-slate-100 text-slate-500";
+          let statusStyle = "border-border-normal bg-bg-surface text-text-secondary hover:border-border-strong";
+          let badgeStyle = "bg-bg-overlay text-text-secondary";
           let icon = null;
 
           if (isSelected) {
@@ -68,7 +68,7 @@ export default function WarehouseStockMatrix({
               className={`flex-shrink-0 flex items-center justify-between min-w-[130px] px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer ${statusStyle}`}
             >
               <div className="flex items-center">
-                {icon || <Package className="w-3.5 h-3.5 text-slate-400 mr-1.5" opacity={isSelected ? 0 : 1} />}
+                {icon || <Package className="w-3.5 h-3.5 text-text-muted mr-1.5" opacity={isSelected ? 0 : 1} />}
                 <span className="text-2sm font-bold truncate max-w-[80px]" title={warehouse.name}>{warehouse.name}</span>
               </div>
               <span className={`text-2sm font-black px-2 py-0.5 rounded-md min-w-[28px] text-center ${badgeStyle}`} style={{ fontFamily: "Outfit" }}>

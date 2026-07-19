@@ -81,49 +81,49 @@ function FontDropdown({ options, value, onChange, label, numberOnly }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-3 rounded-sm border border-slate-200 bg-white px-3 py-2.5 text-right shadow-sm transition-all hover:border-slate-300"
+        className="flex w-full items-center justify-between gap-3 rounded-sm border border-border-normal bg-bg-surface px-3 py-2.5 text-right shadow-sm transition-all hover:border-border-strong"
       >
         <div className="flex flex-col items-start gap-0.5 min-w-0">
-          <span className="text-[15px] font-bold text-slate-800 leading-tight truncate max-w-full" style={{ fontFamily: value }}>
+          <span className="text-[15px] font-bold text-text-primary leading-tight truncate max-w-full" style={{ fontFamily: value }}>
             {selected.label}
           </span>
           {numberOnly ? (
-            <span className="text-xl font-black text-slate-800 leading-none truncate max-w-full tracking-wider" style={{ fontFamily: value }}>
+            <span className="text-xl font-black text-text-primary leading-none truncate max-w-full tracking-wider" style={{ fontFamily: value }}>
               {numberPreview}
             </span>
           ) : (
-            <span className="text-[13px] text-slate-600 leading-relaxed truncate max-w-full" style={{ fontFamily: value }}>
+            <span className="text-[13px] text-text-secondary leading-relaxed truncate max-w-full" style={{ fontFamily: value }}>
               مرحباً بكم في النظام العربي — ٠١٢٣
             </span>
           )}
         </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-sm border border-slate-200 bg-white shadow-lg max-h-80 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-sm border border-border-normal bg-bg-surface shadow-lg max-h-80 overflow-y-auto">
           {options.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-right transition-all hover:bg-slate-50 ${
+              className={`flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-right transition-all hover:bg-bg-overlay ${
                 value === opt.value ? "bg-emerald-50 border-r-2 border-emerald-500" : ""
               }`}
             >
-              <span className="text-[15px] font-bold text-slate-800 leading-tight" style={{ fontFamily: opt.value }}>
+              <span className="text-[15px] font-bold text-text-primary leading-tight" style={{ fontFamily: opt.value }}>
                 {opt.label}
               </span>
               {numberOnly ? (
-                <span className="text-lg font-black text-slate-800 leading-none tracking-wider" style={{ fontFamily: opt.value }}>
+                <span className="text-lg font-black text-text-primary leading-none tracking-wider" style={{ fontFamily: opt.value }}>
                   {numberPreview}
                 </span>
               ) : (
-                <span className="text-[13px] text-slate-500 leading-relaxed" style={{ fontFamily: opt.value }}>
+                <span className="text-[13px] text-text-secondary leading-relaxed" style={{ fontFamily: opt.value }}>
                   مرحباً بكم في النظام العربي — ٠١٢٣
                 </span>
               )}
-              <span className="text-[11px] font-bold text-slate-400 leading-tight">{opt.desc}</span>
+              <span className="text-[11px] font-bold text-text-muted leading-tight">{opt.desc}</span>
             </button>
           ))}
         </div>
@@ -154,15 +154,15 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
         {/* BODY SECTION */}
         <section>
           <div className="flex items-center gap-2 mb-1">
-            <Type className="h-4 w-4 text-slate-500" />
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+            <Type className="h-4 w-4 text-text-secondary" />
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
               خط النص العام
             </h3>
           </div>
-          <p className="text-2sm font-bold text-slate-400 mb-4">الخط الأساسي لجميع نصوص النظام</p>
+          <p className="text-2sm font-bold text-text-muted mb-4">الخط الأساسي لجميع نصوص النظام</p>
 
           <div className="mb-5">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
               نوع الخط
             </h4>
             <FontDropdown
@@ -174,10 +174,10 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
 
           <div>
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
               حجم النص العام
             </h4>
-            <div className="flex rounded-sm border border-slate-200 overflow-hidden w-fit flex-wrap">
+            <div className="flex rounded-sm border border-border-normal overflow-hidden w-fit flex-wrap">
               {SIZE_OPTIONS.map((opt) => {
                 const active = currentSize === opt.value;
                 return (
@@ -188,7 +188,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     className={`px-5 py-3 text-[13px] font-black transition-all ${
                       active
                         ? "bg-primary text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                        : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                     }`}
                   >
                     {opt.label}
@@ -200,16 +200,16 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
 
           {/* TEXT WEIGHT — مباشرة تحت حجم النص */}
-          <div className="border-t border-slate-100 mt-6 pt-6">
+          <div className="border-t border-border-subtle mt-6 pt-6">
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
                 وزن الخط
               </h3>
               <span className="rounded-sm bg-indigo-100 px-2 py-0.5 text-[11px] font-black text-indigo-700 tracking-wider">
                 جديد
               </span>
             </div>
-            <p className="text-2sm font-bold text-slate-400 mb-3">درجة ثخانة النص العام في النظام</p>
+            <p className="text-2sm font-bold text-text-muted mb-3">درجة ثخانة النص العام في النظام</p>
 
             <div
               className="rounded-sm px-4 py-3 mb-4"
@@ -218,7 +218,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               عرض تجريبي — النص بالوزن {currentTextWeight}
             </div>
 
-            <div className="flex rounded-sm border border-slate-200 w-fit flex-wrap">
+            <div className="flex rounded-sm border border-border-normal w-fit flex-wrap">
               {WEIGHT_OPTIONS.map((opt) => {
                 const active = currentTextWeight === opt.value;
                 return (
@@ -229,7 +229,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     className={`px-5 py-4 text-center transition-all ${
                       active
                         ? "bg-primary text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                        : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                     }`}
                   >
                     <span className="block text-[22px] leading-none" style={{ fontWeight: opt.value, fontFamily: currentFamily }}>
@@ -246,15 +246,15 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
         {/* NUMBER SECTION */}
         <section>
           <div className="flex items-center gap-2 mb-1">
-            <Hash className="h-4 w-4 text-slate-500" />
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+            <Hash className="h-4 w-4 text-text-secondary" />
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
               إعدادات الأرقام
             </h3>
           </div>
-          <p className="text-2sm font-bold text-slate-400 mb-4">تحكم مستقل في خط الأرقام وحجمها ونمط الأرقام</p>
+          <p className="text-2sm font-bold text-text-muted mb-4">تحكم مستقل في خط الأرقام وحجمها ونمط الأرقام</p>
 
           <div className="mb-5">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
               خط الأرقام (مستقل عن خط النص)
             </h4>
             <FontDropdown
@@ -267,10 +267,10 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
 
           <div className="mb-5">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
               حجم الأرقام (بالنسبة للنص العام)
             </h4>
-            <div className="flex rounded-sm border border-slate-200 overflow-hidden w-fit flex-wrap">
+            <div className="flex rounded-sm border border-border-normal overflow-hidden w-fit flex-wrap">
               {SCALE_OPTIONS.map((opt) => {
                 const active = currentNumberScale === opt.value;
                 return (
@@ -281,7 +281,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     className={`px-4 py-3 text-[13px] font-black transition-all ${
                       active
                         ? "bg-primary text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                        : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                     }`}
                   >
                     {opt.label}
@@ -293,7 +293,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
 
           <div>
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
               نمط الأرقام
             </h4>
             <div className="grid grid-cols-2 gap-3">
@@ -303,7 +303,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                 className={`relative flex flex-col items-center gap-2 rounded-sm border p-5 text-center transition-all ${
                   currentNumeralStyle === "western"
                     ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    : "border-border-normal bg-bg-surface hover:border-border-strong hover:bg-bg-overlay"
                 }`}
               >
                 {currentNumeralStyle === "western" && (
@@ -311,11 +311,11 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   </span>
                 )}
-                <span className="text-xl font-black text-slate-800" style={{ fontFamily: currentNumberFamily }}>
+                <span className="text-xl font-black text-text-primary" style={{ fontFamily: currentNumberFamily }}>
                   0123456789
                 </span>
-                <span className="text-sm font-bold text-slate-800">أرقام غربية</span>
-                <span className="text-[11px] font-bold text-slate-400 leading-tight">
+                <span className="text-sm font-bold text-text-primary">أرقام غربية</span>
+                <span className="text-[11px] font-bold text-text-muted leading-tight">
                   للأكواد والفواتير الرقمية — التنسيق الدولي
                 </span>
               </button>
@@ -325,7 +325,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                 className={`relative flex flex-col items-center gap-2 rounded-sm border p-5 text-center transition-all ${
                   currentNumeralStyle === "arabic"
                     ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    : "border-border-normal bg-bg-surface hover:border-border-strong hover:bg-bg-overlay"
                 }`}
               >
                 {currentNumeralStyle === "arabic" && (
@@ -333,11 +333,11 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   </span>
                 )}
-                <span className="text-xl font-black text-slate-800" style={{ fontFamily: currentNumberFamily }}>
+                <span className="text-xl font-black text-text-primary" style={{ fontFamily: currentNumberFamily }}>
                   {arabicDigits}
                 </span>
-                <span className="text-sm font-bold text-slate-800">أرقام عربية</span>
-                <span className="text-[11px] font-bold text-slate-400 leading-tight">
+                <span className="text-sm font-bold text-text-primary">أرقام عربية</span>
+                <span className="text-[11px] font-bold text-text-muted leading-tight">
                   الأرقام العربية التقليدية — للفواتير الرسمية والمستندات
                 </span>
               </button>
@@ -345,16 +345,16 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
 
           {/* NUMBER WEIGHT — داخل قسم الأرقام */}
-          <div className="border-t border-slate-100 mt-6 pt-6">
+          <div className="border-t border-border-subtle mt-6 pt-6">
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+              <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
                 وزن الأرقام
               </h3>
               <span className="rounded-sm bg-indigo-100 px-2 py-0.5 text-[11px] font-black text-indigo-700 tracking-wider">
                 جديد
               </span>
             </div>
-            <p className="text-2sm font-bold text-slate-400 mb-3">درجة ثخانة الأرقام في النظام</p>
+            <p className="text-2sm font-bold text-text-muted mb-3">درجة ثخانة الأرقام في النظام</p>
 
             <div
               className="rounded-sm px-4 py-3 mb-4 text-right"
@@ -363,7 +363,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
               {currentNumeralStyle === "arabic" ? arabicDigits : westernDigits}
             </div>
 
-            <div className="flex rounded-sm border border-slate-200 w-fit flex-wrap">
+            <div className="flex rounded-sm border border-border-normal w-fit flex-wrap">
               {WEIGHT_OPTIONS.map((opt) => {
                 const active = currentNumberWeight === opt.value;
                 return (
@@ -374,7 +374,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
                     className={`px-6 py-5 text-center transition-all ${
                       active
                         ? "bg-primary text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                        : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                     }`}
                   >
                     <span className="block text-[36px] leading-none tracking-wider" style={{ fontWeight: opt.value, fontFamily: currentNumberFamily }}>
@@ -390,14 +390,14 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
 
       </div>
 
-      <div className="border-t border-slate-100" />
+      <div className="border-t border-border-subtle" />
 
       {/* ═══ LIVE PREVIEW ═══ */}
       {!noPreview && (
       <section>
         <div className="flex items-center gap-2 mb-3">
-          <Edit3 className="h-4 w-4 text-slate-500" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
+          <Edit3 className="h-4 w-4 text-text-secondary" />
+          <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
             معاينة حية
           </h3>
           <span className="rounded-sm bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-700 tracking-wider">
@@ -406,7 +406,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
         </div>
 
         <div
-          className="rounded-sm border border-slate-200 bg-white p-6 shadow-sm space-y-5"
+          className="rounded-sm border border-border-normal bg-bg-surface p-6 shadow-sm space-y-5"
           style={{
             fontFamily: currentFamily,
             fontSize: `${previewPx}px`,
@@ -573,7 +573,7 @@ export default function FontSettingsTab({ settings, onChange, noPreview }) {
           </div>
         </div>
 
-        <p className="mt-2 text-[11px] font-bold text-slate-400">
+        <p className="mt-2 text-[11px] font-bold text-text-muted">
           * التغييرات تنعكس على المعاينة فقط. للحفظ اضغط "حفظ الإعدادات" بالأعلى.
         </p>
       </section>

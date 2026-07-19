@@ -113,7 +113,7 @@ export function useTelegramWizardSteps({ onSaved } = {}) {
         <div className="flex flex-col items-center gap-2">
           <button type="button" onClick={generateDeepLink} disabled={generatingQr}
             className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-black text-white disabled:opacity-60 transition-all active:scale-95" style={{ background: ACCENT }}>
-            {generatingQr ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : null}
+            {generatingQr ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-normal border-t-transparent" /> : null}
             {qrData ? t("telegram.regenerateQr") : t("telegram.generateQr")}
           </button>
           {qrData && (
@@ -199,7 +199,7 @@ function QRConnectScene({ qrData, generatingQr, pollStatus, onGenerate }) {
           </div>
           <button type="button" onClick={onGenerate} disabled={generatingQr}
             className="w-full flex items-center justify-center gap-1.5 rounded-lg px-4 py-3 text-xs font-black text-white disabled:opacity-60 transition-all active:scale-95" style={{ background: ACCENT }}>
-            {generatingQr ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : null}
+            {generatingQr ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-normal border-t-transparent" /> : null}
             {t("telegram.generateQr")}
           </button>
         </div>
@@ -270,7 +270,7 @@ function ManualEntryScene({ chatId, setChatId, detecting, onDetect }) {
             className="flex-1 min-w-0 rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
           <button type="button" onClick={onDetect} disabled={detecting}
             className="shrink-0 flex items-center gap-1 rounded-lg bg-primary px-3 py-2.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95">
-            {detecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : null}
+            {detecting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-normal border-t-transparent" /> : null}
             {t("telegram.detectButton")}
           </button>
         </div>
@@ -290,18 +290,35 @@ function ManualEntryScene({ chatId, setChatId, detecting, onDetect }) {
 
 function NameRecipientScene({ name, setName }) {
   const { t } = useTranslation();
+  const trimmed = (name === "null" || !name) ? "" : name;
+  const isEmpty = !trimmed.trim();
   return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      <User className="h-10 w-10 text-primary" />
-      <div className="rounded-lg bg-bg-base p-3 w-full">
-        <p className="text-[11px] font-black text-text-primary">{t("telegram.wizard.nameStepTitle")}</p>
-        <p className="text-[10px] font-bold text-text-muted leading-relaxed mt-0.5">{t("telegram.wizard.nameStepDesc")}</p>
+    <div className="flex flex-col items-center gap-4 w-full">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+        <User className="h-7 w-7 text-primary" />
       </div>
-      <div className="w-full text-right">
-        <label className="text-xs font-black text-text-secondary mb-1.5 block">{t("telegram.nameRecipient")}</label>
-        <input type="text" value={name === "null" || !name ? "" : name} onChange={e => setName(e.target.value)}
+      <div className="rounded-xl bg-bg-base p-4 w-full border border-border-subtle">
+        <p className="text-sm font-black text-text-primary">{t("telegram.wizard.nameStepTitle")}</p>
+        <p className="text-[11px] font-bold text-text-muted leading-relaxed mt-1">{t("telegram.wizard.nameStepDesc")}</p>
+      </div>
+      <div className="w-full space-y-1.5">
+        <label className="text-sm font-black text-text-primary block">
+          {t("telegram.nameRecipient")} <span className="text-danger-text">*</span>
+        </label>
+        <input type="text" value={trimmed} onChange={e => setName(e.target.value)}
           placeholder={t("telegram.nameRecipientHint")}
-          className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
+          autoFocus
+          className={`w-full rounded-xl border-2 px-4 py-3.5 text-sm font-bold outline-none transition-all ${
+            isEmpty
+              ? "border-danger-border/50 bg-danger-bg/10 placeholder:text-danger-text/40 focus:border-danger-text focus:bg-bg-surface"
+              : "border-border-normal bg-bg-input focus:border-primary focus:bg-bg-surface"
+          }`} />
+        {isEmpty && (
+          <p className="text-[11px] font-bold text-danger-text flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-danger-text" />
+            {t("telegram.wizard.nameRequired", "الاسم مطلوب للمتابعة")}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -360,7 +377,7 @@ function useAddRecipientStepsLogic() {
   }
 
   steps.push(
-    { key: "name", illustration: <NameRecipientScene name={name} setName={setName} />, caption: t("telegram.wizard.nameStepDesc"), canGoNext: true },
+    { key: "name", illustration: <NameRecipientScene name={name} setName={setName} />, caption: t("telegram.wizard.nameStepDesc"), canGoNext: Boolean(name.trim()) },
     { key: "success", illustration: <RecipientSuccessScene />, caption: t("telegram.wizard.successDesc") },
   );
 
@@ -385,7 +402,7 @@ export function AddRecipientWizard({ onClose, onAdded }) {
   const [completing, setCompleting] = useState(false);
 
   async function handleComplete() {
-    if (completing || !finalChatId?.trim()) return;
+    if (completing || !finalChatId?.trim() || !name.trim()) return;
     setCompleting(true);
     try {
       await addRecipient({ chatId: finalChatId.trim(), name: name.trim() });

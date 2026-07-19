@@ -151,7 +151,7 @@ function requireReportAccess(sourceKeyOrParam) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (user.role === "dev" || user.role === "admin") return next();
+    if (user.role === "dev") return next();
 
     const sourceKey = fromParam ? req.params.sourceKey : sourceKeyOrParam;
     if (!sourceKey) return next();
@@ -182,7 +182,7 @@ function requireReportExportAccess(sourceKeyOrParam) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (user.role === "dev" || user.role === "admin") return next();
+    if (user.role === "dev") return next();
 
     const sourceKey = fromParam ? req.params.sourceKey : sourceKeyOrParam;
     if (!sourceKey) return next();

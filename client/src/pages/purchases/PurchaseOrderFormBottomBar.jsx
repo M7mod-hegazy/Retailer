@@ -42,7 +42,7 @@ export default function PurchaseOrderFormBottomBar({
               value={discount || ""}
               onChange={(e) => onDiscountChange(Math.max(0, Number(e.target.value || 0)))}
               placeholder="0"
-              className="min-w-[30px] rounded border border-amber-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
+              className="min-w-[30px] rounded border border-amber-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
             <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">خصم</span>
           </label>
           <label className="flex items-center gap-1 shrink-0 bg-blue-50/50 rounded-lg px-1.5 py-0.5 border border-blue-100/50">
@@ -50,7 +50,7 @@ export default function PurchaseOrderFormBottomBar({
               value={increase || ""}
               onChange={(e) => onIncreaseChange(Math.max(0, Number(e.target.value || 0)))}
               placeholder="0"
-              className="min-w-[30px] rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
+              className="min-w-[30px] rounded border border-blue-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
             <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">إضافة</span>
           </label>
           <span className="h-5 w-px bg-zinc-200" />
@@ -68,7 +68,7 @@ export default function PurchaseOrderFormBottomBar({
         <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="purchase_orders" action="print">
             <button onClick={onPrint} disabled={!linesLength}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-bg-surface/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>
@@ -80,7 +80,7 @@ export default function PurchaseOrderFormBottomBar({
                 ? <><Loader2 className="h-3 w-3 animate-spin" /> جاري الحفظ...</>
                 : <><Save className="h-3 w-3" /> {isEditMode ? "حفظ التعديلات" : "اعتماد وإرسال الطلب"}</>
               }
-              <ShortcutKbd id="form.save" className="rounded bg-white/20 px-1 text-[9px] font-mono" />
+              <ShortcutKbd id="form.save" className="rounded bg-bg-surface/20 px-1 text-[9px] font-mono" />
             </button>
           </PermissionGate>
         </div>

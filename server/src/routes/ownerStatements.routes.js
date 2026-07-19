@@ -26,7 +26,7 @@ function requireOwnerStatement(action) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (["dev", "admin", "system_owner"].includes(user.role)) return next();
+    if (["dev", "system_owner"].includes(user.role)) return next();
     const perms = parsePagePermissions(user);
     if (action === "view" && perms.reports?.includes("view")) return next();
     if (perms.owner_statement?.includes(action)) return next();

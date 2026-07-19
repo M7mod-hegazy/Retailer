@@ -258,7 +258,7 @@ function SummaryCard({ data, resource }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {entries.map(([key, val]) => (
-        <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
+        <div key={key} className="bg-bg-surface rounded-xl border border-zinc-200/60 px-3 py-2.5">
           <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1">{labels[key] || key}</p>
           <p className="text-2sm font-black text-zinc-900 truncate" dir="ltr">{fmt(key, val)}</p>
         </div>
@@ -311,7 +311,7 @@ function DetailPanel({ log, payload }) {
               ? `من ${cleanSettingValue(val.from)} إلى ${cleanSettingValue(val.to)}`
               : formatPayloadValue(key, val);
             return (
-              <div key={key} className="bg-white rounded-xl border border-zinc-200/60 px-3 py-2.5">
+              <div key={key} className="bg-bg-surface rounded-xl border border-zinc-200/60 px-3 py-2.5">
                 <p className="text-[9px] font-black tracking-widest text-zinc-400 mb-1">{label}</p>
                 <p className="text-2sm font-black text-zinc-900 truncate">{displayVal}</p>
               </div>
@@ -330,7 +330,7 @@ function DetailPanel({ log, payload }) {
             <Package className="w-3.5 h-3.5" />
             الأصناف ({lines.length})
           </h4>
-          <div className="bg-white rounded-xl border border-zinc-200/60 max-h-60 overflow-y-auto">
+          <div className="bg-bg-surface rounded-xl border border-zinc-200/60 max-h-60 overflow-y-auto">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50 sticky top-0">
@@ -394,7 +394,7 @@ function DetailPanel({ log, payload }) {
             <Banknote className="w-3.5 h-3.5" />
             المدفوعات ({payments.length})
           </h4>
-          <div className="bg-white rounded-xl border border-zinc-200/60 divide-y divide-zinc-100">
+          <div className="bg-bg-surface rounded-xl border border-zinc-200/60 divide-y divide-zinc-100">
             {payments.map((pmt, i) => (
               <div key={i} className="flex items-center justify-between px-3 py-2 text-[11px]">
                 <span className="font-bold text-zinc-500">{pmt.method_name || pmt.method || "نقداً"}</span>
@@ -457,12 +457,12 @@ function LogRow({ log, index, highlighted, autoExpand }) {
       ref={rowRef}
       variants={FADE_UP}
       custom={index}
-      className={`group relative border-b border-zinc-100/60 transition-all duration-500 ${highlighted ? "bg-amber-50/70 ring-2 ring-inset ring-amber-300/50" : "bg-white hover:bg-zinc-50/80"}`}
+      className={`group relative border-b border-zinc-100/60 transition-all duration-500 ${highlighted ? "bg-amber-50/70 ring-2 ring-inset ring-amber-300/50" : "bg-bg-surface hover:bg-zinc-50/80"}`}
     >
       <div className="flex items-center gap-4 px-6 py-5">
         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-zinc-950 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-500 ease-out z-10" />
         
-        <div className="relative z-10 flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] group-hover:-translate-y-1 transition-all duration-500 ease-out text-xl">
+        <div className="relative z-10 flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-bg-surface group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] group-hover:-translate-y-1 transition-all duration-500 ease-out text-xl">
           {log.description?.match(/^\p{Emoji}/u)?.[0] || "📋"}
         </div>
 
@@ -637,7 +637,7 @@ export default function HistoryPage() {
         params: {
           search: search || undefined,
           from: from || undefined,
-          to: to || undefined,
+          to: to ? `${to} 23:59:59` : undefined,
           user_id: userId || undefined,
           action: userAction || undefined,
           resource: resource || undefined,
@@ -687,12 +687,12 @@ export default function HistoryPage() {
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-white border border-zinc-200 shadow-sm text-zinc-900 relative"
+                className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-bg-surface border border-zinc-200 shadow-sm text-zinc-900 relative"
               >
                 <div className="absolute inset-1 rounded-xl border border-dashed border-zinc-300/50" />
                 <Activity className="h-5 w-5" />
               </motion.div>
-              <span className="text-xs font-black text-zinc-400 tracking-[0.2em] uppercase bg-white px-3 py-1.5 rounded-full border border-zinc-200">
+              <span className="text-xs font-black text-zinc-400 tracking-[0.2em] uppercase bg-bg-surface px-3 py-1.5 rounded-full border border-zinc-200">
                 مراقبة النظام الشاملة
               </span>
             </div>
@@ -711,14 +711,14 @@ export default function HistoryPage() {
                 onChange={e => setSearchInput(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: fromRef, prevRef: null })}
                 placeholder="ابحث في السجل..."
-                className="w-full rounded-[1.25rem] border border-white bg-white/60 backdrop-blur-md py-4 pr-12 pl-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
+                className="w-full rounded-[1.25rem] border border-border-normal bg-bg-surface/60 backdrop-blur-md py-4 pr-12 pl-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:bg-bg-surface shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
               />
             </div>
             <MagneticButton
               data-help="filter-btn"
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`flex items-center justify-center h-[54px] w-[54px] rounded-[1.25rem] transition-all duration-300 shadow-sm border ${
-                filtersOpen ? "bg-primary text-white border-primary" : "bg-white border-white text-zinc-600 hover:bg-zinc-50"
+                filtersOpen ? "bg-primary text-white border-primary" : "bg-bg-surface border-border-normal text-zinc-600 hover:bg-zinc-50"
               }`}
             >
               <SlidersHorizontal className="h-5 w-5" />
@@ -734,7 +734,7 @@ export default function HistoryPage() {
               exit={{ opacity: 0, height: 0, y: -20 }}
               className="mb-10 overflow-hidden"
             >
-              <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white p-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+              <div className="bg-bg-surface/80 backdrop-blur-xl rounded-[2rem] border border-border-normal p-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-100">
                   <Filter className="w-5 h-5 text-zinc-950" />
                   <h3 className="text-lg font-black text-zinc-950">تصفية متقدمة</h3>
@@ -837,7 +837,7 @@ export default function HistoryPage() {
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
-          className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,1)] overflow-hidden"
+          className="bg-bg-surface/70 backdrop-blur-xl rounded-[2.5rem] border border-border-normal shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,1)] overflow-hidden"
         >
           {isLoading ? (
             <div className="p-20 text-center flex flex-col items-center">
@@ -876,7 +876,7 @@ export default function HistoryPage() {
               <MagneticButton
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="flex items-center gap-2 text-sm font-black text-zinc-950 px-6 py-3 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30"
+                className="flex items-center gap-2 text-sm font-black text-zinc-950 px-6 py-3 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30"
               >
                 <ChevronRight className="h-4 w-4" /> الأحدث
               </MagneticButton>
@@ -886,7 +886,7 @@ export default function HistoryPage() {
               <MagneticButton
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="flex items-center gap-2 text-sm font-black text-zinc-950 px-6 py-3 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30"
+                className="flex items-center gap-2 text-sm font-black text-zinc-950 px-6 py-3 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30"
               >
                 الأقدم <ChevronLeft className="h-4 w-4" />
               </MagneticButton>

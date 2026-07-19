@@ -194,7 +194,7 @@ export default function POSListView({ vm }) {
     const toastId = toast(
       (t) => (
         <div className="flex items-center gap-3 text-sm">
-          <span className="font-bold text-slate-600">تم حذف {lineData.item_name}</span>
+          <span className="font-bold text-text-secondary">تم حذف {lineData.item_name}</span>
           <button onClick={() => {
             addLine({
               id: lineData.item_id, name: lineData.item_name, code: lineData.code || "",
@@ -387,10 +387,10 @@ export default function POSListView({ vm }) {
       />
       {staleHeldAlert && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
+          <div className="bg-bg-surface rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center" dir="rtl">
             <div className="text-3xl mb-2">⚠️</div>
-            <h3 className="text-[16px] font-black text-slate-800 mb-1">فواتير معلقة قديمة</h3>
-            <p className="text-sm text-slate-500 mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
+            <h3 className="text-[16px] font-black text-text-primary mb-1">فواتير معلقة قديمة</h3>
+            <p className="text-sm text-text-secondary mb-4">لديك فواتير معلقة منذ فترة طويلة. يرجى مراجعتها.</p>
             <button onClick={() => setStaleHeldAlert(false)} className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold">
               حسناً
             </button>
@@ -404,7 +404,7 @@ export default function POSListView({ vm }) {
           <button
             type="button"
             onClick={copyConnectionError}
-            className="ms-2 inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-2xs font-bold hover:bg-white/30 active:scale-95"
+            className="ms-2 inline-flex items-center gap-1 rounded bg-bg-surface/20 px-2 py-0.5 text-2xs font-bold hover:bg-bg-surface/30 active:scale-95"
             title="نسخ تفاصيل الخطأ"
           >
             <Copy className="h-3 w-3" />
@@ -414,23 +414,23 @@ export default function POSListView({ vm }) {
       )}
 
       {/* Header like purchases/new */}
-      <header className="flex h-14 shrink-0 items-center border-b border-slate-100 bg-white px-4 z-40 gap-4 shadow-[0_1px_8px_-4px_rgba(0,0,0,0.06)]">
+      <header className="flex h-14 shrink-0 items-center border-b border-border-subtle bg-bg-surface px-4 z-40 gap-4 shadow-[0_1px_8px_-4px_rgba(0,0,0,0.06)]">
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex flex-col">
-            <h1 className="text-sm font-black text-slate-800">فاتورة مبيعات جديدة</h1>
-            <span className="text-[11px] font-bold text-slate-400">نقطة البيع - القائمة</span>
+            <h1 className="text-sm font-black text-text-primary">فاتورة مبيعات جديدة</h1>
+            <span className="text-[11px] font-bold text-text-muted">نقطة البيع - القائمة</span>
           </div>
-          <div className="flex shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-100">
+          <div className="flex shrink-0 bg-bg-overlay rounded-xl p-1 border border-border-subtle">
             <button 
               onClick={() => { setViewMode("detailed"); setPendingViewMode("detailed"); setShowSetDefaultModal(true); }}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "detailed" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "detailed" ? "bg-bg-surface shadow text-indigo-600" : "text-text-muted hover:text-text-primary"}`}
               title="عرض الشبكة"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setViewMode("list"); setPendingViewMode("list"); setShowSetDefaultModal(true); }}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow text-indigo-600" : "text-slate-400 hover:text-slate-700"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-bg-surface shadow text-indigo-600" : "text-text-muted hover:text-text-primary"}`}
               title="عرض القائمة"
             >
               <List className="w-4 h-4" />
@@ -440,28 +440,28 @@ export default function POSListView({ vm }) {
 
         <div className="flex items-center gap-2.5 flex-1 justify-center min-w-0">
           <div className="flex items-center gap-1.5 shrink-0">
-            <Receipt className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <Receipt className="h-3.5 w-3.5 text-text-muted shrink-0" />
             <input
               readOnly disabled
               value={invoiceIsActive ? (docNo || invoiceNumber) : "—"}
-              className="w-[165px] rounded-sm border border-slate-200 bg-slate-100 px-2 py-1 text-2sm font-mono font-black text-slate-600 cursor-default text-center select-none disabled:opacity-70"
+              className="w-[165px] rounded-sm border border-border-normal bg-bg-overlay px-2 py-1 text-2sm font-mono font-black text-text-secondary cursor-default text-center select-none disabled:opacity-70"
             />
             {invoiceIsActive && invoiceCreatedAt && (
               <input readOnly disabled
                 value={new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt))}
-                className="w-[130px] rounded-sm border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-mono font-bold text-slate-400 cursor-default text-center select-none disabled:opacity-70"
+                className="w-[130px] rounded-sm border border-border-normal bg-bg-overlay px-2 py-1 text-[11px] font-mono font-bold text-text-muted cursor-default text-center select-none disabled:opacity-70"
               />
             )}
           </div>
-          <div className="flex items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-50 px-2.5 py-1 shrink-0">
-            <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span className="text-2sm font-bold text-slate-600 max-w-[100px] truncate">{user?.name || "-"}</span>
+          <div className="flex items-center gap-1.5 rounded-sm border border-border-normal bg-bg-overlay px-2.5 py-1 shrink-0">
+            <User className="h-3.5 w-3.5 text-text-muted shrink-0" />
+            <span className="text-2sm font-bold text-text-secondary max-w-[100px] truncate">{user?.name || "-"}</span>
           </div>
           <select ref={sellerRef}
             value={sellerId}
             onChange={(e) => setSellerId(e.target.value)}
             onKeyDown={(e) => handleFieldEnter(e, { nextRef: discountRef })}
-            className="rounded-sm border border-slate-300 bg-white px-2 py-1 text-2sm font-bold text-slate-700 outline-none focus:border-slate-800 min-w-[130px]"
+            className="rounded-sm border border-border-strong bg-bg-surface px-2 py-1 text-2sm font-bold text-text-primary outline-none focus:border-slate-800 min-w-[130px]"
           >
             <option value="">البائع (اختياري)</option>
             {employees.filter((emp) => emp.is_active !== 0).map((emp) => (
@@ -472,16 +472,16 @@ export default function POSListView({ vm }) {
 
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => setReceiptsOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-border-strong bg-bg-surface text-text-secondary hover:bg-bg-overlay transition-all"
             title="فواتير اليوم"
           ><Receipt className="h-4 w-4" /></button>
           <button onClick={() => setAdvancedSearchOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-border-strong bg-bg-surface text-text-secondary hover:bg-bg-overlay transition-all"
             title="بحث متقدم في المخزون"
           ><Filter className="h-4 w-4" /></button>
           <PermissionGate page="pos" action="profit">
             <button onClick={() => setProfitModalOpen(true)} disabled={!lines.length}
-              className="flex h-9 w-9 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-border-strong bg-bg-surface text-text-secondary hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 transition-all disabled:opacity-40"
               title="تحليل ربح الفاتورة"
             ><TrendingUp className="h-4 w-4" /></button>
           </PermissionGate>
@@ -498,7 +498,7 @@ export default function POSListView({ vm }) {
           <PermissionGate page="pos" action="add">
             <button onClick={() => setSaveConfirmOpen(true)}
               disabled={!lines.length || isSaving || hasBlockingErrors}
-              className="flex h-9 items-center gap-2 rounded-sm border border-slate-300 bg-white px-6 text-sm font-black text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex h-9 items-center gap-2 rounded-sm border border-border-strong bg-bg-surface px-6 text-sm font-black text-text-primary hover:border-slate-400 hover:bg-bg-overlay transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="h-4 w-4" /> حفظ 
             </button>
@@ -517,15 +517,15 @@ export default function POSListView({ vm }) {
           className="shrink-0 flex flex-col gap-3 overflow-y-auto custom-scrollbar animate-fade-in"
         >
           {/* Customer Card */}
-          <div className="shrink-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="shrink-0 rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">العميل</h3>
+                <h3 className="text-[11px] font-black text-text-secondary uppercase tracking-widest">العميل</h3>
                 {!customer?.id && (
                   vm.walkInSet && vm.waLeadPhone ? (
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black">🚶 عميل نقدي</span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-black">بيع نقدي</span>
+                    <span className="px-2 py-0.5 rounded-full bg-bg-overlay border border-border-normal text-text-secondary text-[10px] font-black">بيع نقدي</span>
                   )
                 )}
               </div>
@@ -549,7 +549,7 @@ export default function POSListView({ vm }) {
                 onFocus={() => { if (!customer?.id) setCustomerQuery(""); setCustomerLookupOpen(true); }}
                 onBlur={() => { setTimeout(() => { setCustomerLookupOpen(false); if (!customer?.id) setCustomerQuery(""); }, 200); }}
                 onKeyDown={handleCustomerKeyDown}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400 placeholder:font-normal"
+                className="w-full rounded-xl border border-border-normal bg-bg-overlay py-2.5 pl-3 pr-4 text-sm font-bold text-text-primary outline-none focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-text-muted placeholder:font-normal"
               />
               {customerLookupOpen && (
                 <div className="absolute left-0 right-0 z-50" style={{ top: "calc(100% + 4px)" }}>
@@ -573,11 +573,11 @@ export default function POSListView({ vm }) {
             )}
             {!customer?.id && !(vm.walkInSet && vm.waLeadPhone) && customers.length > 0 && (
               <div className="mt-2.5">
-                <div className="text-[11px] font-bold text-slate-400 mb-1.5">اختيار سريع:</div>
+                <div className="text-[11px] font-bold text-text-muted mb-1.5">اختيار سريع:</div>
                 <div className="flex flex-wrap gap-1.5">
                   {customers.slice(0, 4).map(c => (
                     <button key={c.id} onClick={() => handlePickCustomer(c)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-bg-overlay border border-border-subtle text-[11px] font-bold text-text-secondary hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all"
                     >{c.name}</button>
                   ))}
                 </div>
@@ -620,13 +620,13 @@ export default function POSListView({ vm }) {
                       onChange={(e) => vm.setWaLeadPhone(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && vm.waLeadPhone.replace(/\D/g, "").length >= 10) vm.setWalkInSet(true); }}
                       placeholder="01xxxxxxxxx"
-                      className="w-[38%] rounded-lg border border-emerald-200 bg-white/80 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-emerald-600/40"
+                      className="w-[38%] rounded-lg border border-emerald-200 bg-bg-surface/80 px-2.5 py-2 text-[12px] font-bold text-text-primary outline-none focus:border-emerald-400 focus:bg-bg-surface transition-colors placeholder:text-emerald-600/40"
                     />
                     <input type="text" value={vm.waLeadName}
                       onChange={(e) => vm.setWaLeadName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && vm.waLeadPhone.replace(/\D/g, "").length >= 10) vm.setWalkInSet(true); }}
                       placeholder="الاسم (اختياري)"
-                      className="flex-1 min-w-0 rounded-lg border border-emerald-100 bg-white/60 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-slate-400"
+                      className="flex-1 min-w-0 rounded-lg border border-emerald-100 bg-bg-surface/60 px-2.5 py-2 text-[12px] font-bold text-text-primary outline-none focus:border-emerald-400 focus:bg-bg-surface transition-colors placeholder:text-text-muted"
                     />
                     <button onClick={() => vm.setWalkInSet(true)}
                       disabled={vm.waLeadPhone.replace(/\D/g, "").length < 10}
@@ -641,27 +641,27 @@ export default function POSListView({ vm }) {
           </div>
 
           {/* Invoice Summary */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
             <div className="flex items-center gap-1.5 mb-3">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                <Receipt className="h-3.5 w-3.5 text-slate-500" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-bg-overlay">
+                <Receipt className="h-3.5 w-3.5 text-text-secondary" />
               </div>
-              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ملخص الفاتورة</h3>
+              <h3 className="text-[11px] font-black text-text-secondary uppercase tracking-widest">ملخص الفاتورة</h3>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-2sm font-bold text-slate-500">إجمالي الأصناف</span>
-                <span className="number-fmt text-sm text-slate-800">{lines.length}</span>
+              <div className="flex items-center justify-between rounded-lg bg-bg-overlay px-3 py-2">
+                <span className="text-2sm font-bold text-text-secondary">إجمالي الأصناف</span>
+                <span className="number-fmt text-sm text-text-primary">{lines.length}</span>
               </div>
-              <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-2sm font-bold text-slate-500">مجموع الكميات</span>
-                <span className="number-fmt text-sm text-slate-800">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
+              <div className="flex items-center justify-between rounded-lg bg-bg-overlay px-3 py-2">
+                <span className="text-2sm font-bold text-text-secondary">مجموع الكميات</span>
+                <span className="number-fmt text-sm text-text-primary">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
-                <span className="number-fmt-primary text-sm text-slate-800">{formatMoney(totals.subtotal)}</span>
+              <div className="flex items-center justify-between rounded-lg bg-bg-overlay px-3 py-2">
+                <span className="text-2sm font-bold text-text-secondary">الإجمالي الفرعي</span>
+                <span className="number-fmt-primary text-sm text-text-primary">{formatMoney(totals.subtotal)}</span>
               </div>
-              <div className="h-px bg-slate-100 my-1" />
+              <div className="h-px bg-bg-overlay my-1" />
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> خصم الفاتورة
@@ -688,7 +688,7 @@ export default function POSListView({ vm }) {
                     className={`h-[40px] px-3 rounded-lg text-2sm font-black border transition-all shrink-0
                       ${invoiceDiscountMode === "pct"
                         ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm"
-                        : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                        : "bg-bg-overlay border-border-normal text-text-secondary hover:bg-bg-overlay"}`}
                   >{invoiceDiscountMode === "pct" ? "%" : "ج"}</button>
                 </div>
                 {discount > 0 && invoiceDiscountMode === "flat" && totals.subtotal > 0 && (
@@ -721,7 +721,7 @@ export default function POSListView({ vm }) {
                     className={`h-[40px] px-3 rounded-lg text-2sm font-black border transition-all shrink-0
                       ${invoiceIncreaseMode === "pct"
                         ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm"
-                        : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                        : "bg-bg-overlay border-border-normal text-text-secondary hover:bg-bg-overlay"}`}
                   >{invoiceIncreaseMode === "pct" ? "%" : "ج"}</button>
                 </div>
               </div>
@@ -747,17 +747,17 @@ export default function POSListView({ vm }) {
                           onChange={(e) => setTaxRate(e.target.value === "" ? null : Number(e.target.value))}
                           onKeyDown={(e) => handleFieldEnter(e, { nextRef: notesRef, prevRef: increaseRef })}
                           className="h-[40px] w-16 rounded-lg border border-indigo-200 bg-indigo-50/50 px-2 text-center text-sm font-black text-indigo-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-                        /><span className="text-2sm font-black text-slate-400">%</span>
+                        /><span className="text-2sm font-black text-text-muted">%</span>
                       </div>
                     ) : (
-                      <span className="flex h-[40px] shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-2sm font-black text-slate-500">
+                      <span className="flex h-[40px] shrink-0 items-center rounded-lg border border-border-normal bg-bg-overlay px-3 text-2sm font-black text-text-secondary">
                         {taxRate != null ? taxRate : Number(storeSettings?.tax_rate || 0)}%
                       </span>
                     )}
                   </div>
                 </div>
               )}
-              <div className="h-px bg-slate-100 my-1" />
+              <div className="h-px bg-bg-overlay my-1" />
               <div className="rounded-2xl bg-slate-950 p-4 text-center text-white shadow-lg">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                 <div className={`text-[32px] number-fmt-primary tracking-tighter leading-none mt-1.5 transition-transform ${totalPulse ? 'animate-total-bounce' : ''}`}>
@@ -880,9 +880,9 @@ export default function POSListView({ vm }) {
           )}
 
           {/* Payment Method */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
-            <p className="text-[10px] text-slate-300 font-bold mb-2">اختر طريقة الدفع المناسبة للفاتورة</p>
+          <div className="rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
+            <h3 className="text-[11px] font-black text-text-muted uppercase tracking-widest">طريقة الدفع</h3>
+            <p className="text-[10px] text-text-muted font-bold mb-2">اختر طريقة الدفع المناسبة للفاتورة</p>
             <div className="grid grid-cols-3 gap-2">
               {PAYMENT_TYPES.filter(({ type }) => !(type === "bank_transfer" && vm.banks.length === 0)).map(({ type, label, desc, Icon }) => {
                 const isWalkIn = !customer || customer.id === null;
@@ -893,7 +893,7 @@ export default function POSListView({ vm }) {
                   bank_transfer: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", ring: "ring-blue-200", activeBg: "bg-blue-600" },
                   credit: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200", ring: "ring-amber-200", activeBg: "bg-amber-600" },
                   installments: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-200", ring: "ring-violet-200", activeBg: "bg-violet-600" },
-                  multi: { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", ring: "ring-slate-200", activeBg: "bg-slate-700" },
+                  multi: { bg: "bg-bg-overlay", text: "text-text-secondary", border: "border-border-normal", ring: "ring-slate-200", activeBg: "bg-slate-700" },
                 };
                 const c = colorMap[type];
                 return (
@@ -903,16 +903,16 @@ export default function POSListView({ vm }) {
                       isActive
                         ? `${c.activeBg} text-white border-transparent shadow-md ring-2 ${c.ring} ring-offset-1`
                         : isDisabled
-                          ? "border-slate-100 opacity-40 cursor-not-allowed bg-slate-50 text-slate-400"
-                          : `border-slate-200 hover:border-slate-300 hover:shadow-sm hover:-translate-y-px text-slate-700 bg-white`
+                          ? "border-border-subtle opacity-40 cursor-not-allowed bg-bg-overlay text-text-muted"
+                          : `border-border-normal hover:border-border-strong hover:shadow-sm hover:-translate-y-px text-text-primary bg-bg-surface`
                     }`}
                   >
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-md ${isActive ? "bg-white/20" : c.bg}`}>
+                    <div className={`flex h-7 w-7 items-center justify-center rounded-md ${isActive ? "bg-bg-surface/20" : c.bg}`}>
                       <Icon className={`h-3.5 w-3.5 ${isActive ? "text-white" : c.text}`} />
                     </div>
                     <span className="text-[11px] font-black leading-tight whitespace-nowrap">{label}</span>
-                    <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 ${isActive ? "text-white/80" : "text-slate-400"}`}>{desc}</span>
-                    {isActive && <div className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full bg-white/80" />}
+                    <span className={`text-[8.5px] font-medium leading-tight text-center mt-0.5 transition-colors duration-150 ${isActive ? "text-white/80" : "text-text-muted"}`}>{desc}</span>
+                    {isActive && <div className="absolute top-1 left-1 h-1.5 w-1.5 rounded-full bg-bg-surface/80" />}
                   </button>
                 );
               })}
@@ -925,7 +925,7 @@ export default function POSListView({ vm }) {
                 </label>
                 <select ref={bankRef} value={selectedBankId} onChange={(e) => setSelectedBankId(e.target.value)}
                   onKeyDown={(e) => handleFieldEnter(e, { nextRef: notesRef })}
-                  className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-2sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full rounded-lg border border-blue-200 bg-bg-surface px-3 py-2 text-2sm font-bold text-text-primary outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
                 >
                   <option value="">اختر البنك / البطاقة</option>
                   {vm.banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -954,16 +954,16 @@ export default function POSListView({ vm }) {
               </div>
             )}
             {paymentType === "multi" && (
-              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50/60 border border-slate-200 p-4 animate-slide-down">
-                <div className="text-[11px] font-black text-slate-600 flex items-center gap-1.5">
+              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-bg-overlay/60 border border-border-normal p-4 animate-slide-down">
+                <div className="text-[11px] font-black text-text-secondary flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5" /> تفاصيل الدفع المتعدد
                 </div>
-                <div className="flex flex-col divide-y divide-slate-100">
+                <div className="flex flex-col divide-y divide-border-subtle">
                   <div className="flex items-center gap-2 py-2 first:pt-0">
-                    <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug">💵 نقدي</span>
+                    <span className="flex-1 min-w-0 text-2sm font-bold text-text-secondary leading-snug">💵 نقدي</span>
                     <input ref={multiCashRef} type="number" min="0" value={multiCash} onChange={(e) => setMultiCash(e.target.value)} placeholder="0.00"
                       onKeyDown={(e) => handleFieldEnter(e, { nextRef: visaMethod ? multiVisaRef : multiCreditRef })}
-                      className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                      className="w-28 shrink-0 rounded-lg border border-emerald-200 bg-bg-surface px-3 py-1.5 text-2sm font-black text-text-primary text-left outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
                     <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); setMultiCash(String(Math.max(0, totals.total - c - cr - (Number(multiVisa)||0)))); }}
                       className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-all active:scale-90">
                       <Wand2 className="h-3 w-3" />
@@ -974,7 +974,7 @@ export default function POSListView({ vm }) {
                       <span className="flex-1 min-w-0 text-2sm font-bold text-blue-700 leading-snug break-words">{visaMethod.icon || "💳"} {visaMethod.name}</span>
                       <input ref={multiVisaRef} type="number" min="0" value={multiVisa} onChange={(e) => setMultiVisa(e.target.value)} placeholder="0.00"
                         onKeyDown={(e) => handleFieldEnter(e, { nextRef: multiCreditRef, prevRef: multiCashRef })}
-                        className="w-28 shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-blue-200 bg-bg-surface px-3 py-1.5 text-2sm font-black text-text-primary text-left outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
                       <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiVisa(String(Math.max(0, totals.total - ca - c - cr))); }}
                         className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all active:scale-90">
                         <Wand2 className="h-3 w-3" />
@@ -983,9 +983,9 @@ export default function POSListView({ vm }) {
                   )}
                   {customPayMethods.map(m => (
                     <div key={m.id} className="flex items-center gap-2 py-2">
-                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-600 leading-snug break-words">{m.icon} {m.name}</span>
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-text-secondary leading-snug break-words">{m.icon} {m.name}</span>
                       <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={(e) => setMultiCustomAmounts(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0.00"
-                        className="w-28 shrink-0 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-2sm font-black text-slate-800 text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-violet-200 bg-bg-surface px-3 py-1.5 text-2sm font-black text-text-primary text-left outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all" />
                       <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); setMultiCustomAmounts(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr - (Number(multiVisa)||0)))})); }}
                         className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 transition-all active:scale-90">
                         <Wand2 className="h-3 w-3" />
@@ -993,11 +993,11 @@ export default function POSListView({ vm }) {
                     </div>
                   ))}
                   <div className="flex items-center gap-2 py-2 last:pb-0">
-                    <span className={`flex-1 min-w-0 text-2sm font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                    <span className={`flex-1 min-w-0 text-2sm font-bold leading-snug ${customer?.id ? 'text-amber-700' : 'text-text-muted'}`}>📋 آجل</span>
                     <input ref={multiCreditRef} type="number" min="0" value={multiCredit} onChange={(e) => setMultiCredit(e.target.value)}
                       placeholder={customer?.id ? "0.00" : "اختر عميل..."} disabled={!customer?.id}
                       onKeyDown={(e) => handleFieldEnter(e, { nextRef: notesRef, prevRef: multiCashRef })}
-                      className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                      className={`w-28 shrink-0 rounded-lg px-3 py-1.5 text-2sm font-black text-left outline-none transition-all ${customer?.id ? 'border border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-100' : 'border border-border-normal bg-bg-overlay text-text-muted cursor-not-allowed'}`} />
                     <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); setMultiCredit(String(Math.max(0, totals.total - ca - c - (Number(multiVisa)||0)))); }}
                       className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all active:scale-90">
                       <Wand2 className="h-3 w-3" />
@@ -1019,34 +1019,34 @@ export default function POSListView({ vm }) {
           </div>
 
           {/* Invoice note */}
-          <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <label className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest">
+          <div className="rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
+            <label className="mb-2 flex items-center justify-between text-[11px] font-black text-text-muted uppercase tracking-widest">
               <span>ملاحظة الفاتورة</span>
               {Boolean(invoiceNotes && invoiceNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
             </label>
             <textarea ref={notesRef} rows={2} value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)}
               placeholder="ملاحظة اختيارية تُحفظ مع الفاتورة وتظهر على الإيصال…"
               onKeyDown={(e) => handleFieldEnter(e, { prevRef: taxRateRef })}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all"
+              className="w-full resize-none rounded-xl border border-border-normal bg-bg-overlay/60 px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all"
             />
           </div>
 
           {/* Customer detail when selected */}
           {customer && customer.id && (
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white text-sm font-black">{(customer.name || "?")[0]}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-black text-slate-800 truncate">{customer.name}</p>
-                    <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors">
+                    <p className="text-sm font-black text-text-primary truncate">{customer.name}</p>
+                    <button onClick={() => setCustomerInfoOpen(true)} title="بيانات العميل" className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-text-muted hover:bg-blue-50 hover:text-blue-500 transition-colors">
                       <ExternalLink className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {customer.phone && <p className="text-[11px] text-slate-500 mt-0.5 font-mono">{customer.phone}</p>}
-                  <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2">
-                    <span className="text-[11px] font-bold text-slate-500">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
-                    <span className={`number-fmt-primary text-sm ${displayBalance > 0 ? "text-rose-600" : "text-slate-800"}`}>{displayBalance.toFixed(3)}</span>
+                  {customer.phone && <p className="text-[11px] text-text-secondary mt-0.5 font-mono">{customer.phone}</p>}
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-bg-overlay border border-border-subtle px-3 py-2">
+                    <span className="text-[11px] font-bold text-text-secondary">{amendContext ? "الرصيد قبل التعديل" : "الرصيد الحالي"}</span>
+                    <span className={`number-fmt-primary text-sm ${displayBalance > 0 ? "text-rose-600" : "text-text-primary"}`}>{displayBalance.toFixed(3)}</span>
                   </div>
                   {creditEffect > 0 && lines.length > 0 && (
                     <div className="mt-1.5 space-y-1 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
@@ -1080,19 +1080,19 @@ export default function POSListView({ vm }) {
           )}
 
           {/* Action Buttons */}
-          <div className="mt-auto rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="mt-auto rounded-2xl border border-border-subtle bg-bg-surface p-4 shadow-sm">
             <div className="flex flex-col gap-2.5">
               <div className="flex flex-wrap gap-2">
                 <PermissionGate page="pos" action="print">
                   <button data-help="confirm-button" onClick={() => setPrintPreview(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
-                    className={`flex flex-1 min-w-[140px] items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-200 text-slate-400" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}
+                    className={`flex flex-1 min-w-[140px] items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black text-white transition-all shadow-md active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-border-normal text-text-muted" : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-100"}`}
                   ><Printer className="h-5 w-5" /> طباعة ومراجعة المستند</button>
                 </PermissionGate>
                 <PermissionGate page="pos" action="add">
                   <button onClick={() => setSaveConfirmOpen(true)}
                     disabled={!lines.length || isSaving || hasBlockingErrors}
-                    className={`flex flex-1 min-w-[100px] items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black transition-all shadow-sm active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md"}`}
+                    className={`flex flex-1 min-w-[100px] items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black transition-all shadow-sm active:scale-[0.98] ${!lines.length || isSaving || hasBlockingErrors ? "cursor-not-allowed bg-bg-overlay text-text-muted border border-border-normal" : "bg-bg-surface border border-border-normal text-text-primary hover:bg-bg-overlay hover:border-border-strong hover:shadow-md"}`}
                   ><Save className="h-5 w-5" /> حفظ فقط</button>
                 </PermissionGate>
               </div>
@@ -1147,7 +1147,7 @@ export default function POSListView({ vm }) {
 
               {/* الصنف */}
               <div data-help="search-bar" className="entry-field entry-field--item">
-                <label className="entry-label">الصنف <span className="text-[9px] font-mono text-slate-400">({shortcutLabel("pos.focusItem")})</span></label>
+                <label className="entry-label">الصنف <span className="text-[9px] font-mono text-text-muted">({shortcutLabel("pos.focusItem")})</span></label>
                 <CategorySearchField
                   categories={itemCategories}
                   value={listCategoryFilter}
@@ -1320,32 +1320,32 @@ export default function POSListView({ vm }) {
           {/* Lines DataGrid */}
           <div className="flex flex-col flex-1 min-h-0 rounded-2xl border p-2" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
             <div ref={colSettingsRef} className="flex items-center justify-between px-1 py-1.5 shrink-0">
-              <span className="flex items-center gap-1"><span className="text-[11px] font-bold text-slate-400">أصناف الفاتورة ({lines.length})</span><ShortcutKbd id="grid.editLast" /></span>
+              <span className="flex items-center gap-1"><span className="text-[11px] font-bold text-text-muted">أصناف الفاتورة ({lines.length})</span><ShortcutKbd id="grid.editLast" /></span>
               {flashAdd && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />}
               <div className="flex items-center gap-1">
                 <button onClick={cycleDensity}
-                  className={`p-1.5 rounded-md transition-all ${densityLevel > 0 ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                  className={`p-1.5 rounded-md transition-all ${densityLevel > 0 ? "bg-indigo-50 text-indigo-600" : "text-text-muted hover:text-text-secondary hover:bg-bg-overlay"}`}
                   title={["عرض عادي", "عرض مضغوط", "عرض فائق الضغط"][densityLevel]}
                 >
                   <GripHorizontal className={`h-4 w-4 transition-transform ${densityLevel === 2 ? "rotate-180" : ""}`} />
                 </button>
                 <div className="relative">
                   <button onClick={() => setColSettingsOpen(p => !p)}
-                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                    className="p-1.5 rounded-md text-text-muted hover:text-text-secondary hover:bg-bg-overlay transition-all"
                     title="تخصيص الأعمدة"
                   >
                     <Settings2 className="h-4 w-4" />
                   </button>
                   {colSettingsOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-[70] w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1 animate-[fade-in_0.1s_ease-out]">
-                      <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                    <div className="absolute left-0 top-full mt-1 z-[70] w-44 rounded-xl border border-border-normal bg-bg-surface shadow-xl py-1 animate-[fade-in_0.1s_ease-out]">
+                      <div className="px-3 py-1.5 text-[10px] font-black text-text-muted uppercase tracking-widest border-b border-border-subtle">الأعمدة الظاهرة</div>
                       {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
                         const labels = { sku: "الكود", name: "البيان", quantity: "الكمية", unitPrice: "السعر", lineDiscount: "الخصم", warehouseId: "المخزن", unit: "الوحدة", profit_pct: "الربح", barcode: "الباركود", cost_price: "سعر الشراء", category: "التصنيف", wholesale_price: "سعر الجملة", total: "الإجمالي" };
                         return (
-                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-overlay cursor-pointer text-2sm font-bold text-text-primary">
                             <input type="checkbox" checked={visibleColumns.includes(cid)}
                               onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                              className="rounded border-border-strong text-indigo-600 focus:ring-indigo-300"
                             />
                             {labels[cid] || cid}
                           </label>
@@ -1363,27 +1363,27 @@ export default function POSListView({ vm }) {
               emptyMessage=""
               emptyIcon={
                 <div className="flex flex-col items-center gap-3 py-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-                    <ShoppingCart className="h-6 w-6 text-slate-400" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-bg-overlay">
+                    <ShoppingCart className="h-6 w-6 text-text-muted" />
                   </div>
-                  <div className="text-sm font-black text-slate-600">فاتورة فارغة</div>
-                  <div className="flex flex-col items-center gap-1.5 text-2sm text-slate-400">
+                  <div className="text-sm font-black text-text-secondary">فاتورة فارغة</div>
+                  <div className="flex flex-col items-center gap-1.5 text-2sm text-text-muted">
                     <span className="font-bold">ابدأ بإضافة الأصناف:</span>
                     <span className="flex items-center gap-1">① ابحث عن الصنف في شريط البحث أعلاه</span>
                     <span className="flex items-center gap-1">② حدد الكمية والسعر والمخزن</span>
                     <span className="flex items-center gap-1">③ اضغط "إضافة" لإدراج الصنف في الفاتورة</span>
                   </div>
-                  <span className="text-[11px] text-slate-300 mt-1">يمكنك أيضاً مسح الباركود ضوئياً</span>
+                  <span className="text-[11px] text-text-muted mt-1">يمكنك أيضاً مسح الباركود ضوئياً</span>
                 </div>
               }
               className="border-0"
-              containerClass={`flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent rounded-2xl border border-slate-100 min-h-0 ${densityLevel === 1 ? "dense-data-grid" : densityLevel === 2 ? "ultra-dense-data-grid" : ""}`}
+              containerClass={`flex-1 overflow-x-auto overflow-y-auto bg-bg-surface scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent rounded-2xl border border-border-subtle min-h-0 ${densityLevel === 1 ? "dense-data-grid" : densityLevel === 2 ? "ultra-dense-data-grid" : ""}`}
               renderExpandedRow={null}
               onRowClick={null}
               columns={[
-                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt text-[11px] text-slate-400 border-l border-slate-100", render: (_, i) => i + 1 },
-                ...(visibleColumns.includes("sku") ? [{ id: "sku", header: "الكود", width: 75, minWidth: 55, sortable: false, headerClass: "text-center px-1 hdr-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.item_code || item?.code || l.code || "-"}</span>; } }] : []),
-                  ...(visibleColumns.includes("name") ? [{ id: "name", header: "البيان", width: 200, minWidth: 100, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-1 text-center", headerClass: "text-center px-2 hdr-center", render: (l) => {
+                { id: "index", header: "#", width: 40, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt text-[11px] text-text-muted border-l border-border-subtle", render: (_, i) => i + 1 },
+                ...(visibleColumns.includes("sku") ? [{ id: "sku", header: "الكود", width: 75, minWidth: 55, sortable: false, headerClass: "text-center px-1 hdr-center", cellClass: "font-mono text-[10px] text-text-secondary text-center border-l border-border-subtle px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.item_code || item?.code || l.code || "-"}</span>; } }] : []),
+                  ...(visibleColumns.includes("name") ? [{ id: "name", header: "البيان", width: 200, minWidth: 100, sortable: true, cellClass: "font-black text-text-primary border-l border-border-subtle px-1 text-center", headerClass: "text-center px-2 hdr-center", render: (l) => {
                       const item = items.find(it => it.id === l.item_id);
                       const imgUrl = item?.primary_image_url || item?.image_url || item?.image || l.primary_image_url;
                       const resolved = imgUrl ? resolveImageUrl(imgUrl) : null;
@@ -1394,13 +1394,13 @@ export default function POSListView({ vm }) {
                         <div className="flex items-center justify-center gap-1.5 w-full min-w-0">
                           {resolved ? (
                             <button type="button" onClick={(e) => { e.stopPropagation(); const imgs = item?.image_urls?.length ? item.image_urls : [resolved]; openGallery(imgs); }}
-                              className="shrink-0 rounded overflow-hidden border border-slate-200 hover:border-indigo-300"
+                              className="shrink-0 rounded overflow-hidden border border-border-normal hover:border-indigo-300"
                             >
                               <img src={resolved} alt={l.item_name} className="w-[22px] h-[22px] object-cover" />
                             </button>
                           ) : null}
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className={`whitespace-normal break-words text-2sm font-black leading-tight ${hasError ? "text-rose-700" : "text-slate-800"}`}>{l.item_name}</span>
+                            <span className={`whitespace-normal break-words text-2sm font-black leading-tight ${hasError ? "text-rose-700" : "text-text-primary"}`}>{l.item_name}</span>
                             {warnings.length > 0 && (
                               <span className={`shrink-0 text-[8px] font-black px-1 py-0.5 rounded-sm ${warnings.some(w => w.type === "error") ? "text-rose-600 bg-rose-50 border border-rose-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}
                                 title={warnings.map(w => w.msg).join(" | ")}
@@ -1411,7 +1411,7 @@ export default function POSListView({ vm }) {
                       );
                     }
                   }] : []),
-              ...(visibleColumns.includes("quantity") ? [{ id: "quantity", header: "الكمية", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
+              ...(visibleColumns.includes("quantity") ? [{ id: "quantity", header: "الكمية", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-border-subtle", render: (l, i) => {
                   const maxStock = getLineMaxStock(l.item_id, l.warehouse_id);
                   const hasLimit = stockLoaded && maxStock !== Infinity;
                   const atLimit  = hasLimit && Number(l.quantity) >= maxStock;
@@ -1428,12 +1428,12 @@ export default function POSListView({ vm }) {
                         onChange={(e) => { const v = Math.max(1, Math.floor(Number(e.target.value) || 1)); updateLine(cartLineKey(l), { quantity: hasLimit ? Math.min(v, maxStock) : v }); }}
                         className={`w-[40px] text-center number-fmt text-sm bg-transparent outline-none border-0 ring-0 leading-none ${atLimit ? 'text-rose-600' : ''}`}
                       />
-                      {hasLimit && <span className={`text-[8px] font-black leading-none shrink-0 ${atLimit ? 'text-rose-500' : 'text-slate-400'}`}>{atLimit ? 'نفد' : remaining}</span>}
+                      {hasLimit && <span className={`text-[8px] font-black leading-none shrink-0 ${atLimit ? 'text-rose-500' : 'text-text-muted'}`}>{atLimit ? 'نفد' : remaining}</span>}
                     </div>
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
+              ...(visibleColumns.includes("unitPrice") ? [{ id: "unitPrice", header: "السعر", width: 90, minWidth: 70, sortable: true, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-border-subtle", render: (l, i) => {
                   const isOverride = l.item_id !== -1 && l.master_sale_price > 0 && Math.abs(Number(l.unit_price) - Number(l.master_sale_price)) > 0.001;
                   const item = items.find((it) => String(it.id) === String(l.item_id));
                   const priceHealth = getMarginHealth(l.unit_price, item?.purchase_price, l.master_sale_price);
@@ -1447,14 +1447,14 @@ export default function POSListView({ vm }) {
                           data-grid-cell data-row={i} data-col="unit_price"
                           onChange={(e) => canOverridePrice && updateLine(cartLineKey(l), { unit_price: Number(e.target.value) || 0 })}
                           readOnly={!canOverridePrice}
-                          className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border border-transparent ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-slate-50 text-slate-500 cursor-not-allowed" : (HEALTH_BORDER_CLASSES[priceHealth.level] || "bg-transparent focus:bg-indigo-50/50")}`} />
+                          className={`w-full h-[34px] text-center number-fmt-primary text-xs outline-none border border-transparent ring-0 focus:ring-0 transition-colors ${!canOverridePrice ? "bg-bg-overlay text-text-secondary cursor-not-allowed" : (HEALTH_BORDER_CLASSES[priceHealth.level] || "bg-transparent focus:bg-indigo-50/50")}`} />
                       </PriceHealthHint>
                       {isOverride && <span title={`السعر الأصلي: ${Number(l.sale_price).toFixed(2)}`} className="absolute top-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-amber-500 pointer-events-none" />}
                     </div>
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100", render: (l, i) => {
+              ...(visibleColumns.includes("lineDiscount") ? [{ id: "lineDiscount", header: "خصم", width: 90, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-border-subtle", render: (l, i) => {
                   const lineKey = cartLineKey(l);
                   const mode = discountModes[lineKey] || "flat";
                   const lineMax = Number(l.unit_price) * Number(l.quantity);
@@ -1471,16 +1471,16 @@ export default function POSListView({ vm }) {
                           if (mode === "pct") { const flat = parseFloat(((v / 100) * lineMax).toFixed(4)); updateLine(lineKey, { line_discount: Math.min(flat, lineMax) }); }
                           else { updateLine(lineKey, { line_discount: Math.min(v, lineMax) }); }
                         }}
-                        className={`w-full h-[24px] text-center number-fmt-primary text-2sm bg-transparent outline-none border rounded-sm transition-colors ${isOver ? "border-rose-400 bg-rose-50/50 text-rose-700 focus:border-rose-600" : "border-slate-200 focus:border-amber-400 focus:bg-amber-50/50"}`}
+                        className={`w-full h-[24px] text-center number-fmt-primary text-2sm bg-transparent outline-none border rounded-sm transition-colors ${isOver ? "border-rose-400 bg-rose-50/50 text-rose-700 focus:border-rose-600" : "border-border-normal focus:border-amber-400 focus:bg-amber-50/50"}`}
                       />
                       <button type="button" onClick={() => setDiscountModes((m) => ({ ...m, [lineKey]: mode === "pct" ? "flat" : "pct" }))}
-                        className={`h-[24px] px-1.5 rounded-sm text-[10px] font-black border transition-colors shrink-0 ${mode === "pct" ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"}`}
+                        className={`h-[24px] px-1.5 rounded-sm text-[10px] font-black border transition-colors shrink-0 ${mode === "pct" ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-bg-overlay border-border-strong text-text-secondary hover:bg-border-normal"}`}
                       >{mode === "pct" ? "%" : "ج"}</button>
                     </div>
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative", render: (l, i) => {
+              ...(visibleColumns.includes("warehouseId") ? [{ id: "warehouseId", header: "المخزن", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-border-subtle relative", render: (l, i) => {
                   const whStock = stockLevels[l.item_id] || stockLevels[Number(l.item_id)] || stockLevels[String(l.item_id)] || {};
                   const lineQty = Number(l.quantity) || 1;
                   const currentWhId = l.warehouse_id || staging.warehouseId;
@@ -1491,7 +1491,7 @@ export default function POSListView({ vm }) {
                       <select value={currentWhId}
                         data-grid-cell data-row={i} data-col="warehouse_id"
                         onChange={(e) => updateLine(cartLineKey(l), { warehouse_id: e.target.value })}
-                        className={`w-full h-[34px] text-[10px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${hasShortage ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"}`}>
+                        className={`w-full h-[34px] text-[10px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${hasShortage ? "bg-rose-50 text-rose-700" : "bg-transparent text-text-primary focus:bg-indigo-50"}`}>
                         {getFilteredWarehouses(l.item_id, l.warehouse_id).map(w => {
                           const sqty = whStock[w.id] || 0;
                           const insufficient = sqty < lineQty && String(w.id) !== String(currentWhId);
@@ -1505,9 +1505,9 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("unit") ? [{ id: "unit", header: "الوحدة", width: 65, minWidth: 50, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] font-bold text-slate-600 border-l border-slate-100 px-1 truncate", render: (l) => l.unit_name || "أساسية" }] : []),
+              ...(visibleColumns.includes("unit") ? [{ id: "unit", header: "الوحدة", width: 65, minWidth: 50, sortable: false, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] font-bold text-text-secondary border-l border-border-subtle px-1 truncate", render: (l) => l.unit_name || "أساسية" }] : []),
               ...(canViewProfit && visibleColumns.includes("profit_pct") ? [{
-                id: "profit_pct", header: "الربح", width: 80, minWidth: 60, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-slate-100 relative",
+                id: "profit_pct", header: "الربح", width: 80, minWidth: 60, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 border-l border-border-subtle relative",
                 render: (l) => {
                   const item = items.find(i => String(i.id) === String(l.item_id));
                   const cost = Number(item?.purchase_price || item?.current_cost || 0);
@@ -1517,7 +1517,7 @@ export default function POSListView({ vm }) {
                   const isProfit = profitFlat >= 0;
                   return (
                     <div className="relative w-full h-full flex items-center justify-center gap-0.5">
-                      <span className={`number-fmt-primary text-2sm ${cost <= 0 ? "text-slate-500" : isProfit ? "text-emerald-700" : "text-rose-600"}`}>
+                      <span className={`number-fmt-primary text-2sm ${cost <= 0 ? "text-text-secondary" : isProfit ? "text-emerald-700" : "text-rose-600"}`}>
                         {cost <= 0
                           ? `${profitFlat >= 0 ? "+" : ""}${profitFlat.toFixed(2)}`
                           : profitDisplayMode === "pct"
@@ -1532,11 +1532,11 @@ export default function POSListView({ vm }) {
                   );
                 }
               }] : []),
-              ...(visibleColumns.includes("barcode") ? [{ id: "barcode", header: "الباركود", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "font-mono text-[10px] text-slate-500 text-center border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.barcode || l.item_barcode || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
-              ...(visibleColumns.includes("category") ? [{ id: "category", header: "التصنيف", width: 90, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] text-slate-500 border-l border-slate-100 px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.category_name || l.category_name || "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-slate-500 border-l border-slate-100 px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-slate-400'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
-              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-center px-2 hdr-center", cellClass: "text-center px-2 number-fmt-primary text-xs text-slate-900 bg-slate-50/50 border-l border-slate-100 truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
+              ...(visibleColumns.includes("barcode") ? [{ id: "barcode", header: "الباركود", width: 100, minWidth: 70, sortable: false, headerClass: "text-center hdr-center", cellClass: "font-mono text-[10px] text-text-secondary text-center border-l border-border-subtle px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.barcode || l.item_barcode || "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("cost_price") ? [{ id: "cost_price", header: "سعر الشراء", width: 85, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-text-secondary border-l border-border-subtle px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{Number(item?.purchase_price || item?.current_cost || 0).toFixed(2)}</span>; } }] : []),
+              ...(visibleColumns.includes("category") ? [{ id: "category", header: "التصنيف", width: 90, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center text-[10px] text-text-secondary border-l border-border-subtle px-1 truncate", render: (l) => { const item = items.find((it) => it.id === l.item_id); return <span>{item?.category_name || l.category_name || "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("wholesale_price") ? [{ id: "wholesale_price", header: "سعر الجملة", width: 80, minWidth: 60, sortable: true, headerClass: "text-center hdr-center", cellClass: "text-center number-fmt-primary text-[10px] text-text-secondary border-l border-border-subtle px-1", render: (l) => { const item = items.find((it) => it.id === l.item_id); const wp = item?.wholesale_price || 0; return <span className={wp > 0 ? 'text-amber-700' : 'text-text-muted'}>{wp > 0 ? Number(wp).toFixed(2) : "-"}</span>; } }] : []),
+              ...(visibleColumns.includes("total") ? [{ id: "total", header: "الإجمالي", width: 90, minWidth: 70, sortable: true, headerClass: "text-center px-2 hdr-center", cellClass: "text-center px-2 number-fmt-primary text-xs text-text-primary bg-bg-overlay/50 border-l border-border-subtle truncate", render: (l) => formatMoney(l.quantity * l.unit_price - (l.line_discount || 0)) }] : []),
               { id: "actions", header: "إجراءات", width: 70, minWidth: 60, sortable: false, headerClass: "text-center hdr-center", cellClass: "p-0 text-center", render: (row) => {
                   const key = cartLineKey(row);
                   const armed = confirmDelKey === key;
@@ -1554,7 +1554,7 @@ export default function POSListView({ vm }) {
                       className={`inline-flex h-[34px] w-full items-center justify-center gap-1 transition-all duration-150 ${
                         armed
                           ? "bg-rose-500 text-white font-black text-[10px] shadow-inner"
-                          : "text-slate-400 hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+                          : "text-text-muted hover:bg-rose-50 hover:text-rose-600 active:scale-95"
                       }`}
                     >
                       {armed
@@ -1697,11 +1697,11 @@ export default function POSListView({ vm }) {
       <Modal open={supervisorOverrideOpen} onClose={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }} title="تجاوز حد الخصم" showDetach={false}>
         <div className="space-y-4 text-center animate-modal-enter">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mx-auto"><ShieldCheck className="h-7 w-7 text-amber-600" /></div>
-          <p className="text-sm font-bold text-slate-700">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
-          <p className="text-2sm text-slate-500">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
+          <p className="text-sm font-bold text-text-primary">الخصم المطبق يتجاوز الحد المسموح ({Number(storeSettings?.max_discount_percent ?? 15)}% من الإجمالي).</p>
+          <p className="text-2sm text-text-secondary">هل تريد تجاوز هذا القيد بصلاحية المشرف؟</p>
           <div className="flex justify-center gap-3 pt-2">
             <button type="button" onClick={() => { setSupervisorOverrideOpen(false); setPendingSave(null); }}
-              className="rounded-sm border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">إلغاء — تعديل الخصم</button>
+              className="rounded-sm border border-border-normal px-5 py-2.5 text-sm font-bold text-text-secondary hover:bg-bg-overlay">إلغاء — تعديل الخصم</button>
             <PermissionGate page="pos" action="discount">
               <button type="button" onClick={confirmSupervisorOverride}
                 className="rounded-sm bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700">تجاوز بصلاحية المشرف</button>
@@ -1713,9 +1713,9 @@ export default function POSListView({ vm }) {
       {/* Set Default View Modal */}
       <Modal open={showSetDefaultModal} onClose={() => setShowSetDefaultModal(false)} title="حفظ تفضيل العرض" showDetach={false}>
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
-          <p className="text-sm font-bold text-slate-700">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
+          <p className="text-sm font-bold text-text-primary">هل تريد حفظ <strong>{pendingViewMode === "list" ? "عرض القائمة" : "عرض الشبكة"}</strong> كعرض افتراضي لنقطة البيع؟</p>
           <div className="flex gap-2">
-            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.98]">لا، لاحقاً</button>
+            <button onClick={() => setShowSetDefaultModal(false)} className="flex-1 rounded-lg border border-border-normal bg-bg-overlay px-4 py-2.5 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-all active:scale-[0.98]">لا، لاحقاً</button>
             <button onClick={() => {
                 api.put("/api/settings", { ...storeSettings, default_pos_view: pendingViewMode })
                   .then(() => { setStoreSettings(s => ({ ...s, default_pos_view: pendingViewMode })); setSaveMessage("تم حفظ تفضيل العرض"); setTimeout(() => setSaveMessage(""), 3000); })
@@ -1733,36 +1733,131 @@ export default function POSListView({ vm }) {
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div><p className="text-sm font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p><p className="text-2sm font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p></div>
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50/50 border border-amber-100/80">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-text-primary">يوجد أصناف في الفاتورة الحالية</p>
+                  <p className="text-2sm font-bold text-amber-700 mt-0.5">اختر كيف تريد المتابعة لتجنب فقدان البيانات:</p>
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <button onClick={() => { setNewInvoiceModalOpen(false); saveInvoice(false); }} disabled={isSaving}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
-                >{isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}</button>
-                <button onClick={() => { setNewInvoiceModalOpen(false); holdCurrentInvoice(); clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1); toast.success("تم تعليق الفاتورة"); }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 hover:bg-amber-100 transition-all active:scale-[0.98]"
-                ><PauseCircle className="h-4 w-4" /> تعليق الحالية وإنشاء جديدة</button>
-                <button onClick={() => { setNewInvoiceModalOpen(false); clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1); }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
-                ><Trash2 className="h-4 w-4" /> تجاهل وإنشاء جديدة</button>
-                <button onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
-              </div>
+              
+              {isSaving ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                  <p className="text-2sm font-black text-text-secondary animate-pulse">جاري الحفظ...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewInvoiceModalOpen(false);
+                      saveInvoice(false);
+                    }}
+                    className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-emerald-50/50 bg-emerald-50/20 hover:bg-emerald-50/60 hover:border-emerald-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/10 group-hover:scale-105 transition-transform shrink-0">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-black text-text-primary">حفظ الحالية</span>
+                      <span className="text-[9px] font-bold text-text-muted leading-tight">وإنشاء فاتورة جديدة</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewInvoiceModalOpen(false);
+                      holdCurrentInvoice();
+                      clear();
+                      resetPaymentFields();
+                      resetStaging();
+                      resetCustomer();
+                      setPaymentType("cash");
+                      setInvoiceSeq((s) => s + 1);
+                      toast.success("تم تعليق الفاتورة");
+                    }}
+                    className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-amber-50/50 bg-amber-50/20 hover:bg-amber-50/60 hover:border-amber-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md shadow-amber-500/10 group-hover:scale-105 transition-transform shrink-0">
+                      <PauseCircle className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-black text-text-primary">تعليق الحالية</span>
+                      <span className="text-[9px] font-bold text-text-muted leading-tight">وإنشاء فاتورة جديدة</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewInvoiceModalOpen(false);
+                      clear();
+                      resetPaymentFields();
+                      resetStaging();
+                      resetCustomer();
+                      setPaymentType("cash");
+                      setInvoiceSeq((s) => s + 1);
+                    }}
+                    className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-rose-50/50 bg-rose-50/20 hover:bg-rose-50/60 hover:border-rose-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md shadow-rose-600/10 group-hover:scale-105 transition-transform shrink-0">
+                      <Trash2 className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-black text-text-primary">تجاهل الحالية</span>
+                      <span className="text-[9px] font-bold text-text-muted leading-tight">وإنشاء فاتورة جديدة</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {!isSaving && (
+                <button
+                  type="button"
+                  onClick={() => setNewInvoiceModalOpen(false)}
+                  className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-bg-surface text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer mt-2"
+                >
+                  إلغاء
+                </button>
+              )}
             </>
           ) : (
             <>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                <FilePlus className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div><p className="text-sm font-black text-emerald-800">إنشاء فاتورة جديدة</p><p className="text-2sm font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p></div>
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/80">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <FilePlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-text-primary">إنشاء فاتورة جديدة</p>
+                  <p className="text-2sm font-bold text-emerald-700 mt-0.5">الفاتورة الحالية فارغة بالفعل</p>
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <button onClick={() => { setNewInvoiceModalOpen(false); clear(); resetPaymentFields(); resetStaging(); resetCustomer(); setPaymentType("cash"); setInvoiceSeq((s) => s + 1); }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
-                ><FilePlus className="h-4 w-4" /> إنشاء فاتورة جديدة</button>
-                <button onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">إلغاء</button>
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    setNewInvoiceModalOpen(false);
+                    clear();
+                    resetPaymentFields();
+                    resetStaging();
+                    resetCustomer();
+                    setPaymentType("cash");
+                    setInvoiceSeq((s) => s + 1);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                >
+                  <FilePlus className="h-4 w-4" />
+                  تأكيد وإنشاء فاتورة جديدة
+                </button>
+                <button
+                  onClick={() => setNewInvoiceModalOpen(false)}
+                  className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-bg-surface text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer mt-2"
+                >
+                  إلغاء
+                </button>
               </div>
             </>
           )}
@@ -1777,7 +1872,7 @@ export default function POSListView({ vm }) {
               <Receipt className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-800">تأكيد حفظ الفاتورة الحالية</p>
+              <p className="text-sm font-black text-text-primary">تأكيد حفظ الفاتورة الحالية</p>
               <p className="text-2sm font-bold text-emerald-700 mt-0.5">سيتم تسجيل الفاتورة بقيمة إجمالية قدرها <span className="font-black text-[16px] number-fmt-primary">{formatMoney(totals.total)}</span> ج.م</p>
             </div>
           </div>
@@ -1785,7 +1880,7 @@ export default function POSListView({ vm }) {
           {isSaving ? (
             <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-              <p className="text-2sm font-black text-slate-600 animate-pulse">جاري حفظ وتجهيز الفاتورة...</p>
+              <p className="text-2sm font-black text-text-secondary animate-pulse">جاري حفظ وتجهيز الفاتورة...</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
@@ -1799,8 +1894,8 @@ export default function POSListView({ vm }) {
                   <Printer className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-xs font-black text-slate-800">حفظ وطباعة</span>
-                  <span className="text-[9px] font-bold text-slate-400 leading-tight">طباعة إيصال العميل فوراً</span>
+                  <span className="text-xs font-black text-text-primary">حفظ وطباعة</span>
+                  <span className="text-[9px] font-bold text-text-muted leading-tight">طباعة إيصال العميل فوراً</span>
                 </div>
               </button>
 
@@ -1814,8 +1909,8 @@ export default function POSListView({ vm }) {
                   <WhatsAppIcon className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-xs font-black text-slate-800">إرسال واتساب</span>
-                  <span className="text-[9px] font-bold text-slate-400 leading-tight">إرسال الفاتورة عبر واتساب</span>
+                  <span className="text-xs font-black text-text-primary">إرسال واتساب</span>
+                  <span className="text-[9px] font-bold text-text-muted leading-tight">إرسال الفاتورة عبر واتساب</span>
                 </div>
               </button>
 
@@ -1823,14 +1918,14 @@ export default function POSListView({ vm }) {
               <button
                 type="button"
                 onClick={() => { setSaveConfirmOpen(false); saveInvoice(false); }}
-                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-slate-100/50 bg-slate-50/20 hover:bg-slate-50/60 hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-border-subtle/50 bg-bg-overlay/20 hover:bg-bg-overlay/60 hover:border-border-strong hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-600 text-white shadow-md shadow-slate-600/10 group-hover:scale-105 transition-transform shrink-0">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-bg-overlay text-text-secondary border border-border-normal shadow-sm group-hover:scale-105 transition-transform shrink-0">
                   <Save className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-xs font-black text-slate-800">حفظ فقط</span>
-                  <span className="text-[9px] font-bold text-slate-400 leading-tight">حفظ بدون طباعة أو إرسال</span>
+                  <span className="text-xs font-black text-text-primary">حفظ فقط</span>
+                  <span className="text-[9px] font-bold text-text-muted leading-tight">حفظ بدون طباعة أو إرسال</span>
                 </div>
               </button>
             </div>
@@ -1840,7 +1935,7 @@ export default function POSListView({ vm }) {
             <button
               type="button"
               onClick={() => setSaveConfirmOpen(false)}
-              className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-white text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-bg-surface text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer"
             >
               تراجع وإلغاء
             </button>
@@ -1860,7 +1955,7 @@ export default function POSListView({ vm }) {
               className="flex items-center justify-center gap-2 rounded-lg btn-danger px-4 py-3 text-sm font-black transition-all active:scale-[0.98]"
             ><Trash2 className="h-4 w-4" /> نعم، إلغاء الفاتورة</button>
             <button onClick={() => setCancelModalOpen(false)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+              className="flex items-center justify-center gap-2 rounded-lg border border-border-normal bg-bg-surface px-4 py-2.5 text-2sm font-black text-text-secondary hover:bg-bg-overlay transition-all active:scale-[0.98]">تراجع</button>
           </div>
         </div>
       </Modal>

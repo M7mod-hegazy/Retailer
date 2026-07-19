@@ -19,7 +19,7 @@ function SwatchRow({ vars }) {
       {swatches.map((color, i) => (
         <span
           key={i}
-          className="h-5 w-5 rounded-sm border border-white/20 shadow-sm"
+          className="h-5 w-5 rounded-sm border border-border-normal/20 shadow-sm"
           style={{ backgroundColor: color }}
         />
       ))}

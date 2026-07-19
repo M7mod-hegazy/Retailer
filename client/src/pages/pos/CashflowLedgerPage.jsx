@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import { formatNumber } from "../../utils/currency";
 import { todayCairo, formatDateTime } from "../../utils/dateHelpers";
+import { usePageTour } from '../../hooks/usePageTour';
 
 const fmt = (n) => formatNumber(n ?? 0);
 const todayStr = () => todayCairo();
@@ -71,6 +72,7 @@ function DirectionBadge({ direction, amount }) {
 }
 
 export default function CashflowLedgerPage() {
+  usePageTour('cashflow_ledger');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [date, setDate] = useState(searchParams.get("date") || todayStr());

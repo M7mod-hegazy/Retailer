@@ -322,10 +322,10 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
           <div className={`${cfg.headerBg} p-6 flex flex-wrap items-center justify-between gap-4 shadow-sm select-none relative`}>
             <div className="absolute inset-0 opacity-5 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] pointer-events-none" />
             <div className="relative z-10 min-w-[260px] flex-1 space-y-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1 text-[9px] font-black text-white uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-bg-surface/20 px-3.5 py-1 text-[9px] font-black text-white uppercase tracking-wider">
                 <FileText size={11} /> وثيقة كشف تفصيلي معتمدة
               </span>
-              <h2 className="inline-flex rounded-2xl bg-white/10 px-4 py-2 text-3xl font-black tracking-tight text-white shadow-sm ring-1 ring-white/10">
+              <h2 className="inline-flex rounded-2xl bg-bg-surface/10 px-4 py-2 text-3xl font-black tracking-tight text-white shadow-sm ring-1 ring-white/10">
                 {metric.label}
               </h2>
               <p className="text-xs font-bold text-white/80">
@@ -340,14 +340,14 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="بحث سريع..."
-                  className="w-44 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 py-2 pr-9 pl-3 text-xs font-bold outline-none focus:bg-white focus:text-text-primary focus:placeholder-slate-400 transition-all"
+                  className="w-44 rounded-xl border border-border-normal/20 bg-bg-surface/10 text-white placeholder-white/60 py-2 pr-9 pl-3 text-xs font-bold outline-none focus:bg-bg-surface focus:text-text-primary focus:placeholder-slate-400 transition-all"
                 />
               </div>
 
               <select
                 value={sortKey}
                 onChange={(event) => setSortKey(event.target.value)}
-                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
+                className="rounded-xl border border-border-normal/20 bg-bg-surface/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
               >
                 <option value="">ترتيب تلقائي</option>
                 {columns.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -356,14 +356,14 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
               <select
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-xl border border-white/20 bg-white/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
+                className="rounded-xl border border-border-normal/20 bg-bg-surface/10 text-white px-3 py-2 text-xs font-bold outline-none [&>option]:text-text-primary"
               >
                 {[50, 100, 200].map((size) => <option key={size} value={size}>عرض {size}</option>)}
               </select>
 
               <button
                 onClick={() => exportCsv(`${metric.key}-${period.from}-${period.to}.csv`, filtered, columns)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal/20 bg-bg-surface/10 text-white hover:bg-bg-surface hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
               >
                 <FileDown size={13} /> Excel
               </button>
@@ -379,14 +379,14 @@ function MetricModal({ metric, rows, period, onClose, currencySymbol }) {
                     docLabel: metric?.label || "كشف تفصيلي",
                   });
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal/20 bg-bg-surface/10 text-white hover:bg-bg-surface hover:text-text-primary px-4 py-2 text-xs font-black transition-colors"
               >
                 <Printer size={13} /> طباعة
               </button>
 
               <button
                 onClick={onClose}
-                className="rounded-2xl p-2 text-white/80 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                className="rounded-2xl p-2 text-white/80 hover:text-white hover:bg-bg-surface/10 transition-all active:scale-90"
               >
                 <X size={18} />
               </button>
@@ -916,14 +916,14 @@ export default function OwnerStatementPage() {
 
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-2xl ${isLoss ? "bg-danger-text/20 text-danger-text" : "bg-success-text/20 text-success-text"} border border-white/10`}>
+                      <div className={`p-2.5 rounded-2xl ${isLoss ? "bg-danger-text/20 text-danger-text" : "bg-success-text/20 text-success-text"} border border-border-normal/10`}>
                         <DollarSign size={20} />
                       </div>
                       <span className="text-lg font-black text-white">
                         {netProfitMetric.label}
                       </span>
                     </div>
-                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[11px] font-black ${isLoss ? "bg-danger-text/35 text-danger-text" : "bg-success-text/35 text-success-text"} border border-white/5`}>
+                    <span className={`inline-flex rounded-full px-3.5 py-1 text-[11px] font-black ${isLoss ? "bg-danger-text/35 text-danger-text" : "bg-success-text/35 text-success-text"} border border-border-normal/5`}>
                       إجمالي
                     </span>
                   </div>
@@ -935,7 +935,7 @@ export default function OwnerStatementPage() {
                     </div>
                   </div>
 
-                  <div className="mt-8 pt-4 border-t border-white/10 flex justify-between items-center relative z-10">
+                  <div className="mt-8 pt-4 border-t border-border-normal/10 flex justify-between items-center relative z-10">
                     <span className="text-xs font-bold text-white/50">كشف مختصر لصافي الربح</span>
                     <span className={`text-xs font-black ${isLoss ? "text-danger-text hover:text-danger-text" : "text-success-text hover:text-success-text"} flex items-center gap-1`}>
                       عرض الكشف التفصيلي <ChevronLeft size={12} className="stroke-[2.5]" />
@@ -1016,7 +1016,7 @@ export default function OwnerStatementPage() {
             </div>
             <Link
               to={ownerPaymentFlowHref}
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-950 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-colors hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-950 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-colors hover:bg-slate-900"
             >
               فتح التقرير الكامل <ChevronLeft size={13} />
             </Link>
@@ -1100,7 +1100,7 @@ export default function OwnerStatementPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       to={`${ownerPaymentFlowHref}${selectedPaymentFlow.method_id ? `&method_id=${selectedPaymentFlow.method_id}` : ""}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-900"
                     >
                       فتح التقرير الكامل <ChevronLeft size={13} />
                     </Link>
@@ -1127,7 +1127,7 @@ export default function OwnerStatementPage() {
                           <th className="px-3 py-2">الصافي</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-border-subtle">
                         {paymentFlowDetails.map((row, index) => (
                           <tr key={`${row.id || row.doc_no || index}-${index}`} className="hover:bg-bg-base/70">
                             <td className="px-3 py-3 font-mono text-text-secondary" dir="ltr">{row.created_at || row.date || "-"}</td>

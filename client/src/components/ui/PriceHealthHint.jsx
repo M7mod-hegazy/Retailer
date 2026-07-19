@@ -32,7 +32,7 @@ export default function PriceHealthHint({ label, children }) {
         <span
           ref={tipRef}
           style={{ position: "fixed", zIndex: 9999 }}
-          className="pointer-events-none whitespace-nowrap rounded border border-slate-100 bg-white/95 px-1 py-0.5 text-[9px] font-bold leading-none text-slate-400 shadow-sm"
+          className="pointer-events-none whitespace-nowrap rounded border border-border-subtle bg-bg-surface/95 px-1 py-0.5 text-[9px] font-bold leading-none text-text-muted shadow-sm"
         >
           {label}
         </span>

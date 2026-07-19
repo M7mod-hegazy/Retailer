@@ -184,17 +184,17 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
               <Package className="h-4 w-4" /> وحدة البيع
             </div>
             {loadingUnits ? (
-              <div className="flex items-center gap-2 text-[12px] text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل…</div>
+              <div className="flex items-center gap-2 text-[12px] text-text-muted"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل…</div>
             ) : (
               <div className="grid grid-cols-1 gap-1.5">
                 {/* Base unit */}
                 <button type="button" onClick={pickBaseUnit}
                   className={`flex items-center justify-between rounded-lg border px-3 py-2 text-right transition-all ${
-                    !activeUnitId ? "border-sky-300 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"
+                    !activeUnitId ? "border-sky-300 bg-sky-50 ring-2 ring-sky-100" : "border-border-normal bg-bg-surface hover:border-border-strong"
                   }`}>
-                  <span className="text-[13px] font-black text-slate-800">{line.unit_name || "الوحدة الأساسية"}</span>
+                  <span className="text-[13px] font-black text-text-primary">{line.unit_name || "الوحدة الأساسية"}</span>
                   <span className="flex items-center gap-2">
-                    <span className="font-mono text-[12px] font-black text-slate-600">{money(basePrice)}</span>
+                    <span className="font-mono text-[12px] font-black text-text-secondary">{money(basePrice)}</span>
                     {!activeUnitId && <Check className="h-4 w-4 text-sky-600" />}
                   </span>
                 </button>
@@ -205,21 +205,21 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
                   return (
                     <button key={u.id} type="button" onClick={() => pickUnit(u)}
                       className={`flex items-center justify-between rounded-lg border px-3 py-2 text-right transition-all ${
-                        active ? "border-sky-300 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"
+                        active ? "border-sky-300 bg-sky-50 ring-2 ring-sky-100" : "border-border-normal bg-bg-surface hover:border-border-strong"
                       }`}>
-                      <span className="text-[13px] font-black text-slate-800">
+                      <span className="text-[13px] font-black text-text-primary">
                         {u.unit_name}
-                        <span className="mr-1.5 text-[11px] font-bold text-slate-400">= {u.factor} {line.unit_name || "وحدة"}</span>
+                        <span className="mr-1.5 text-[11px] font-bold text-text-muted">= {u.factor} {line.unit_name || "وحدة"}</span>
                       </span>
                       <span className="flex items-center gap-2">
-                        <span className="font-mono text-[12px] font-black text-slate-600">{money(price)}</span>
+                        <span className="font-mono text-[12px] font-black text-text-secondary">{money(price)}</span>
                         {active && <Check className="h-4 w-4 text-sky-600" />}
                       </span>
                     </button>
                   );
                 })}
                 {units.length === 0 && (
-                  <p className="text-[11px] font-bold text-slate-400">لا توجد وحدات إضافية لهذا الصنف — يُباع بالوحدة الأساسية.</p>
+                  <p className="text-[11px] font-bold text-text-muted">لا توجد وحدات إضافية لهذا الصنف — يُباع بالوحدة الأساسية.</p>
                 )}
               </div>
             )}
@@ -246,18 +246,18 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
             <div className="flex items-center gap-2 text-[12px] font-black text-rose-700">
               <Smartphone className="h-4 w-4" /> أرقام السيريال / IMEI
             </div>
-            <p className="text-[11px] font-bold text-slate-500 mb-1">ادخل أو امسح {line.quantity} رقماً سيريال</p>
+            <p className="text-[11px] font-bold text-text-secondary mb-1">ادخل أو امسح {line.quantity} رقماً سيريال</p>
             <div className="space-y-1.5 max-h-56 overflow-y-auto pl-1">
               {Array.from({ length: Math.max(Number(line.quantity), 1) }).map((_, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <span className="w-5 text-[11px] font-black text-slate-400 shrink-0">{idx + 1}</span>
+                  <span className="w-5 text-[11px] font-black text-text-muted shrink-0">{idx + 1}</span>
                   <input
                     ref={idx === 0 ? firstSerialRef : null}
                     type="text"
                     value={serials[idx] || ""}
                     onChange={(e) => handleSerialChange(idx, e.target.value)}
                     placeholder="امسح أو اكتب السيريال"
-                    className="w-full rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-[13px] font-bold text-slate-800 placeholder:text-slate-300 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 rtl:text-right"
+                    className="w-full rounded-lg border border-rose-200 bg-bg-surface px-3 py-1.5 text-[13px] font-bold text-text-primary placeholder:text-text-muted focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 rtl:text-right"
                     autoFocus={idx === 0}
                   />
                 </div>
@@ -277,15 +277,15 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
               <UtensilsCrossed className="h-4 w-4" /> الإضافات
             </div>
             {loadingModifiers ? (
-              <div className="flex items-center gap-2 text-[12px] text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل…</div>
+              <div className="flex items-center gap-2 text-[12px] text-text-muted"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل…</div>
             ) : (
               <div className="space-y-3 max-h-72 overflow-y-auto">
                 {modifierGroups.map((group) => (
-                  <div key={group.id} className="rounded-lg border border-slate-200 overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50/80 border-b border-slate-100">
-                      <span className="text-[13px] font-black text-slate-700">{group.name}</span>
+                  <div key={group.id} className="rounded-lg border border-border-normal overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-bg-overlay/80 border-b border-border-subtle">
+                      <span className="text-[13px] font-black text-text-primary">{group.name}</span>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${group.selection_type === "multi" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${group.selection_type === "multi" ? "bg-blue-100 text-blue-700" : "bg-bg-overlay text-text-secondary"}`}>
                           {group.selection_type === "multi" ? "متعدد" : "اختيار واحد"}
                         </span>
                         {group.required ? <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">إجباري</span> : null}
@@ -303,15 +303,15 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
                             className={`w-full flex items-center justify-between rounded-lg px-3 py-2 text-right transition-all ${
                               selected
                                 ? "border-emerald-200 bg-emerald-50 ring-1 ring-emerald-100"
-                                : "border-transparent hover:bg-slate-50"
+                                : "border-transparent hover:bg-bg-overlay"
                             }`}>
                             <div className="flex items-center gap-2">
                               <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                                selected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"
+                                selected ? "border-emerald-500 bg-emerald-500" : "border-border-strong"
                               }`}>
                                 {selected && <Check className="h-3 w-3 text-white" />}
                               </div>
-                              <span className="text-[13px] font-bold text-slate-700">{mod.name}</span>
+                              <span className="text-[13px] font-bold text-text-primary">{mod.name}</span>
                             </div>
                             {mod.price_adjustment !== 0 && (
                               <span className={`text-[12px] font-mono font-black ${mod.price_adjustment > 0 ? "text-emerald-600" : "text-red-500"}`}>
@@ -328,7 +328,7 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
             )}
             {selectedModifiers.length > 0 && modifierPriceDelta !== 0 && (
               <div className="flex items-center justify-between rounded-lg bg-emerald-50/80 px-3 py-2 text-[12px]">
-                <span className="font-bold text-slate-600">إجمالي تعديل السعر</span>
+                <span className="font-bold text-text-secondary">إجمالي تعديل السعر</span>
                 <span className={`font-mono font-black ${modifierPriceDelta > 0 ? "text-emerald-700" : "text-red-500"}`}>
                   {modifierPriceDelta > 0 ? "+" : ""}{money(modifierPriceDelta)}
                 </span>
@@ -338,10 +338,10 @@ export default function LineConfigModal({ line, item, onClose, onApply }) {
         )}
 
         {nothing && (
-          <p className="text-[12px] font-bold text-slate-400">لا توجد خيارات إضافية لهذا السطر.</p>
+          <p className="text-[12px] font-bold text-text-muted">لا توجد خيارات إضافية لهذا السطر.</p>
         )}
 
-        <div className="flex justify-end border-t border-slate-100 pt-3">
+        <div className="flex justify-end border-t border-border-subtle pt-3">
           <button type="button" onClick={() => { if (showModifiersSection) handleModifierApply(); onClose(); }}
             className="rounded-lg bg-primary px-4 py-2 text-[13px] font-black text-white hover:bg-primary-600">تم</button>
         </div>

@@ -1,9 +1,114 @@
 const express = require("express");
 const { authRequired } = require("../middleware/auth");
 const { requireAnyPagePermission } = require("../middleware/permission");
-const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES, processQueue, logSentNotification } = require("../services/telegramService");
+const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, sendTelegramMessage, buildMessage, detectChatId, getBotInfo, EVENT_TYPES, processQueue, logSentNotification, eventTypeForCategory, notifyOwner } = require("../services/telegramService");
+const { SAMPLE_EVENT_DATA } = require("../services/telegramSampleData");
 const { getDb } = require("../config/database");
 const QRCode = require("qrcode");
+
+// Toggle field → Arabic label — used to render a readable diff when the
+// owner changes which events a recipient receives. Only covers the fields
+// actually stored in the DB (notify_* columns).
+const TOGGLE_LABELS = {
+  notifyNewInvoice: "فاتورة جديدة",
+  notifyDailyClose: "إغلاق يومية",
+  notifyLargeAmounts: "مبالغ كبيرة",
+  notifyReturnsVoids: "مرتجعات وإلغاءات",
+  notifyPurchasesPayments: "مشتريات ومدفوعات",
+  notifyCustomerCreated: "عميل جديد",
+  notifySupplierCreated: "مورد جديد",
+  notifyExpenseCreated: "مصروف جديد",
+  notifyReturnPayment: "دفعة مرتجعة",
+  notifyLowStock: "مخزون منخفض",
+  notifySystem: "أحداث النظام",
+  notifyWeekly: "ملخص أسبوعي",
+  notifyMonthly: "ملخص شهري",
+  notifyYearly: "ملخص سنوي",
+  notifyStockTransfer: "تحويل مخزون",
+  notifyInventoryAdjustment: "تعديل مخزون",
+  notifyNewProduct: "منتج جديد",
+  notifyPriceChange: "تغيير سعر",
+  notifyBatchExpiry: "انتهاء صلاحية",
+  notifyPhysicalCount: "جرد فعلي",
+  notifySupplierPayment: "دفعة مورد",
+  notifyDebtPayment: "دفعة دين",
+  notifyInstallmentPaid: "دفعة قسط",
+  notifyPurchaseVoided: "شراء ملغي",
+  notifyPurchaseReturn: "مرتجع شراء",
+  notifyBranchTransfer: "حركة فرع",
+  notifyPasswordChanged: "تغيير كلمة مرور",
+  notifyPermissionChanged: "تغيير صلاحيات",
+  notifySupervisorOverride: "تجاوز صلاحيات",
+  notifyRepairCreated: "طلب صيانة",
+  notifyRevenueCreated: "إيراد جديد",
+  notifyWithdrawalCreated: "سحب نقدي",
+  notifyEmployeeCreated: "موظف جديد",
+  notifySalarySettled: "تسوية راتب",
+  notifyAdvanceCreated: "سلفة جديدة",
+  notifyDeductionCreated: "خصم جديد",
+  notifyBonusCreated: "مكافأة جديدة",
+  notifyExpenseEdited: "تعديل مصروف",
+  notifyExpenseDeleted: "حذف مصروف",
+  notifyRevenueEdited: "تعديل إيراد",
+  notifyRevenueDeleted: "حذف إيراد",
+  notifySalesReturnEdited: "تعديل مرتجع مبيعات",
+  notifySalesReturnCancelled: "إلغاء مرتجع مبيعات",
+  notifyPurchaseReturnEdited: "تعديل مرتجع مشتريات",
+  notifyInvoiceEdited: "تعديل فاتورة مبيعات",
+  notifyInvoiceAmended: "أمندمنت فاتورة",
+  notifyPurchaseEdited: "تعديل مشتريات",
+  notifyPurchaseReturnCancelled: "إلغاء مرتجع مشتريات",
+  notifyBranchTransferEdited: "تعديل حركة فرع",
+  notifyBranchTransferCancelled: "إلغاء حركة فرع",
+  notifyWithdrawalEdited: "تعديل سحب نقدي",
+  notifyWithdrawalDeleted: "حذف سحب نقدي",
+  notifyAppQuit: "إغلاق التطبيق",
+  notifyUserLogout: "تسجيل خروج",
+  notifySalaryPartialPaid: "صرف جزئي راتب",
+  notifyTreasuryChanged: "تغيير خزينة",
+  notifyPaymentMethodChanged: "تغيير وسيلة دفع",
+  notifyPromotionChanged: "تغيير عروض",
+  notifyUserAccount: "حساب مستخدم",
+  notifyTelegramRecipientChanged: "تغيير مستلم إشعارات",
+  notifyEmployeeEdited: "تعديل موظف",
+  notifyAdjustmentCreated: "حافز/خصم",
+  notifyBackupExported: "تصدير نسخة احتياطية",
+  notifyBackupSettingsChanged: "إعدادات النسخ الاحتياطي",
+  notifySettingsChanged: "إعدادات النظام",
+};
+
+// Convert the snake_case recipient from recipientFromBody() to camelCase so
+// it matches the TOGGLE_LABELS keys used for comparison.
+function recipientToCamelCase(r) {
+  const out = {};
+  for (const field of Object.keys(TOGGLE_LABELS)) {
+    const col = field.replace(/([A-Z])/g, "_$1").toLowerCase();
+    out[field] = Boolean(r[col]);
+  }
+  out.name = r.name;
+  out.chatId = r.chat_id;
+  return out;
+}
+
+// Compare two recipient objects and return a readable Arabic diff of which
+// toggles changed. Only changed toggles appear; unchanged ones are silent.
+function describeRecipientToggleDiff(oldRec, newRec) {
+  const changes = [];
+  for (const [field, label] of Object.entries(TOGGLE_LABELS)) {
+    const wasOn = Boolean(oldRec[field]);
+    const isOn = Boolean(newRec[field]);
+    if (wasOn !== isOn) {
+      changes.push(isOn ? `✅ تفعيل: ${label}` : `❌ تعطيل: ${label}`);
+    }
+  }
+  if (oldRec.name !== newRec.name) {
+    changes.push(`📝 الاسم: "${oldRec.name || "—"}" ← "${newRec.name || "—"}"`);
+  }
+  if (oldRec.chatId !== newRec.chatId) {
+    changes.push(`💬 Chat ID: \`${oldRec.chatId || "—"}\` ← \`${newRec.chatId || "—"}\``);
+  }
+  return changes;
+}
 
 const router = express.Router();
 router.use(authRequired);
@@ -93,6 +198,26 @@ function recipientFromBody(body) {
     notify_branch_transfer_cancelled: asBool(body?.notify_branch_transfer_cancelled),
     notify_withdrawal_edited: asBool(body?.notify_withdrawal_edited),
     notify_withdrawal_deleted: asBool(body?.notify_withdrawal_deleted),
+    // Quit/logout events (migration 212)
+    notify_app_quit: asBool(body?.notify_app_quit),
+    notify_user_logout: asBool(body?.notify_user_logout),
+    // Partial salary payout (migration 215)
+    notify_salary_partial_paid: asBool(body?.notify_salary_partial_paid),
+    // Money-channel + tamper coverage (migration 216)
+    notify_treasury_changed: asBool(body?.notify_treasury_changed),
+    notify_payment_method_changed: asBool(body?.notify_payment_method_changed),
+    notify_promotion_changed: asBool(body?.notify_promotion_changed),
+    notify_user_account: asBool(body?.notify_user_account),
+    // Self-watching alert channel (migration 217)
+    notify_telegram_recipient_changed: asBool(body?.notify_telegram_recipient_changed),
+    // Employee edit + legacy adjustment (migration 218)
+    notify_employee_edited: asBool(body?.notify_employee_edited),
+    notify_adjustment_created: asBool(body?.notify_adjustment_created),
+    // Backup export + settings change (migration 219)
+    notify_backup_exported: asBool(body?.notify_backup_exported),
+    notify_backup_settings_changed: asBool(body?.notify_backup_settings_changed),
+    // Bulk settings change (migration 220)
+    notify_settings_changed: asBool(body?.notify_settings_changed),
     event_presets: parseEventPresets(body?.event_presets),
   };
 }
@@ -138,6 +263,21 @@ const RECIPIENT_WRITE_COLUMNS = [
   "notify_purchase_edited", "notify_purchase_return_cancelled",
   "notify_branch_transfer_edited", "notify_branch_transfer_cancelled",
   "notify_withdrawal_edited", "notify_withdrawal_deleted",
+  // Quit/logout events (migration 212)
+  "notify_app_quit", "notify_user_logout",
+  // Partial salary payout (migration 215)
+  "notify_salary_partial_paid",
+  // Money-channel + tamper coverage (migration 216)
+  "notify_treasury_changed", "notify_payment_method_changed",
+  "notify_promotion_changed", "notify_user_account",
+  // Self-watching alert channel (migration 217)
+  "notify_telegram_recipient_changed",
+  // Employee edit + legacy adjustment (migration 218)
+  "notify_employee_edited", "notify_adjustment_created",
+  // Backup export + settings change (migration 219)
+  "notify_backup_exported", "notify_backup_settings_changed",
+  // Bulk settings change (migration 220)
+  "notify_settings_changed",
   "event_presets",
 ];
 
@@ -196,10 +336,36 @@ router.post("/recipients", requireAnyPagePermission(["settings", "whatsapp_crm"]
     // duplicated — repeated saves from the client stay idempotent.
     const existing = db.prepare("SELECT id FROM telegram_recipients WHERE chat_id = ?").get(r.chat_id);
     if (existing) {
+      const oldRow = db.prepare("SELECT * FROM telegram_recipients WHERE id = ?").get(existing.id);
       updateRecipient(db, existing.id, r);
+      try {
+        const diffChanges = describeRecipientToggleDiff(
+          oldRow ? recipientToCamelCase(oldRow) : {},
+          recipientToCamelCase(r),
+        );
+        const diffText = diffChanges.length ? diffChanges.join("\n") : "بدون تغيير في الأحداث";
+        notifyOwner(EVENT_TYPES.TELEGRAM_RECIPIENT_CHANGED, {
+          actionLabel: "تعديل مستلم إشعارات",
+          recipientName: r.name || "مستلم Telegram",
+          chatId: r.chat_id,
+          changesSummary: diffText,
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        }, db);
+      } catch (_) { /* non-critical */ }
       return res.json({ success: true, data: { id: existing.id, ...r } });
     }
     const id = insertRecipient(db, r);
+    try {
+      notifyOwner(EVENT_TYPES.TELEGRAM_RECIPIENT_CHANGED, {
+        actionLabel: "إضافة مستلم إشعارات جديد",
+        recipientName: r.name || "مستلم Telegram",
+        chatId: r.chat_id,
+        changesSummary: "تمت إضافة مستلم جديد لاستقبال الإشعارات",
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: { id, ...r } });
   } catch (e) {
     schemaErrorResponse(res, e);
@@ -217,7 +383,23 @@ router.put("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_cr
     if (clash) {
       return res.status(400).json({ success: false, message: "يوجد مستلم آخر بنفس معرّف المحادثة" });
     }
+    const oldRow = db.prepare("SELECT * FROM telegram_recipients WHERE id = ?").get(req.params.id);
     updateRecipient(db, req.params.id, r);
+    try {
+      const diffChanges = describeRecipientToggleDiff(
+        oldRow ? recipientToCamelCase(oldRow) : {},
+        recipientToCamelCase(r),
+      );
+      const diffText = diffChanges.length ? diffChanges.join("\n") : "بدون تغيير في الأحداث";
+      notifyOwner(EVENT_TYPES.TELEGRAM_RECIPIENT_CHANGED, {
+        actionLabel: "تعديل مستلم إشعارات",
+        recipientName: r.name || "مستلم Telegram",
+        chatId: r.chat_id,
+        changesSummary: diffText,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: { id: Number(req.params.id), ...r } });
   } catch (e) {
     schemaErrorResponse(res, e);
@@ -226,7 +408,19 @@ router.put("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_cr
 
 router.delete("/recipients/:id", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
   try {
-    getDb().prepare("DELETE FROM telegram_recipients WHERE id = ?").run(req.params.id);
+    const db = getDb();
+    const row = db.prepare("SELECT name, chat_id FROM telegram_recipients WHERE id = ?").get(req.params.id);
+    db.prepare("DELETE FROM telegram_recipients WHERE id = ?").run(req.params.id);
+    try {
+      notifyOwner(EVENT_TYPES.TELEGRAM_RECIPIENT_CHANGED, {
+        actionLabel: "حذف مستلم إشعارات",
+        recipientName: row?.name || "مستلم Telegram",
+        chatId: row?.chat_id || "—",
+        changesSummary: "تم حذف المستلم نهائياً",
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -314,6 +508,51 @@ router.post("/insights/send", requireAnyPagePermission(["settings", "whatsapp_cr
       sent++;
     }
     res.json({ success: true, data: { sent, text } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ── Template previews (single source of truth) ─────────────────────────────
+// Renders sample messages through the SAME buildMessage pipeline used for real
+// sends (template resolution, token substitution, Markdown escaping, live
+// accumulative day-footer). The client must never re-render templates locally
+// — that produced previews that differed from delivered messages.
+function renderPreviewItem(db, item) {
+  const category = String(item?.category || "");
+  const eventType = eventTypeForCategory(category);
+  if (!eventType) return null; // digests etc. — client keeps its fallback
+  const sample = SAMPLE_EVENT_DATA[eventType];
+  if (!sample) return null;
+  const label = item?.label ? String(item.label) : null;
+  const bodyOverride = item?.body ? String(item.body) : null;
+  return buildMessage(eventType, sample, db, label, bodyOverride);
+}
+
+router.post("/preview", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
+  try {
+    const text = renderPreviewItem(getDb(), req.body || {});
+    res.json({ success: true, data: { text } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Batch variant: items = [{category, label?, body?}] → { "category|label": text }
+router.post("/previews", requireAnyPagePermission(["settings", "whatsapp_crm"], "view"), (req, res) => {
+  try {
+    const db = getDb();
+    const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 200) : [];
+    const out = {};
+    for (const item of items) {
+      const key = `${item?.category || ""}|${item?.label || ""}`;
+      try {
+        out[key] = renderPreviewItem(db, item);
+      } catch (_) {
+        out[key] = null;
+      }
+    }
+    res.json({ success: true, data: out });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -439,9 +678,23 @@ router.delete("/pairing/:code", requireAnyPagePermission(["settings", "whatsapp_
 // Disconnect Telegram: clear local credentials and retry queue.
 // Note: Telegram has no API to revoke the bot token itself;
 // the user must revoke it via @BotFather if desired.
-router.post("/disconnect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), (req, res) => {
+router.post("/disconnect", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
   try {
     const db = getDb();
+    // Warn the owner BEFORE the credentials are wiped — after this runs there
+    // is no bot left to send with, so disconnecting would otherwise be the one
+    // action that silences the alerts without ever reporting itself.
+    try {
+      await Promise.race([
+        notifyOwner(EVENT_TYPES.NOTIFICATIONS_DISABLED, {
+          changeLabel: "تم فصل تيليجرام وحذف كل المستلمين",
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        }, db),
+        new Promise((r) => setTimeout(r, 5000)),
+      ]);
+    } catch (_) { /* never block the disconnect */ }
+
     db.prepare(`
       UPDATE settings SET
         telegram_enabled = 0,

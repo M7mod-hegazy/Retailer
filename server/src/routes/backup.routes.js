@@ -20,6 +20,7 @@ const {
 } = require("../services/backupService");
 const { authRequired } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const { ensureWritableDir } = require("../config/paths");
 
@@ -31,6 +32,23 @@ const upload = multer({ dest: ensureWritableDir(path.join(os.tmpdir(), "ElHegazi
 router.use(authRequired);
 
 const can = (action) => requirePagePermission("backup", action);
+
+// Restore/wipe replace or delete the data the owner would audit — and can swap
+// out the DB holding the Telegram config — so their alert must be sent and
+// awaited BEFORE the destructive step. Bounded so a slow network can never
+// block the operation itself.
+async function notifyBeforeDestructive(req, eventType, data) {
+  try {
+    await Promise.race([
+      notifyOwner(eventType, {
+        ...data,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, getDb()),
+      new Promise((r) => setTimeout(r, 5000)),
+    ]);
+  } catch (_) { /* never block a destructive op on its own alert */ }
+}
 
 // --- Preview (dry run) -----------------------------------------------------
 router.get("/preview", can("create"), (_req, res, next) => {
@@ -53,6 +71,15 @@ router.post("/trigger", can("create"), (req, res, next) => {
     } catch (e) {
       // non-fatal
     }
+    // Notify owner of manual backup (automated backups fire from autoBackup.js)
+    try {
+      notifyOwner(TG.BACKUP_RESULT, {
+        success: true,
+        reason: label || "نسخة يدوية",
+        filePath: result.dbPath,
+        error: null,
+      }, getDb());
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: { path: result.dbPath, summary: result.summary } });
   } catch (err) {
     next(err);
@@ -69,8 +96,15 @@ router.get("/list", can("view"), (_req, res, next) => {
 });
 
 // --- Restore from a server-side checkpoint path ----------------------------
-router.post("/restore", can("restore"), (req, res, next) => {
+router.post("/restore", can("restore"), async (req, res, next) => {
   try {
+    // Notify before the swap: after restoring, the DB (and its Telegram
+    // settings/queue) is a different file, so a post-restore alert could
+    // silently vanish. Restoring an old backup is also how recent activity
+    // gets erased, which is exactly what the owner needs to hear about.
+    await notifyBeforeDestructive(req, TG.BACKUP_RESTORED, {
+      source: String(req.body?.path || "نسخة محفوظة"),
+    });
     const result = restoreBackup({ path: String(req.body?.path || "") });
     res.json({
       success: true,
@@ -85,12 +119,17 @@ router.post("/restore", can("restore"), (req, res, next) => {
 });
 
 // --- Restore from an uploaded file (.db or .zip) — fallback path -----------
-router.post("/restore-upload", can("restore"), upload.single("backupFile"), (req, res, next) => {
+router.post("/restore-upload", can("restore"), upload.single("backupFile"), async (req, res, next) => {
   const tmpExtractDir = path.join(os.tmpdir(), `retailer-import-${Date.now()}`);
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "لم يتم تحديد ملف استعادة" });
     }
+
+    // Fire before the swap — see the /restore handler for why.
+    await notifyBeforeDestructive(req, TG.BACKUP_RESTORED, {
+      source: `ملف مرفوع: ${req.file.originalname || "غير معروف"}`,
+    });
 
     const dbPath = getDbPath();
     const rollback = performBackup({ triggerType: "pre-restore", label: "auto safety before import" });
@@ -175,6 +214,15 @@ router.post("/export", can("export"), (req, res, next) => {
       path: String(req.body?.path || ""),
       destPath: String(req.body?.destPath || ""),
     });
+    // Notify owner of checkpoint export (data exfiltration vector)
+    try {
+      notifyOwner(TG.BACKUP_EXPORTED, {
+        filePath: result?.path || req.body?.destPath || "—",
+        fileSize: result?.size || "—",
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, getDb());
+    } catch (_) { /* non-critical */ }
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -191,9 +239,14 @@ router.get("/purge-preview", can("empty"), (_req, res, next) => {
 });
 
 // --- Purge selected categories ---------------------------------------------
-router.post("/empty", can("empty"), (req, res, next) => {
+router.post("/empty", can("empty"), async (req, res, next) => {
   try {
     const categories = Array.isArray(req.body?.categories) ? req.body.categories : [];
+    // Wiping data can remove the very records an owner would audit, so the
+    // alert goes out before the purge runs.
+    await notifyBeforeDestructive(req, TG.DATA_WIPED, {
+      scope: categories.length ? categories.join("، ") : "كل البيانات المحددة",
+    });
     const result = emptyDatabase({
       categories,
       ownerPassword: String(req.body?.ownerPassword || ""),
@@ -233,6 +286,10 @@ router.get("/settings", can("view"), (_req, res, next) => {
 
 router.put("/settings", can("create"), (req, res, next) => {
   try {
+    const db = getDb();
+    // Read old settings before update for Telegram notification
+    const oldSettings = db.prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`).get();
+
     const autoBackupEnabled = req.body?.auto_backup_enabled ? 1 : 0;
     const autoBackupPath = sanitizePath(req.body?.auto_backup_path) || null;
 
@@ -241,15 +298,34 @@ router.put("/settings", can("create"), (req, res, next) => {
     if (!Number.isFinite(intervalHours)) intervalHours = 24;
     intervalHours = Math.min(168, Math.max(1, intervalHours));
 
-    getDb()
-      .prepare(
-        "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = ? WHERE id = 1",
-      )
-      .run(autoBackupEnabled, autoBackupPath, intervalHours, nowSql());
+    db.prepare(
+      "UPDATE settings SET auto_backup_enabled = ?, auto_backup_path = ?, auto_backup_interval_hours = ?, updated_at = ? WHERE id = 1"
+    ).run(autoBackupEnabled, autoBackupPath, intervalHours, nowSql());
 
-    const settings = getDb()
-      .prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`)
-      .get();
+    // Notify owner of backup settings changes
+    try {
+      const changes = [];
+      if (oldSettings && oldSettings.auto_backup_enabled !== autoBackupEnabled) {
+        changes.push({ settingName: "النسخ الاحتياطي التلقائي", oldValue: oldSettings.auto_backup_enabled ? "مفعل" : "معطّل", newValue: autoBackupEnabled ? "مفعل" : "معطّل" });
+      }
+      if (oldSettings && oldSettings.auto_backup_interval_hours !== intervalHours) {
+        changes.push({ settingName: "فترة النسخ الاحتياطي", oldValue: `${oldSettings.auto_backup_interval_hours} ساعة`, newValue: `${intervalHours} ساعة` });
+      }
+      if (oldSettings && (oldSettings.auto_backup_path || "") !== (autoBackupPath || "")) {
+        changes.push({ settingName: "مسار النسخ الاحتياطي", oldValue: oldSettings.auto_backup_path || "—", newValue: autoBackupPath || "—" });
+      }
+      for (const change of changes) {
+        notifyOwner(TG.BACKUP_SETTINGS_CHANGED, {
+          settingName: change.settingName,
+          oldValue: change.oldValue,
+          newValue: change.newValue,
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        }, db);
+      }
+    } catch (_) { /* non-critical */ }
+
+    const settings = db.prepare(`SELECT ${SETTINGS_COLS} FROM settings WHERE id = 1`).get();
     if (settings) {
       settings.auto_backup_path = sanitizePath(settings.auto_backup_path) || null;
       try {

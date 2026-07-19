@@ -29,7 +29,7 @@ export default function CriticalSettingsWarning({ settings, onNavigate, lang = "
                 key={key}
                 type="button"
                 onClick={() => onNavigate?.(key)}
-                className="inline-flex items-center gap-1.5 rounded-sm border border-amber-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-amber-800 shadow-sm transition-all hover:border-amber-500 hover:bg-amber-100 active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-sm border border-amber-300 bg-bg-surface px-2.5 py-1.5 text-[11px] font-bold text-amber-800 shadow-sm transition-all hover:border-amber-500 hover:bg-amber-100 active:scale-95"
               >
                 {label}
                 <ArrowLeft className="h-3 w-3" />

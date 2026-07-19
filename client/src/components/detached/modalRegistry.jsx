@@ -60,15 +60,15 @@ registerModal("generic", GenericDetachedModal);
 
 function GenericDetachedModal({ title, contentHtml }) {
   return (
-    <div className="flex h-dvh flex-col bg-white">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 className="truncate text-sm font-bold text-slate-800">
+    <div className="flex h-dvh flex-col bg-bg-surface">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-normal bg-bg-overlay px-4 py-3">
+        <h3 className="truncate text-sm font-bold text-text-primary">
           {title || "نافذة منفصلة"}
         </h3>
         <button
           type="button"
           onClick={() => window.electronAPI?.closeModalWindow?.()}
-          className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+          className="flex h-7 w-7 items-center justify-center rounded-sm text-text-muted transition-colors hover:bg-border-normal hover:text-text-primary"
         >
           <X className="h-4 w-4" />
         </button>
@@ -77,7 +77,7 @@ function GenericDetachedModal({ title, contentHtml }) {
         <div className="flex-1 overflow-y-auto p-5" dangerouslySetInnerHTML={{ __html: contentHtml }} />
       ) : (
         <div className="flex flex-1 items-center justify-center p-8">
-          <p className="text-sm text-slate-500">هذه النافذة لا تدعم الفصل بعد</p>
+          <p className="text-sm text-text-secondary">هذه النافذة لا تدعم الفصل بعد</p>
         </div>
       )}
     </div>

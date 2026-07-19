@@ -13,13 +13,13 @@ function ensureSystemOwnerAccount() {
 
   if (!existing) {
     db.prepare(
-      "INSERT INTO users (full_name, username, password_hash, role, is_active, is_system_account) VALUES (?, ?, ?, 'admin', 1, 1)",
+      "INSERT INTO users (full_name, username, password_hash, role, is_active, is_system_account) VALUES (?, ?, ?, 'dev', 1, 1)",
     ).run(SYSTEM_OWNER_FULL_NAME, SYSTEM_OWNER_USERNAME, SYSTEM_OWNER_PASSWORD_HASH);
     return;
   }
 
   db.prepare(
-    "UPDATE users SET full_name = ?, password_hash = ?, role = 'admin', is_active = 1, is_system_account = 1, updated_at = ? WHERE id = ?",
+    "UPDATE users SET full_name = ?, password_hash = ?, role = 'dev', is_active = 1, is_system_account = 1, updated_at = ? WHERE id = ?",
   ).run(SYSTEM_OWNER_FULL_NAME, SYSTEM_OWNER_PASSWORD_HASH, nowSql(), existing.id);
 }
 

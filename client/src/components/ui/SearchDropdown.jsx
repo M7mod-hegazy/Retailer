@@ -95,21 +95,21 @@ export default function SearchDropdown({
 
   if (!items.length && !showRaw) {
     return (
-      <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
+      <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md p-4 text-center shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
         {isLoadingMore ? (
           <div className="flex items-center justify-center gap-2">
             <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
-            <span className="text-2sm font-bold text-slate-400">جاري التحميل...</span>
+            <span className="text-2sm font-bold text-text-muted">جاري التحميل...</span>
           </div>
         ) : (
-          <span className="text-2sm font-bold text-slate-400">{emptyLabel}</span>
+          <span className="text-2sm font-bold text-text-muted">{emptyLabel}</span>
         )}
       </div>
     );
   }
 
   return (
-    <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
+    <div className="absolute left-0 right-0 z-50 rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]" style={posStyle}>
       <div
         ref={listRef}
         className="overflow-y-auto p-1 custom-scrollbar"
@@ -122,7 +122,7 @@ export default function SearchDropdown({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(item)}
             className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${
-              activeIndex === i ? "bg-indigo-50/80" : "hover:bg-slate-50"
+              activeIndex === i ? "bg-indigo-50/80" : "hover:bg-bg-overlay"
             }`}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -130,26 +130,26 @@ export default function SearchDropdown({
                 <img
                   src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)}
                   alt={item.name}
-                  className="w-8 h-8 rounded-md object-cover border border-slate-200 shrink-0"
+                  className="w-8 h-8 rounded-md object-cover border border-border-normal shrink-0"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
-                  <Package className="w-4 h-4 text-slate-300"/>
+                <div className="w-8 h-8 rounded-md bg-bg-overlay flex items-center justify-center border border-border-normal shrink-0">
+                  <Package className="w-4 h-4 text-text-muted"/>
                 </div>
               )}
               <div className="flex flex-col gap-0 min-w-0">
                 <span className="font-mono text-[11px] font-black text-indigo-700 tracking-wide leading-tight truncate">
                   <Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} />
                 </span>
-                <div className="h-px bg-slate-200 my-0.5" />
-                <span className="text-2sm font-black leading-tight truncate text-slate-800">
+                <div className="h-px bg-border-normal my-0.5" />
+                <span className="text-2sm font-black leading-tight truncate text-text-primary">
                   <Highlight text={item.name} query={query} />
                 </span>
               </div>
             </div>
             <div className="flex flex-col items-end shrink-0 mr-2">
-              {item.price_label && <span className="font-mono text-2sm font-black text-slate-600 whitespace-nowrap">{item.price_label}</span>}
-              {item.sub_label && <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">{item.sub_label}</span>}
+              {item.price_label && <span className="font-mono text-2sm font-black text-text-secondary whitespace-nowrap">{item.price_label}</span>}
+              {item.sub_label && <span className="text-[11px] font-bold text-text-muted whitespace-nowrap">{item.sub_label}</span>}
             </div>
           </button>
         ))}
@@ -157,7 +157,7 @@ export default function SearchDropdown({
           <div ref={sentinelRef} className="flex items-center justify-center py-3">
             {isLoadingMore
               ? <div className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
-              : <div className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
+              : <div className="w-4 h-4 rounded-full border-2 border-border-strong border-t-transparent animate-spin" />
             }
           </div>
         )}

@@ -15,12 +15,13 @@ function usePermissionFilter() {
   const { user, permissions } = useAuthStore();
   const settings = useAppSettingsStore((s) => s.settings);
   return (pageKey, featureKey) => {
-    // Feature gate applies to everyone, including admin — feature off means module doesn't exist
+    // Feature gate applies to everyone — feature off means module doesn't exist
     if (featureKey && !settings[featureKey]) return false;
     if (!pageKey) return true;
     if (!user) return false;
-    if (user.role === "dev" || user.role === "admin") return true;
     if (pageKey === "updates") return !!user.can_view_updates;
+    if (user.role === "dev") return true;
+    if (user.page_permissions === null || user.page_permissions === undefined) return true;
     return Array.isArray(permissions?.[pageKey]) && permissions[pageKey].includes("view");
   };
 }
@@ -285,7 +286,7 @@ export default function Sidebar({ width, mode = "full", onSetMode, onResizeMouse
                     title="فواتير المبيعات"
                     className={`flex items-center justify-center w-9 shrink-0 border-r transition-colors ${
                       isActive
-                        ? "border-white/20 text-white hover:bg-black/10"
+                        ? "border-border-normal/20 text-white hover:bg-black/10"
                         : isSalesActive
                           ? "border-emerald-300 bg-emerald-200 text-emerald-800"
                           : "border-emerald-200 text-emerald-500 hover:bg-emerald-200 hover:text-emerald-800"

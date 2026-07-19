@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import TitleBar from "./TitleBar";
 import { useAuthStore } from "../../stores/authStore";
 import { useQuitOrLogoutStore } from "../../stores/quitOrLogoutStore";
+import { notifyServerLogout } from "../../services/api";
 
 export default function QuitOrLogoutModal() {
   const { show, source, hideModal } = useQuitOrLogoutStore();
@@ -16,6 +17,7 @@ export default function QuitOrLogoutModal() {
   const isFromWindowClose = source === "window_close";
 
   const handleLogout = () => {
+    notifyServerLogout("تسجيل خروج");
     logout();
     hideModal();
     navigate("/login");
@@ -53,13 +55,13 @@ export default function QuitOrLogoutModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.15 }}
-            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/10"
+            className="w-full max-w-sm rounded-xl bg-bg-surface p-6 shadow-2xl ring-1 ring-slate-900/10"
             onClick={(e) => e.stopPropagation()}
           >
             <TitleBar title="تأكيد" onClose={handleCancel} showDetach={false} />
 
             <div data-modal-content>
-            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+            <p className="text-sm text-text-secondary mb-6 leading-relaxed">
               {isFromWindowClose
                 ? "هل تريد إخفاء البرنامج في شريط المهام أو إغلاقه بالكامل أم تسجيل الخروج فقط؟"
                 : "هل تريد إغلاق البرنامج بالكامل أم تسجيل الخروج فقط؟"}
@@ -69,7 +71,7 @@ export default function QuitOrLogoutModal() {
               {isFromWindowClose && (
                 <button
                   onClick={handleHide}
-                  className="flex items-center justify-center gap-2.5 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                  className="flex items-center justify-center gap-2.5 w-full rounded-lg border border-border-strong bg-bg-surface px-4 py-3 text-sm font-bold text-text-primary transition-colors hover:bg-bg-overlay"
                 >
                   <ArrowDownToLine className="h-4 w-4" />
                   إخفاء للتطبيق (الدرج)
@@ -86,7 +88,7 @@ export default function QuitOrLogoutModal() {
 
               <button
                 onClick={handleLogout}
-                className="flex items-center justify-center gap-2.5 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                className="flex items-center justify-center gap-2.5 w-full rounded-lg border border-border-strong bg-bg-surface px-4 py-3 text-sm font-bold text-text-primary transition-colors hover:bg-bg-overlay"
               >
                 <LogOut className="h-4 w-4" />
                 تسجيل خروج

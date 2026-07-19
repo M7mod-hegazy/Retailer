@@ -72,20 +72,20 @@ function RecipeSection({ itemId }) {
 
       {/* Existing ingredients */}
       {loading ? (
-        <p className="text-xs text-slate-400">جاري التحميل...</p>
+        <p className="text-xs text-text-muted">جاري التحميل...</p>
       ) : recipes.length === 0 ? (
-        <p className="text-xs text-slate-500">لا توجد مكونات مضافة بعد — أضف المكونات أدناه.</p>
+        <p className="text-xs text-text-secondary">لا توجد مكونات مضافة بعد — أضف المكونات أدناه.</p>
       ) : (
         <div className="space-y-1.5">
           {recipes.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-emerald-100">
+            <div key={r.id} className="flex items-center justify-between rounded-lg bg-bg-surface px-3 py-2 border border-emerald-100">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-700">{r.ingredient_name}</span>
+                <span className="text-sm font-bold text-text-primary">{r.ingredient_name}</span>
                 <span className="text-xs font-mono font-bold text-emerald-600">x{r.quantity}</span>
-                {r.unit_name && <span className="text-[11px] text-slate-400">{r.unit_name}</span>}
+                {r.unit_name && <span className="text-[11px] text-text-muted">{r.unit_name}</span>}
               </div>
               <button type="button" onClick={() => removeIngredient(r.ingredient_item_id)}
-                className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors">
+                className="p-1 rounded hover:bg-red-50 text-text-muted hover:text-red-600 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -98,15 +98,15 @@ function RecipeSection({ itemId }) {
         <div className="relative">
           <input type="text" value={ingredientSearch} onChange={(e) => setIngredientSearch(e.target.value)}
             placeholder="ابحث عن صنف (اسم أو كود)..."
-            className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 pr-9 text-sm placeholder:text-slate-300 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+            className="w-full rounded-lg border border-emerald-200 bg-bg-surface px-3 py-2 pr-9 text-sm placeholder:text-text-muted focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+          <Search className="absolute right-3 top-2.5 h-4 w-4 text-text-muted" />
           {searchResults.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg max-h-40 overflow-y-auto">
+            <div className="absolute z-10 mt-1 w-full rounded-lg border border-border-normal bg-bg-surface shadow-lg max-h-40 overflow-y-auto">
               {searchResults.map((item) => (
                 <button key={item.id} type="button" onClick={() => { setNewIngredient(item); setIngredientSearch(item.name); setSearchResults([]); }}
-                  className="w-full text-right px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
+                  className="w-full text-right px-3 py-2 text-sm font-bold text-text-primary hover:bg-bg-overlay border-b border-border-subtle last:border-b-0">
                   {item.name}
-                  <span className="mr-2 text-[11px] text-slate-400 font-mono">{item.code || item.item_code || ""}</span>
+                  <span className="mr-2 text-[11px] text-text-muted font-mono">{item.code || item.item_code || ""}</span>
                 </button>
               ))}
             </div>
@@ -116,9 +116,9 @@ function RecipeSection({ itemId }) {
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-emerald-700 shrink-0">{newIngredient.name}</span>
             <input type="number" step="0.01" min="0.01" value={newQty} onChange={(e) => setNewQty(e.target.value)}
-              placeholder="الكمية" className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-center font-bold" />
+              placeholder="الكمية" className="w-20 rounded-lg border border-border-normal px-2 py-1.5 text-sm text-center font-bold" />
             <input type="text" value={newUnit} onChange={(e) => setNewUnit(e.target.value)}
-              placeholder="الوحدة" className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
+              placeholder="الوحدة" className="w-24 rounded-lg border border-border-normal px-2 py-1.5 text-sm" />
             <Button type="button" size="sm" onClick={addIngredient}><Plus className="h-4 w-4 me-1" />إضافة</Button>
           </div>
         )}

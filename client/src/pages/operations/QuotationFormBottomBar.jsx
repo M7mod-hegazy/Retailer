@@ -25,7 +25,7 @@ const COLOR_MAP = {
   bank_transfer: { bg: "bg-blue-50",       text: "text-blue-600",       border: "border-blue-200",       activeBg: "bg-blue-600" },
   credit:        { bg: "bg-amber-50",      text: "text-amber-600",      border: "border-amber-200",      activeBg: "bg-amber-600" },
   installments:  { bg: "bg-violet-50",     text: "text-violet-600",     border: "border-violet-200",     activeBg: "bg-violet-600" },
-  multi:         { bg: "bg-slate-50",      text: "text-slate-600",      border: "border-slate-200",      activeBg: "bg-slate-700" },
+  multi:         { bg: "bg-bg-overlay",      text: "text-text-secondary",      border: "border-border-normal",      activeBg: "bg-slate-700" },
 };
 
 export default function QuotationFormBottomBar({
@@ -74,7 +74,7 @@ export default function QuotationFormBottomBar({
         {/* Row 1: Customer + Increase/Decrease + Tax + Total */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1 border-b border-zinc-100" style={{ backgroundColor: "var(--primary-200)" }}>
           <div ref={searchRef} className="relative shrink-0 z-[70]">
-            <div className="flex items-center gap-0.5 rounded-lg bg-white/80 border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div className="flex items-center gap-0.5 rounded-lg bg-bg-surface/80 border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -112,7 +112,7 @@ export default function QuotationFormBottomBar({
             )}
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
+          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-border-normal/40 shrink-0">
             <ShoppingCart className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
             <span className="text-[10px] font-bold text-zinc-500">أصناف</span>
@@ -132,7 +132,7 @@ export default function QuotationFormBottomBar({
                   : onIncreaseChange(val);
               }}
               placeholder="0"
-              className="min-w-[30px] rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
+              className="min-w-[30px] rounded border border-blue-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
             <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">زيادة</span>
             {onIncreaseModeChange && (
               <button type="button" onClick={() => onIncreaseModeChange(increaseMode === 'pct' ? 'flat' : 'pct')}
@@ -157,7 +157,7 @@ export default function QuotationFormBottomBar({
                   : onDecreaseChange(val);
               }}
               placeholder="0"
-              className="min-w-[30px] rounded border border-rose-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400 transition-colors" />
+              className="min-w-[30px] rounded border border-rose-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400 transition-colors" />
             <span className="text-[10px] font-bold text-rose-600 whitespace-nowrap">نقصان</span>
             {onDecreaseModeChange && (
               <button type="button" onClick={() => onDecreaseModeChange(decreaseMode === 'pct' ? 'flat' : 'pct')}
@@ -205,8 +205,8 @@ export default function QuotationFormBottomBar({
                     ${isActive
                       ? `${c.activeBg} text-white border-transparent shadow-sm`
                       : isDisabled
-                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
-                        : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-white`
+                        ? "opacity-35 cursor-not-allowed bg-bg-overlay border-border-subtle text-text-muted"
+                        : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-bg-surface`
                     }`}>
                   <span className="whitespace-nowrap">{label}</span>
                 </button>
@@ -217,10 +217,10 @@ export default function QuotationFormBottomBar({
           <span className="h-4 w-px bg-zinc-200 shrink-0" />
 
           {paymentType === "bank_transfer" && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-bg-surface rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <CreditCard className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               <select value={selectedBankId} onChange={e => onBankChange?.(e.target.value)}
-                className="max-w-[100px] rounded border border-blue-200 bg-white px-1 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-blue-500">
+                className="max-w-[100px] rounded border border-blue-200 bg-bg-surface px-1 py-0.5 text-2sm font-bold text-text-primary outline-none focus:border-blue-500">
                 <option value="">اختر البنك / البطاقة</option>
                 {banks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
@@ -233,16 +233,16 @@ export default function QuotationFormBottomBar({
             </div>
           )}
           {paymentType === "installments" && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white rounded-lg border border-zinc-200 px-2 py-0.5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-bg-surface rounded-lg border border-zinc-200 px-2 py-0.5 shadow-sm">
               <label className="flex items-center gap-1 shrink-0">
-                <span className="text-2sm font-bold text-slate-600">دفعة مقدم</span>
+                <span className="text-2sm font-bold text-text-secondary">دفعة مقدم</span>
                 <input type="number" min="0" value={amountPaid} onChange={e => onAmountPaidChange?.(e.target.value)}
-                  className="w-16 rounded border border-violet-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-slate-800 outline-none focus:border-violet-500" />
+                  className="w-16 rounded border border-violet-200 bg-bg-surface px-1 py-0.5 text-center font-mono text-2sm font-black text-text-primary outline-none focus:border-violet-500" />
               </label>
               <label className="flex items-center gap-1 shrink-0">
-                <span className="text-2sm font-bold text-slate-600">تاريخ الاستحقاق</span>
+                <span className="text-2sm font-bold text-text-secondary">تاريخ الاستحقاق</span>
                 <input type="date" value={installmentDueDate} onChange={e => onInstallmentDueDateChange?.(e.target.value)}
-                  className="w-24 rounded border border-violet-200 bg-white px-1 py-0.5 text-2sm font-bold text-slate-700 outline-none focus:border-violet-500" />
+                  className="w-24 rounded border border-violet-200 bg-bg-surface px-1 py-0.5 text-2sm font-bold text-text-primary outline-none focus:border-violet-500" />
               </label>
               {selectedCustomer && (
                 <span className="text-2sm font-black text-violet-800 whitespace-nowrap">
@@ -252,11 +252,11 @@ export default function QuotationFormBottomBar({
             </div>
           )}
           {paymentType === "multi" && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-bg-surface rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
               <label className="flex items-center gap-1 shrink-0">
-                <span className="text-2sm font-bold text-slate-600">💵 نقدي</span>
+                <span className="text-2sm font-bold text-text-secondary">💵 نقدي</span>
                 <input type="number" min="0" value={multiCash} onChange={e => onMultiCashChange?.(e.target.value)} placeholder="0"
-                  className="w-16 rounded border border-emerald-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-slate-800 outline-none focus:border-emerald-400" />
+                  className="w-16 rounded border border-emerald-200 bg-bg-surface px-1 py-0.5 text-center font-mono text-2sm font-black text-text-primary outline-none focus:border-emerald-400" />
                 <button type="button" title="املأ المتبقي" onClick={() => { const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); const cr = Number(multiCredit||0); onMultiCashChange?.(String(Math.max(0, totals.total - c - cr))); }}
                   className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 active:scale-90">
                   <Wand2 className="h-2.5 w-2.5" />
@@ -264,9 +264,9 @@ export default function QuotationFormBottomBar({
               </label>
               {customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').map(m => (
                 <label key={m.id} className="flex items-center gap-1 shrink-0">
-                  <span className="text-2sm font-bold text-slate-600 whitespace-nowrap">{m.icon} {m.name}</span>
+                  <span className="text-2sm font-bold text-text-secondary whitespace-nowrap">{m.icon} {m.name}</span>
                   <input type="number" min="0" value={multiCustomAmounts[m.id] || ""} onChange={e => onMultiCustomAmountsChange?.(prev => ({...prev, [m.id]: e.target.value}))} placeholder="0"
-                    className="w-16 rounded border border-violet-200 bg-white px-1 py-0.5 text-center font-mono text-2sm font-black text-slate-800 outline-none focus:border-violet-400" />
+                    className="w-16 rounded border border-violet-200 bg-bg-surface px-1 py-0.5 text-center font-mono text-2sm font-black text-text-primary outline-none focus:border-violet-400" />
                   <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const cr = Number(multiCredit||0); const others = customPayMethods.filter(mm => !mm.name?.includes('بنك') && !mm.name?.includes('تحويل') && mm.icon !== '🏦' && mm.id !== m.id).reduce((s, mm) => s + Number(multiCustomAmounts[mm.id]||0), 0); onMultiCustomAmountsChange?.(prev => ({...prev, [m.id]: String(Math.max(0, totals.total - ca - others - cr))})); }}
                     className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-600 hover:bg-violet-200 active:scale-90">
                     <Wand2 className="h-2.5 w-2.5" />
@@ -274,10 +274,10 @@ export default function QuotationFormBottomBar({
                 </label>
               ))}
               <label className="flex items-center gap-1 shrink-0">
-                <span className={`text-2sm font-bold ${selectedCustomer?.id ? 'text-amber-700' : 'text-slate-400'}`}>📋 آجل</span>
+                <span className={`text-2sm font-bold ${selectedCustomer?.id ? 'text-amber-700' : 'text-text-muted'}`}>📋 آجل</span>
                 <input type="number" min="0" value={multiCredit} onChange={e => onMultiCreditChange?.(e.target.value)} placeholder="0"
                   disabled={!selectedCustomer?.id}
-                  className={`w-16 rounded border px-1 py-0.5 text-center font-mono text-2sm font-black outline-none ${selectedCustomer?.id ? 'border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400' : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'}`} />
+                  className={`w-16 rounded border px-1 py-0.5 text-center font-mono text-2sm font-black outline-none ${selectedCustomer?.id ? 'border-amber-200 bg-amber-50 text-amber-900 focus:border-amber-400' : 'border-border-normal bg-bg-overlay text-text-muted cursor-not-allowed'}`} />
                 <button type="button" title="املأ المتبقي" onClick={() => { const ca = Number(multiCash||0); const c = customPayMethods.filter(m => !m.name?.includes('بنك') && !m.name?.includes('تحويل') && m.icon !== '🏦').reduce((s, m) => s + Number(multiCustomAmounts[m.id]||0), 0); onMultiCreditChange?.(String(Math.max(0, totals.total - ca - c))); }}
                   className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 active:scale-90">
                   <Wand2 className="h-2.5 w-2.5" />
@@ -300,7 +300,7 @@ export default function QuotationFormBottomBar({
         <div className="flex flex-wrap items-center gap-2 px-3 py-1">
           <PermissionGate page="quotations" action="print">
             <button onClick={onPrint}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-bg-surface/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> معاينة
             </button>
           </PermissionGate>
@@ -312,7 +312,7 @@ export default function QuotationFormBottomBar({
                 ? <><Loader2 className="h-3 w-3 animate-spin" /> جاري الحفظ...</>
                 : <><Save className="h-3 w-3" /> حفظ العرض</>
               }
-              <ShortcutKbd id="quotation.save" className="rounded bg-white/20 px-1 text-[9px] font-mono" />
+              <ShortcutKbd id="quotation.save" className="rounded bg-bg-surface/20 px-1 text-[9px] font-mono" />
             </button>
           </PermissionGate>
         </div>

@@ -11,7 +11,7 @@ export function UnsavedChangesModal({ open, onStay, onLeave }) {
       onClick={onStay}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 flex flex-col overflow-hidden"
+        className="bg-bg-surface rounded-2xl shadow-2xl w-full max-w-sm mx-4 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
@@ -20,13 +20,13 @@ export function UnsavedChangesModal({ open, onStay, onLeave }) {
           <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
             <AlertTriangle className="h-8 w-8 text-amber-500" />
           </div>
-          <p className="text-sm font-medium text-slate-500 mb-6">
+          <p className="text-sm font-medium text-text-secondary mb-6">
             لديك تغييرات لم يتم حفظها. إذا غادرت الآن ستُفقد هذه التغييرات.
           </p>
           <div className="flex gap-3 w-full">
             <button
               onClick={onStay}
-              className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200 transition-all active:scale-95"
+              className="flex-1 rounded-xl bg-bg-overlay py-3 text-sm font-bold text-text-primary hover:bg-border-normal transition-all active:scale-95"
             >
               ابقَ في الصفحة
             </button>

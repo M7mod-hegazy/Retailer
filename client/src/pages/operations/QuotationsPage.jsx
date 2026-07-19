@@ -64,34 +64,34 @@ function StatusBadge({ status, expiresAt, showHint = false }) {
           </span>
         )}
       </div>
-      {showHint && <span className="text-[11px] font-bold text-slate-400 max-w-[50ch]">{s.hint}</span>}
+      {showHint && <span className="text-[11px] font-bold text-text-muted max-w-[50ch]">{s.hint}</span>}
     </div>
   );
 }
 
 function SkeletonRow() {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-white border border-slate-200/60 rounded-[2rem] p-6 shadow-sm animate-pulse">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-bg-surface border border-border-normal/60 rounded-[2rem] p-6 shadow-sm animate-pulse">
       <div className="flex items-center gap-6 lg:w-[40%]">
-        <div className="h-16 w-16 rounded-2xl bg-slate-200" />
+        <div className="h-16 w-16 rounded-2xl bg-border-normal" />
         <div className="flex flex-col gap-2">
-          <div className="h-5 w-40 bg-slate-200 rounded" />
-          <div className="h-4 w-32 bg-slate-100 rounded" />
+          <div className="h-5 w-40 bg-border-normal rounded" />
+          <div className="h-4 w-32 bg-bg-overlay rounded" />
         </div>
       </div>
       <div className="flex items-center gap-12 lg:w-[40%]">
         <div className="flex flex-col gap-2">
-          <div className="h-3 w-16 bg-slate-200 rounded" />
-          <div className="h-5 w-24 bg-slate-200 rounded" />
+          <div className="h-3 w-16 bg-border-normal rounded" />
+          <div className="h-5 w-24 bg-border-normal rounded" />
         </div>
         <div className="flex flex-col gap-2">
-          <div className="h-3 w-16 bg-slate-200 rounded" />
-          <div className="h-7 w-28 bg-slate-200 rounded" />
+          <div className="h-3 w-16 bg-border-normal rounded" />
+          <div className="h-7 w-28 bg-border-normal rounded" />
         </div>
       </div>
       <div className="flex gap-3 lg:w-[20%]">
-        <div className="h-12 w-28 bg-slate-200 rounded-xl" />
-        <div className="h-12 w-12 bg-slate-200 rounded-xl" />
+        <div className="h-12 w-28 bg-border-normal rounded-xl" />
+        <div className="h-12 w-12 bg-border-normal rounded-xl" />
       </div>
     </div>
   );
@@ -310,30 +310,30 @@ export default function QuotationsPage() {
   return (
     <div className="w-full max-w-[1400px] mx-auto font-sans flex flex-col gap-6 pb-10" dir="rtl">
 
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200/60 flex flex-col overflow-hidden">
+      <div className="bg-bg-surface rounded-[2.5rem] shadow-sm border border-border-normal/60 flex flex-col overflow-hidden">
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-8 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-8 border-b border-border-subtle bg-bg-overlay/50">
           <div className="flex items-center gap-5">
             <div className="bg-violet-100 p-4 rounded-[1.5rem]"><FileText className="h-8 w-8 text-violet-600" /></div>
             <div>
-              <h1 className="text-[28px] font-black text-slate-900 tracking-tight">عرض سعر</h1>
-              <p className="text-sm font-bold text-slate-500 mt-1 max-w-[45ch]">إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد اعتمادها.</p>
+              <h1 className="text-[28px] font-black text-text-primary tracking-tight">عرض سعر</h1>
+              <p className="text-sm font-bold text-text-secondary mt-1 max-w-[45ch]">إعداد عروض سعر للعملاء وتحويلها لفواتير بيع بعد اعتمادها.</p>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-8 px-6 lg:border-r border-slate-200">
+            <div className="flex items-center gap-8 px-6 lg:border-r border-border-normal">
                <div className="flex flex-col items-center">
-                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">القيم المعروضة</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter number-fmt">{formatMoney(stats.total)}<span className="text-2sm text-slate-400 font-sans mr-1">ج.م</span></span>
+                 <span className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-1">القيم المعروضة</span>
+                 <span className="text-[24px] font-black leading-none text-text-primary tracking-tighter number-fmt">{formatMoney(stats.total)}<span className="text-2sm text-text-muted font-sans mr-1">ج.م</span></span>
                </div>
                <div className="flex flex-col items-center">
                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">معدل التحويل</span>
                  <span className="text-[24px] font-black leading-none text-emerald-700 tracking-tighter number-fmt">{stats.conversionRate}%</span>
                </div>
                <div className="flex flex-col items-center">
-                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">إجمالي العروض</span>
-                 <span className="text-[24px] font-black leading-none text-slate-900 tracking-tighter number-fmt">{total}</span>
+                 <span className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-1">إجمالي العروض</span>
+                 <span className="text-[24px] font-black leading-none text-text-primary tracking-tighter number-fmt">{total}</span>
                </div>
             </div>
 
@@ -342,27 +342,27 @@ export default function QuotationsPage() {
                 <Link data-help="add-button" to="/operations/quotations/new" className="group flex items-center justify-center gap-3 rounded-[1.2rem] bg-violet-600 px-7 py-4 text-[15px] font-black text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20 active:scale-95">
                   <Plus className="h-5 w-5" />
                   <span>إصدار عرض جديد</span>
-                  <ShortcutKbd id="quotation.new" className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-mono text-white/80" />
+                  <ShortcutKbd id="quotation.new" className="rounded bg-bg-surface/20 px-1.5 py-0.5 text-[9px] font-mono text-white/80" />
                 </Link>
               </PermissionGate>
             </div>
           </div>
         </div>
 
-        <div className="px-6 pb-3 bg-white border-b border-slate-100">
-          <div className="flex flex-wrap gap-3 text-[11px] font-bold text-slate-500">
-            <span className="flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-slate-400" /> دليل الحالات:</span>
+        <div className="px-6 pb-3 bg-bg-surface border-b border-border-subtle">
+          <div className="flex flex-wrap gap-3 text-[11px] font-bold text-text-secondary">
+            <span className="flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-text-muted" /> دليل الحالات:</span>
             <span><strong className="text-blue-600">مُرسل للعميل</strong> = أُرسل للعميل ولم يُبَع بعد</span>
             <span><strong className="text-emerald-600">تحوّل لبيع</strong> = أصبحت فاتورة POS فعلية</span>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 bg-white">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 bg-bg-surface">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide w-full lg:w-auto px-2">
             {STATUS_TABS.map(tab => (
               <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
                 className={`whitespace-nowrap rounded-full px-6 py-3 text-sm font-black transition-all ${
-                  statusFilter === tab.value ? "bg-primary text-white shadow-md" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                  statusFilter === tab.value ? "bg-primary text-white shadow-md" : "bg-bg-overlay text-text-secondary hover:bg-bg-overlay"
                 }`}>
                 {tab.label}
               </button>
@@ -370,34 +370,34 @@ export default function QuotationsPage() {
           </div>
           <div className="flex items-center gap-3 w-full lg:w-auto">
             <div className="relative w-full lg:w-[300px]">
-              <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-slate-400" />
+              <Search className="absolute top-1/2 -translate-y-1/2 right-5 h-5 w-5 text-text-muted" />
               <input autoFocus ref={searchRef} type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                 placeholder="ابحث باسم العميل أو رقم العرض..."
-                className="w-full rounded-full border border-slate-200 bg-slate-50 pr-12 pl-6 py-3.5 text-sm font-black text-slate-900 placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:bg-white transition-all outline-none"
+                className="w-full rounded-full border border-border-normal bg-bg-overlay pr-12 pl-6 py-3.5 text-sm font-black text-text-primary placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:bg-bg-surface transition-all outline-none"
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateFromRef })} />
             </div>
-            <button onClick={handleExport} className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all" title="تصدير Excel">
+            <button onClick={handleExport} className="flex h-12 w-12 items-center justify-center rounded-xl border border-border-normal bg-bg-overlay text-text-secondary hover:bg-bg-overlay transition-all" title="تصدير Excel">
               <Download className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 px-6 pb-4 border-b border-slate-100 bg-slate-50/30">
-          <Filter className="h-4 w-4 text-slate-400" />
+        <div className="flex items-center gap-4 px-6 pb-4 border-b border-border-subtle bg-bg-overlay/30">
+          <Filter className="h-4 w-4 text-text-muted" />
           <div className="flex items-center gap-3">
             <input ref={dateFromRef} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-violet-500"
+              className="rounded-lg border border-border-normal bg-bg-surface px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-violet-500"
               onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: searchRef })} />
-            <span className="text-slate-300 text-sm">—</span>
+            <span className="text-text-muted text-sm">—</span>
             <input ref={dateToRef} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-violet-500"
+              className="rounded-lg border border-border-normal bg-bg-surface px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-violet-500"
               onKeyDown={e => handleKeyDown(e, { prevRef: dateFromRef })} />
           </div>
-          <div className="h-6 w-px bg-slate-200 mx-2" />
+          <div className="h-6 w-px bg-border-normal mx-2" />
           {SORT_OPTIONS.map(opt => (
             <button key={opt.value} onClick={() => toggleSort(opt.value)}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition-all ${
-                sortBy === opt.value ? "bg-violet-100 text-violet-700" : "text-slate-400 hover:bg-slate-100"
+                sortBy === opt.value ? "bg-violet-100 text-violet-700" : "text-text-muted hover:bg-bg-overlay"
               }`}>
               {opt.label}
               {sortBy === opt.value && (
@@ -420,10 +420,10 @@ export default function QuotationsPage() {
               {[1,2,3,4,5].map(i => <SkeletonRow key={i} />)}
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[400px] text-slate-400 bg-slate-50/50 rounded-[3rem] border border-slate-100 border-dashed">
+            <div className="flex flex-col items-center justify-center h-[400px] text-text-muted bg-bg-overlay/50 rounded-[3rem] border border-border-subtle border-dashed">
               <FileText className="h-20 w-20 opacity-20 mb-6" />
-              <p className="text-[16px] font-black text-slate-500">لا توجد عروض أسعار مسجلة.</p>
-              <p className="text-sm font-bold text-slate-400 mt-2 mb-6">أول خطوة نحو البيع: أعد عرض سعر احترافي لعميلك.</p>
+              <p className="text-[16px] font-black text-text-secondary">لا توجد عروض أسعار مسجلة.</p>
+              <p className="text-sm font-bold text-text-muted mt-2 mb-6">أول خطوة نحو البيع: أعد عرض سعر احترافي لعميلك.</p>
               <PermissionGate page="quotations" action="add">
                 <Link to="/operations/quotations/new" className="flex items-center gap-3 rounded-[1.2rem] bg-violet-600 px-7 py-4 text-sm font-black text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20">
                   <Plus className="h-5 w-5" /> إنشاء أول عرض سعر
@@ -438,7 +438,7 @@ export default function QuotationsPage() {
                     const effStatus = effectiveStatus(row);
                     return (
                       <motion.div key={row.id} layout layoutId={`qtn-${row.id}`} variants={ROW_ANIMATION}
-                        className="group relative flex flex-col md:flex-row md:items-center justify-between gap-8 bg-white border border-slate-200/60 rounded-[2rem] p-6 shadow-sm hover:shadow-2xl hover:shadow-violet-500/5 hover:border-violet-200 transition-all duration-500 cursor-pointer"
+                        className="group relative flex flex-col md:flex-row md:items-center justify-between gap-8 bg-bg-surface border border-border-normal/60 rounded-[2rem] p-6 shadow-sm hover:shadow-2xl hover:shadow-violet-500/5 hover:border-violet-200 transition-all duration-500 cursor-pointer"
                         onClick={(e) => {
                           if (e.target.closest('button') || e.target.closest('a')) return;
                           handleShowDetail(row.id);
@@ -446,15 +446,15 @@ export default function QuotationsPage() {
                       >
 
                         <div className="flex items-center gap-6 lg:w-[40%]">
-                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-500">
+                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-bg-overlay text-text-primary border border-border-subtle group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-500">
                             <FileText className="h-6 w-6" strokeWidth={1.5} />
                           </div>
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-3">
-                              <span className="font-mono text-[18px] font-black text-slate-900 tracking-tight">{row.doc_no || formatQuotationNo(row.id)}</span>
+                              <span className="font-mono text-[18px] font-black text-text-primary tracking-tight">{row.doc_no || formatQuotationNo(row.id)}</span>
                               <StatusBadge status={effStatus} expiresAt={row.expires_at} />
                             </div>
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-500 mt-1">
+                            <div className="flex items-center gap-2 text-sm font-bold text-text-secondary mt-1">
                               <User className="h-4 w-4 opacity-50" />
                               <span className="truncate max-w-[220px]">{row.customer_name || `عميل #${row.customer_id}`}</span>
                             </div>
@@ -463,12 +463,12 @@ export default function QuotationsPage() {
 
                         <div className="flex flex-wrap items-center gap-12 lg:w-[40%]">
                           <div className="flex flex-col gap-1">
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">تاريخ الإصدار</span>
-                            <span className="text-[15px] font-bold text-slate-700 font-mono mt-0.5">{formatDate(row.created_at)}</span>
+                            <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">تاريخ الإصدار</span>
+                            <span className="text-[15px] font-bold text-text-primary font-mono mt-0.5">{formatDate(row.created_at)}</span>
                           </div>
-                          <div className="flex flex-col gap-1 lg:border-r border-slate-100 lg:pr-12">
-                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">إجمالي العرض</span>
-                            <span className="text-[24px] font-black text-slate-900 tracking-tighter mt-0.5">{formatMoney(row.total)}</span>
+                          <div className="flex flex-col gap-1 lg:border-r border-border-subtle lg:pr-12">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">إجمالي العرض</span>
+                            <span className="text-[24px] font-black text-text-primary tracking-tighter mt-0.5">{formatMoney(row.total)}</span>
                           </div>
                         </div>
 
@@ -489,7 +489,7 @@ export default function QuotationsPage() {
                                 </button>
                                 <AnimatePresence>
                                   {trashMenuId === row.id && (
-                                    <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-48 rounded-2xl border border-rose-200/60 bg-white p-2 shadow-2xl origin-bottom-left">
+                                    <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-48 rounded-2xl border border-rose-200/60 bg-bg-surface p-2 shadow-2xl origin-bottom-left">
                                       <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); setTrashMenuId(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
                                         <Trash2 className="h-4 w-4" /> حذف العرض
                                       </button>
@@ -501,13 +501,13 @@ export default function QuotationsPage() {
                           )}
 
                           <div className="relative" ref={openMenu === row.id ? menuRef : null}>
-                            <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 hover:bg-primary-600 hover:text-white transition-all">
+                            <button onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === row.id ? null : row.id); }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-bg-overlay text-text-secondary hover:bg-primary-600 hover:text-white transition-all">
                               <Plus className="h-5 w-5" />
                             </button>
                             <AnimatePresence>
                               {openMenu === row.id && (
-                                <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-56 rounded-2xl border border-slate-200/60 bg-white p-2 shadow-2xl origin-bottom-left flex flex-col gap-1">
-                                  <Link to={`/operations/quotations/new?id=${row.id}`} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
+                                <motion.div initial={{opacity:0, y:10, scale:0.95}} animate={{opacity:1, y:0, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute left-0 bottom-full mb-3 z-20 w-56 rounded-2xl border border-border-normal/60 bg-bg-surface p-2 shadow-2xl origin-bottom-left flex flex-col gap-1">
+                                  <Link to={`/operations/quotations/new?id=${row.id}`} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-text-primary hover:bg-bg-overlay rounded-xl transition-colors">
                                     فتح للتعديل
                                   </Link>
                                   {canSend(row) && (
@@ -518,7 +518,7 @@ export default function QuotationsPage() {
                                     </PermissionGate>
                                   )}
                                   <PermissionGate page="quotations" action="print">
-                                    <button onClick={(e) => { e.stopPropagation(); handlePrintFromList(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); handlePrintFromList(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-text-primary hover:bg-bg-overlay rounded-xl transition-colors">
                                       <Printer className="h-4 w-4" /> طباعة
                                     </button>
                                   </PermissionGate>
@@ -529,7 +529,7 @@ export default function QuotationsPage() {
                                   </PermissionGate>
                                   {canDelete(row) && (
                                     <PermissionGate page="quotations" action="delete">
-                                      <div className="h-px bg-slate-100 my-1 w-full" />
+                                      <div className="h-px bg-bg-overlay my-1 w-full" />
                                       <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); setOpenMenu(null); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
                                         حذف العرض
                                       </button>
@@ -548,12 +548,12 @@ export default function QuotationsPage() {
 
               {/* Pagination */}
               <div className="flex items-center justify-between mt-6 px-2">
-                <span className="text-sm font-bold text-slate-500">
+                <span className="text-sm font-bold text-text-secondary">
                   إجمالي {total} عرض — صفحة {page} من {totalPages}
                 </span>
                 <div className="flex items-center gap-2">
                   <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-normal bg-bg-surface text-text-secondary font-black hover:bg-bg-overlay disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
@@ -570,14 +570,14 @@ export default function QuotationsPage() {
                     return (
                       <button key={pageNum} onClick={() => setPage(pageNum)}
                         className={`flex h-10 w-10 items-center justify-center rounded-xl font-black text-sm transition-all ${
-                          page === pageNum ? "bg-primary text-white shadow-md" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                          page === pageNum ? "bg-primary text-white shadow-md" : "border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                         }`}>
                         {pageNum}
                       </button>
                     );
                   })}
                   <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 font-black hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-normal bg-bg-surface text-text-secondary font-black hover:bg-bg-overlay disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                     <ChevronLeft className="h-4 w-4 rotate-180" />
                   </button>
                 </div>
@@ -600,13 +600,13 @@ export default function QuotationsPage() {
                 { label: "الضريبة", value: activeQuotation.tax_enabled ? `${formatMoney(activeQuotation.tax_amount || 0)} (${activeQuotation.tax_rate || 0}%)` : "غير مفعّلة" },
                 { label: "المحرر", value: activeQuotation.created_by_name || "—" },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{item.label}</span>
-                  <span className="text-sm font-black text-slate-900">{item.value}</span>
+                <div key={item.label} className="rounded-2xl border border-border-normal bg-bg-overlay/80 p-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted block mb-1">{item.label}</span>
+                  <span className="text-sm font-black text-text-primary">{item.value}</span>
                 </div>
               ))}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:col-span-2 xl:col-span-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">الحالة</span>
+              <div className="rounded-2xl border border-border-normal bg-bg-overlay/80 p-4 md:col-span-2 xl:col-span-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted block mb-2">الحالة</span>
                 <StatusBadge status={effectiveStatus(activeQuotation)} expiresAt={activeQuotation.expires_at} showHint />
               </div>
             </div>
@@ -614,12 +614,12 @@ export default function QuotationsPage() {
             {activeQuotation.notes && (
               <div className="rounded-2xl bg-amber-50/80 border border-amber-200/50 p-5">
                 <span className="text-[11px] font-black uppercase tracking-widest text-amber-600 block mb-2">ملاحظات</span>
-                <p className="text-sm font-bold text-slate-700 leading-relaxed">{activeQuotation.notes}</p>
+                <p className="text-sm font-bold text-text-primary leading-relaxed">{activeQuotation.notes}</p>
               </div>
             )}
 
-            <div className="rounded-[1.5rem] border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col max-h-[420px]">
-              <div className="grid grid-cols-[1fr_80px_90px_90px_90px_110px] bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+            <div className="rounded-[1.5rem] border border-border-normal bg-bg-surface overflow-hidden shadow-sm flex flex-col max-h-[420px]">
+              <div className="grid grid-cols-[1fr_80px_90px_90px_90px_110px] bg-bg-overlay border-b border-border-normal text-[10px] font-black uppercase text-text-muted tracking-widest">
                 <div className="px-4 py-3">الصنف</div>
                 <div className="px-2 py-3 text-center">الكمية</div>
                 <div className="px-2 py-3 text-center">السعر</div>
@@ -627,17 +627,17 @@ export default function QuotationsPage() {
                 <div className="px-2 py-3 text-center">الوحدة</div>
                 <div className="px-4 py-3 text-left">الإجمالي</div>
               </div>
-              <div className="overflow-y-auto divide-y divide-slate-100">
+              <div className="overflow-y-auto divide-y divide-border-subtle">
                 {(activeQuotation.lines || []).map((line) => (
-                  <div key={line.id} className="grid grid-cols-[1fr_80px_90px_90px_90px_110px] items-center px-2 py-3 hover:bg-slate-50/80">
+                  <div key={line.id} className="grid grid-cols-[1fr_80px_90px_90px_90px_110px] items-center px-2 py-3 hover:bg-bg-overlay/80">
                     <div className="px-2">
-                      <p className="text-sm font-black text-slate-900 break-words leading-tight">{line.item_name}</p>
-                      <p className="font-mono text-[10px] text-slate-400 break-words">{line.item_code || line.barcode || "—"}</p>
+                      <p className="text-sm font-black text-text-primary break-words leading-tight">{line.item_name}</p>
+                      <p className="font-mono text-[10px] text-text-muted break-words">{line.item_code || line.barcode || "—"}</p>
                     </div>
                     <div className="text-center font-black text-sm">{line.quantity}</div>
-                    <div className="text-center font-mono text-sm text-slate-600">{formatMoney(line.unit_price)}</div>
+                    <div className="text-center font-mono text-sm text-text-secondary">{formatMoney(line.unit_price)}</div>
                     <div className="text-center font-mono text-sm text-rose-500">{Number(line.discount_amount) > 0 ? formatMoney(line.discount_amount) : "—"}</div>
-                    <div className="text-center text-[11px] font-bold text-slate-500">{line.unit_name || "—"}</div>
+                    <div className="text-center text-[11px] font-bold text-text-secondary">{line.unit_name || "—"}</div>
                     <div className="px-2 text-left number-fmt-primary text-sm">{formatMoney(line.line_total)}</div>
                   </div>
                 ))}
@@ -669,7 +669,7 @@ export default function QuotationsPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-between items-center pt-2 border-t border-slate-100">
+            <div className="flex flex-wrap gap-3 justify-between items-center pt-2 border-t border-border-subtle">
               <div className="flex flex-wrap gap-2">
                 {canConvert(activeQuotation) && (
                   <PermissionGate page="quotations" action="edit">
@@ -682,7 +682,7 @@ export default function QuotationsPage() {
                 {activeQuotation.status !== "converted" && (
                   <PermissionGate page="quotations" action="edit">
                     <Link to={`/operations/quotations/new?id=${activeQuotation.id}`}
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+                      className="flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-5 py-3 text-sm font-black text-text-primary hover:bg-bg-overlay">
                       <Pencil className="h-4 w-4" /> تعديل العرض
                     </Link>
                   </PermissionGate>
@@ -697,7 +697,7 @@ export default function QuotationsPage() {
                 )}
                 <PermissionGate page="quotations" action="print">
                   <button onClick={() => setPrintPreviewOpen(true)}
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+                    className="flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-5 py-3 text-sm font-black text-text-primary hover:bg-bg-overlay">
                     <Eye className="h-4 w-4" /> معاينة وطباعة
                   </button>
                 </PermissionGate>
@@ -711,7 +711,7 @@ export default function QuotationsPage() {
                 )}
               </div>
               <button onClick={() => setActiveQuotation(null)}
-                className="flex items-center gap-2 rounded-xl bg-slate-100 px-6 py-3 text-sm font-black text-slate-900 hover:bg-slate-200">
+                className="flex items-center gap-2 rounded-xl bg-bg-overlay px-6 py-3 text-sm font-black text-text-primary hover:bg-border-normal">
                 إغلاق
               </button>
             </div>

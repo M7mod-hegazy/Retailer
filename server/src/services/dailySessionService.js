@@ -686,15 +686,44 @@ function closeDailySession(db, dateText, actualCash, notes, userId) {
   }
 
   try {
+    let paymentMethods = null;
+    try {
+      const { getDailyPaymentMethodSummary } = require("./telegramService");
+      paymentMethods = getDailyPaymentMethodSummary(db, date);
+    } catch (_) {}
     notifyOwner(TG.DAILY_CLOSE, {
       date,
       openingBalance: summary.opening_balance || session.opening_balance || 0,
-      expectedCash: summary.expected_cash || 0,
+      expectedCash: (paymentMethods?.expected_cash != null ? paymentMethods.expected_cash : summary.expected_cash) || 0,
       actualCash: actual,
       discrepancy,
       cashSales: summary.pos_cash_sales || 0,
       creditSales: summary.pos_credit_sales || 0,
-      invoicesCount: summary.invoices_count || 0,
+      installmentCash: summary.pos_installment_cash || 0,
+      multiCash: summary.pos_multi_cash || 0,
+      bankSales: summary.pos_bank_sales || 0,
+      totalSales: summary.pos_all_sales || 0,
+      invoicesCount: summary.pos_all_sales_count || 0,
+      purchasesCash: summary.purchases_cash || 0,
+      purchasesPayable: summary.purchases_payable_total || 0,
+      salesReturnsCash: summary.sales_returns_cash || 0,
+      salesReturnsAccount: summary.sales_returns_account || 0,
+      purchaseReturnsCash: summary.purchase_returns_cash || 0,
+      purchaseReturnsAccount: summary.purchase_returns_payable_total || 0,
+      expensesCash: summary.expenses_cash || 0,
+      expensesCount: summary.expenses_count || 0,
+      revenuesCash: summary.revenues_cash || 0,
+      revenuesCount: summary.revenues_count || 0,
+      customerPayments: summary.customer_payments || 0,
+      customerPaymentsCount: summary.customer_payments_count || 0,
+      supplierPayments: summary.supplier_payments || 0,
+      supplierPaymentsCount: summary.supplier_payments_count || 0,
+      withdrawals: summary.withdrawals || 0,
+      ajalPayments: summary.ajal_payments || 0,
+      cashIn: summary.cash_in || 0,
+      cashOut: summary.cash_out || 0,
+      nonCashTotal: summary.non_cash_movements_total || 0,
+      paymentMethods,
     }, db);
   } catch (_) {}
 

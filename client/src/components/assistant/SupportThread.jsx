@@ -70,7 +70,7 @@ function Bubble({ m, t }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-              className="w-40 rounded-lg bg-white/90 px-2 py-1 text-[12px] text-zinc-900 outline-none"
+              className="w-40 rounded-lg bg-bg-surface/90 px-2 py-1 text-[12px] text-zinc-900 outline-none"
             />
             <button onClick={saveEdit} aria-label="save"><Check className="h-3.5 w-3.5" /></button>
             <button onClick={() => setEditing(false)} aria-label="cancel"><X className="h-3.5 w-3.5" /></button>

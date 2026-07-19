@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, HardDrive, Wifi as WifiIcon, WifiOff as WifiOffIcon, PlayCircle, CloudUpload, ShieldCheck, Database, ImageIcon } from "lucide-react";
+import { ArrowUpRight, ArrowDownCircle, Plus, X, Loader2, Zap, TrendingDown, TrendingUp, Banknote, ShoppingBag, Upload, Download, Package, AlertCircle, Settings, Settings2, Wifi, WifiOff, RefreshCw, ShoppingCart, HardDrive, Wifi as WifiIcon, WifiOff as WifiOffIcon, PlayCircle, CloudUpload, ShieldCheck, Database, ImageIcon } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { useInstallmentAlertStore } from "../../stores/installmentAlertStore";
@@ -124,12 +124,12 @@ function usePermissionFilter() {
   const { user, permissions } = useAuthStore();
   const settings = useAppSettingsStore((s) => s.settings);
   return (pageKey, featureKey) => {
-    // Feature gate applies to everyone, including admin — feature off means the card doesn't exist
     if (featureKey && !settings[featureKey]) return false;
     if (!pageKey) return true;
     if (!user) return false;
-    if (user.role === "dev" || user.role === "admin") return true;
     if (pageKey === "updates") return !!user.can_view_updates;
+    if (user.role === "dev") return true;
+    if (user.page_permissions === null || user.page_permissions === undefined) return true;
     return Array.isArray(permissions?.[pageKey]) && permissions[pageKey].includes("view");
   };
 }
@@ -329,7 +329,7 @@ function ChannelStatusDots({ status, className = "", layout = "vertical", active
               className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500 ${
                 d.on
                   ? active
-                    ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                    ? "bg-bg-surface shadow-[0_0_8px_rgba(255,255,255,0.8)]"
                     : "shadow-[0_0_6px_currentColor]"
                   : "bg-current opacity-30"
               }`}
@@ -398,7 +398,7 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
 
   const actionBtnClass = (active) =>
     `opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border ${active
-      ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+      ? "bg-bg-surface/10 border-border-normal/20 text-white hover:bg-primary hover:border-primary"
       : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
     }`;
 
@@ -438,7 +438,7 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
             <div className="flex items-start gap-2">
               {item.pageKey === "updates" && updateAvailable && (
                 <span className="flex items-center gap-1 bg-[var(--success-text)] text-white text-[9px] font-black px-1.5 py-1.5 rounded-full shadow-[var(--shadow-glow-green)] animate-pulse whitespace-nowrap self-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-bg-surface" />
                   تحديث
                 </span>
               )}
@@ -462,7 +462,7 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
                   onClick={handleQuickClick}
                   title={qa.label}
                   className={`opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black border ${active
-                    ? "bg-white/10 border-white/20 text-white hover:bg-primary hover:border-primary"
+                    ? "bg-bg-surface/10 border-border-normal/20 text-white hover:bg-primary hover:border-primary"
                     : "bg-[var(--bg-input)] border-[var(--border-normal)] text-[var(--text-secondary)] hover:bg-primary hover:border-primary hover:text-white"
                     }`}
                 >
@@ -472,7 +472,7 @@ function MagneticCard({ item, active, updateAvailable, channelsStatus, onQuickAc
               ) : null}
 
               {/* Arrow icon */}
-              <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${active ? "border-white/20 text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+              <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-500 ${active ? "border-border-normal/20 text-white" : "border-[var(--border-normal)] text-[var(--text-muted)] group-hover:border-primary group-hover:bg-primary group-hover:text-white"
                 }`}>
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </div>
@@ -906,8 +906,13 @@ export default function DashboardPage() {
                 const cName = safeVal(settings.company_name);
                 const bName = safeVal(settings.branch_name);
                 return (cName || bName) ? (
-                  <p className="text-sm font-bold text-[var(--on-feature-muted)]">
+                  <p className="text-sm font-bold text-[var(--on-feature-muted)] flex items-center gap-2">
                     {cName}{cName && bName ? " — " : ""}{bName}
+                    {canView("settings") && (
+                      <Link to="/settings" title="الإعدادات العامة" className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-bg-surface/10 hover:bg-bg-surface/20 transition-colors">
+                        <Settings className="w-4 h-4 text-[var(--on-feature)]" />
+                      </Link>
+                    )}
                   </p>
                 ) : (
                   <Link
@@ -925,7 +930,7 @@ export default function DashboardPage() {
           {/* Live Clock + badges */}
           <div className="flex items-center gap-3" dir="ltr">
             {/* Clock — on the left (first in LTR) */}
-            <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
+            <div className="flex items-center gap-3 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-[1.2rem] px-5 py-3 shadow-2xl">
               <div className="flex flex-col items-end">
                 <span className="text-2xl md:text-3xl font-black tabular-nums text-[var(--on-feature)] leading-none tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
                   {clockTime}
@@ -938,13 +943,13 @@ export default function DashboardPage() {
 
             {/* Messaging channels */}
             {canViewChannels && !channelsStatus && (
-              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
+              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
                 <div className="flex flex-col items-center gap-1">
-                  <div className="w-14 h-1.5 rounded bg-white/20" />
+                  <div className="w-14 h-1.5 rounded bg-bg-surface/20" />
                   <div className="flex gap-1">
-                    <div className="w-6 h-1.5 rounded bg-white/10" />
-                    <div className="w-6 h-1.5 rounded bg-white/10" />
-                    <div className="w-6 h-1.5 rounded bg-white/10" />
+                    <div className="w-6 h-1.5 rounded bg-bg-surface/10" />
+                    <div className="w-6 h-1.5 rounded bg-bg-surface/10" />
+                    <div className="w-6 h-1.5 rounded bg-bg-surface/10" />
                   </div>
                 </div>
               </div>
@@ -953,7 +958,7 @@ export default function DashboardPage() {
               <Link
                 to="/whatsapp-crm"
                 title={`مركز الرسائل — واتساب: ${channelsStatus.whatsapp?.connected ? "متصل" : "غير متصل"} · SMS: ${channelsStatus.sms?.connected ? "مفعّلة" : "غير مفعّلة"} · تيليجرام: ${channelsStatus.telegram?.connected ? "مفعّل" : "غير مفعّل"} · البريد: ${channelsStatus.email?.connected ? "مفعّل" : "غير مفعّل"} · Meta: ${channelsStatus.meta?.connected ? "مربوط" : "غير مربوط"}`}
-                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-colors"
+                className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-xl px-3 py-2 self-end mb-1 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-colors"
               >
                 <ChannelStatusDots status={channelsStatus} />
               </Link>
@@ -961,11 +966,11 @@ export default function DashboardPage() {
 
             {/* ── Backup Badge ─────────────────────────────────────────── */}
             {canViewBackup && backupLoading && (
-              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
+              <div className="self-end mb-1 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-xl px-3 py-2 shadow-xl animate-pulse">
                 <div className="flex flex-col items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-white/20" />
-                  <div className="w-16 h-1.5 rounded bg-white/20" />
-                  <div className="w-12 h-1 rounded bg-white/10" />
+                  <div className="w-3 h-3 rounded-full bg-bg-surface/20" />
+                  <div className="w-16 h-1.5 rounded bg-bg-surface/20" />
+                  <div className="w-12 h-1 rounded bg-bg-surface/10" />
                 </div>
               </div>
             )}
@@ -979,7 +984,7 @@ export default function DashboardPage() {
                     title={backupInfo.last_auto_backup_at
                       ? `آخر نسخة احتياطية: ${new Date(backupInfo.last_auto_backup_at).toLocaleString("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}`
                       : "أخر النسخ التلقائي مفعّل — لم تتم نسخة بعد"}
-                    className="flex items-center gap-1.5 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-all group"
+                    className="flex items-center gap-1.5 bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-xl px-3 py-2 shadow-xl hover:bg-[var(--chip-on-primary-hover)] transition-all group"
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="flex items-center gap-1">
@@ -1183,7 +1188,7 @@ export default function DashboardPage() {
 
             {/* Version / connection status — always last */}
             {appVersion && appVersion !== "web" && (
-              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-white/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
+              <div className="bg-[var(--chip-on-primary)] backdrop-blur-xl border border-border-normal/10 rounded-xl px-3 py-1.5 self-end mb-1 shadow-xl flex items-center gap-2">
                 {isServerOnline ? (
                   <Wifi className="w-3 h-3 text-[var(--success-border)]" />
                 ) : (
@@ -1226,7 +1231,7 @@ export default function DashboardPage() {
                     <Link
                       to="/sales"
                       title="سجل المبيعات"
-                      className="flex items-center justify-center w-16 shrink-0 border-r border-white/15 bg-[var(--chip-on-primary)] hover:bg-[var(--chip-on-primary-hover)] transition-colors"
+                      className="flex items-center justify-center w-16 shrink-0 border-r border-border-normal/15 bg-[var(--chip-on-primary)] hover:bg-[var(--chip-on-primary-hover)] transition-colors"
                     >
                       <ShoppingBag className="h-6 w-6 text-[var(--on-feature-muted)]" strokeWidth={1.5} />
                     </Link>

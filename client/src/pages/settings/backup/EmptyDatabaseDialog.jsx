@@ -99,22 +99,22 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
           active
             ? danger
               ? "border-rose-400 bg-rose-50/60 ring-1 ring-rose-200"
-              : "border-slate-400 bg-slate-50 ring-1 ring-slate-200"
-            : "border-slate-200 hover:border-slate-300"
+              : "border-slate-400 bg-bg-overlay ring-1 ring-slate-200"
+            : "border-border-normal hover:border-border-strong"
         }`}
       >
         <span
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border ${
-            active ? (danger ? "border-rose-500 bg-rose-500 text-white" : "border-primary bg-primary text-white") : "border-slate-300"
+            active ? (danger ? "border-rose-500 bg-rose-500 text-white" : "border-primary bg-primary text-white") : "border-border-strong"
           }`}
         >
           {active && <CheckCircle2 className="h-3 w-3" />}
         </span>
-        <span className="flex-1 text-[11px] font-black text-slate-700">{c.labelAr}</span>
+        <span className="flex-1 text-[11px] font-black text-text-primary">{c.labelAr}</span>
         {c.hasResets && (
           <span className="shrink-0 rounded-sm bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">+ تصفير الأرصدة</span>
         )}
-        <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-slate-600">
+        <span className="shrink-0 rounded-sm bg-bg-overlay px-1.5 py-0.5 text-[10px] font-black tabular-nums text-text-secondary">
           {fmt(c.count)}
         </span>
       </button>
@@ -138,7 +138,7 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-xs font-bold text-slate-400">
+          <div className="flex items-center justify-center gap-2 py-10 text-xs font-bold text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> جارٍ حساب البيانات...
           </div>
         ) : (
@@ -151,15 +151,15 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
                 <div key={g.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className={`text-[11px] font-black uppercase tracking-widest ${g.id === "master" ? "text-rose-600" : "text-slate-700"}`}>
+                      <div className={`text-[11px] font-black uppercase tracking-widest ${g.id === "master" ? "text-rose-600" : "text-text-primary"}`}>
                         {g.title}
                       </div>
-                      <div className="text-[10px] font-bold text-slate-400">{g.hint}</div>
+                      <div className="text-[10px] font-bold text-text-muted">{g.hint}</div>
                     </div>
                     <button
                       type="button"
                       onClick={() => toggleGroup(g.id)}
-                      className="shrink-0 rounded-sm border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-500 transition-all hover:bg-slate-50 active:scale-95"
+                      className="shrink-0 rounded-sm border border-border-normal px-2 py-1 text-[10px] font-black text-text-secondary transition-all hover:bg-bg-overlay active:scale-95"
                     >
                       {allOn ? "إلغاء تحديد الكل" : "تحديد الكل"}
                     </button>
@@ -190,7 +190,7 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
         </div>
 
         <label className="block">
-          <span className="mb-1 flex items-center gap-1 text-[11px] font-bold text-slate-500">
+          <span className="mb-1 flex items-center gap-1 text-[11px] font-bold text-text-secondary">
             <Lock className="h-3 w-3" /> كلمة مرور المالك للتأكيد
           </span>
           <input
@@ -199,13 +199,13 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
             onChange={(e) => setPassword(e.target.value)}
             dir="ltr"
             autoComplete="off"
-            className="w-full rounded-sm border border-slate-200 px-3 py-2 text-sm font-black text-slate-800 outline-none focus:border-rose-400 ltr:text-left"
+            className="w-full rounded-sm border border-border-normal px-3 py-2 text-sm font-black text-text-primary outline-none focus:border-rose-400 ltr:text-left"
             placeholder="••••••"
           />
         </label>
 
         <div className="flex items-center justify-between gap-2 pt-1">
-          <span className="text-[11px] font-black text-slate-500">
+          <span className="text-[11px] font-black text-text-secondary">
             {selected.size > 0 ? `سيتم حذف ${fmt(totalRows)} سجل من ${selected.size} فئة` : "لم يتم اختيار شيء"}
           </span>
           <div className="flex gap-2">
@@ -213,7 +213,7 @@ export default function EmptyDatabaseDialog({ open, onClose, onConfirm }) {
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="h-9 rounded-sm border border-slate-200 px-5 text-2sm font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+              className="h-9 rounded-sm border border-border-normal px-5 text-2sm font-black uppercase tracking-widest text-text-secondary transition-all hover:bg-bg-overlay active:scale-95 disabled:opacity-50"
             >
               إلغاء
             </button>

@@ -416,7 +416,7 @@ export default function StepPrices({ wizard }) {
       {/* Unmapped price fields warning panels */}
       {unmappedFields.length > 0 && (
         <div className="space-y-3">
-          <div className="text-[11px] font-black text-slate-400 mt-2" style={{ color: "var(--text-muted)" }}>أسعار غير متوفرة في الملف (خيارات ذكية)</div>
+          <div className="text-[11px] font-black text-text-muted mt-2" style={{ color: "var(--text-muted)" }}>أسعار غير متوفرة في الملف (خيارات ذكية)</div>
           {unmappedFields.map((field) => (
             <UnmappedBulkPanel
               key={field}

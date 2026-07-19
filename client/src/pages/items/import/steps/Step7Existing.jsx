@@ -527,7 +527,7 @@ export default function Step7Existing({ wizard }) {
                     {item.label}
                   </span>
                   <span className={`rounded-lg px-2 py-0.5 text-[9px] font-black ${
-                    allActive ? "bg-white/15 text-white" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"
+                    allActive ? "bg-bg-surface/15 text-white" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"
                   }`}>
                     {count}
                   </span>
@@ -572,7 +572,7 @@ export default function Step7Existing({ wizard }) {
                 <Eye className={`h-4 w-4 ${active ? "" : "text-[var(--text-muted)]"}`} />
                 {tab.label}
                 <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black tabular-nums ${
-                  active ? "bg-white/15" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"
+                  active ? "bg-bg-surface/15" : "bg-[var(--bg-overlay)] text-[var(--text-muted)]"
                 }`}>
                   {tab.count}
                 </span>

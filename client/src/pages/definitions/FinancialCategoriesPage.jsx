@@ -215,14 +215,14 @@ export default function FinancialCategoriesPage() {
         id: "index",
         header: "#",
         accessorFn: (_, i) => String(i + 1).padStart(2, '0'),
-        cell: (info) => <span className="text-[11px] number-fmt text-slate-300">{info.getValue()}</span>,
+        cell: (info) => <span className="text-[11px] number-fmt text-text-muted">{info.getValue()}</span>,
         size: 50,
       },
       {
         accessorKey: "name",
         header: "القسم",
         cell: (info) => (
-          <span className="text-sm font-bold text-slate-800">
+          <span className="text-sm font-bold text-text-primary">
             <Highlight text={String(info.getValue() ?? '-')} query={query} />
           </span>
         ),
@@ -233,10 +233,10 @@ export default function FinancialCategoriesPage() {
         cell: (info) => {
           const val = info.getValue();
           return val ? (
-            <span className="text-2sm font-medium text-slate-500">
+            <span className="text-2sm font-medium text-text-secondary">
                <Highlight text={String(val)} query={query} />
             </span>
-          ) : <span className="text-2sm font-medium text-slate-300">—</span>;
+          ) : <span className="text-2sm font-medium text-text-muted">—</span>;
         },
       },
       {
@@ -250,7 +250,7 @@ export default function FinancialCategoriesPage() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); startEdit(info.row.original); }}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:bg-slate-100 hover:text-zinc-900'}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${editingRow?.id === info.row.original.id ? 'bg-primary text-white shadow-md' : 'text-text-muted hover:bg-bg-overlay hover:text-zinc-900'}`}
                 >
                   <Edit3 className="h-4 w-4" />
                 </motion.button>
@@ -261,7 +261,7 @@ export default function FinancialCategoriesPage() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
                 >
                   <Trash2 className="h-4 w-4" />
                 </motion.button>

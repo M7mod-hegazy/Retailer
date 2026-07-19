@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { usePageTour } from "../../hooks/usePageTour";
 import { UtensilsCrossed, Plus } from "lucide-react";
 import Button from "../../components/ui/Button";
 import FeatureRoute from "../../components/ui/FeatureRoute";
@@ -11,10 +12,11 @@ const STATUS_CONFIG = {
   available: { label: "متاحة", bg: "bg-emerald-50 border-emerald-200 hover:bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-400" },
   occupied:  { label: "مشغولة", bg: "bg-red-50 border-red-200 hover:bg-red-100",       text: "text-red-700",     dot: "bg-red-400" },
   reserved:  { label: "محجوزة", bg: "bg-amber-50 border-amber-200 hover:bg-amber-100", text: "text-amber-700",   dot: "bg-amber-400" },
-  cleaning:  { label: "تنظيف",  bg: "bg-slate-50 border-slate-200",                   text: "text-slate-500",   dot: "bg-slate-300" },
+  cleaning:  { label: "تنظيف",  bg: "bg-bg-overlay border-border-normal",                   text: "text-text-secondary",   dot: "bg-border-strong" },
 };
 
 export default function TableMapPage() {
+  usePageTour('table_map');
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -67,21 +69,21 @@ export default function TableMapPage() {
         </div>
 
         {showAdd && (
-          <form onSubmit={addTable} className="flex gap-3 flex-wrap items-end rounded-xl border border-slate-200 bg-white p-4">
+          <form onSubmit={addTable} className="flex gap-3 flex-wrap items-end rounded-xl border border-border-normal bg-bg-surface p-4">
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-500">اسم الطاولة</label>
-              <input ref={nameRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" required value={newTable.name} onChange={e => setNewTable(p => ({ ...p, name: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: sectionRef, prevRef: null })} placeholder="طاولة 1" />
+              <label className="text-xs font-black text-text-secondary">اسم الطاولة</label>
+              <input ref={nameRef} className="rounded-lg border border-border-normal px-3 py-2 text-sm" required value={newTable.name} onChange={e => setNewTable(p => ({ ...p, name: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: sectionRef, prevRef: null })} placeholder="طاولة 1" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-500">القسم</label>
-              <input ref={sectionRef} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" value={newTable.section} onChange={e => setNewTable(p => ({ ...p, section: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: capacityRef, prevRef: nameRef })} placeholder="قسم A" />
+              <label className="text-xs font-black text-text-secondary">القسم</label>
+              <input ref={sectionRef} className="rounded-lg border border-border-normal px-3 py-2 text-sm" value={newTable.section} onChange={e => setNewTable(p => ({ ...p, section: e.target.value }))} onKeyDown={e => handleKeyDown(e, { nextRef: capacityRef, prevRef: nameRef })} placeholder="قسم A" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-500">السعة</label>
-              <input ref={capacityRef} className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" min="1" value={newTable.capacity} onChange={e => setNewTable(p => ({ ...p, capacity: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: sectionRef, onEnter: () => addTable({ preventDefault: () => {} }) })} />
+              <label className="text-xs font-black text-text-secondary">السعة</label>
+              <input ref={capacityRef} className="w-20 rounded-lg border border-border-normal px-3 py-2 text-sm" type="number" min="1" value={newTable.capacity} onChange={e => setNewTable(p => ({ ...p, capacity: e.target.value }))} onKeyDown={e => handleKeyDown(e, { prevRef: sectionRef, onEnter: () => addTable({ preventDefault: () => {} }) })} />
             </div>
             <Button type="submit" size="sm" disabled={submitting} className="flex items-center gap-1.5">
-              {submitting && <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+              {submitting && <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-normal/30 border-t-white" />}
               حفظ
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowAdd(false)}>إلغاء</Button>
@@ -89,7 +91,7 @@ export default function TableMapPage() {
         )}
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-600">
+        <div className="flex flex-wrap gap-4 text-xs font-bold text-text-secondary">
           {Object.entries(STATUS_CONFIG).map(([k, v]) => (
             <div key={k} className="flex items-center gap-1.5">
               <span className={`h-2.5 w-2.5 rounded-full ${v.dot}`} />
@@ -100,7 +102,7 @@ export default function TableMapPage() {
 
         {sections.map(section => (
           <div key={section} className="space-y-3">
-            <h3 className="text-[12px] font-black text-slate-500 uppercase tracking-widest">{section}</h3>
+            <h3 className="text-[12px] font-black text-text-secondary uppercase tracking-widest">{section}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {tables.filter(t => (t.section || "عام") === section).map(table => {
                 const cfg = STATUS_CONFIG[table.status] || STATUS_CONFIG.available;
@@ -115,8 +117,8 @@ export default function TableMapPage() {
                       <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
                       {cfg.label}
                     </span>
-                    {table.customer_name && <span className="mt-1 text-[10px] text-slate-500 truncate max-w-full">{table.customer_name}</span>}
-                    <span className="mt-1 text-[10px] text-slate-400">{table.capacity} أشخاص</span>
+                    {table.customer_name && <span className="mt-1 text-[10px] text-text-secondary truncate max-w-full">{table.customer_name}</span>}
+                    <span className="mt-1 text-[10px] text-text-muted">{table.capacity} أشخاص</span>
                   </button>
                 );
               })}
@@ -125,7 +127,7 @@ export default function TableMapPage() {
         ))}
 
         {tables.length === 0 && (
-          <div className="text-center text-slate-400 py-16">لا توجد طاولات — أضف أول طاولة للبدء</div>
+          <div className="text-center text-text-muted py-16">لا توجد طاولات — أضف أول طاولة للبدء</div>
         )}
       </div>
     </FeatureRoute>

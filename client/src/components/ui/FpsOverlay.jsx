@@ -29,12 +29,12 @@ export default function FpsOverlay() {
   if (!fpsEnabled) return null;
 
   return (
-    <div className="perf-fps-overlay fixed top-2 left-2 z-[9999] bg-black/75 text-white text-xs font-mono px-2.5 py-1.5 rounded-lg flex items-center gap-2 shadow-lg border border-white/10 pointer-events-none select-none" dir="ltr">
+    <div className="perf-fps-overlay fixed top-2 left-2 z-[9999] bg-black/75 text-white text-xs font-mono px-2.5 py-1.5 rounded-lg flex items-center gap-2 shadow-lg border border-border-normal/10 pointer-events-none select-none" dir="ltr">
       <span className={fps >= 30 ? "text-emerald-400" : fps >= 15 ? "text-amber-400" : "text-red-400"}>
         {fps} FPS
       </span>
       {targetFps > 0 && (
-        <span className="text-slate-500">| target: {targetFps}</span>
+        <span className="text-text-secondary">| target: {targetFps}</span>
       )}
     </div>
   );

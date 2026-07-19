@@ -46,6 +46,7 @@ import { REPORT_SOURCES, REPORT_SOURCE_KEYS } from "../../constants/reportPermis
 import PermissionGate from "../../components/ui/PermissionGate";
 import { usePageTour } from "../../hooks/usePageTour";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
 
 const CATEGORY_ICONS = {
   sales: ShoppingCart,
@@ -198,6 +199,19 @@ export default function UsersPage() {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  // Dirty tracking — snapshots taken when editing starts
+  const originalFormRef = useRef(null);
+  const originalPermsRef = useRef(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Unsaved-changes guard for sidebar navigation
+  const isDirty = hasChanges && !!editingRow;
+  const { blocker } = useUnsavedChangesGuard(isDirty);
+
+  // Pending action when user switches while dirty
+  const pendingActionRef = useRef(null);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+
   // For new-user creation template — starts empty so the admin must choose.
   const [createTemplate, setCreateTemplate] = useState("");
   // Delete confirmation modal state
@@ -230,17 +244,42 @@ export default function UsersPage() {
       .catch(() => setServerDefaultPermissions(DEFAULT_USER_PERMISSIONS));
   }, [isAdmin]);
 
-  function startCreate() {
+  // Dirty tracking — compare current state to snapshots
+  useEffect(() => {
+    if (!editingRow) {
+      setHasChanges(false);
+      return;
+    }
+    if (!originalFormRef.current || !originalPermsRef.current) return;
+    const formChanged = JSON.stringify(form) !== JSON.stringify(originalFormRef.current);
+    const permsChanged = JSON.stringify(permissions) !== JSON.stringify(originalPermsRef.current);
+    setHasChanges(formChanged || permsChanged);
+  }, [form, permissions, editingRow]);
+
+  function doStartCreate(openCreateModal) {
     setEditingRow(null);
     setForm(EMPTY_FORM);
     setPermissions(buildEmptyPermissions());
     setCreateTemplate("");
     setShowPassword(false);
     setExpandedCats({});
-    requestAnimationFrame(() => fullNameRef.current?.focus());
+    setHasChanges(false);
+    originalFormRef.current = null;
+    originalPermsRef.current = null;
+    if (openCreateModal) setShowCreateModal(true);
+    else requestAnimationFrame(() => fullNameRef.current?.focus());
   }
 
-  async function startEdit(row) {
+  function startCreate(openCreateModal) {
+    if (isDirty) {
+      pendingActionRef.current = () => doStartCreate(openCreateModal);
+      setShowDiscardModal(true);
+      return;
+    }
+    doStartCreate(openCreateModal);
+  }
+
+  function doStartEdit(row) {
     setEditingRow(row);
     setForm({
       full_name: row.full_name || "",
@@ -250,14 +289,29 @@ export default function UsersPage() {
       is_active: row.is_active !== 0,
       can_view_updates: row.can_view_updates === 1 || row.can_view_updates === true,
     });
-    setPermTemplate(row.role === "admin" ? "admin" : "user");
+    setPermTemplate(row.role === "admin" || row.role === "dev" ? "admin" : "user");
     setShowPassword(false);
-    // Load actual password for display
+    setHasChanges(false);
+    loadEditData(row);
+  }
+
+  function startEdit(row) {
+    if (isDirty && editingRow?.id !== row.id) {
+      pendingActionRef.current = () => doStartEdit(row);
+      setShowDiscardModal(true);
+      return;
+    }
+    doStartEdit(row);
+  }
+
+  async function loadEditData(row) {
+    let loadedPassword = "";
     try {
       const res = await api.get(`/api/users/${row.id}`);
       const pw = res.data?.data?.password || "";
       // Only show plaintext passwords (skip bcrypt hashes)
       if (pw && !pw.startsWith("$2")) {
+        loadedPassword = pw;
         setForm((p) => ({ ...p, password: pw }));
       }
     } catch { /* non-critical */ }
@@ -265,26 +319,34 @@ export default function UsersPage() {
     if (isAdmin) {
       setPermLoading(true);
       try {
-        if (row.role === "admin" || row.role === "dev") {
-          // Admin/dev have full access — show all checked
-          const full = buildEmptyPermissions();
-          Object.keys(full).forEach((k) => { full[k] = [...ALL_ACTIONS]; });
-          setPermissions(full);
-        } else {
-          const res = await api.get(`/api/users/${row.id}/permissions`);
-          const loaded = res.data?.data || {};
+        const res = await api.get(`/api/users/${row.id}/permissions`);
+        const loaded = res.data?.data;
+        if (loaded && typeof loaded === "object") {
           const merged = buildEmptyPermissions();
           Object.entries(loaded).forEach(([k, v]) => {
             if (merged[k] !== undefined && Array.isArray(v)) merged[k] = v;
           });
           setPermissions(merged);
+          originalPermsRef.current = merged;
+        } else {
+          // No stored permissions (admin/dev who was never customized) — show all checked
+          const full = buildEmptyPermissions();
+          Object.keys(full).forEach((k) => { full[k] = [...ALL_ACTIONS]; });
+          setPermissions(full);
+          originalPermsRef.current = full;
         }
       } catch {
-        setPermissions(buildEmptyPermissions());
+        const empty = buildEmptyPermissions();
+        setPermissions(empty);
+        originalPermsRef.current = empty;
       } finally {
         setPermLoading(false);
       }
+    } else {
+      originalPermsRef.current = buildEmptyPermissions();
     }
+    // Snapshot for dirty tracking — include loaded password so loading doesn't false-trigger dirty
+    originalFormRef.current = { full_name: row.full_name || "", username: row.username || "", password: loadedPassword, role: row.role || "user", is_active: row.is_active !== 0, can_view_updates: row.can_view_updates === 1 || row.can_view_updates === true };
   }
 
   function requestDelete(row) {
@@ -369,18 +431,22 @@ export default function UsersPage() {
     try {
       if (editingRow) {
         // Step 1: Save user info
-        const payload = { ...form, role: permTemplate === "admin" ? "admin" : "user" };
+        const payload = { ...form };
         if (!payload.password) delete payload.password;
         const res = await api.put(`/api/users/${editingRow.id}`, payload);
         const updated = res.data?.data;
 
-        // Step 2: Save permissions (admin editing non-admin)
-        if (isAdmin && permTemplate !== "admin") {
+        // Step 2: Save permissions
+        if (isAdmin) {
           const compact = {};
           Object.entries(permissions).forEach(([k, v]) => {
             if (Array.isArray(v) && v.length) compact[k] = v;
           });
           await api.put(`/api/users/${editingRow.id}/permissions`, { permissions: compact });
+          // Sync auth store so changes take effect without re-login
+          if (editingRow.id === currentUser?.id) {
+            useAuthStore.getState().updatePermissions(compact);
+          }
         }
 
         toast.success("✓ تم حفظ التغييرات بنجاح");
@@ -400,7 +466,7 @@ export default function UsersPage() {
         }
 
         // Refresh permissions display
-        if (isAdmin && permTemplate !== "admin") {
+        if (isAdmin) {
           try {
             const permRes = await api.get(`/api/users/${editingRow.id}/permissions`);
             const loaded = permRes.data?.data || {};
@@ -409,8 +475,19 @@ export default function UsersPage() {
               if (merged[k] !== undefined && Array.isArray(v)) merged[k] = v;
             });
             setPermissions(merged);
+            originalPermsRef.current = merged;
           } catch { /* non-critical */ }
         }
+        // Re-snapshot so hasChanges resets after save
+        const savedPassword = updated?.password || form.password || "";
+        originalFormRef.current = {
+          full_name: updated?.full_name || "",
+          username: updated?.username || "",
+          password: savedPassword,
+          role: updated?.role || "user",
+          is_active: updated?.is_active !== 0,
+          can_view_updates: updated?.can_view_updates === 1 || updated?.can_view_updates === true,
+        };
       } else {
         // Creating user
         if (!createTemplate) {
@@ -419,17 +496,15 @@ export default function UsersPage() {
           return;
         }
         const role = CREATE_TEMPLATE_ROLE[createTemplate] || "user";
-        const res = await api.post("/api/users", { ...form, role });
-        const newId = res.data?.data?.id || res.data?.id;
-
-        // Apply permissions from the live permissions state
-        if (newId && isAdmin && createTemplate !== "admin") {
-          const compact = {};
-          Object.entries(permissions).forEach(([k, v]) => {
-            if (Array.isArray(v) && v.length) compact[k] = v;
-          });
-          await api.put(`/api/users/${newId}/permissions`, { permissions: compact });
-        }
+        // Send permissions inline with the create call. Creating the account
+        // and granting its permissions in two requests made the owner's
+        // Telegram alert arrive as two disconnected messages, the first of
+        // which could not name the privileges being granted.
+        const compact = {};
+        Object.entries(permissions).forEach(([k, v]) => {
+          if (Array.isArray(v) && v.length) compact[k] = v;
+        });
+        await api.post("/api/users", { ...form, role, ...(isAdmin ? { permissions: compact } : {}) });
         toast.success("✓ تمت إضافة المستخدم بنجاح");
         loadRows();
         setShowCreateModal(false);
@@ -827,7 +902,7 @@ export default function UsersPage() {
             style={{ backgroundColor: form.is_active ? "var(--primary)" : "var(--border-strong)" }}
           >
             <span
-              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-bg-surface shadow ring-0 transition duration-200 ease-in-out"
               style={{ transform: form.is_active ? "translateX(-20px)" : "translateX(0)" }}
             />
           </button>
@@ -849,7 +924,7 @@ export default function UsersPage() {
             style={{ backgroundColor: form.can_view_updates ? "var(--primary)" : "var(--border-strong)" }}
           >
             <span
-              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+              className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-bg-surface shadow ring-0 transition duration-200 ease-in-out"
               style={{ transform: form.can_view_updates ? "translateX(-20px)" : "translateX(0)" }}
             />
           </button>
@@ -925,7 +1000,7 @@ export default function UsersPage() {
               style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", borderColor: "var(--border-normal)" }}
             />
             {permSearch && (
-              <button onClick={() => setPermSearch("")} className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setPermSearch("")} className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-bg-overlay text-text-muted hover:text-text-secondary">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -991,11 +1066,11 @@ export default function UsersPage() {
           {permLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
+                <div key={i} className="rounded-xl border border-border-normal bg-bg-surface p-4 flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-bg-overlay animate-pulse" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
-                    <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+                    <div className="h-3 bg-bg-overlay rounded animate-pulse w-1/3" />
+                    <div className="h-2 bg-bg-overlay rounded animate-pulse w-2/3" />
                   </div>
                 </div>
               ))}
@@ -1322,7 +1397,7 @@ export default function UsersPage() {
           </div>
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => { startCreate(); setShowCreateModal(true); }}
+            onClick={() => startCreate(true)}
             className="h-10 px-5 rounded-xl text-white text-xs font-black shadow-md flex items-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all"
             style={{ backgroundColor: "var(--primary)" }}
           >
@@ -1381,7 +1456,7 @@ export default function UsersPage() {
                   }}
                 />
                 {query && (
-                  <button onClick={() => setQuery("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setQuery("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-bg-overlay text-text-muted hover:text-text-secondary">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -1393,13 +1468,13 @@ export default function UsersPage() {
               {loading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
-                    <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center gap-4">
-                      <div className="h-11 w-11 rounded-xl bg-slate-100 animate-pulse" />
+                    <div key={i} className="rounded-2xl border border-border-normal bg-bg-surface p-4 flex items-center gap-4">
+                      <div className="h-11 w-11 rounded-xl bg-bg-overlay animate-pulse" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
-                        <div className="h-2 bg-slate-50 rounded animate-pulse w-1/2" />
+                        <div className="h-3 bg-bg-overlay rounded animate-pulse w-1/3" />
+                        <div className="h-2 bg-bg-overlay rounded animate-pulse w-1/2" />
                       </div>
-                      <div className="h-6 w-16 rounded-lg bg-slate-100 animate-pulse" />
+                      <div className="h-6 w-16 rounded-lg bg-bg-overlay animate-pulse" />
                     </div>
                   ))}
                 </div>
@@ -1441,7 +1516,7 @@ export default function UsersPage() {
                         <div className="flex items-center gap-3 w-full">
                           {/* Avatar Container */}
                           <div 
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white text-sm font-black shadow-inner relative border border-white/10"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white text-sm font-black shadow-inner relative border border-border-normal/10"
                             style={avatarStyle}
                           >
                             {initials}
@@ -1609,7 +1684,7 @@ export default function UsersPage() {
                       whileHover={{ scale: 1.01, y: -1 }}
                       whileTap={{ scale: 0.99 }}
                       type="button"
-                      onClick={() => { startCreate(); setShowCreateModal(true); }}
+                      onClick={() => startCreate(true)}
                       className="p-3.5 rounded-2xl border text-right flex items-center justify-between transition-all cursor-pointer group outline-none hover:bg-[var(--accent-soft)] hover:border-[var(--primary)] w-full"
                       style={{ backgroundColor: "var(--bg-overlay)", borderColor: "var(--border-normal)" }}
                     >
@@ -1662,7 +1737,7 @@ export default function UsersPage() {
                            }}>
                         <div className="flex items-center justify-between w-full">
                           <span className="text-[10px] font-black" style={{ color: "var(--text-secondary)" }}>{metric.title}</span>
-                          <div className="p-1.5 rounded-xl border border-white/5" style={{ backgroundColor: "var(--bg-input)", color: metric.color }}>
+                          <div className="p-1.5 rounded-xl border border-border-normal/5" style={{ backgroundColor: "var(--bg-input)", color: metric.color }}>
                             <Icon className="h-4 w-4" />
                           </div>
                         </div>
@@ -1717,33 +1792,161 @@ export default function UsersPage() {
                   </div>
                   {renderPermissionsSection(false)}
                 </div>
-
-                {/* === SINGLE SAVE BUTTON === */}
-                <div className="px-5 pb-5 pt-4">
-                  <motion.button
-                    ref={submitBtnRef}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    form="user-form"
-                    disabled={isSubmitting}
-                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-xl disabled:opacity-50 hover:translate-y-[-1px] active:translate-y-[0px]"
-                    style={{ backgroundColor: "var(--primary)" }}
-                  >
-                    {isSubmitting ? (
-                      "جاري الحفظ..."
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        حفظ التغييرات
-                      </>
-                    )}
-                  </motion.button>
-                </div>
               </div>
             )}
           </motion.div>
         </div>
       </main>
+
+      {/* === FIXED BOTTOM SAVE BAR — only when changes detected === */}
+      <AnimatePresence>
+        {hasChanges && editingRow && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed bottom-8 left-1/2 z-[60] -translate-x-1/2 flex items-center gap-5 rounded-sm border border-border-normal bg-bg-surface px-5 py-3 shadow-2xl"
+          >
+            <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
+              تغييرات غير محفوظة
+            </span>
+            <motion.button
+              ref={submitBtnRef}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              form="user-form"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-5 py-2 text-[11px] font-black text-white rounded-sm shadow-md transition-all active:scale-95 disabled:opacity-50 bg-primary"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {isSubmitting ? "جاري الحفظ..." : "حفظ الكل"}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Unsaved-changes guard — sidebar navigation */}
+      <AnimatePresence>
+        {blocker.state === "blocked" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => blocker.reset?.()}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm mx-4 rounded-2xl shadow-2xl border border-border-normal bg-bg-surface overflow-hidden"
+            >
+              <div className="p-6 flex flex-col items-center text-center">
+                <div className="h-14 w-14 rounded-full bg-warning-bg flex items-center justify-center mb-3">
+                  <AlertTriangle className="h-7 w-7 text-warning-text" />
+                </div>
+                <h3 className="text-base font-black text-text-primary mb-1">تغييرات غير محفوظة</h3>
+                <p className="text-[12px] font-bold text-text-secondary mb-5">
+                  لديك تغييرات لم يتم حفظها. ماذا تريد أن تفعل؟
+                </p>
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    onClick={async () => {
+                      const fakeEvent = { preventDefault: () => {} };
+                      await handleSubmit(fakeEvent);
+                      blocker.proceed?.();
+                    }}
+                    className="w-full rounded-xl bg-primary py-2.5 text-[13px] font-black text-white transition-all active:scale-95"
+                  >
+                    حفظ ومغادرة
+                  </button>
+                  <button
+                    onClick={() => blocker.proceed?.()}
+                    className="w-full rounded-xl bg-danger-bg py-2.5 text-[13px] font-bold text-danger-text transition-all active:scale-95"
+                  >
+                    مغادرة بدون حفظ
+                  </button>
+                  <button
+                    onClick={() => blocker.reset?.()}
+                    className="w-full rounded-xl bg-bg-overlay py-2.5 text-[13px] font-bold text-text-secondary transition-all active:scale-95"
+                  >
+                    ابقَ في الصفحة
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Unsaved-changes guard — in-page user switching */}
+      <AnimatePresence>
+        {showDiscardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => { setShowDiscardModal(false); pendingActionRef.current = null; }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm mx-4 rounded-2xl shadow-2xl border border-border-normal bg-bg-surface overflow-hidden"
+            >
+              <div className="p-6 flex flex-col items-center text-center">
+                <div className="h-14 w-14 rounded-full bg-warning-bg flex items-center justify-center mb-3">
+                  <AlertTriangle className="h-7 w-7 text-warning-text" />
+                </div>
+                <h3 className="text-base font-black text-text-primary mb-1">تغييرات غير محفوظة</h3>
+                <p className="text-[12px] font-bold text-text-secondary mb-5">
+                  لديك تغييرات لم يتم حفظها. ماذا تريد أن تفعل؟
+                </p>
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    onClick={async () => {
+                      const fakeEvent = { preventDefault: () => {} };
+                      await handleSubmit(fakeEvent);
+                      const action = pendingActionRef.current;
+                      pendingActionRef.current = null;
+                      setShowDiscardModal(false);
+                      setHasChanges(false);
+                      if (action) action();
+                    }}
+                    className="w-full rounded-xl bg-primary py-2.5 text-[13px] font-black text-white transition-all active:scale-95"
+                  >
+                    حفظ ومغادرة
+                  </button>
+                  <button
+                    onClick={() => {
+                      const action = pendingActionRef.current;
+                      pendingActionRef.current = null;
+                      setShowDiscardModal(false);
+                      setHasChanges(false);
+                      if (action) action();
+                    }}
+                    className="w-full rounded-xl bg-danger-bg py-2.5 text-[13px] font-bold text-danger-text transition-all active:scale-95"
+                  >
+                    مغادرة بدون حفظ
+                  </button>
+                  <button
+                    onClick={() => { setShowDiscardModal(false); pendingActionRef.current = null; }}
+                    className="w-full rounded-xl bg-bg-overlay py-2.5 text-[13px] font-bold text-text-secondary transition-all active:scale-95"
+                  >
+                    ابقَ في الصفحة
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Default Permissions Modal */}
       <DefaultPermissionsModal

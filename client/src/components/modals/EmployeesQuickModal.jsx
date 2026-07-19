@@ -68,7 +68,7 @@ const COLOR_MAP = {
   rose: { iconBg: "bg-rose-100", iconText: "text-rose-600", border: "border-rose-200", bg: "bg-rose-50", accent: "text-rose-700" },
   emerald: { iconBg: "bg-emerald-100", iconText: "text-emerald-600", border: "border-emerald-200", bg: "bg-emerald-50", accent: "text-emerald-700" },
   indigo: { iconBg: "bg-indigo-100", iconText: "text-indigo-600", border: "border-indigo-200", bg: "bg-indigo-50", accent: "text-indigo-700" },
-  slate: { iconBg: "bg-slate-100", iconText: "text-slate-600", border: "border-slate-200", bg: "bg-slate-50", accent: "text-slate-700" },
+  slate: { iconBg: "bg-bg-overlay", iconText: "text-text-secondary", border: "border-border-normal", bg: "bg-bg-overlay", accent: "text-text-primary" },
   blue: { iconBg: "bg-blue-100", iconText: "text-blue-600", border: "border-blue-200", bg: "bg-blue-50", accent: "text-blue-700" },
 };
 
@@ -109,7 +109,7 @@ function EmpPicker({ employees, value, onChange, accentClass, borderClass }) {
     <div ref={wrapRef} className="relative">
       {value ? (
         <div className={`flex items-center gap-2 ${accentClass} rounded-xl px-3 py-2 border ${borderClass}`}>
-          <div className="w-6 h-6 rounded-lg bg-white/60 flex items-center justify-center text-[10px] font-black shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-bg-surface/60 flex items-center justify-center text-[10px] font-black shrink-0">
             {value.name?.charAt(0)}
           </div>
           <span className="text-xs font-bold flex-1 truncate">{value.name}</span>
@@ -119,14 +119,14 @@ function EmpPicker({ employees, value, onChange, accentClass, borderClass }) {
         </div>
       ) : (
         <>
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={e => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             placeholder="اختر موظف..."
-            className={`w-full h-10 rounded-xl pr-9 pl-4 text-sm font-bold outline-none border ${borderClass} bg-white/50 focus:bg-white focus:border-current transition-all`}
+            className={`w-full h-10 rounded-xl pr-9 pl-4 text-sm font-bold outline-none border ${borderClass} bg-bg-surface/50 focus:bg-bg-surface focus:border-current transition-all`}
           />
         </>
       )}
@@ -202,19 +202,19 @@ function InlineAdvanceForm({ employees, onSubmit, onCancel }) {
       <EmpPicker employees={employees} value={emp} onChange={setEmp} accentClass="bg-amber-50 text-amber-700" borderClass="border-amber-200" />
       <div className="grid grid-cols-2 gap-2">
         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="المبلغ"
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-white focus:border-amber-400 transition-all" />
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-bg-surface focus:border-amber-400 transition-all" />
         <input type="number" value={installments} onChange={e => setInstallments(e.target.value)} placeholder="عدد الأقساط"
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-white focus:border-amber-400 transition-all" />
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-bg-surface focus:border-amber-400 transition-all" />
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="ملاحظات (اختياري)"
-        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-white focus:border-amber-400 transition-all" />
+        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-amber-200 bg-amber-50/50 focus:bg-bg-surface focus:border-amber-400 transition-all" />
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={createExpense} onChange={e => setCreateExpense(e.target.checked)}
           className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500" />
-        <span className="text-xs font-bold text-slate-600">تسجيل كمصروف نقدي</span>
+        <span className="text-xs font-bold text-text-secondary">تسجيل كمصروف نقدي</span>
       </label>
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-500 text-xs font-black hover:bg-slate-50 transition-colors">إلغاء</button>
+        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-border-normal text-text-secondary text-xs font-black hover:bg-bg-overlay transition-colors">إلغاء</button>
         <button onClick={handleSubmit} disabled={loading || !emp || !amount}
           className="flex-1 h-10 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -251,21 +251,21 @@ function InlineDeductionForm({ employees, onSubmit, onCancel }) {
       <EmpPicker employees={employees} value={emp} onChange={setEmp} accentClass="bg-rose-50 text-rose-700" borderClass="border-rose-200" />
       <div className="grid grid-cols-2 gap-2">
         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="المبلغ"
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-white focus:border-rose-400 transition-all" />
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-bg-surface focus:border-rose-400 transition-all" />
         <select value={deductionType} onChange={e => setDeductionType(e.target.value)}
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-white focus:border-rose-400 transition-all">
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-bg-surface focus:border-rose-400 transition-all">
           {DEDUCTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)}
           className="w-4 h-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500" />
-        <span className="text-xs font-bold text-slate-600">تكرار شهري</span>
+        <span className="text-xs font-bold text-text-secondary">تكرار شهري</span>
       </label>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="ملاحظات (اختياري)"
-        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-white focus:border-rose-400 transition-all" />
+        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-rose-200 bg-rose-50/50 focus:bg-bg-surface focus:border-rose-400 transition-all" />
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-500 text-xs font-black hover:bg-slate-50 transition-colors">إلغاء</button>
+        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-border-normal text-text-secondary text-xs font-black hover:bg-bg-overlay transition-colors">إلغاء</button>
         <button onClick={handleSubmit} disabled={loading || !emp || !amount}
           className="flex-1 h-10 rounded-xl bg-rose-500 text-white text-xs font-black hover:bg-rose-600 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -301,16 +301,16 @@ function InlineBonusForm({ employees, onSubmit, onCancel }) {
       <EmpPicker employees={employees} value={emp} onChange={setEmp} accentClass="bg-emerald-50 text-emerald-700" borderClass="border-emerald-200" />
       <div className="grid grid-cols-2 gap-2">
         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="المبلغ"
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-white focus:border-emerald-400 transition-all" />
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-bg-surface focus:border-emerald-400 transition-all" />
         <select value={bonusType} onChange={e => setBonusType(e.target.value)}
-          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-white focus:border-emerald-400 transition-all">
+          className="h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-bg-surface focus:border-emerald-400 transition-all">
           {BONUS_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
       <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="ملاحظات (اختياري)"
-        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-white focus:border-emerald-400 transition-all" />
+        className="w-full h-10 rounded-xl px-3 text-sm font-bold outline-none border border-emerald-200 bg-emerald-50/50 focus:bg-bg-surface focus:border-emerald-400 transition-all" />
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-500 text-xs font-black hover:bg-slate-50 transition-colors">إلغاء</button>
+        <button onClick={onCancel} className="flex-1 h-10 rounded-xl border border-border-normal text-text-secondary text-xs font-black hover:bg-bg-overlay transition-colors">إلغاء</button>
         <button onClick={handleSubmit} disabled={loading || !emp || !amount}
           className="flex-1 h-10 rounded-xl bg-emerald-500 text-white text-xs font-black hover:bg-emerald-600 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

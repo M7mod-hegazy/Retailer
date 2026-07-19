@@ -43,6 +43,7 @@ import {
   Warehouse
 } from "lucide-react";
 import api from "../../services/api";
+import { usePageTour } from "../../hooks/usePageTour";
 import DocumentPreviewModal from "../../components/operations/DocumentPreviewModal";
 import PriceTimelineChart from "../../components/operations/PriceTimelineChart";
 import ItemSmartInsights from "../../components/operations/ItemSmartInsights";
@@ -54,9 +55,9 @@ const TYPE_OPTIONS = [
   { key: "sales_returns", label: "مرتجع مبيعات", tone: "amber", border: "border-amber-200 hover:border-amber-400 bg-amber-50/10", text: "text-amber-700 bg-amber-50 border-amber-100", dot: "bg-amber-500", glow: "shadow-[0_0_15px_rgba(245,158,11,0.25)]" },
   { key: "purchase_returns", label: "مرتجع مشتريات", tone: "rose", border: "border-rose-200 hover:border-rose-400 bg-rose-50/10", text: "text-rose-700 bg-rose-50 border-rose-100", dot: "bg-rose-500", glow: "shadow-[0_0_15px_rgba(239,68,68,0.25)]" },
   { key: "branch_transfers", label: "تحويلات", tone: "indigo", border: "border-indigo-200 hover:border-indigo-400 bg-indigo-50/10", text: "text-indigo-700 bg-indigo-50 border-indigo-100", dot: "bg-indigo-500", glow: "shadow-[0_0_15px_rgba(99,102,241,0.25)]" },
-  { key: "opening_balance", label: "رصيد افتتاحي", tone: "slate", border: "border-slate-200 hover:border-slate-400 bg-slate-50/20", text: "text-slate-700 bg-slate-100 border-slate-200", dot: "bg-slate-500", glow: "shadow-[0_0_15px_rgba(100,116,139,0.2)]" },
+  { key: "opening_balance", label: "رصيد افتتاحي", tone: "slate", border: "border-border-normal hover:border-slate-400 bg-bg-overlay/20", text: "text-text-primary bg-bg-overlay border-border-normal", dot: "bg-bg-overlay0", glow: "shadow-[0_0_15px_rgba(100,116,139,0.2)]" },
   { key: "price_changes", label: "تغيير سعر", tone: "cyan", border: "border-cyan-200 hover:border-cyan-400 bg-cyan-50/10", text: "text-cyan-700 bg-cyan-50 border-cyan-100", dot: "bg-cyan-500", glow: "shadow-[0_0_15px_rgba(6,182,212,0.25)]" },
-  { key: "stock_movements", label: "حركة مخزون", tone: "zinc", border: "border-zinc-200 hover:border-zinc-400 bg-zinc-50/20", text: "text-zinc-700 bg-zinc-100 border-slate-200", dot: "bg-slate-500", glow: "shadow-[0_0_15px_rgba(113,113,122,0.2)]" },
+  { key: "stock_movements", label: "حركة مخزون", tone: "zinc", border: "border-zinc-200 hover:border-zinc-400 bg-zinc-50/20", text: "text-zinc-700 bg-zinc-100 border-border-normal", dot: "bg-bg-overlay0", glow: "shadow-[0_0_15px_rgba(113,113,122,0.2)]" },
   { key: "cost_movements", label: "تغير تكلفة", tone: "violet", border: "border-violet-200 hover:border-violet-400 bg-violet-50/10", text: "text-violet-700 bg-violet-50 border-violet-100", dot: "bg-violet-500", glow: "shadow-[0_0_15px_rgba(139,92,246,0.25)]" },
 ];
 
@@ -154,6 +155,7 @@ function SpotlightCard({ children, className = "", style = {}, borderTone = "ind
 }
 
 export default function ItemOperationsPage() {
+  usePageTour('item_operations');
   const { itemId } = useParams();
   const [searchParams] = useSearchParams();
   const [itemSearch, setItemSearch] = useState("");
@@ -314,7 +316,7 @@ export default function ItemOperationsPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--bg-base)] text-slate-900 font-sans selection:bg-indigo-100/80 relative overflow-hidden" dir="rtl">
+    <div className="min-h-[100dvh] bg-[var(--bg-base)] text-text-primary font-sans selection:bg-indigo-100/80 relative overflow-hidden" dir="rtl">
       
       {/* Animated background blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.45]">
@@ -356,42 +358,42 @@ export default function ItemOperationsPage() {
       <div className="flex h-[100dvh] overflow-hidden relative z-10">
         
         {/* Sidebar Panel */}
-        <aside data-help="item-selector" className="w-80 shrink-0 border-l border-slate-200/60 bg-white/80 backdrop-blur-xl flex flex-col shadow-[0_0_30px_rgba(0,0,0,0.02)] z-10">
-          <div className="p-5 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur-md z-10">
+        <aside data-help="item-selector" className="w-80 shrink-0 border-l border-border-normal/60 bg-bg-surface/80 backdrop-blur-xl flex flex-col shadow-[0_0_30px_rgba(0,0,0,0.02)] z-10">
+          <div className="p-5 border-b border-border-subtle sticky top-0 bg-bg-surface/95 backdrop-blur-md z-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-[0_4px_15px_rgba(79,70,229,0.25)]">
                 <PackageSearch size={22} className="stroke-[1.8] animate-pulse" />
               </div>
               <div>
-                <h1 className="text-base font-black text-slate-800 tracking-tight leading-none">سجل الصنف</h1>
-                <span className="text-[11px] font-bold text-slate-400/90 block mt-1 tracking-wider">كل اللي حصل للصنف</span>
+                <h1 className="text-base font-black text-text-primary tracking-tight leading-none">سجل الصنف</h1>
+                <span className="text-[11px] font-bold text-text-muted/90 block mt-1 tracking-wider">كل اللي حصل للصنف</span>
               </div>
             </div>
             <div className="relative font-sans">
-              <Search size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
               <input
                 data-help="search-bar"
                 value={itemSearch}
                 onChange={(event) => setItemSearch(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-400"
+                className="w-full rounded-2xl border border-border-normal bg-bg-surface py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-text-muted"
                 placeholder="بحث بالاسم أو الكود..."
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-4 space-y-1 bg-slate-50/20 scrollbar-thin">
+          <div className="flex-1 overflow-auto p-4 space-y-1 bg-bg-overlay/20 scrollbar-thin">
             {loadingItems ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-20 gap-3 text-text-muted">
                 <RefreshCcw size={24} className="animate-spin text-indigo-500" />
                 <span className="text-xs font-bold">جاري تحميل الأصناف...</span>
               </div>
             ) : items.length === 0 ? (
-              <div className="text-center py-20 text-xs font-bold text-slate-400/80">
+              <div className="text-center py-20 text-xs font-bold text-text-muted/80">
                 لا توجد أصناف تطابق البحث
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1 mb-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-text-muted px-1 mb-1">
                   <span>تم العثور على {items.length} صنف</span>
                 </div>
                 <motion.div 
@@ -412,7 +414,7 @@ export default function ItemOperationsPage() {
                         className={`w-full rounded-2xl border px-4 py-3.5 text-right transition-all duration-200 relative overflow-hidden group ${
                           isSelected 
                             ? "border-indigo-400/30 bg-gradient-to-l from-indigo-50/80 to-white shadow-[0_2px_12px_rgba(79,70,229,0.06)]" 
-                            : "bg-white border-slate-200/50 hover:border-slate-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+                            : "bg-bg-surface border-border-normal/50 hover:border-border-strong hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
                         }`}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -425,7 +427,7 @@ export default function ItemOperationsPage() {
                         )}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <span className={`font-black text-sm leading-snug block truncate transition-colors ${isSelected ? "text-indigo-900" : "text-slate-800 group-hover:text-slate-900"}`}>
+                            <span className={`font-black text-sm leading-snug block truncate transition-colors ${isSelected ? "text-indigo-900" : "text-text-primary group-hover:text-text-primary"}`}>
                               {item.name}
                             </span>
                             <div className="flex items-center gap-2 mt-2">
@@ -440,7 +442,7 @@ export default function ItemOperationsPage() {
                                 رصيد: {money(stock)}
                               </span>
                               {(item.updated_at || item.created_at) && (
-                                <span className="text-[9px] font-semibold text-slate-400 truncate">
+                                <span className="text-[9px] font-semibold text-text-muted truncate">
                                   {formatItemDate(item.updated_at || item.created_at)}
                                 </span>
                               )}
@@ -449,7 +451,7 @@ export default function ItemOperationsPage() {
                           <span className={`font-mono text-xs font-black shrink-0 px-2.5 py-1.5 rounded-xl border transition-colors ${
                             isSelected
                               ? "text-indigo-700 bg-indigo-100/80 border-indigo-200"
-                              : "text-slate-500 bg-slate-50 border-slate-200/70 group-hover:text-indigo-600 group-hover:bg-indigo-50/50 group-hover:border-indigo-100"
+                              : "text-text-secondary bg-bg-overlay border-border-normal/70 group-hover:text-indigo-600 group-hover:bg-indigo-50/50 group-hover:border-indigo-100"
                           }`} dir="ltr">
                             {item.code || `#${item.id}`}
                           </span>
@@ -500,17 +502,17 @@ export default function ItemOperationsPage() {
                   className="grid grid-cols-1 md:grid-cols-3 gap-4"
                 >
                   {/* Card 1: Item Profile */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+                  <div className="bg-bg-surface border border-border-normal/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
                     <div className="absolute top-0 left-0 w-28 h-28 bg-indigo-500/5 rounded-full blur-3xl -translate-x-8 -translate-y-8 pointer-events-none" />
                     <div className="flex items-center gap-2 mb-2 relative z-10">
                       <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[9px] font-black text-indigo-600">
                         <Sparkles size={9} /> بطاقة صنف
                       </span>
-                      <span className="inline-flex rounded-full bg-slate-100 border border-slate-200/70 px-2 py-0.5 text-[9px] font-bold text-slate-500">
+                      <span className="inline-flex rounded-full bg-bg-overlay border border-border-normal/70 px-2 py-0.5 text-[9px] font-bold text-text-secondary">
                         {selectedItem.category_name || "بدون قسم"}
                       </span>
                     </div>
-                    <h2 className="text-lg font-black text-slate-800 tracking-tight leading-snug relative z-10">
+                    <h2 className="text-lg font-black text-text-primary tracking-tight leading-snug relative z-10">
                       {selectedItem.name}
                     </h2>
                     <div className="flex items-center gap-2 mt-2 relative z-10">
@@ -519,14 +521,14 @@ export default function ItemOperationsPage() {
                           {selectedItem.code}
                         </span>
                       )}
-                      <span className="text-[9px] font-bold text-slate-400">
+                      <span className="text-[9px] font-bold text-text-muted">
                         بيع: {money(selectedItem.sale_price)}
                       </span>
                     </div>
                   </div>
 
                   {/* Card 2: Stock Gauge */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex items-center justify-center gap-4 min-h-[120px]">
+                  <div className="bg-bg-surface border border-border-normal/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex items-center justify-center gap-4 min-h-[120px]">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/5 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none" />
                     <div className="relative flex items-center justify-center shrink-0">
                       <svg className="w-20 h-20 transform -rotate-90">
@@ -543,8 +545,8 @@ export default function ItemOperationsPage() {
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center justify-center">
-                        <span className="text-base font-black text-slate-800">{money(selectedItem.current_stock)}</span>
-                        <span className="text-[7px] font-bold text-slate-400">وحدة</span>
+                        <span className="text-base font-black text-text-primary">{money(selectedItem.current_stock)}</span>
+                        <span className="text-[7px] font-bold text-text-muted">وحدة</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -552,16 +554,16 @@ export default function ItemOperationsPage() {
                         <span className={`w-1.5 h-1.5 rounded-full ${stockGaugeDetails.color.replace("text-", "bg-")} mr-1`} />
                         {stockGaugeDetails.label}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400">
+                      <span className="text-[10px] font-bold text-text-muted">
                         تقييم: {money(stockValuation)} ج.م
                       </span>
                     </div>
                   </div>
 
                   {/* Card 3: Price Summary */}
-                  <div className="bg-white border border-slate-200/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
+                  <div className="bg-bg-surface border border-border-normal/60 rounded-[2rem] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between min-h-[120px]">
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -translate-x-6 translate-y-6 pointer-events-none" />
-                    <div className="flex items-center gap-1.5 text-slate-400 mb-1 relative z-10">
+                    <div className="flex items-center gap-1.5 text-text-muted mb-1 relative z-10">
                       <DollarSign size={13} className="text-emerald-500" />
                       <span className="text-[10px] font-black">ملخص الأسعار</span>
                     </div>
@@ -587,15 +589,15 @@ export default function ItemOperationsPage() {
             {selectedId && (
               <>
                 {/* Advanced Search & Control Deck */}
-                <div data-help="filters-section" className="bg-white/90 backdrop-blur-md rounded-[2rem] border border-slate-200/50 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.01)] space-y-4">
+                <div data-help="filters-section" className="bg-bg-surface/90 backdrop-blur-md rounded-[2rem] border border-border-normal/50 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.01)] space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-105 pb-3">
                     <button 
                       onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                      className="flex items-center gap-2 text-xs font-black text-slate-700 hover:text-indigo-600 transition-colors"
+                      className="flex items-center gap-2 text-xs font-black text-text-primary hover:text-indigo-600 transition-colors"
                     >
                       <SlidersHorizontal size={14} className="stroke-[2.2]" /> فلترة وتصفية البحث
                     </button>
-                    <div className="text-[11px] font-bold text-slate-400">
+                    <div className="text-[11px] font-bold text-text-muted">
                       حدد نطاق البحث لتخصيص النتائج المرجوة
                     </div>
                   </div>
@@ -618,7 +620,7 @@ export default function ItemOperationsPage() {
                                 className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold cursor-pointer transition-all relative overflow-hidden select-none active:scale-95 ${
                                   isChecked
                                     ? `bg-indigo-600 border-indigo-600 text-white shadow-[0_4px_12px_rgba(79,70,229,0.2)]`
-                                    : `bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-50/80 hover:border-slate-300`
+                                    : `bg-bg-overlay border-border-normal text-text-secondary hover:bg-bg-overlay/80 hover:border-border-strong`
                                 }`}
                               >
                                 <input
@@ -627,7 +629,7 @@ export default function ItemOperationsPage() {
                                   onChange={() => toggleType(option.key)}
                                   className="hidden"
                                 />
-                                <span className={`w-2.5 h-2.5 rounded-full transition-transform ${isChecked ? "bg-white scale-110" : option.dot} ${isChecked ? "" : "scale-75 opacity-60"}`} />
+                                <span className={`w-2.5 h-2.5 rounded-full transition-transform ${isChecked ? "bg-bg-surface scale-110" : option.dot} ${isChecked ? "" : "scale-75 opacity-60"}`} />
                                 {option.label}
                               </label>
                             );
@@ -636,32 +638,32 @@ export default function ItemOperationsPage() {
 
                         <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-4 pt-1 font-sans">
                           <div className="relative md:col-span-2">
-                            <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
                             <input
                               value={operationSearch}
                               onChange={(event) => setOperationSearch(event.target.value)}
-                              className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-400"
+                              className="w-full rounded-2xl border border-border-normal bg-bg-overlay/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-bg-surface focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-text-muted"
                               placeholder="بحث برقم المستند أو الطرف المقابل..."
                             />
                           </div>
 
                           <div className="relative font-sans">
-                            <CalendarDays size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <CalendarDays size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                             <input
                               type="date"
                               value={fromDate}
                               onChange={(event) => setFromDate(event.target.value)}
-                              className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all relative z-10"
+                              className="w-full rounded-2xl border border-border-normal bg-bg-overlay/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-bg-surface focus:ring-4 focus:ring-indigo-50 transition-all relative z-10"
                             />
                           </div>
 
                           <div className="relative font-sans">
-                            <CalendarDays size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <CalendarDays size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                             <input
                               type="date"
                               value={toDate}
                               onChange={(event) => setToDate(event.target.value)}
-                              className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all relative z-10"
+                              className="w-full rounded-2xl border border-border-normal bg-bg-overlay/60 py-2.5 pr-10 pl-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-bg-surface focus:ring-4 focus:ring-indigo-50 transition-all relative z-10"
                             />
                           </div>
                         </div>
@@ -669,13 +671,13 @@ export default function ItemOperationsPage() {
                         <div className="flex items-center justify-between border-t border-slate-105 pt-3">
                           <button
                             onClick={() => setSortDir((value) => value === "desc" ? "asc" : "desc")}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                            className="inline-flex items-center gap-2 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
                           >
                             <motion.div
                               animate={{ rotate: sortDir === "desc" ? 0 : 180 }}
                               transition={{ type: "spring", stiffness: 200, damping: 15 }}
                             >
-                              <ArrowUpDown size={13} className="text-slate-400" />
+                              <ArrowUpDown size={13} className="text-text-muted" />
                             </motion.div>
                             {sortDir === "desc" ? "ترتيب: الأحدث أولاً" : "ترتيب: الأقدم أولاً"}
                           </button>
@@ -708,19 +710,19 @@ export default function ItemOperationsPage() {
                   {loadingRows ? (
                     <div className="space-y-4 mr-1">
                       {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white border border-slate-200/60 rounded-3xl p-6 space-y-4 animate-pulse mr-[11.5rem]">
+                        <div key={i} className="bg-bg-surface border border-border-normal/60 rounded-3xl p-6 space-y-4 animate-pulse mr-[11.5rem]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-5 bg-slate-200 rounded-md" />
-                              <div className="w-24 h-5 bg-slate-200 rounded-md" />
+                              <div className="w-16 h-5 bg-border-normal rounded-md" />
+                              <div className="w-24 h-5 bg-border-normal rounded-md" />
                             </div>
-                            <div className="w-20 h-4 bg-slate-200 rounded-md" />
+                            <div className="w-20 h-4 bg-border-normal rounded-md" />
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {[1, 2, 3, 4].map((j) => (
                               <div key={j} className="space-y-2">
-                                <div className="w-12 h-3 bg-slate-100 rounded" />
-                                <div className="w-20 h-5 bg-slate-200 rounded-md" />
+                                <div className="w-12 h-3 bg-bg-overlay rounded" />
+                                <div className="w-20 h-5 bg-border-normal rounded-md" />
                               </div>
                             ))}
                           </div>
@@ -728,12 +730,12 @@ export default function ItemOperationsPage() {
                       ))}
                     </div>
                   ) : rows.length === 0 ? (
-                    <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-16 text-center text-slate-400/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
-                      <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                    <div className="bg-bg-surface border border-border-normal/60 rounded-[2.5rem] p-16 text-center text-text-muted/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
+                      <div className="w-16 h-16 bg-bg-overlay text-text-muted rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border-subtle">
                         <AlertCircle size={28} className="stroke-[1.5]" />
                       </div>
-                      <h4 className="text-sm font-black text-slate-700 mb-1">لا توجد عمليات مسجلة</h4>
-                      <p className="text-xs font-bold text-slate-400 max-w-[320px] mx-auto leading-relaxed">
+                      <h4 className="text-sm font-black text-text-primary mb-1">لا توجد عمليات مسجلة</h4>
+                      <p className="text-xs font-bold text-text-muted max-w-[320px] mx-auto leading-relaxed">
                         جرب تعديل خيارات التصفية أو الفلاتر المحددة للبحث عن العمليات المطلوبة.
                       </p>
                     </div>
@@ -773,36 +775,36 @@ export default function ItemOperationsPage() {
                             key={`${row.type}-${row.source_line_id}-${row.date}`}
                             className="relative pr-[11.5rem]"
                           >
-                            <div className={`absolute right-[8.5rem] translate-x-1/2 top-8 w-3.5 h-3.5 rounded-full border-[2.5px] border-white ${option?.dot || "bg-indigo-600"} ${option?.glow || "shadow-md"} z-10 transition-all hover:scale-125 duration-300`}>
-                              <span className="absolute inset-0 rounded-full bg-white opacity-30 animate-ping" />
+                            <div className={`absolute right-[8.5rem] translate-x-1/2 top-8 w-3.5 h-3.5 rounded-full border-[2.5px] border-border-normal ${option?.dot || "bg-indigo-600"} ${option?.glow || "shadow-md"} z-10 transition-all hover:scale-125 duration-300`}>
+                              <span className="absolute inset-0 rounded-full bg-bg-surface opacity-30 animate-ping" />
                             </div>
                             {parsedDate && (
                               <div className="absolute right-4 top-8 -translate-y-1/2 w-28 z-10 select-none group">
-                                <div className="py-2.5 px-3 rounded-2xl border border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.02)] group-hover:border-slate-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all duration-300 flex flex-col items-center justify-center">
+                                <div className="py-2.5 px-3 rounded-2xl border border-border-normal/60 bg-bg-surface/95 backdrop-blur-sm shadow-[0_4px_16px_rgba(0,0,0,0.02)] group-hover:border-border-strong group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all duration-300 flex flex-col items-center justify-center">
                                   {/* Time */}
-                                  <span className="text-sm font-black text-slate-800 font-mono tracking-tight leading-none" dir="ltr">
+                                  <span className="text-sm font-black text-text-primary font-mono tracking-tight leading-none" dir="ltr">
                                     {parsedDate.time}
                                   </span>
                                   {/* Horizontal Divider */}
-                                  <div className="w-10 h-[1.5px] bg-slate-100 my-1.5 rounded-full" />
+                                  <div className="w-10 h-[1.5px] bg-bg-overlay my-1.5 rounded-full" />
                                   {/* Date Details */}
                                   <div className="flex flex-col items-center leading-none">
-                                    <span className="text-[11px] font-black text-slate-700 leading-none">
+                                    <span className="text-[11px] font-black text-text-primary leading-none">
                                       {parsedDate.day} {parsedDate.month}
                                     </span>
-                                    <span className="text-[8.5px] font-bold text-slate-400 mt-1 leading-none font-mono">
+                                    <span className="text-[8.5px] font-bold text-text-muted mt-1 leading-none font-mono">
                                       {parsedDate.year}
                                     </span>
                                   </div>
                                 </div>
-                                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-[10px] h-[1.5px] bg-slate-200/70 group-hover:bg-slate-350 transition-colors pointer-events-none" />
+                                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-[10px] h-[1.5px] bg-border-normal/70 group-hover:bg-slate-350 transition-colors pointer-events-none" />
                               </div>
                             )}
                             
                             {row.type === "sales" && (
                               <SpotlightCard 
                                 borderTone="emerald"
-                                className="rounded-[2rem] border border-emerald-200 bg-white shadow-[0_4px_24px_-4px_var(--primary-glow)] hover:shadow-[0_12px_32px_-8px_var(--primary-glow)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-emerald-200 bg-bg-surface shadow-[0_4px_24px_-4px_var(--primary-glow)] hover:shadow-[0_12px_32px_-8px_var(--primary-glow)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
                                 <div className="bg-emerald-600 text-white rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm">
                                   <span className="flex items-center gap-1.5"><CheckCircle2 size={13} /> فاتورة مبيعات معتمدة للعميل</span>
@@ -817,11 +819,11 @@ export default function ItemOperationsPage() {
                                             صافي الربحية {profitRatio}%
                                           </span>
                                         )}
-                                        <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
+                                        <span className="font-mono text-[9px] font-bold text-text-muted" dir="ltr">
                                           {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
-                                      <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                                      <h3 className="text-base font-black text-text-primary tracking-tight flex items-center gap-1.5">
                                         {row.doc_no || "رقم مبيعات غير معروف"}
                                         {row.party_name && (
                                           <span className="text-xs font-bold text-emerald-600 bg-emerald-50/50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-sans">
@@ -860,29 +862,29 @@ export default function ItemOperationsPage() {
                                         </span>
                                       </div>
                                       <div className="h-1.5 bg-emerald-100 rounded-full relative overflow-hidden flex">
-                                        <div className="h-full bg-slate-300" style={{ width: `${Math.min((row.unit_cost / row.unit_price) * 100, 100)}%` }} />
+                                        <div className="h-full bg-border-strong" style={{ width: `${Math.min((row.unit_cost / row.unit_price) * 100, 100)}%` }} />
                                         {row.unit_price > row.unit_cost && <div className="h-full flex-1 bg-emerald-500" />}
                                       </div>
                                     </div>
                                   )}
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
-                                      <span>الرصيد السابق: <strong className="number-fmt text-slate-700">{money(beforeStock)}</strong></span>
+                                    <div className="bg-bg-overlay border border-border-subtle rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-text-secondary">
+                                      <span>الرصيد السابق: <strong className="number-fmt text-text-primary">{money(beforeStock)}</strong></span>
                                       <span className="text-rose-500 flex items-center gap-0.5">خروج من المخزن <ArrowDownRight size={12} /> <strong className="number-fmt">-{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="number-fmt text-indigo-600">{money(afterStock)}</strong></span>
                                     </div>
                                   )}
 
-                                  <div className="flex gap-2 justify-end border-t border-slate-100 pt-3.5">
+                                  <div className="flex gap-2 justify-end border-t border-border-subtle pt-3.5">
                                     <motion.button
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setPreviewTarget({ docType: "invoice", docId: row.source_id })}
-                                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-4.5 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50/50 shadow-sm"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-bg-surface px-4.5 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50/50 shadow-sm"
                                     >
                                       <Eye size={13} /> معاينة الفاتورة
                                     </motion.button>
-                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                                       <Pencil size={13} /> تعديل
                                     </Link>
                                   </div>
@@ -893,7 +895,7 @@ export default function ItemOperationsPage() {
                             {row.type === "purchases" && (
                               <SpotlightCard 
                                 borderTone="blue"
-                                className="rounded-[2rem] border border-blue-300 bg-white shadow-[0_4px_24px_-4px_rgba(59,130,246,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(59,130,246,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-blue-300 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(59,130,246,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(59,130,246,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
                                 <div className="bg-blue-600 text-white rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm">
                                   <span className="flex items-center gap-1.5"><Package size={13} /> فاتورة شراء وتوريد بضائع من المورد</span>
@@ -906,11 +908,11 @@ export default function ItemOperationsPage() {
                                         <span className="inline-flex rounded-full bg-blue-100 text-blue-900 border border-blue-200 px-2 py-0.5 text-[9px] font-black shadow-sm">
                                           إمداد المخزن
                                         </span>
-                                        <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
+                                        <span className="font-mono text-[9px] font-bold text-text-muted" dir="ltr">
                                           {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
-                                      <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                                      <h3 className="text-base font-black text-text-primary tracking-tight flex items-center gap-1.5">
                                         {row.doc_no || "رقم شراء غير معروف"}
                                         {row.party_name && (
                                           <span className="text-xs font-bold text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-lg flex items-center gap-1 font-sans">
@@ -933,28 +935,28 @@ export default function ItemOperationsPage() {
                                       <span className="text-blue-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-blue-500 font-bold block mb-0.5">تكلفة التوريد</span>
-                                        <span className="number-fmt-primary text-slate-800" dir="ltr">{money(row.line_total)} ج.م</span>
+                                        <span className="number-fmt-primary text-text-primary" dir="ltr">{money(row.line_total)} ج.م</span>
                                       </div>
                                     </div>
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
-                                      <span>الرصيد السابق: <strong className="number-fmt text-slate-700">{money(beforeStock)}</strong></span>
+                                    <div className="bg-bg-overlay border border-border-subtle rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-text-secondary">
+                                      <span>الرصيد السابق: <strong className="number-fmt text-text-primary">{money(beforeStock)}</strong></span>
                                       <span className="text-emerald-500 flex items-center gap-0.5">دخول إلى المستودع <ArrowUpLeft size={12} /> <strong className="number-fmt">+{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="number-fmt text-indigo-600">{money(afterStock)}</strong></span>
                                     </div>
                                   )}
 
-                                  <div className="flex gap-2 justify-end border-t border-slate-100 pt-3.5">
+                                  <div className="flex gap-2 justify-end border-t border-border-subtle pt-3.5">
                                     <motion.button
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setPreviewTarget({ docType: "purchase", docId: row.source_id })}
-                                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-4.5 py-2 text-xs font-black text-blue-700 hover:bg-blue-50/50 shadow-sm"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-bg-surface px-4.5 py-2 text-xs font-black text-blue-700 hover:bg-blue-50/50 shadow-sm"
                                     >
                                       <Eye size={13} /> معاينة التوريد
                                     </motion.button>
-                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                                       <Pencil size={13} /> تعديل
                                     </Link>
                                   </div>
@@ -965,9 +967,9 @@ export default function ItemOperationsPage() {
                             {row.type === "sales_returns" && (
                               <SpotlightCard 
                                 borderTone="amber"
-                                className="rounded-[2rem] border border-amber-300 bg-white shadow-[0_4px_24px_-4px_rgba(245,158,11,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(245,158,11,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-amber-300 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(245,158,11,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(245,158,11,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
-                                <div className="bg-amber-500 text-slate-900 rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm relative">
+                                <div className="bg-amber-500 text-text-primary rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm relative">
                                   <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] pointer-events-none" />
                                   <span className="flex items-center gap-1.5 relative z-10"><AlertCircle size={13} className="animate-spin-slow relative z-10" /> مرتجع مبيعات العميل - قيد التسوية</span>
                                   <span className="font-mono opacity-85 relative z-10">SALES RETURN</span>
@@ -979,14 +981,14 @@ export default function ItemOperationsPage() {
                                         <span className="inline-flex rounded-full bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 text-[9px] font-black shadow-sm">
                                           تسوية استرداد قيمة
                                         </span>
-                                        <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
+                                        <span className="font-mono text-[9px] font-bold text-text-muted" dir="ltr">
                                           {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
-                                      <h3 className="text-base font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                                      <h3 className="text-base font-black text-text-primary tracking-tight flex items-center gap-1.5">
                                         {row.doc_no || "رقم مرتجع غير معروف"}
                                         {row.party_name && (
-                                          <span className="text-xs font-bold text-slate-500 font-sans">
+                                          <span className="text-xs font-bold text-text-secondary font-sans">
                                             / {row.party_name}
                                           </span>
                                         )}
@@ -1006,28 +1008,28 @@ export default function ItemOperationsPage() {
                                       <span className="text-amber-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-amber-500 font-bold block mb-0.5">المرتجع</span>
-                                        <span className="number-fmt-primary text-slate-800" dir="ltr">{money(row.line_total)} ج.م</span>
+                                        <span className="number-fmt-primary text-text-primary" dir="ltr">{money(row.line_total)} ج.م</span>
                                       </div>
                                     </div>
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
-                                      <span>الرصيد السابق: <strong className="number-fmt text-slate-700">{money(beforeStock)}</strong></span>
+                                    <div className="bg-bg-overlay border border-border-subtle rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-text-secondary">
+                                      <span>الرصيد السابق: <strong className="number-fmt text-text-primary">{money(beforeStock)}</strong></span>
                                       <span className="text-amber-600 flex items-center gap-0.5">إرجاع للمستودع <ArrowUpLeft size={12} /> <strong className="number-fmt">+{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="number-fmt text-indigo-650">{money(afterStock)}</strong></span>
                                     </div>
                                   )}
 
-                                  <div className="flex gap-2 justify-end border-t border-slate-100 pt-3.5">
+                                  <div className="flex gap-2 justify-end border-t border-border-subtle pt-3.5">
                                     <motion.button
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setPreviewTarget({ docType: "sales_return", docId: row.source_id })}
-                                      className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-4.5 py-2 text-xs font-black text-amber-700 hover:bg-amber-50/50 shadow-sm"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-bg-surface px-4.5 py-2 text-xs font-black text-amber-700 hover:bg-amber-50/50 shadow-sm"
                                     >
                                       <Eye size={13} /> معاينة المرتجع
                                     </motion.button>
-                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                                       <Pencil size={13} /> تعديل
                                     </Link>
                                   </div>
@@ -1038,7 +1040,7 @@ export default function ItemOperationsPage() {
                             {row.type === "purchase_returns" && (
                               <SpotlightCard 
                                 borderTone="rose"
-                                className="rounded-[2rem] border border-rose-300 bg-white shadow-[0_4px_24px_-4px_rgba(239,68,68,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(239,68,68,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-rose-300 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(239,68,68,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(239,68,68,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
                                 <div className="bg-rose-600 text-white rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm relative">
                                   <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,#000,#000_10px,#fff_10px,#fff_20px)] pointer-events-none" />
@@ -1052,7 +1054,7 @@ export default function ItemOperationsPage() {
                                         <span className="inline-flex rounded-full bg-rose-50 text-rose-900 border border-rose-200 px-2 py-0.5 text-[9px] font-black shadow-sm">
                                           مرتجع توريد بضاعة
                                         </span>
-                                        <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
+                                        <span className="font-mono text-[9px] font-bold text-text-muted" dir="ltr">
                                           {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                         </span>
                                       </div>
@@ -1079,28 +1081,28 @@ export default function ItemOperationsPage() {
                                       <span className="text-rose-400 text-[11px] font-mono select-none">=</span>
                                       <div className="flex flex-col text-left">
                                         <span className="text-[8px] text-rose-500 font-bold block mb-0.5">الإجمالي</span>
-                                        <span className="number-fmt-primary text-slate-800" dir="ltr">{money(row.line_total)} ج.م</span>
+                                        <span className="number-fmt-primary text-text-primary" dir="ltr">{money(row.line_total)} ج.م</span>
                                       </div>
                                     </div>
                                   </div>
 
                                   {beforeStock != null && afterStock != null && (
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-slate-500">
-                                      <span>الرصيد السابق: <strong className="number-fmt text-slate-700">{money(beforeStock)}</strong></span>
+                                    <div className="bg-bg-overlay border border-border-subtle rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-text-secondary">
+                                      <span>الرصيد السابق: <strong className="number-fmt text-text-primary">{money(beforeStock)}</strong></span>
                                       <span className="text-rose-600 flex items-center gap-0.5">خروج من المستودع <ArrowDownRight size={12} /> <strong className="number-fmt">-{money(row.quantity)}</strong></span>
                                       <span>الجديد: <strong className="number-fmt text-indigo-650">{money(afterStock)}</strong></span>
                                     </div>
                                   )}
 
-                                  <div className="flex gap-2 justify-end border-t border-slate-100 pt-3.5">
+                                  <div className="flex gap-2 justify-end border-t border-border-subtle pt-3.5">
                                     <motion.button
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setPreviewTarget({ docType: "purchase_return", docId: row.source_id })}
-                                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-4.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-50/50 shadow-sm"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-bg-surface px-4.5 py-2 text-xs font-black text-rose-700 hover:bg-rose-50/50 shadow-sm"
                                     >
                                       <Eye size={13} /> معاينة المرتجع للمورد
                                     </motion.button>
-                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                                       <Pencil size={13} /> تعديل
                                     </Link>
                                   </div>
@@ -1111,7 +1113,7 @@ export default function ItemOperationsPage() {
                             {row.type === "branch_transfers" && (
                               <SpotlightCard 
                                 borderTone="indigo"
-                                className="rounded-[2rem] border border-indigo-300 bg-white shadow-[0_4px_24px_-4px_rgba(99,102,241,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(99,102,241,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                className="rounded-[2rem] border border-indigo-300 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(99,102,241,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(99,102,241,0.06)] transition-all duration-300 overflow-hidden flex flex-col p-0"
                               >
                                 <div className="bg-indigo-600 text-white rounded-t-[1.9rem] px-5 py-2.5 font-black text-[11px] uppercase tracking-wider flex justify-between items-center select-none shadow-sm">
                                   <span className="flex items-center gap-1.5"><Truck size={13} className="animate-pulse" /> سند تحويل مخزني داخلي بين المستودعات</span>
@@ -1123,7 +1125,7 @@ export default function ItemOperationsPage() {
                                       <span className="inline-flex rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-0.5 text-[9px] font-black">
                                         إمداد فروع داخلي
                                       </span>
-                                      <span className="font-mono text-[9px] font-bold text-slate-400" dir="ltr">
+                                      <span className="font-mono text-[9px] font-bold text-text-muted" dir="ltr">
                                         {formatHHMM(String(row.date || "").slice(11, 16))} • {String(row.date || "").slice(0, 10)}
                                       </span>
                                     </div>
@@ -1133,8 +1135,8 @@ export default function ItemOperationsPage() {
                                     <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(var(--info-text)_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
                                     
                                     <div className="flex flex-col text-right z-10">
-                                      <span className="text-[8px] text-slate-400 font-bold block mb-0.5">مستودع الشحن</span>
-                                      <span className="text-xs font-black text-slate-700 flex items-center gap-1">
+                                      <span className="text-[8px] text-text-muted font-bold block mb-0.5">مستودع الشحن</span>
+                                      <span className="text-xs font-black text-text-primary flex items-center gap-1">
                                         <Database size={11} className="text-indigo-500" />
                                         {row.party_name || "المستودع الرئيسي"}
                                       </span>
@@ -1142,30 +1144,30 @@ export default function ItemOperationsPage() {
 
                                     <div className="flex-1 flex items-center justify-center relative px-4 z-10">
                                       <div className="h-0.5 bg-dashed bg-indigo-200 w-full relative flex items-center justify-center">
-                                        <span className="absolute bg-white px-2.5 py-0.5 text-[9px] font-black text-indigo-700 border border-indigo-200 rounded-lg flex items-center gap-1 shadow-sm">
+                                        <span className="absolute bg-bg-surface px-2.5 py-0.5 text-[9px] font-black text-indigo-700 border border-indigo-200 rounded-lg flex items-center gap-1 shadow-sm">
                                           {money(row.quantity)} وحدة
                                         </span>
                                       </div>
                                     </div>
 
                                     <div className="flex flex-col text-left z-10">
-                                      <span className="text-[8px] text-slate-400 font-bold block mb-0.5">مستودع الاستلام</span>
-                                      <span className="text-xs font-black text-slate-700 flex items-center gap-1">
+                                      <span className="text-[8px] text-text-muted font-bold block mb-0.5">مستودع الاستلام</span>
+                                      <span className="text-xs font-black text-text-primary flex items-center gap-1">
                                         <Database size={11} className="text-indigo-500" />
                                         {row.doc_no || "الفرع المقابل"}
                                       </span>
                                     </div>
                                   </div>
 
-                                  <div className="flex gap-2 justify-end border-t border-slate-100 pt-3.5">
+                                  <div className="flex gap-2 justify-end border-t border-border-subtle pt-3.5">
                                     <motion.button
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setPreviewTarget({ docType: "branch_transfer", docId: row.source_id })}
-                                      className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-4.5 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50/50 shadow-sm"
+                                      className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-bg-surface px-4.5 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-50/50 shadow-sm"
                                     >
                                       <Eye size={13} /> تفاصيل التحويل
                                     </motion.button>
-                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                    <Link to={route} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                                       <Pencil size={13} /> تعديل
                                     </Link>
                                   </div>
@@ -1184,7 +1186,7 @@ export default function ItemOperationsPage() {
                               return (
                                 <SpotlightCard
                                   borderTone="zinc"
-                                  className="rounded-[2rem] border border-zinc-200 bg-white shadow-[0_4px_24px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                  className="rounded-[2rem] border border-zinc-200 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
                                 >
                                   {/* Meta strip */}
                                   <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-zinc-100/70">
@@ -1194,10 +1196,10 @@ export default function ItemOperationsPage() {
                                       </div>
                                       <div className="min-w-0">
                                         <div className="text-[11px] font-black uppercase tracking-widest text-zinc-500">حركة مخزون · {row.type_label}</div>
-                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
-                                    <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
+                                    <span className="font-mono text-[9px] font-bold text-text-muted shrink-0" dir="ltr">
                                       {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
@@ -1207,8 +1209,8 @@ export default function ItemOperationsPage() {
                                     {/* Labels above bar */}
                                     <div className="flex items-baseline justify-between mb-2">
                                       <div className="flex flex-col items-start">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">قبل</span>
-                                        <span className="number-fmt-primary text-base text-slate-700">{money(before)}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">قبل</span>
+                                        <span className="number-fmt-primary text-base text-text-primary">{money(before)}</span>
                                       </div>
                                       <div className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 ${isIn ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}>
                                         {isIn ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
@@ -1224,7 +1226,7 @@ export default function ItemOperationsPage() {
                                     <div className="relative h-3.5 w-full rounded-full bg-zinc-100 overflow-hidden ring-1 ring-zinc-200/60">
                                       {/* Base portion = min(before, after) */}
                                       <div
-                                        className="absolute inset-y-0 right-0 bg-slate-300"
+                                        className="absolute inset-y-0 right-0 bg-border-strong"
                                         style={{ width: `${basePct}%` }}
                                       />
                                       {/* Delta chunk — green if added, red if removed */}
@@ -1247,14 +1249,14 @@ export default function ItemOperationsPage() {
 
                                   {/* Footer */}
                                   {(row.party_name || row.context_source) && (
-                                    <div className="px-5 py-2.5 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                    <div className="px-5 py-2.5 bg-bg-overlay/60 border-t border-border-subtle flex items-center justify-between text-[11px] font-bold text-text-secondary">
                                       {row.party_name && (
                                         <span className="flex items-center gap-1 truncate">
                                           <Warehouse size={11} /> {row.party_name}
                                         </span>
                                       )}
                                       {row.context_source && (
-                                        <span className="text-slate-400 truncate">{row.context_source}</span>
+                                        <span className="text-text-muted truncate">{row.context_source}</span>
                                       )}
                                     </div>
                                   )}
@@ -1271,7 +1273,7 @@ export default function ItemOperationsPage() {
                               return (
                                 <SpotlightCard
                                   borderTone="cyan"
-                                  className="rounded-[2rem] border border-cyan-200 bg-white shadow-[0_4px_24px_-4px_rgba(8,145,178,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(8,145,178,0.07)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                  className="rounded-[2rem] border border-cyan-200 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(8,145,178,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(8,145,178,0.07)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
                                 >
                                   {/* Compact meta strip — what / when / who */}
                                   <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-cyan-100/70">
@@ -1281,10 +1283,10 @@ export default function ItemOperationsPage() {
                                       </div>
                                       <div className="min-w-0">
                                         <div className="text-[11px] font-black uppercase tracking-widest text-cyan-700">{row.context_key || "تغيير سعر"}</div>
-                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
-                                    <span className="font-mono text-[9px] font-bold text-slate-400 shrink-0" dir="ltr">
+                                    <span className="font-mono text-[9px] font-bold text-text-muted shrink-0" dir="ltr">
                                       {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
@@ -1296,8 +1298,8 @@ export default function ItemOperationsPage() {
 
                                     <div className="flex items-baseline justify-center gap-4 flex-wrap">
                                       <div className="flex flex-col items-center">
-                                        <span className="text-[11px] font-black text-slate-400 mb-1">قديم</span>
-                                        <span className="number-fmt text-xl text-slate-400 line-through decoration-rose-400/70 decoration-2">
+                                        <span className="text-[11px] font-black text-text-muted mb-1">قديم</span>
+                                        <span className="number-fmt text-xl text-text-muted line-through decoration-rose-400/70 decoration-2">
                                           {money(before)}
                                         </span>
                                       </div>
@@ -1328,14 +1330,14 @@ export default function ItemOperationsPage() {
 
                                   {/* Footer: reason / source */}
                                   {(row.context_source || row.party_name) && (
-                                    <div className="px-5 py-2.5 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                    <div className="px-5 py-2.5 bg-bg-overlay/60 border-t border-border-subtle flex items-center justify-between text-[11px] font-bold text-text-secondary">
                                       {row.party_name && (
                                         <span className="flex items-center gap-1 truncate">
                                           <User size={11} /> {row.party_name}
                                         </span>
                                       )}
                                       {row.context_source && (
-                                        <span className="text-slate-400 truncate">{row.context_source}</span>
+                                        <span className="text-text-muted truncate">{row.context_source}</span>
                                       )}
                                     </div>
                                   )}
@@ -1351,7 +1353,7 @@ export default function ItemOperationsPage() {
                               return (
                                 <SpotlightCard
                                   borderTone="violet"
-                                  className="rounded-[2rem] border border-violet-200 bg-white shadow-[0_4px_24px_-4px_rgba(139,92,246,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(139,92,246,0.07)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
+                                  className="rounded-[2rem] border border-violet-200 bg-bg-surface shadow-[0_4px_24px_-4px_rgba(139,92,246,0.02)] hover:shadow-[0_12px_32px_-8px_rgba(139,92,246,0.07)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col p-0"
                                 >
                                   {/* Meta strip */}
                                   <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-violet-100/70">
@@ -1361,7 +1363,7 @@ export default function ItemOperationsPage() {
                                       </div>
                                       <div className="min-w-0">
                                         <div className="text-[11px] font-black uppercase tracking-widest text-violet-700">حركة تكلفة · {row.type_label}</div>
-                                        <h3 className="text-sm font-black text-slate-800 tracking-tight truncate">{row.doc_no}</h3>
+                                        <h3 className="text-sm font-black text-text-primary tracking-tight truncate">{row.doc_no}</h3>
                                       </div>
                                     </div>
                                     <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-black rounded-full px-2.5 py-1 border ${isOutflow ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-violet-50 border-violet-200 text-violet-700"}`}>
@@ -1374,12 +1376,12 @@ export default function ItemOperationsPage() {
                                     {/* Equation lines */}
                                     <div className="number-fmt space-y-1.5">
                                       <div className="flex items-baseline justify-between text-2sm">
-                                        <span className="font-black text-slate-600">الكمية</span>
-                                        <span className="font-black text-slate-800">× {money(qty)}</span>
+                                        <span className="font-black text-text-secondary">الكمية</span>
+                                        <span className="font-black text-text-primary">× {money(qty)}</span>
                                       </div>
                                       <div className="flex items-baseline justify-between text-2sm">
-                                        <span className="font-black text-slate-600">تكلفة الوحدة</span>
-                                        <span className="font-black text-slate-800">× {money(unitCost)}</span>
+                                        <span className="font-black text-text-secondary">تكلفة الوحدة</span>
+                                        <span className="font-black text-text-primary">× {money(unitCost)}</span>
                                       </div>
 
                                       {/* Receipt-style dashed divider */}
@@ -1399,11 +1401,11 @@ export default function ItemOperationsPage() {
                                   </div>
 
                                   {/* Footer: timestamp + ledger source */}
-                                  <div className="px-5 py-2.5 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                  <div className="px-5 py-2.5 bg-bg-overlay/60 border-t border-border-subtle flex items-center justify-between text-[11px] font-bold text-text-secondary">
                                     <span className="flex items-center gap-1">
                                       <Database size={11} /> دفتر التكلفة
                                     </span>
-                                    <span className="font-mono text-[11px] text-slate-400" dir="ltr">
+                                    <span className="font-mono text-[11px] text-text-muted" dir="ltr">
                                       {String(row.date || "").slice(0, 10)} {formatHHMM(String(row.date || "").slice(11, 16))}
                                     </span>
                                   </div>
@@ -1421,17 +1423,17 @@ export default function ItemOperationsPage() {
                 {selectedId && pages > 1 && (
                   <div className="flex items-center justify-center gap-4 pt-6 pb-2">
                     <button
-                      className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none active:scale-90 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                      className="rounded-xl border border-border-normal bg-bg-surface p-2.5 text-text-secondary hover:bg-bg-overlay disabled:opacity-40 disabled:pointer-events-none active:scale-90 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                       disabled={page <= 1}
                       onClick={() => setPage((value) => Math.max(1, value - 1))}
                     >
                       <ChevronRight size={16} />
                     </button>
-                    <span className="text-xs font-bold text-slate-500 bg-white border border-slate-200/60 px-3.5 py-2 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                      الصفحة <span className="number-fmt text-slate-800">{page}</span> من <span className="number-fmt text-slate-800">{pages}</span>
+                    <span className="text-xs font-bold text-text-secondary bg-bg-surface border border-border-normal/60 px-3.5 py-2 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                      الصفحة <span className="number-fmt text-text-primary">{page}</span> من <span className="number-fmt text-text-primary">{pages}</span>
                     </span>
                     <button
-                      className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none active:scale-90 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                      className="rounded-xl border border-border-normal bg-bg-surface p-2.5 text-text-secondary hover:bg-bg-overlay disabled:opacity-40 disabled:pointer-events-none active:scale-90 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                       disabled={page >= pages}
                       onClick={() => setPage((value) => Math.min(pages, value + 1))}
                     >
@@ -1443,30 +1445,30 @@ export default function ItemOperationsPage() {
             )}
 
             {!selectedId && (
-              <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-16 text-center shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col items-center justify-center min-h-[420px]">
+              <div className="bg-bg-surface border border-border-normal/60 rounded-[2.5rem] p-16 text-center shadow-[0_8px_30px_rgb(0,0,0,0.015)] relative overflow-hidden flex flex-col items-center justify-center min-h-[420px]">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl translate-x-10 -translate-y-10 pointer-events-none" />
                 <div className="w-24 h-24 bg-indigo-50/50 text-indigo-650 rounded-3xl flex items-center justify-center mb-6 border border-indigo-100 relative shadow-[inset_0_1px_3px_rgba(99,102,241,0.05)]">
                   <ClipboardList size={38} className="stroke-[1.3] animate-pulse" />
                 </div>
-                <h3 className="text-lg font-black text-slate-800 mb-2">اختار صنف عشان نوريك كل اللي حصله</h3>
-                <p className="text-xs font-bold text-slate-400 max-w-[390px] leading-relaxed mb-8">
+                <h3 className="text-lg font-black text-text-primary mb-2">اختار صنف عشان نوريك كل اللي حصله</h3>
+                <p className="text-xs font-bold text-text-muted max-w-[390px] leading-relaxed mb-8">
                   دوس على أي صنف من القايمة على جنب وهتلاقي كل حاجة اتعملت عليه: مبيعات، مشتريات، مرتجعات، تحويلات، وتغيرات الأسعار والتكلفة.
                 </p>
                 <div className="flex gap-2.5">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-text-secondary bg-bg-overlay border border-border-normal px-3.5 py-2 rounded-xl">
                     <Sparkles size={11} className="text-indigo-500 animate-pulse" /> فلترة سهلة
                   </span>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-text-secondary bg-bg-overlay border border-border-normal px-3.5 py-2 rounded-xl">
                     <Box size={11} className="text-emerald-500" /> متابعة المخزون مباشرة
                   </span>
                 </div>
               </div>
             )}
 
-            <div className="flex justify-start pt-2 border-t border-slate-200/55">
+            <div className="flex justify-start pt-2 border-t border-border-normal/55">
               <Link 
                 to="/operations/bulk-price-update" 
-                className="inline-flex items-center gap-2 text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors bg-white hover:bg-indigo-50/30 border border-slate-200/60 px-4.5 py-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                className="inline-flex items-center gap-2 text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors bg-bg-surface hover:bg-indigo-50/30 border border-border-normal/60 px-4.5 py-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
               >
                 <ExternalLink size={13} /> العودة إلى سجل تغييرات الأسعار
               </Link>

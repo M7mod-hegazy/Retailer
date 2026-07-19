@@ -52,7 +52,7 @@ export default function AsyncSelect({ label, endpoint, valueKey = "id", labelKey
         className="input w-full text-sm"
       />
       {open ? (
-        <ul className="glass-elevated absolute top-full z-40 mt-2 max-h-56 w-full overflow-auto rounded-[20px] border border-white/8 p-2">
+        <ul className="glass-elevated absolute top-full z-40 mt-2 max-h-56 w-full overflow-auto rounded-[20px] border border-border-normal/8 p-2">
           {loading ? <li className="px-3 py-2 text-xs text-text-secondary">جاري البحث...</li> : null}
           {!loading && options.length === 0 ? <li className="px-3 py-2 text-xs text-text-secondary">لا توجد نتائج مطابقة</li> : null}
           {options.map((opt) => (
@@ -63,7 +63,7 @@ export default function AsyncSelect({ label, endpoint, valueKey = "id", labelKey
                 setQuery("");
                 setOpen(false);
               }}
-              className="cursor-pointer rounded-2xl px-3 py-2 text-sm text-text-primary transition hover:bg-white/10"
+              className="cursor-pointer rounded-2xl px-3 py-2 text-sm text-text-primary transition hover:bg-bg-surface/10"
             >
               {opt[labelKey]}
             </li>

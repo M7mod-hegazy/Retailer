@@ -26,6 +26,11 @@ export default function PageGuideLauncher() {
     setOpen(false);
   }, [pageKey]);
 
+  // If a spotlight tour starts while the guide is open, close the guide
+  useEffect(() => {
+    if (isTourVisible) setOpen(false);
+  }, [isTourVisible]);
+
   useEffect(() => {
     if (!guide || !seenKey || !isLoaded) return;
     if (toursDisabledGlobally) return;
@@ -62,7 +67,7 @@ export default function PageGuideLauncher() {
         className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
           open
             ? "bg-primary text-white shadow-lg"
-            : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+            : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-bg-surface hover:shadow-sm"
         }`}
       >
         <BookOpen strokeWidth={2} className="h-4.5 w-4.5" />

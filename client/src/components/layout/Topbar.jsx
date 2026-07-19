@@ -219,12 +219,12 @@ export default function Topbar() {
     <header className="shrink-0 sticky top-0 z-50 px-6 py-4" dir="rtl">
       
       {/* Floating Glass Pill */}
-      <div className="flex h-16 items-center justify-between px-4 sm:px-5 backdrop-blur-2xl border border-white/80 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]" style={{ backgroundColor: 'var(--bg-topbar)' }}>
+      <div className="flex h-16 items-center justify-between px-4 sm:px-5 backdrop-blur-2xl border border-border-normal/80 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]" style={{ backgroundColor: 'var(--bg-topbar)' }}>
         
         {/* Left: Logo & Breadcrumbs */}
         <div className="flex items-center gap-3 sm:gap-6">
           
-          <Link to="/dashboard" className="hidden sm:flex items-center justify-center w-10 h-10 bg-white border border-zinc-200/80 rounded-[14px] shadow-sm shrink-0 transition-transform hover:scale-105 overflow-hidden">
+          <Link to="/dashboard" className="hidden sm:flex items-center justify-center w-10 h-10 bg-bg-surface border border-zinc-200/80 rounded-[14px] shadow-sm shrink-0 transition-transform hover:scale-105 overflow-hidden">
             {settings?.logo_url ? (
               <img src={resolveImageUrl(settings.logo_url)} alt="App Logo" className="w-full h-full object-contain p-1" />
             ) : (
@@ -328,9 +328,9 @@ export default function Topbar() {
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white shadow-md border border-white/20"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white shadow-md border border-border-normal/20"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-bg-surface/80 animate-pulse" />
                       <span className="text-xs font-black tracking-wide">{crumb.label}</span>
                     </motion.div>
                   )}
@@ -345,7 +345,7 @@ export default function Topbar() {
           
           <button 
             onClick={openGlobalSearch} 
-            className="group flex items-center gap-2.5 rounded-xl bg-zinc-50/50 border border-zinc-200/60 px-4 py-2 hover:bg-white hover:border-zinc-300 hover:shadow-sm transition-all"
+            className="group flex items-center gap-2.5 rounded-xl bg-zinc-50/50 border border-zinc-200/60 px-4 py-2 hover:bg-bg-surface hover:border-zinc-300 hover:shadow-sm transition-all"
           >
             <Search strokeWidth={2} className="h-4 w-4 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
             <span className="hidden md:block text-xs font-bold text-zinc-400 group-hover:text-zinc-600 transition-colors">بحث</span>
@@ -366,7 +366,7 @@ export default function Topbar() {
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                   showProfit
                     ? "bg-primary text-white shadow-lg"
-                    : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                    : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-bg-surface hover:shadow-sm"
                 }`}
               >
                 <TrendingUp strokeWidth={2} className="h-4.5 w-4.5" />
@@ -385,7 +385,7 @@ export default function Topbar() {
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                 isTourVisible && activeTourPageKey === currentPageKey
                   ? "bg-primary text-white shadow-lg"
-                  : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                  : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-bg-surface hover:shadow-sm"
               }`}
             >
               <HelpCircle strokeWidth={2} className="h-4.5 w-4.5" />
@@ -396,7 +396,7 @@ export default function Topbar() {
           <button
             onClick={() => useAssistantStore.getState().open("assistant")}
             title="المساعد والدعم"
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm transition-all"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-bg-surface hover:shadow-sm transition-all"
           >
             <Bot strokeWidth={2} className="h-4.5 w-4.5" />
           </button>
@@ -405,12 +405,12 @@ export default function Topbar() {
             <button
               onClick={() => setOpenBell(!openBell)}
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
-                openBell ? "bg-primary text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-white hover:shadow-sm"
+                openBell ? "bg-primary text-white shadow-lg" : "bg-zinc-50/50 border border-zinc-200/60 text-zinc-600 hover:bg-bg-surface hover:shadow-sm"
               }`}
             >
               <Bell strokeWidth={2} className={`h-4.5 w-4.5 ${unreadCount > 0 ? "animate-bell-ring" : ""}`} />
               {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 border-white text-[9px] font-black text-white shadow-sm">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 border-border-normal text-[9px] font-black text-white shadow-sm">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -423,12 +423,12 @@ export default function Topbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="absolute end-0 top-12 z-50 w-[340px] rounded-[1.5rem] border border-zinc-200/80 bg-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden"
+                  className="absolute end-0 top-12 z-50 w-[340px] rounded-[1.5rem] border border-zinc-200/80 bg-bg-surface shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden"
                 >
                   <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 bg-zinc-50/30">
                     <span className="text-sm font-black text-zinc-900 tracking-tight">التنبيهات</span>
                     {unreadItems.length > 0 && (
-                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-accent transition-colors bg-white px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
+                      <button onClick={() => { markAllAsRead(); setOpenBell(false); }} className="text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-accent transition-colors bg-bg-surface px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
                         تحديد الكل كمقروء
                       </button>
                     )}
@@ -473,7 +473,7 @@ export default function Topbar() {
                   </div>
                   
                   <div className="border-t border-zinc-100 p-2 bg-zinc-50/50">
-                    <button onClick={() => { setOpenBell(false); navigate("/notifications"); }} className="w-full py-2.5 text-xs font-black text-zinc-500 hover:text-zinc-900 hover:bg-white rounded-xl transition-all shadow-sm border border-transparent hover:border-zinc-200">
+                    <button onClick={() => { setOpenBell(false); navigate("/notifications"); }} className="w-full py-2.5 text-xs font-black text-zinc-500 hover:text-zinc-900 hover:bg-bg-surface rounded-xl transition-all shadow-sm border border-transparent hover:border-zinc-200">
                       عرض جميع الإشعارات
                     </button>
                   </div>

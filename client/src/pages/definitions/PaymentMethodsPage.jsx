@@ -112,13 +112,13 @@ export default function PaymentMethodsPage() {
               {[1,2,3].map(i => (
                 <div key={i} className="animate-pulse rounded-md border p-6 shadow-sm" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-normal)" }}>
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-sm bg-slate-200"></div>
+                    <div className="h-12 w-12 rounded-sm bg-border-normal"></div>
                     <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-slate-200 rounded w-1/3"></div>
-                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-border-normal rounded w-1/3"></div>
+                      <div className="h-3 bg-border-normal rounded w-1/2"></div>
                     </div>
                   </div>
-                  <div className="mt-6 h-10 bg-slate-200 rounded"></div>
+                  <div className="mt-6 h-10 bg-border-normal rounded"></div>
                 </div>
               ))}
            </>
@@ -178,7 +178,7 @@ export default function PaymentMethodsPage() {
                        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>إعدادات الخزينة والمالية</p>
                     </div>
                  </div>
-                 <button onClick={() => setModalOpen(false)} className="rounded-full p-2 transition-colors hover:bg-slate-200" style={{ color: "var(--text-muted)" }}>
+                 <button onClick={() => setModalOpen(false)} className="rounded-full p-2 transition-colors hover:bg-border-normal" style={{ color: "var(--text-muted)" }}>
                     <X className="h-5 w-5" />
                  </button>
               </header>
@@ -244,7 +244,7 @@ export default function PaymentMethodsPage() {
                     <button 
                       type="button" 
                       onClick={() => setModalOpen(false)}
-                      className="flex-1 rounded-sm border py-3 text-sm font-black transition-colors hover:bg-slate-50" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
+                      className="flex-1 rounded-sm border py-3 text-sm font-black transition-colors hover:bg-bg-overlay" style={{ borderColor: "var(--border-normal)", color: "var(--text-secondary)" }}
                     >
                        إلغاء
                     </button>

@@ -22,7 +22,7 @@ import React from "react";
 // Per-action fixed styling (color encodes the action, same on every page).
 const VARIANTS = {
   print:
-    "px-4 text-sm border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+    "px-4 text-sm border border-border-strong bg-bg-surface text-text-primary hover:bg-bg-overlay",
   delete:
     "px-4 text-sm border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100",
   edit:
@@ -30,7 +30,7 @@ const VARIANTS = {
   today:
     "px-4 text-sm border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
   ghost:
-    "px-4 text-sm border border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+    "px-4 text-sm border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay",
 };
 
 // Identity colors for the PRIMARY save/submit button (one per document type).
@@ -38,8 +38,8 @@ const IDENTITY = {
   amber: "bg-amber-700 hover:bg-amber-800",
   emerald: "bg-emerald-700 hover:bg-emerald-800",
   indigo: "bg-indigo-600 hover:bg-indigo-700",
-  slate: "bg-slate-800 hover:bg-slate-900",
-  "slate-900": "bg-slate-900 hover:bg-slate-800",
+  slate: "bg-slate-900 hover:bg-slate-900",
+  "slate-900": "bg-slate-900 hover:bg-slate-900",
   rose: "bg-rose-600 hover:bg-rose-700",
 };
 

@@ -17,7 +17,7 @@ function requireBankPermission(action) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "unauthorized" });
-    if (user.role === "dev" || user.role === "admin") return next();
+    if (user.role === "dev") return next();
     if (userHasPagePermission(user, "banks", action) || userHasPagePermission(user, "bank_operations", action)) {
       return next();
     }

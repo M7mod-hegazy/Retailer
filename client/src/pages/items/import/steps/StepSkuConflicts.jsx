@@ -100,11 +100,11 @@ export default function StepSkuConflicts({ wizard }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-rose-200 bg-bg-surface p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-xl font-black text-slate-900 font-display">تضارب الأكواد</h3>
-            <p className="mt-1.5 text-sm font-bold text-slate-500 font-title">
+            <h3 className="text-xl font-black text-text-primary font-display">تضارب الأكواد</h3>
+            <p className="mt-1.5 text-sm font-bold text-text-secondary font-title">
               {conflicts.length} كود مشترك بين عدة صفوف في ملفك.
             </p>
           </div>
@@ -120,8 +120,8 @@ export default function StepSkuConflicts({ wizard }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h4 className="text-base font-black text-slate-900 font-display mb-4">قاعدة عامة لجميع التضاربات</h4>
+      <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-sm">
+        <h4 className="text-base font-black text-text-primary font-display mb-4">قاعدة عامة لجميع التضاربات</h4>
         <div className="grid gap-3 sm:grid-cols-3">
           {GENERAL_ACTIONS.map((action) => {
             const active = generalAction === action.value;
@@ -134,22 +134,22 @@ export default function StepSkuConflicts({ wizard }) {
                 className={`rounded-xl border p-4 text-right transition-all duration-200 text-sm ${
                   active
                     ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+                    : "border-border-normal bg-bg-surface hover:border-border-strong hover:shadow-sm"
                 }`}
               >
-                <div className="font-black text-slate-900">{action.label}</div>
-                <div className="mt-1 text-xs font-semibold text-slate-500 leading-relaxed">{action.desc}</div>
+                <div className="font-black text-text-primary">{action.label}</div>
+                <div className="mt-1 text-xs font-semibold text-text-secondary leading-relaxed">{action.desc}</div>
                 <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs font-black">
                   {proj.skipped > 0 && (
                     <span className={`rounded-lg px-2 py-0.5 tabular-nums ${
-                      active ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
+                      active ? "bg-amber-100 text-amber-700" : "bg-bg-overlay text-text-secondary"
                     }`}>
                       متخطى {proj.skipped}
                     </span>
                   )}
                   {proj.newProducts > 0 && (
                     <span className={`rounded-lg px-2 py-0.5 tabular-nums ${
-                      active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                      active ? "bg-emerald-100 text-emerald-700" : "bg-bg-overlay text-text-secondary"
                     }`}>
                       جديد {proj.newProducts}
                     </span>
@@ -177,7 +177,7 @@ export default function StepSkuConflicts({ wizard }) {
               <button
                 type="button"
                 onClick={() => { setApplied(false); wizard.setSkuConflictsResolved(false); }}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+                className="rounded-xl border border-border-normal bg-bg-surface px-4 py-2.5 text-sm font-black text-text-primary shadow-sm transition hover:bg-bg-overlay active:scale-[0.98]"
               >
                 تغيير الاختيار
               </button>
@@ -186,25 +186,25 @@ export default function StepSkuConflicts({ wizard }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4.5 shadow-inner">
-        <div className="flex items-start gap-2 text-xs font-bold text-slate-600">
+      <div className="rounded-2xl border border-border-normal bg-bg-overlay/60 p-4.5 shadow-inner">
+        <div className="flex items-start gap-2 text-xs font-bold text-text-secondary">
           <Info className="h-4 w-4 shrink-0 mt-0.5" />
           <span>كل تضارب يحتفظ بصف واحد كحافظ. تستخدم الصفوف الإضافية القاعدة العامة أعلاه. يمكنك تعديل الصفوف الفردية أدناه.</span>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-border-normal bg-bg-surface overflow-hidden">
         <button
           type="button"
           onClick={toggleExpanded}
-          className="flex w-full items-center justify-between gap-3 px-5 py-4.5 text-sm font-black text-slate-700 hover:bg-slate-50 transition"
+          className="flex w-full items-center justify-between gap-3 px-5 py-4.5 text-sm font-black text-text-primary hover:bg-bg-overlay transition"
         >
           <span>{expanded ? "إخفاء التفاصيل" : "إظهار التفاصيل"} — تعديل قرارات التضارب الفردية</span>
           <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </button>
 
         {expanded && (
-          <div className="divide-y divide-slate-100 border-t border-slate-100">
+          <div className="divide-y divide-border-subtle border-t border-border-subtle">
             {conflicts.map((conflict) => {
               const plan = planFor(conflict);
               const keeper = plan.keeper;
@@ -233,14 +233,14 @@ export default function StepSkuConflicts({ wizard }) {
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
-                                <span className="font-black text-slate-900">{row.name}</span>
-                                <span className="text-xs font-bold text-slate-500 font-mono">صف {row.__rowNumber}</span>
+                                <span className="font-black text-text-primary">{row.name}</span>
+                                <span className="text-xs font-bold text-text-secondary font-mono">صف {row.__rowNumber}</span>
                               </div>
                               <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
                                 يحتفظ بهذا الكود
                               </span>
                             </div>
-                            <div className="mt-1.5 text-xs font-bold text-slate-500">الكمية: {Number(row.stock_quantity || 0)}</div>
+                            <div className="mt-1.5 text-xs font-bold text-text-secondary">الكمية: {Number(row.stock_quantity || 0)}</div>
                           </div>
                         );
                       }
@@ -248,15 +248,15 @@ export default function StepSkuConflicts({ wizard }) {
                       const isOverridden = plan.rowOverrides?.[row.__rowNumber] !== undefined;
                       return (
                         <div key={row.__rowNumber} className={`rounded-xl border p-3.5 transition-all ${
-                          isOverridden ? "border-amber-200 bg-amber-50/40 ring-1 ring-amber-100" : "border-slate-100 bg-white"
+                          isOverridden ? "border-amber-200 bg-amber-50/40 ring-1 ring-amber-100" : "border-border-subtle bg-bg-surface"
                         }`}>
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-black text-sm text-slate-900 truncate">{row.name}</span>
-                                <span className="text-xs font-bold text-slate-500 font-mono shrink-0">صف {row.__rowNumber}</span>
+                                <span className="font-black text-sm text-text-primary truncate">{row.name}</span>
+                                <span className="text-xs font-bold text-text-secondary font-mono shrink-0">صف {row.__rowNumber}</span>
                               </div>
-                              <div className="text-xs font-bold text-slate-500 mt-0.5">الكمية: {Number(row.stock_quantity || 0)}</div>
+                              <div className="text-xs font-bold text-text-secondary mt-0.5">الكمية: {Number(row.stock_quantity || 0)}</div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {isOverridden ? (
@@ -265,7 +265,7 @@ export default function StepSkuConflicts({ wizard }) {
                               <select
                                 value={action}
                                 onChange={(e) => setRowAction(conflict.code, row.__rowNumber, e.target.value)}
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black outline-none focus:border-slate-900 min-w-[110px]"
+                                className="rounded-xl border border-border-normal bg-bg-surface px-3 py-2 text-xs font-black outline-none focus:border-slate-900 min-w-[110px]"
                               >
                                 {ROW_OPTIONS.map((opt) => (
                                   <option key={opt.value} value={opt.value}>{opt.label}</option>

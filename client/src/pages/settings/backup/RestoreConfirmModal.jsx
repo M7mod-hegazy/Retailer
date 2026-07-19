@@ -32,17 +32,17 @@ export default function RestoreConfirmModal({ open, snapshot, onClose, onConfirm
         </div>
 
         {snapshot && (
-          <div className="space-y-1 rounded-sm border border-slate-200 bg-slate-50/60 p-3 text-[11px] font-bold text-slate-600">
-            <div>التاريخ: <span className="text-slate-800">{formatDateTime(snapshot.createdAt)}</span></div>
-            <div>الحجم: <span className="text-slate-800">{formatBytes(snapshot.sizeBytes)}</span></div>
-            {snapshot.label && <div>الوصف: <span className="text-slate-800">“{snapshot.label}”</span></div>}
-            {snapshot.appVersion && <div>إصدار النظام: <span className="text-slate-800">v{snapshot.appVersion}</span></div>}
+          <div className="space-y-1 rounded-sm border border-border-normal bg-bg-overlay/60 p-3 text-[11px] font-bold text-text-secondary">
+            <div>التاريخ: <span className="text-text-primary">{formatDateTime(snapshot.createdAt)}</span></div>
+            <div>الحجم: <span className="text-text-primary">{formatBytes(snapshot.sizeBytes)}</span></div>
+            {snapshot.label && <div>الوصف: <span className="text-text-primary">“{snapshot.label}”</span></div>}
+            {snapshot.appVersion && <div>إصدار النظام: <span className="text-text-primary">v{snapshot.appVersion}</span></div>}
             {snapshot.legacy && <div className="text-rose-600">نسخة قديمة — لا تحتوي على الصور.</div>}
           </div>
         )}
 
         <label className="block">
-          <span className="mb-1 block text-[11px] font-bold text-slate-500">
+          <span className="mb-1 block text-[11px] font-bold text-text-secondary">
             اكتب كلمة <span className="font-black text-rose-600">«{CONFIRM_PHRASE}»</span> للتأكيد
           </span>
           <input
@@ -51,7 +51,7 @@ export default function RestoreConfirmModal({ open, snapshot, onClose, onConfirm
             onChange={(e) => setTyped(e.target.value)}
             dir="rtl"
             className={`w-full rounded-sm border px-3 py-2 text-sm font-black outline-none transition-colors ${
-              matched ? "border-emerald-400 text-emerald-700" : "border-slate-200 text-slate-800 focus:border-rose-400"
+              matched ? "border-emerald-400 text-emerald-700" : "border-border-normal text-text-primary focus:border-rose-400"
             }`}
             placeholder={CONFIRM_PHRASE}
           />
@@ -62,7 +62,7 @@ export default function RestoreConfirmModal({ open, snapshot, onClose, onConfirm
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="h-9 rounded-sm border border-slate-200 px-5 text-2sm font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+            className="h-9 rounded-sm border border-border-normal px-5 text-2sm font-black uppercase tracking-widest text-text-secondary transition-all hover:bg-bg-overlay active:scale-95 disabled:opacity-50"
           >
             إلغاء
           </button>

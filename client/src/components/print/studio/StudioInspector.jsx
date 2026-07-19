@@ -518,7 +518,7 @@ function Toggle({ checked, onChange, label }) {
       <span className="text-[11px] font-bold text-[var(--text-secondary)]">{label}</span>
       <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
         className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-[var(--primary)]" : "bg-[var(--border-strong)]"}`}>
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${checked ? "right-0.5" : "right-[18px]"}`} />
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg-surface transition-all ${checked ? "right-0.5" : "right-[18px]"}`} />
       </button>
     </label>
   );

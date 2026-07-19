@@ -132,7 +132,7 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-bg-surface rounded-3xl shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
@@ -158,7 +158,7 @@ function CancelWarningModal({ row, onConfirm, onClose, cancelling }) {
                   value={reason}
                   onChange={e => setReason(e.target.value)}
                   placeholder="اكتب سبب إلغاء هذه الفاتورة..."
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl py-3 px-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:bg-white transition-all"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl py-3 px-4 text-sm font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:bg-bg-surface transition-all"
                   autoFocus
                 />
               </div>
@@ -253,7 +253,7 @@ function PreviewDrawer({ purchaseId, onClose, onEditBlocked }) {
           {/* Details & Payment Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Supplier Info */}
-            <div className="border border-zinc-100 rounded-3xl p-5 bg-white">
+            <div className="border border-zinc-100 rounded-3xl p-5 bg-bg-surface">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
                   <User className="w-4 h-4 text-zinc-500" />
@@ -277,7 +277,7 @@ function PreviewDrawer({ purchaseId, onClose, onEditBlocked }) {
             </div>
 
             {/* Balances summary */}
-            <div className="border border-zinc-100 rounded-3xl p-5 bg-white">
+            <div className="border border-zinc-100 rounded-3xl p-5 bg-bg-surface">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
                   <CreditCard className="w-4 h-4 text-zinc-500" />
@@ -337,7 +337,7 @@ function PreviewDrawer({ purchaseId, onClose, onEditBlocked }) {
           </div>
 
           {/* Items breakdown list */}
-          <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-white">
+          <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-bg-surface">
             <div className="px-5 py-4 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
               <span className="text-xs font-black text-zinc-800">أصناف الفاتورة ({d.lines?.length || 0})</span>
             </div>
@@ -405,13 +405,13 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRe
   return (
     <motion.div
       variants={FADE_UP}
-      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-emerald-50/20 transition-colors duration-300 overflow-hidden"
+      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-bg-surface border-b border-zinc-100 hover:bg-emerald-50/20 transition-colors duration-300 overflow-hidden"
     >
       {/* Decorative vertical focus anchor */}
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
       
       <div className="flex items-center gap-5 flex-1 min-w-0 z-10">
-        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-sm transition-all duration-300">
+        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-bg-surface group-hover:shadow-sm transition-all duration-300">
           <ArrowUpRight className="w-5 h-5 text-emerald-500" />
         </div>
         
@@ -458,20 +458,20 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRe
 
       <div className="flex items-center justify-between md:justify-end gap-4 flex-shrink-0 z-10">
         {/* Money ledger pill */}
-        <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
+        <div className="flex items-stretch gap-0 bg-bg-overlay border border-border-normal/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[90px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-sm font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
+            <span className="text-[8px] font-black text-text-muted uppercase tracking-wider mb-0.5">الإجمالي</span>
+            <div className="text-sm font-black text-text-primary number-fmt leading-none flex items-baseline gap-0.5">
               <span>{formatMoney(total)}</span>
-              <span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
+              <span className="text-[8px] font-bold text-text-muted mr-0.5">ج.م</span>
             </div>
           </div>
           
           {paid > 0.005 && (
             <>
-              <div className="w-px self-stretch bg-slate-200/80" />
+              <div className="w-px self-stretch bg-border-normal/80" />
               <div className="flex flex-col items-end justify-center px-3.5 py-1.5 bg-emerald-50/50 min-w-[90px]">
-                <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                <span className="text-[8px] font-black text-text-muted tracking-wider mb-0.5 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
                   المدفوع
                 </span>
@@ -485,9 +485,9 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onCancelRequest, onEditRe
           
           {remaining > 0.005 && (
             <>
-              <div className="w-px self-stretch bg-slate-200/80" />
+              <div className="w-px self-stretch bg-border-normal/80" />
               <div className="flex flex-col items-end justify-center px-3.5 py-1.5 bg-amber-50/50 min-w-[90px]">
-                <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1">
+                <span className="text-[8px] font-black text-text-muted tracking-wider mb-0.5 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />
                   المتبقي
                 </span>
@@ -807,7 +807,7 @@ export default function PurchasesHubPage() {
         >
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm">
                 <Layers className="w-5 h-5 text-emerald-500" />
               </div>
               <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">سلسلة الإمداد</span>
@@ -835,7 +835,7 @@ export default function PurchasesHubPage() {
               onClick={() => { setActiveTab("invoices"); setSearchTerm(""); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
               className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
                 activeTab === "invoices"
-                  ? "bg-white text-zinc-950 shadow-sm"
+                  ? "bg-bg-surface text-zinc-950 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900"
               }`}
             >
@@ -845,7 +845,7 @@ export default function PurchasesHubPage() {
               onClick={() => { setActiveTab("items"); setSearchTerm(""); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
               className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
                 activeTab === "items"
-                  ? "bg-white text-zinc-950 shadow-sm"
+                  ? "bg-bg-surface text-zinc-950 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900"
               }`}
             >
@@ -873,7 +873,7 @@ export default function PurchasesHubPage() {
           initial="hidden" 
           animate="visible" 
           variants={FADE_UP} 
-          className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4"
+          className="flex flex-col bg-bg-surface border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4"
         >
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div data-help="search-bar" className="relative flex-1 w-full">
@@ -1069,7 +1069,7 @@ export default function PurchasesHubPage() {
           animate="visible" 
           variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           data-help="main-table"
-          className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
+          className="flex flex-col bg-bg-surface rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
         >
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">
@@ -1105,12 +1105,12 @@ export default function PurchasesHubPage() {
                 {totalInvoicePages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="h-4 w-4" /> السابق
                     </button>
                     <span className="text-[11px] font-black text-zinc-400">{page} / {totalInvoicePages}</span>
                     <button onClick={() => setPage(p => Math.min(totalInvoicePages, p + 1))} disabled={page >= totalInvoicePages}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       التالي <ChevronLeft className="h-4 w-4" />
                     </button>
                   </div>
@@ -1188,12 +1188,12 @@ export default function PurchasesHubPage() {
               {totalItemPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                   <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     <ChevronRight className="h-4 w-4" /> السابق
                   </button>
                   <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
                   <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     التالي <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
@@ -1219,7 +1219,7 @@ export default function PurchasesHubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl flex flex-col max-h-[85vh]"
+              className="relative w-full max-w-2xl bg-bg-surface rounded-[2rem] shadow-2xl flex flex-col max-h-[85vh]"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-zinc-100 px-7 pt-7 pb-4 shrink-0">

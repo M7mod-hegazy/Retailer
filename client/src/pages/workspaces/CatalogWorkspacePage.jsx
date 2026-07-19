@@ -7,6 +7,7 @@ import ItemsListPage from "../items/ItemsListPage";
 import CategoriesPage from "../definitions/CategoriesPage";
 import UnitsPage from "../definitions/UnitsPage";
 import PromotionsPage from "../definitions/PromotionsPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const tabs = [
   { value: "items", label: "الأصناف", icon: Package2 },
@@ -16,6 +17,7 @@ const tabs = [
 ];
 
 export default function CatalogWorkspacePage() {
+  usePageTour('catalog_workspace');
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabs.some((tab) => tab.value === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -28,14 +30,14 @@ export default function CatalogWorkspacePage() {
   return (
     <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4" data-help-root="catalog_workspace">
       <section className="space-y-5">
-        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div className="rounded-[28px] border border-border-normal bg-bg-surface px-5 py-5 shadow-sm">
           <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
               <Package2 className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">دليل الأصناف</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-black text-text-primary">دليل الأصناف</h1>
+              <p className="mt-1 text-sm text-text-secondary">
                 مركز موحد لكل ما يخص تعريف الأصناف، من الفئات والوحدات حتى العروض المرتبطة بالبيع.
               </p>
             </div>

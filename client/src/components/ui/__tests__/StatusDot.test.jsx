@@ -18,9 +18,9 @@ describe("StatusDot", () => {
     expect(container.querySelector("span")).toHaveClass("bg-primary");
   });
 
-  it("uses bg-white/20 for inactive", () => {
+  it("uses bg-bg-surface/20 for inactive", () => {
     const { container } = render(<StatusDot status="inactive" />);
-    expect(container.querySelector("span")).toHaveClass("bg-white/20");
+    expect(container.querySelector("span")).toHaveClass("bg-bg-surface/20");
   });
 
   it("uses bg-warning for warning", () => {
@@ -35,11 +35,11 @@ describe("StatusDot", () => {
 
   it("falls back to inactive for unknown status", () => {
     const { container } = render(<StatusDot status="unknown" />);
-    expect(container.querySelector("span")).toHaveClass("bg-white/20");
+    expect(container.querySelector("span")).toHaveClass("bg-bg-surface/20");
   });
 
   it("falls back to inactive for null status", () => {
     const { container } = render(<StatusDot status={null} />);
-    expect(container.querySelector("span")).toHaveClass("bg-white/20");
+    expect(container.querySelector("span")).toHaveClass("bg-bg-surface/20");
   });
 });

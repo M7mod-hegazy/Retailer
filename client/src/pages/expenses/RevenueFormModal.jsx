@@ -123,7 +123,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-md bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="w-full max-w-2xl overflow-hidden rounded-md bg-bg-surface shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <TitleBar title="تسجيل إيراد جديد" subtitle="إضافة دخل مالي متنوع (غير ناتج عن فواتير مبيعات مباشرة)" onClose={onClose} onDetach={handleDetach} />
 
@@ -131,9 +131,9 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {/* Amount */}
               <div className="col-span-1 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">قيمة الإيراد</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">قيمة الإيراد</label>
                  <div className="relative">
-                    <Sparkles className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Sparkles className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                       <input 
                          ref={amountRef}
                          type="number"
@@ -142,7 +142,7 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                          onChange={(e) => { setForm(f => ({ ...f, amount: e.target.value })); setErrors(err => ({ ...err, amount: undefined })); }}
                          onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                          placeholder="0.00"
-                          className={`w-full rounded-sm border bg-white py-2.5 pl-4 pr-10 text-[18px] font-black text-slate-800 outline-none transition-all ${errors.amount ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-slate-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"}`}
+                          className={`w-full rounded-sm border bg-bg-surface py-2.5 pl-4 pr-10 text-[18px] font-black text-text-primary outline-none transition-all ${errors.amount ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-border-normal focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"}`}
                       />
                   </div>
                   <FieldError error={errors.amount} />
@@ -150,16 +150,16 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
               {/* Category */}
               <div className="col-span-1 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تصنيف الإيراد</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">تصنيف الإيراد</label>
                  <div className="relative">
-                    <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Tag className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                       <select 
                          ref={categoryRef}
                          required
                          value={form.category_id}
                          onChange={(e) => { setForm(f => ({ ...f, category_id: e.target.value })); setErrors(err => ({ ...err, category_id: undefined })); }}
                          onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: amountRef })}
-                         className={`w-full appearance-none rounded-sm border py-3 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-all ${errors.category_id ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-slate-800"}`}
+                         className={`w-full appearance-none rounded-sm border py-3 pl-4 pr-10 text-sm font-bold text-text-primary outline-none transition-all ${errors.category_id ? "border-red-400 focus:border-red-500" : "border-border-normal focus:border-slate-800"}`}
                       >
                          <option value="">اختيار الفئة...</option>
                          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -170,9 +170,9 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
               {/* Description */}
               <div className="col-span-2 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">وصف الحركة</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">وصف الحركة</label>
                  <div className="relative">
-                    <FileText className="absolute right-3 top-3 h-4 w-4 text-slate-400" />
+                    <FileText className="absolute right-3 top-3 h-4 w-4 text-text-muted" />
                      <input 
                         ref={descRef}
                         type="text"
@@ -180,18 +180,18 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
                         onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
                         onKeyDown={e => handleKeyDown(e, { nextRef: sourceRef, prevRef: categoryRef })}
                         placeholder="مثلاً: بيع خردة، عمولة، خدمات أخرى..."
-                         className="w-full rounded-sm border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm font-bold text-slate-700 outline-none focus:border-slate-800"
+                         className="w-full rounded-sm border border-border-normal bg-bg-surface py-2.5 pl-4 pr-10 text-sm font-bold text-text-primary outline-none focus:border-slate-800"
                      />
                  </div>
               </div>
 
               {/* Payment Method */}
               <div className="col-span-1 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">قناة القبض</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">قناة القبض</label>
                  <select
                     value={form.payment_method}
                     onChange={(e) => setForm(f => ({ ...f, payment_method: e.target.value, treasury_id: e.target.value === 'cash' ? f.treasury_id : "" }))}
-                    className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
+                    className="w-full rounded-sm border border-border-normal py-2 pl-3 pr-3 text-2sm font-bold text-text-primary outline-none"
                  >
                     <option value="cash">💵 نقدي</option>
                     {payMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
@@ -200,55 +200,55 @@ export default function RevenueFormModal({ open, onClose, onSuccess }) {
 
               {/* Source Selection — only for cash (treasury). Record-only methods move no balance. */}
               <div className="col-span-1 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">إيداع في</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">إيداع في</label>
                  {form.payment_method === 'cash' ? (
                   <select
                      ref={sourceRef}
                      value={form.treasury_id}
                      onChange={(e) => setForm(f => ({ ...f, treasury_id: e.target.value }))}
                      onKeyDown={e => handleKeyDown(e, { nextRef: dateRef, prevRef: descRef })}
-                     className="w-full rounded-sm border border-slate-200 py-2 pl-3 pr-3 text-2sm font-bold text-slate-700 outline-none"
+                     className="w-full rounded-sm border border-border-normal py-2 pl-3 pr-3 text-2sm font-bold text-text-primary outline-none"
                   >
                      <option value="">اختر الخزينة المستلمة...</option>
                      {treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                  ) : (
-                  <div className="w-full rounded-sm border border-dashed border-slate-200 bg-slate-50 py-2 px-3 text-2sm font-bold text-slate-400">يُسجَّل خارج الخزينة</div>
+                  <div className="w-full rounded-sm border border-dashed border-border-normal bg-bg-overlay py-2 px-3 text-2sm font-bold text-text-muted">يُسجَّل خارج الخزينة</div>
                  )}
               </div>
 
               {/* Date */}
               <div className="col-span-1 space-y-1.5">
-                 <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">تاريخ الإيراد</label>
+                 <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">تاريخ الإيراد</label>
                  <div className="relative">
-                    <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                      <input 
                         ref={dateRef}
                         type="date"
                         value={form.created_at}
                         onChange={(e) => setForm(f => ({ ...f, created_at: e.target.value }))}
                         onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: sourceRef })}
-                        className="w-full rounded-sm border border-slate-200 bg-white py-2 pl-4 pr-10 text-2sm font-black text-slate-800 outline-none"
+                        className="w-full rounded-sm border border-border-normal bg-bg-surface py-2 pl-4 pr-10 text-2sm font-black text-text-primary outline-none"
                       />
                   </div>
                </div>
 
                {/* Notes */}
                <div className="col-span-2 space-y-1.5">
-                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">ملاحظات التحصيل</label>
+                  <label className="text-[11px] font-black uppercase text-text-muted tracking-widest">ملاحظات التحصيل</label>
                    <textarea 
                       ref={notesRef}
                       value={form.notes}
                       onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
                       onKeyDown={e => handleKeyDown(e, { prevRef: dateRef, onEnter: () => formRef.current?.requestSubmit() })}
                       placeholder="اكتب أي تفاصيل أخرى هنا..."
-                      className="w-full rounded-sm border border-slate-200 bg-white p-3 text-2sm font-bold text-slate-700 outline-none focus:bg-white resize-none"
+                      className="w-full rounded-sm border border-border-normal bg-bg-surface p-3 text-2sm font-bold text-text-primary outline-none focus:bg-bg-surface resize-none"
                      rows="2"
                   />
               </div>
            </div>
 
-           <div className="mt-8 flex items-center justify-end gap-3 border-t border-slate-100 pt-6">
+           <div className="mt-8 flex items-center justify-end gap-3 border-t border-border-subtle pt-6">
               <button 
                  type="button"
                  onClick={onClose}

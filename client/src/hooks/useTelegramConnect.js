@@ -25,17 +25,43 @@ function configSnapshot(config) {
   };
 }
 
+// Presets for edit/cancel sub-events were historically stored under raw
+// telegram_* keys (broken field names). Fold them into the notify* keys the
+// UI and server now use, so old saved choices survive.
+const LEGACY_PRESET_KEYS = {
+  telegram_sales_return_edited: "notifySalesReturnEdited",
+  telegram_sales_return_cancelled: "notifySalesReturnCancelled",
+  telegram_purchase_return_edited: "notifyPurchaseReturnEdited",
+  telegram_invoice_edited: "notifyInvoiceEdited",
+  telegram_invoice_amended: "notifyInvoiceAmended",
+  telegram_purchase_edited: "notifyPurchaseEdited",
+  telegram_purchase_return_cancelled: "notifyPurchaseReturnCancelled",
+  telegram_branch_transfer_edited: "notifyBranchTransferEdited",
+  telegram_branch_transfer_cancelled: "notifyBranchTransferCancelled",
+  telegram_withdrawal_edited: "notifyWithdrawalEdited",
+  telegram_withdrawal_deleted: "notifyWithdrawalDeleted",
+};
+
+function normalizePresetKeys(presets) {
+  const out = { ...presets };
+  for (const [legacy, current] of Object.entries(LEGACY_PRESET_KEYS)) {
+    if (out[legacy] !== undefined && out[current] === undefined) out[current] = out[legacy];
+    delete out[legacy];
+  }
+  return out;
+}
+
 function parseEventPresets(raw) {
   if (!raw) return {};
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? normalizePresetKeys(parsed) : {};
     } catch (_) {
       return {};
     }
   }
-  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  if (typeof raw === "object" && !Array.isArray(raw)) return normalizePresetKeys(raw);
   return {};
 }
 
@@ -91,18 +117,38 @@ const RECIPIENT_FIELD_DEFAULTS = {
   notifyRevenueEdited: true,
   notifyRevenueDeleted: true,
   // Return lifecycle sub-events (migration 210)
-  telegram_sales_return_edited: true,
-  telegram_sales_return_cancelled: true,
-  telegram_purchase_return_edited: true,
+  notifySalesReturnEdited: true,
+  notifySalesReturnCancelled: true,
+  notifyPurchaseReturnEdited: true,
   // Sub-event toggles (persisted server-side since migration 208)
-  telegram_invoice_edited: true,
-  telegram_invoice_amended: true,
-  telegram_purchase_edited: true,
-  telegram_purchase_return_cancelled: true,
-  telegram_branch_transfer_edited: true,
-  telegram_branch_transfer_cancelled: true,
-  telegram_withdrawal_edited: true,
-  telegram_withdrawal_deleted: true,
+  notifyInvoiceEdited: true,
+  notifyInvoiceAmended: true,
+  notifyPurchaseEdited: true,
+  notifyPurchaseReturnCancelled: true,
+  notifyBranchTransferEdited: true,
+  notifyBranchTransferCancelled: true,
+  notifyWithdrawalEdited: true,
+  notifyWithdrawalDeleted: true,
+  // Quit/logout events (migration 212)
+  notifyAppQuit: true,
+  notifyUserLogout: true,
+  // Partial salary payout (migration 215)
+  notifySalaryPartialPaid: true,
+  // Money-channel + tamper coverage (migration 216)
+  notifyTreasuryChanged: true,
+  notifyPaymentMethodChanged: true,
+  notifyPromotionChanged: true,
+  notifyUserAccount: true,
+  // Self-watching alert channel (migration 217)
+  notifyTelegramRecipientChanged: true,
+  // Employee edit + legacy adjustment (migration 218)
+  notifyEmployeeEdited: true,
+  notifyAdjustmentCreated: true,
+  // Backup export + settings change (migration 219)
+  notifyBackupExported: true,
+  notifyBackupSettingsChanged: true,
+  // Bulk settings change (migration 220)
+  notifySettingsChanged: true,
 };
 
 function pickField(r, key) {
@@ -164,18 +210,38 @@ function recipientToApi(r) {
     notify_revenue_edited: Boolean(pickField(r, "notifyRevenueEdited")),
     notify_revenue_deleted: Boolean(pickField(r, "notifyRevenueDeleted")),
     // Return lifecycle sub-events (migration 210)
-    notify_sales_return_edited: Boolean(pickField(r, "telegram_sales_return_edited")),
-    notify_sales_return_cancelled: Boolean(pickField(r, "telegram_sales_return_cancelled")),
-    notify_purchase_return_edited: Boolean(pickField(r, "telegram_purchase_return_edited")),
+    notify_sales_return_edited: Boolean(pickField(r, "notifySalesReturnEdited")),
+    notify_sales_return_cancelled: Boolean(pickField(r, "notifySalesReturnCancelled")),
+    notify_purchase_return_edited: Boolean(pickField(r, "notifyPurchaseReturnEdited")),
     // Edit/cancel sub-events — real per-recipient columns since migration 208
-    notify_invoice_edited: Boolean(pickField(r, "telegram_invoice_edited")),
-    notify_invoice_amended: Boolean(pickField(r, "telegram_invoice_amended")),
-    notify_purchase_edited: Boolean(pickField(r, "telegram_purchase_edited")),
-    notify_purchase_return_cancelled: Boolean(pickField(r, "telegram_purchase_return_cancelled")),
-    notify_branch_transfer_edited: Boolean(pickField(r, "telegram_branch_transfer_edited")),
-    notify_branch_transfer_cancelled: Boolean(pickField(r, "telegram_branch_transfer_cancelled")),
-    notify_withdrawal_edited: Boolean(pickField(r, "telegram_withdrawal_edited")),
-    notify_withdrawal_deleted: Boolean(pickField(r, "telegram_withdrawal_deleted")),
+    notify_invoice_edited: Boolean(pickField(r, "notifyInvoiceEdited")),
+    notify_invoice_amended: Boolean(pickField(r, "notifyInvoiceAmended")),
+    notify_purchase_edited: Boolean(pickField(r, "notifyPurchaseEdited")),
+    notify_purchase_return_cancelled: Boolean(pickField(r, "notifyPurchaseReturnCancelled")),
+    notify_branch_transfer_edited: Boolean(pickField(r, "notifyBranchTransferEdited")),
+    notify_branch_transfer_cancelled: Boolean(pickField(r, "notifyBranchTransferCancelled")),
+    notify_withdrawal_edited: Boolean(pickField(r, "notifyWithdrawalEdited")),
+    notify_withdrawal_deleted: Boolean(pickField(r, "notifyWithdrawalDeleted")),
+    // Quit/logout events (migration 212)
+    notify_app_quit: Boolean(pickField(r, "notifyAppQuit")),
+    notify_user_logout: Boolean(pickField(r, "notifyUserLogout")),
+    // Partial salary payout (migration 215)
+    notify_salary_partial_paid: Boolean(pickField(r, "notifySalaryPartialPaid")),
+    // Money-channel + tamper coverage (migration 216)
+    notify_treasury_changed: Boolean(pickField(r, "notifyTreasuryChanged")),
+    notify_payment_method_changed: Boolean(pickField(r, "notifyPaymentMethodChanged")),
+    notify_promotion_changed: Boolean(pickField(r, "notifyPromotionChanged")),
+    notify_user_account: Boolean(pickField(r, "notifyUserAccount")),
+    // Self-watching alert channel (migration 217)
+    notify_telegram_recipient_changed: Boolean(pickField(r, "notifyTelegramRecipientChanged")),
+    // Employee edit + legacy adjustment (migration 218)
+    notify_employee_edited: Boolean(pickField(r, "notifyEmployeeEdited")),
+    notify_adjustment_created: Boolean(pickField(r, "notifyAdjustmentCreated")),
+    // Backup export + settings change (migration 219)
+    notify_backup_exported: Boolean(pickField(r, "notifyBackupExported")),
+    notify_backup_settings_changed: Boolean(pickField(r, "notifyBackupSettingsChanged")),
+    // Bulk settings change (migration 220)
+    notify_settings_changed: Boolean(pickField(r, "notifySettingsChanged")),
     event_presets: parseEventPresets(r.eventPresets ?? r.event_presets),
   };
 }
@@ -237,17 +303,37 @@ function recipientFromApi(r) {
     // Edit/cancel sub-events — persisted server-side since migration 208; the
     // UI keeps its historical telegram_* field names. Camel fallbacks cover the
     // notifyXxx keys the service layer exposes.
-    telegram_sales_return_edited: readBool(r, "notify_sales_return_edited", "notifySalesReturnEdited", true),
-    telegram_sales_return_cancelled: readBool(r, "notify_sales_return_cancelled", "notifySalesReturnCancelled", true),
-    telegram_purchase_return_edited: readBool(r, "notify_purchase_return_edited", "notifyPurchaseReturnEdited", true),
-    telegram_invoice_edited: readBool(r, "notify_invoice_edited", "notifyInvoiceEdited", true),
-    telegram_invoice_amended: readBool(r, "notify_invoice_amended", "notifyInvoiceAmended", true),
-    telegram_purchase_edited: readBool(r, "notify_purchase_edited", "notifyPurchaseEdited", true),
-    telegram_purchase_return_cancelled: readBool(r, "notify_purchase_return_cancelled", "notifyPurchaseReturnCancelled", true),
-    telegram_branch_transfer_edited: readBool(r, "notify_branch_transfer_edited", "notifyBranchTransferEdited", true),
-    telegram_branch_transfer_cancelled: readBool(r, "notify_branch_transfer_cancelled", "notifyBranchTransferCancelled", true),
-    telegram_withdrawal_edited: readBool(r, "notify_withdrawal_edited", "notifyWithdrawalEdited", true),
-    telegram_withdrawal_deleted: readBool(r, "notify_withdrawal_deleted", "notifyWithdrawalDeleted", true),
+    notifySalesReturnEdited: readBool(r, "notify_sales_return_edited", "notifySalesReturnEdited", true),
+    notifySalesReturnCancelled: readBool(r, "notify_sales_return_cancelled", "notifySalesReturnCancelled", true),
+    notifyPurchaseReturnEdited: readBool(r, "notify_purchase_return_edited", "notifyPurchaseReturnEdited", true),
+    notifyInvoiceEdited: readBool(r, "notify_invoice_edited", "notifyInvoiceEdited", true),
+    notifyInvoiceAmended: readBool(r, "notify_invoice_amended", "notifyInvoiceAmended", true),
+    notifyPurchaseEdited: readBool(r, "notify_purchase_edited", "notifyPurchaseEdited", true),
+    notifyPurchaseReturnCancelled: readBool(r, "notify_purchase_return_cancelled", "notifyPurchaseReturnCancelled", true),
+    notifyBranchTransferEdited: readBool(r, "notify_branch_transfer_edited", "notifyBranchTransferEdited", true),
+    notifyBranchTransferCancelled: readBool(r, "notify_branch_transfer_cancelled", "notifyBranchTransferCancelled", true),
+    notifyWithdrawalEdited: readBool(r, "notify_withdrawal_edited", "notifyWithdrawalEdited", true),
+    notifyWithdrawalDeleted: readBool(r, "notify_withdrawal_deleted", "notifyWithdrawalDeleted", true),
+    // Quit/logout events (migration 212)
+    notifyAppQuit: readBool(r, "notify_app_quit", "notifyAppQuit", true),
+    notifyUserLogout: readBool(r, "notify_user_logout", "notifyUserLogout", true),
+    // Partial salary payout (migration 215)
+    notifySalaryPartialPaid: readBool(r, "notify_salary_partial_paid", "notifySalaryPartialPaid", true),
+    // Money-channel + tamper coverage (migration 216)
+    notifyTreasuryChanged: readBool(r, "notify_treasury_changed", "notifyTreasuryChanged", true),
+    notifyPaymentMethodChanged: readBool(r, "notify_payment_method_changed", "notifyPaymentMethodChanged", true),
+    notifyPromotionChanged: readBool(r, "notify_promotion_changed", "notifyPromotionChanged", true),
+    notifyUserAccount: readBool(r, "notify_user_account", "notifyUserAccount", true),
+    // Self-watching alert channel (migration 217)
+    notifyTelegramRecipientChanged: readBool(r, "notify_telegram_recipient_changed", "notifyTelegramRecipientChanged", true),
+    // Employee edit + legacy adjustment (migration 218)
+    notifyEmployeeEdited: readBool(r, "notify_employee_edited", "notifyEmployeeEdited", true),
+    notifyAdjustmentCreated: readBool(r, "notify_adjustment_created", "notifyAdjustmentCreated", true),
+    // Backup export + settings change (migration 219)
+    notifyBackupExported: readBool(r, "notify_backup_exported", "notifyBackupExported", true),
+    notifyBackupSettingsChanged: readBool(r, "notify_backup_settings_changed", "notifyBackupSettingsChanged", true),
+    // Bulk settings change (migration 220)
+    notifySettingsChanged: readBool(r, "notify_settings_changed", "notifySettingsChanged", true),
     eventPresets: parseEventPresets(r.eventPresets ?? r.event_presets),
   };
 }
@@ -525,7 +611,12 @@ export function useTelegramConnect(onSaved) {
   }, [pairing?.code]);
 
   async function save() {
-    if (config.telegram_enabled && (!config.telegram_bot_token.trim() || !hasAnyRecipient(recipients))) {
+    // Block only if the owner enabled Telegram but didn't provide a bot token.
+    // Saving a "no enabled recipients" state IS a valid intent — they want
+    // to silence Telegram without disconnecting the bot. The previous guard
+    // rejected that state, which trapped them: disable the last recipient →
+    // save refused → they had to re-enable to make the Save bar disappear.
+    if (config.telegram_enabled && !config.telegram_bot_token.trim()) {
       toast.error(t("telegram.validation"));
       return;
     }
@@ -632,18 +723,28 @@ export function useTelegramConnect(onSaved) {
       notifyRevenueEdited: true,
       notifyRevenueDeleted: true,
       // Return lifecycle sub-events (migration 210)
-      telegram_sales_return_edited: true,
-      telegram_sales_return_cancelled: true,
-      telegram_purchase_return_edited: true,
+      notifySalesReturnEdited: true,
+      notifySalesReturnCancelled: true,
+      notifyPurchaseReturnEdited: true,
       // Sub-event toggles (persisted server-side)
-      telegram_invoice_edited: true,
-      telegram_invoice_amended: true,
-      telegram_purchase_edited: true,
-      telegram_purchase_return_cancelled: true,
-      telegram_branch_transfer_edited: true,
-      telegram_branch_transfer_cancelled: true,
-      telegram_withdrawal_edited: true,
-      telegram_withdrawal_deleted: true,
+      notifyInvoiceEdited: true,
+      notifyInvoiceAmended: true,
+      notifyPurchaseEdited: true,
+      notifyPurchaseReturnCancelled: true,
+      notifyBranchTransferEdited: true,
+      notifyBranchTransferCancelled: true,
+      notifyWithdrawalEdited: true,
+      notifyWithdrawalDeleted: true,
+      // Quit/logout events (migration 212)
+      notifyAppQuit: true,
+      notifyUserLogout: true,
+      // Partial salary payout (migration 215)
+      notifySalaryPartialPaid: true,
+      // Money-channel + tamper coverage (migration 216)
+      notifyTreasuryChanged: true,
+      notifyPaymentMethodChanged: true,
+      notifyPromotionChanged: true,
+      notifyUserAccount: true,
       eventPresets: {},
     };
   }
@@ -692,11 +793,28 @@ export function useTelegramConnect(onSaved) {
 
   async function saveRecipients() {
     const saved = [];
+    // Persist every recipient even if one fails — a single PUT throwing would
+    // otherwise drop subsequent recipients and leave the owner with a half-saved
+    // state where the dirty flag is gone but some changes never reached the
+    // server. Collect failures and surface them after the loop.
+    const errors = [];
     for (const recipient of recipientsRef.current) {
-      saved.push(await persistRecipient(recipient));
+      try {
+        saved.push(await persistRecipient(recipient));
+      } catch (e) {
+        errors.push(e);
+        // Keep the (possibly dirty) original in state so the user can retry.
+        saved.push(recipient);
+      }
     }
     setRecipients(saved);
     recipientsRef.current = saved;
+    if (errors.length) {
+      const err = new Error(errors.length === 1 ? errors[0].message : `${errors.length} recipients failed to save`);
+      err.partial = true;
+      err.firstError = errors[0];
+      throw err;
+    }
     return saved;
   }
 

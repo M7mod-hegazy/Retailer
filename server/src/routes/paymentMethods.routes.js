@@ -4,7 +4,22 @@ const router = express.Router();
 const { getDb } = require("../config/database");
 const { authRequired } = require('../middleware/auth');
 const { paymentFlowPayload } = require("../services/paymentFlowService");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 router.use(authRequired);
+
+// Payment methods decide where money lands and whether it counts toward the
+// treasury, so changing them re-routes cash without touching any transaction.
+function notifyPaymentMethod(req, db, actionLabel, methodName, details) {
+  try {
+    notifyOwner(TG.PAYMENT_METHOD_CHANGED, {
+      actionLabel,
+      methodName: methodName || "غير محدد",
+      details: details || "—",
+      userName: req.user?.full_name || req.user?.username,
+      createdAt: new Date().toISOString(),
+    }, db);
+  } catch (_) { /* non-critical */ }
+}
 
 let _cashSeeded = false;
 function ensureCashMethod() {
@@ -109,6 +124,10 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res) => 
       "INSERT INTO payment_methods (name, category, icon, description, is_system, excludes_from_treasury, type) VALUES (?, ?, ?, ?, 0, ?, ?)"
     ).run(name, category, icon, description, excludes_from_treasury ? 1 : 0, category);
     const created = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(result.lastInsertRowid);
+    notifyPaymentMethod(req, db, "إضافة وسيلة دفع", created?.name || name,
+      excludes_from_treasury
+        ? "⚠️ لا تدخل الخزينة (تُسجَّل فقط)"
+        : "تدخل الخزينة");
     res.status(201).json({ success: true, data: created });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -116,13 +135,28 @@ router.post("/", requirePagePermission("payment_methods", "add"), (req, res) => 
 router.put("/:id", requirePagePermission("payment_methods", "edit"), (req, res) => {
   try {
     const db = getDb();
-    const method = db.prepare("SELECT is_system FROM payment_methods WHERE id = ?").get(req.params.id);
+    const method = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(req.params.id);
     if (!method) return res.status(404).json({ success: false, message: "وسيلة الدفع غير موجودة" });
     const { name, category, icon, description, excludes_from_treasury } = req.body || {};
     db.prepare(
       "UPDATE payment_methods SET name = COALESCE(?, name), category = COALESCE(?, category), icon = COALESCE(?, icon), description = COALESCE(?, description), excludes_from_treasury = COALESCE(?, excludes_from_treasury) WHERE id = ?"
     ).run(method.is_system ? undefined : name, category, icon, description, excludes_from_treasury != null ? (excludes_from_treasury ? 1 : 0) : undefined, req.params.id);
-    res.json({ success: true, data: db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(req.params.id) });
+    const updated = db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(req.params.id);
+
+    // Flipping excludes_from_treasury decides whether money taken on this
+    // method ever shows up in the drawer reconciliation — call it out.
+    const details = [];
+    if (updated?.name !== method.name) details.push(`الاسم: "${method.name}" ← "${updated?.name}"`);
+    if ((updated?.excludes_from_treasury ? 1 : 0) !== (method.excludes_from_treasury ? 1 : 0)) {
+      details.push(updated?.excludes_from_treasury
+        ? "⚠️ أصبحت لا تدخل الخزينة"
+        : "أصبحت تدخل الخزينة");
+    }
+    if (updated?.category !== method.category) details.push(`التصنيف: ${method.category} ← ${updated?.category}`);
+    if (details.length) {
+      notifyPaymentMethod(req, db, "تعديل وسيلة دفع", updated?.name || method.name, details.join(" | "));
+    }
+    res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -133,6 +167,7 @@ router.delete("/:id", requirePagePermission("payment_methods", "delete"), (req, 
     if (!method) return res.status(404).json({ success: false, message: "وسيلة الدفع غير موجودة" });
     if (method.is_system) return res.status(403).json({ success: false, message: `لا يمكن حذف "${method.name}" — وسيلة دفع محمية من النظام` });
     db.prepare("DELETE FROM payment_methods WHERE id = ?").run(req.params.id);
+    notifyPaymentMethod(req, db, "حذف وسيلة دفع", method.name, "حذف نهائي");
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

@@ -31,4 +31,15 @@ export const useAuthStore = create((set) => ({
       }
       return { user: null, token: null, permissions: {} };
     }),
+  updatePermissions: (newPermissions) =>
+    set((state) => {
+      if (typeof window !== "undefined") {
+        try {
+          const stored = JSON.parse(window.sessionStorage.getItem("retailer.auth") || "{}");
+          stored.permissions = newPermissions;
+          window.sessionStorage.setItem("retailer.auth", JSON.stringify(stored));
+        } catch {}
+      }
+      return { permissions: newPermissions };
+    }),
 }));

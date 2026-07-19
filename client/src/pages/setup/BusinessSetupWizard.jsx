@@ -363,18 +363,18 @@ export default function BusinessSetupWizard({ onDone }) {
   const showPrintPreviewPane = STEPS[step].id === "print-style" || STEPS[step].id === "print-blocks";
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[var(--bg-base)] text-slate-800 font-sans" dir="rtl">
+    <div className="fixed inset-0 overflow-hidden bg-[var(--bg-base)] text-text-primary font-sans" dir="rtl">
       <div className="flex h-full">
 
         {/* ═══ Steps sidebar ═══ */}
-        <aside className="hidden w-72 shrink-0 flex-col border-l border-slate-200/70 bg-white/70 p-6 backdrop-blur md:flex">
+        <aside className="hidden w-72 shrink-0 flex-col border-l border-border-normal/70 bg-bg-surface/70 p-6 backdrop-blur md:flex">
           <div className="mb-8 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-base font-black text-slate-900">إعداد النظام</h1>
-              <p className="text-[11px] font-bold text-slate-400">خطوات سريعة — كلها اختيارية</p>
+              <h1 className="text-base font-black text-text-primary">إعداد النظام</h1>
+              <p className="text-[11px] font-bold text-text-muted">خطوات سريعة — كلها اختيارية</p>
             </div>
           </div>
           <nav className="flex flex-col gap-1">
@@ -388,17 +388,17 @@ export default function BusinessSetupWizard({ onDone }) {
                   type="button"
                   onClick={() => goTo(i)}
                   className={`flex items-start gap-3 rounded-2xl px-3 py-2.5 text-right transition-colors ${
-                    active ? "bg-emerald-50 border border-emerald-200" : "border border-transparent hover:bg-slate-50"
+                    active ? "bg-emerald-50 border border-emerald-200" : "border border-transparent hover:bg-bg-overlay"
                   }`}
                 >
                   <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-[11px] font-black ${
-                    active ? "bg-emerald-500 text-white" : seen ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+                    active ? "bg-emerald-500 text-white" : seen ? "bg-emerald-100 text-emerald-600" : "bg-bg-overlay text-text-muted"
                   }`}>
                     {seen ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                   </span>
                   <span className="min-w-0">
-                    <span className={`block text-[13px] font-black leading-tight ${active ? "text-emerald-700" : "text-slate-600"}`}>{s.title}</span>
-                    <span className="block truncate text-[10px] font-bold text-slate-400">{s.desc}</span>
+                    <span className={`block text-[13px] font-black leading-tight ${active ? "text-emerald-700" : "text-text-secondary"}`}>{s.title}</span>
+                    <span className="block truncate text-[10px] font-bold text-text-muted">{s.desc}</span>
                   </span>
                 </button>
               );
@@ -408,7 +408,7 @@ export default function BusinessSetupWizard({ onDone }) {
             <button
               type="button"
               onClick={handleSkipAll}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+              className="w-full rounded-xl border border-border-normal px-4 py-2.5 text-xs font-black text-text-secondary transition-colors hover:bg-bg-overlay hover:text-text-primary"
             >
               تخطي الإعداد كاملاً ←
             </button>
@@ -418,14 +418,14 @@ export default function BusinessSetupWizard({ onDone }) {
         {/* ═══ Content ═══ */}
         <main className="flex min-w-0 flex-1 flex-col">
           {/* Mobile progress header */}
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 bg-white/70 px-4 py-3 md:hidden">
-            <span className="text-sm font-black text-slate-800">{STEPS[step].title}</span>
+          <div className="flex items-center justify-between gap-3 border-b border-border-normal/70 bg-bg-surface/70 px-4 py-3 md:hidden">
+            <span className="text-sm font-black text-text-primary">{STEPS[step].title}</span>
             <div className="flex items-center gap-1.5">
               {STEPS.map((_, i) => (
-                <span key={i} className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-emerald-500" : "w-2 bg-slate-200"}`} />
+                <span key={i} className={`h-1.5 rounded-full transition-all ${i === step ? "w-6 bg-emerald-500" : "w-2 bg-border-normal"}`} />
               ))}
             </div>
-            <button type="button" onClick={handleSkipAll} className="text-[11px] font-black text-slate-400">تخطي الكل</button>
+            <button type="button" onClick={handleSkipAll} className="text-[11px] font-black text-text-muted">تخطي الكل</button>
           </div>
 
           <div className="flex min-h-0 flex-1">
@@ -440,8 +440,8 @@ export default function BusinessSetupWizard({ onDone }) {
                   className="mx-auto w-full max-w-2xl"
                 >
                   <div className="mb-6 hidden md:block">
-                    <h2 className="text-2xl font-black text-slate-900">{STEPS[step].title}</h2>
-                    <p className="mt-1 text-sm font-medium text-slate-500">{STEPS[step].desc}</p>
+                    <h2 className="text-2xl font-black text-text-primary">{STEPS[step].title}</h2>
+                    <p className="mt-1 text-sm font-medium text-text-secondary">{STEPS[step].desc}</p>
                   </div>
 
                   {/* ─── Step: business info ─── */}
@@ -457,26 +457,26 @@ export default function BusinessSetupWizard({ onDone }) {
                       </div>
 
                       <div>
-                        <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-slate-500">الشعار (اختياري) — يظهر على الفواتير المطبوعة</p>
+                        <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-text-secondary">الشعار (اختياري) — يظهر على الفواتير المطبوعة</p>
                         <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
                           <div
                             onClick={() => !uploading && fileRef.current?.click()}
                             className={`flex h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-all ${
-                              uploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:border-slate-400"
+                              uploading ? "border-emerald-300 bg-emerald-50" : "border-border-normal bg-bg-overlay hover:border-slate-400"
                             }`}
                           >
                             {uploading ? (
                               <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
                             ) : (
                               <>
-                                <Upload className="h-5 w-5 text-slate-400" />
-                                <span className="text-xs font-bold text-slate-500">اضغط لرفع الشعار</span>
-                                <span className="text-[10px] font-bold text-slate-400">PNG, JPG &bull; ضغط تلقائي</span>
+                                <Upload className="h-5 w-5 text-text-muted" />
+                                <span className="text-xs font-bold text-text-secondary">اضغط لرفع الشعار</span>
+                                <span className="text-[10px] font-bold text-text-muted">PNG, JPG &bull; ضغط تلقائي</span>
                               </>
                             )}
                           </div>
                           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogo(e.target.files[0])} />
-                          <div className="relative flex h-24 items-center justify-center rounded-xl border border-slate-200 bg-white p-2">
+                          <div className="relative flex h-24 items-center justify-center rounded-xl border border-border-normal bg-bg-surface p-2">
                             {logoPreview && !previewError ? (
                               <>
                                 <img src={logoPreview} alt="Logo" className="max-h-full max-w-full object-contain" onError={() => setPreviewError(true)} />
@@ -494,7 +494,7 @@ export default function BusinessSetupWizard({ onDone }) {
                                 <span className="text-[10px] font-bold text-rose-500">تعذر تحميل الصورة</span>
                               </div>
                             ) : (
-                              <span className="text-[11px] font-bold text-slate-300">معاينة الشعار</span>
+                              <span className="text-[11px] font-bold text-text-muted">معاينة الشعار</span>
                             )}
                           </div>
                         </div>
@@ -507,10 +507,10 @@ export default function BusinessSetupWizard({ onDone }) {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label="رمز العملة" value={form.currency_symbol} onChange={(v) => handleChange("currency_symbol", v)} placeholder="ج.م أو ر.س" />
                       <div className="flex flex-col gap-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">تفعيل الضريبة</label>
-                        <div className="flex h-12 items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50/80 px-4">
+                        <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">تفعيل الضريبة</label>
+                        <div className="flex h-12 items-center gap-3 rounded-xl border-2 border-border-normal bg-bg-overlay/80 px-4">
                           <Toggle on={form.tax_enabled} onClick={() => handleChange("tax_enabled", !form.tax_enabled)} />
-                          <span className="text-sm font-bold text-slate-700">{form.tax_enabled ? "مفعّلة" : "غير مفعّلة"}</span>
+                          <span className="text-sm font-bold text-text-primary">{form.tax_enabled ? "مفعّلة" : "غير مفعّلة"}</span>
                         </div>
                       </div>
                       {form.tax_enabled && (
@@ -529,11 +529,11 @@ export default function BusinessSetupWizard({ onDone }) {
                             type="button"
                             onClick={() => { setPaperSize(p.id); setPresetId(null); setBlockOn({}); setPrintTouched(true); }}
                             className={`rounded-2xl border-2 p-3 text-right transition-all ${
-                              paperSize === p.id ? "border-emerald-500 bg-emerald-50/60" : "border-slate-200 bg-white hover:border-slate-300"
+                              paperSize === p.id ? "border-emerald-500 bg-emerald-50/60" : "border-border-normal bg-bg-surface hover:border-border-strong"
                             }`}
                           >
-                            <span className="block text-[13px] font-black text-slate-800">{p.label}</span>
-                            <span className="block text-[10px] font-bold text-slate-400">{p.hint}</span>
+                            <span className="block text-[13px] font-black text-text-primary">{p.label}</span>
+                            <span className="block text-[10px] font-bold text-text-muted">{p.hint}</span>
                           </button>
                         ))}
                       </div>
@@ -554,7 +554,7 @@ export default function BusinessSetupWizard({ onDone }) {
                               type="button"
                               onClick={() => { setPresetId(p.id); setBlockOn({}); setPrintTouched(true); }}
                               className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 text-right transition-all ${
-                                isSel ? "border-emerald-500 shadow-md" : "border-slate-200 hover:border-slate-300"
+                                isSel ? "border-emerald-500 shadow-md" : "border-border-normal hover:border-border-strong"
                               }`}
                             >
                               <div className="relative bg-[#e4e4e7]" style={{ height: 190 }}>
@@ -569,7 +569,7 @@ export default function BusinessSetupWizard({ onDone }) {
                                   </div>
                                 )}
                               </div>
-                              <span className="block truncate bg-white px-2.5 py-2 text-[11px] font-black text-slate-700">{p.name}</span>
+                              <span className="block truncate bg-bg-surface px-2.5 py-2 text-[11px] font-black text-text-primary">{p.name}</span>
                             </button>
                           );
                         })}
@@ -578,12 +578,12 @@ export default function BusinessSetupWizard({ onDone }) {
                         <button
                           type="button"
                           onClick={() => setShowAllPresets((v) => !v)}
-                          className="w-full rounded-xl border border-slate-200 py-2 text-xs font-black text-slate-500 hover:bg-slate-50"
+                          className="w-full rounded-xl border border-border-normal py-2 text-xs font-black text-text-secondary hover:bg-bg-overlay"
                         >
                           {showAllPresets ? "عرض أقل" : `عرض كل القوالب (${presets.length})`}
                         </button>
                       )}
-                      <p className="text-[11px] font-bold leading-relaxed text-slate-400">
+                      <p className="text-[11px] font-bold leading-relaxed text-text-muted">
                         💡 كل قالب قابل للتعديل الكامل لاحقاً من الإعدادات ← استوديو الطباعة.
                       </p>
                     </div>
@@ -592,8 +592,8 @@ export default function BusinessSetupWizard({ onDone }) {
                   {/* ─── Step: print blocks ─── */}
                   {STEPS[step].id === "print-blocks" && (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-slate-500">عناصر أساسية (تُطبع دائماً)</p>
+                      <div className="rounded-2xl border border-border-normal bg-bg-surface p-4">
+                        <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-text-secondary">عناصر أساسية (تُطبع دائماً)</p>
                         <div className="flex flex-wrap gap-2">
                           {LOCKED_BLOCKS.map((t) => (
                             <span key={t} className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-700">
@@ -602,13 +602,13 @@ export default function BusinessSetupWizard({ onDone }) {
                             </span>
                           ))}
                         </div>
-                        <p className="mt-2 text-[10px] font-bold text-slate-400">
+                        <p className="mt-2 text-[10px] font-bold text-text-muted">
                           «توقيع الحجازي» هو بصمة النظام في تذييل كل مستند ولا يمكن إيقافه.
                         </p>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-slate-500">اختر ما يظهر على الفاتورة</p>
+                      <div className="rounded-2xl border border-border-normal bg-bg-surface p-4">
+                        <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-text-secondary">اختر ما يظهر على الفاتورة</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {TOGGLABLE_BLOCKS.map((t) => {
                             const on = isBlockOn(t);
@@ -618,13 +618,13 @@ export default function BusinessSetupWizard({ onDone }) {
                                 type="button"
                                 onClick={() => { setBlockOn((prev) => ({ ...prev, [t]: !on })); setPrintTouched(true); }}
                                 className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2 text-right transition-all ${
-                                  on ? "border-emerald-400 bg-emerald-50/70" : "border-slate-200 bg-slate-50/60 hover:border-slate-300"
+                                  on ? "border-emerald-400 bg-emerald-50/70" : "border-border-normal bg-bg-overlay/60 hover:border-border-strong"
                                 }`}
                               >
-                                <span className={`truncate text-[11px] font-black ${on ? "text-emerald-800" : "text-slate-400"}`}>
+                                <span className={`truncate text-[11px] font-black ${on ? "text-emerald-800" : "text-text-muted"}`}>
                                   {BLOCK_REGISTRY[t]?.label || t}
                                 </span>
-                                <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md ${on ? "bg-emerald-500 text-white" : "bg-slate-200 text-transparent"}`}>
+                                <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md ${on ? "bg-emerald-500 text-white" : "bg-border-normal text-transparent"}`}>
                                   <Check className="h-3 w-3" strokeWidth={3.5} />
                                 </span>
                               </button>
@@ -632,7 +632,7 @@ export default function BusinessSetupWizard({ onDone }) {
                           })}
                         </div>
                       </div>
-                      <p className="text-[11px] font-bold leading-relaxed text-slate-400">
+                      <p className="text-[11px] font-bold leading-relaxed text-text-muted">
                         المعاينة الجانبية تتحدث فوراً مع كل تغيير — ما تراه هو ما سيُطبع.
                       </p>
                     </div>
@@ -651,7 +651,7 @@ export default function BusinessSetupWizard({ onDone }) {
                             type="button"
                             onClick={() => handleTheme(key)}
                             className={`relative flex flex-col items-stretch gap-1.5 rounded-xl border-2 p-2 text-right transition-all ${
-                              isSelected ? "border-emerald-500 shadow-sm" : "border-slate-200 hover:border-slate-300"
+                              isSelected ? "border-emerald-500 shadow-sm" : "border-border-normal hover:border-border-strong"
                             }`}
                           >
                             {isSelected && (
@@ -661,7 +661,7 @@ export default function BusinessSetupWizard({ onDone }) {
                             )}
                             <MiniSwatchRow themeKey={key} />
                             <div className="flex items-center justify-between gap-1">
-                              <span className="truncate text-[10px] font-black leading-tight text-slate-700">{t.name}</span>
+                              <span className="truncate text-[10px] font-black leading-tight text-text-primary">{t.name}</span>
                               {isDark ? <Moon className="h-3 w-3 shrink-0 text-indigo-400" /> : <Sun className="h-3 w-3 shrink-0 text-amber-400" />}
                             </div>
                           </button>
@@ -675,16 +675,16 @@ export default function BusinessSetupWizard({ onDone }) {
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
                         <Toggle on={form.auto_backup_enabled} onClick={() => handleChange("auto_backup_enabled", !form.auto_backup_enabled)} />
-                        <span className="text-sm font-bold text-slate-700">تفعيل النسخ الاحتياطي التلقائي</span>
+                        <span className="text-sm font-bold text-text-primary">تفعيل النسخ الاحتياطي التلقائي</span>
                       </div>
                       {form.auto_backup_enabled && (
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الفترة (ساعات)</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">الفترة (ساعات)</label>
                             <select
                               value={form.auto_backup_interval_hours}
                               onChange={(e) => handleChange("auto_backup_interval_hours", Number(e.target.value))}
-                              className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50/80 px-4 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-emerald-500 focus:bg-white"
+                              className="h-12 rounded-xl border-2 border-border-normal bg-bg-overlay/80 px-4 text-sm font-bold text-text-primary outline-none transition-colors focus:border-emerald-500 focus:bg-bg-surface"
                             >
                               <option value={1}>كل ساعة</option>
                               <option value={6}>كل ٦ ساعات</option>
@@ -695,19 +695,19 @@ export default function BusinessSetupWizard({ onDone }) {
                             </select>
                           </div>
                           <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">مسار الحفظ</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">مسار الحفظ</label>
                             <div className="flex gap-2">
                               <input
                                 value={form.auto_backup_path}
                                 onChange={(e) => handleChange("auto_backup_path", e.target.value)}
                                 placeholder="الافتراضي: backups/"
-                                className="h-12 flex-1 rounded-xl border-2 border-slate-200 bg-slate-50/80 px-4 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-emerald-500 focus:bg-white"
+                                className="h-12 flex-1 rounded-xl border-2 border-border-normal bg-bg-overlay/80 px-4 text-sm font-bold text-text-primary outline-none transition-colors focus:border-emerald-500 focus:bg-bg-surface"
                               />
                               {window.electronAPI && (
                                 <button
                                   type="button"
                                   onClick={handleFolderPick}
-                                  className="h-12 shrink-0 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
+                                  className="h-12 shrink-0 rounded-xl border-2 border-border-normal bg-bg-overlay px-3 text-xs font-bold text-text-secondary transition-colors hover:bg-bg-overlay"
                                 >
                                   تصفّح
                                 </button>
@@ -735,11 +735,11 @@ export default function BusinessSetupWizard({ onDone }) {
 
             {/* ═══ Live print preview pane (steps 3-4) ═══ */}
             {showPrintPreviewPane && (
-              <div className="hidden w-[300px] shrink-0 flex-col border-r border-slate-200/70 bg-slate-100/70 p-4 lg:flex">
-                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+              <div className="hidden w-[300px] shrink-0 flex-col border-r border-border-normal/70 bg-bg-overlay/70 p-4 lg:flex">
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-text-secondary">
                   <Printer className="h-3.5 w-3.5" /> معاينة حية
                 </p>
-                <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-[#e4e4e7]">
+                <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border-normal bg-[#e4e4e7]">
                   <PrintThumb
                     family={preview.family}
                     size={paperSize}
@@ -749,18 +749,18 @@ export default function BusinessSetupWizard({ onDone }) {
                     height={560}
                   />
                 </div>
-                <p className="mt-2 text-center text-[10px] font-bold text-slate-400">ما تراه هنا هو ما سيُطبع فعلياً</p>
+                <p className="mt-2 text-center text-[10px] font-bold text-text-muted">ما تراه هنا هو ما سيُطبع فعلياً</p>
               </div>
             )}
           </div>
 
           {/* ═══ Footer nav ═══ */}
-          <div className="flex items-center justify-between gap-3 border-t border-slate-200/70 bg-white/80 px-5 py-4 backdrop-blur md:px-8">
+          <div className="flex items-center justify-between gap-3 border-t border-border-normal/70 bg-bg-surface/80 px-5 py-4 backdrop-blur md:px-8">
             <button
               type="button"
               onClick={() => goTo(step - 1)}
               disabled={step === 0}
-              className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-black text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-0"
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-black text-text-muted transition-colors hover:text-text-primary disabled:opacity-0"
             >
               <ArrowRight className="h-4 w-4" /> السابق
             </button>
@@ -770,7 +770,7 @@ export default function BusinessSetupWizard({ onDone }) {
                 <button
                   type="button"
                   onClick={() => goTo(step + 1)}
-                  className="rounded-xl px-4 py-2.5 text-xs font-black text-slate-400 transition-colors hover:text-slate-600"
+                  className="rounded-xl px-4 py-2.5 text-xs font-black text-text-muted transition-colors hover:text-text-secondary"
                 >
                   تخطي هذه الخطوة
                 </button>
@@ -806,9 +806,9 @@ function Toggle({ on, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative h-6 w-11 rounded-full transition-colors ${on ? "bg-emerald-500" : "bg-slate-300"}`}
+      className={`relative h-6 w-11 rounded-full transition-colors ${on ? "bg-emerald-500" : "bg-border-strong"}`}
     >
-      <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-5" : ""}`} />
+      <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-bg-surface shadow-sm transition-transform ${on ? "translate-x-5" : ""}`} />
     </button>
   );
 }
@@ -816,14 +816,14 @@ function Toggle({ on, onClick }) {
 function Field({ label, value, onChange, placeholder, type = "text", dir = "rtl" }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">{label}</label>
+      <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         dir={dir}
-        className="h-12 w-full rounded-xl border-2 border-slate-200 bg-slate-50/80 px-4 text-sm font-bold text-slate-700 outline-none transition-colors placeholder:font-normal placeholder:text-slate-300 focus:border-emerald-500 focus:bg-white"
+        className="h-12 w-full rounded-xl border-2 border-border-normal bg-bg-overlay/80 px-4 text-sm font-bold text-text-primary outline-none transition-colors placeholder:font-normal placeholder:text-text-muted focus:border-emerald-500 focus:bg-bg-surface"
       />
     </div>
   );

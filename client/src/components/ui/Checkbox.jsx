@@ -8,7 +8,7 @@ export default function Checkbox({ label, checked, onChange, disabled, className
         checked={checked}
         onChange={(e) => onChange?.(e.target.checked)}
         disabled={disabled}
-        className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary/40"
+        className="h-4 w-4 rounded border-border-normal/20 bg-bg-surface/5 text-primary focus:ring-primary/40"
       />
       {label && <span className="text-sm text-text-primary">{label}</span>}
     </label>

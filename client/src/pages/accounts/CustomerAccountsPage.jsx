@@ -71,7 +71,7 @@ const METHOD_STYLE = {
   credit: { bg: "bg-amber-50/80", text: "text-amber-700", border: "border-amber-200/50", dot: "bg-amber-500" },
   installments: { bg: "bg-violet-50/80", text: "text-violet-700", border: "border-violet-200/50", dot: "bg-violet-500" },
   wallet: { bg: "bg-purple-50/80", text: "text-purple-700", border: "border-purple-200/50", dot: "bg-purple-500" },
-  default: { bg: "bg-slate-50/80", text: "text-slate-700", border: "border-slate-200/50", dot: "bg-slate-400" },
+  default: { bg: "bg-bg-overlay/80", text: "text-text-primary", border: "border-border-normal/50", dot: "bg-text-muted" },
 };
 const ms = (method) => METHOD_STYLE[method] || METHOD_STYLE.default;
 
@@ -105,7 +105,7 @@ function Modal({ onClose, children, width = "480px" }) {
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: "spring", stiffness: 380, damping: 30 }}
         style={{ width }}
-        className="bg-white rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.18)] max-h-[90vh] overflow-y-auto border border-slate-200/60"
+        className="bg-bg-surface rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.18)] max-h-[90vh] overflow-y-auto border border-border-normal/60"
         onClick={e => e.stopPropagation()}
         dir="rtl"
       >
@@ -125,12 +125,12 @@ const EVENT_TYPES = {
 };
 
 const TYPE_CARD_STYLE = {
-  invoice: "border-slate-200/70 hover:border-blue-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
-  payment: "border-slate-200/70 hover:border-emerald-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
-  ajal_payment: "border-slate-200/70 hover:border-violet-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
-  return: "border-slate-200/70 hover:border-rose-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
-  adjustment: "border-slate-200/70 hover:border-amber-300/80 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
-  opening: "border-slate-200 border-dashed bg-slate-50/50",
+  invoice: "border-border-normal/70 hover:border-blue-300/80 bg-bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  payment: "border-border-normal/70 hover:border-emerald-300/80 bg-bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  ajal_payment: "border-border-normal/70 hover:border-violet-300/80 bg-bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  return: "border-border-normal/70 hover:border-rose-300/80 bg-bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  adjustment: "border-border-normal/70 hover:border-amber-300/80 bg-bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.02)]",
+  opening: "border-border-normal border-dashed bg-bg-overlay/50",
 };
 
 // Parse payment splits string
@@ -198,7 +198,7 @@ function InstallmentsBadge({ debtId }) {
         </button>
         {stats && stats.total > 0 && (
           <div className="flex items-center gap-2">
-            <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-20 h-1.5 bg-border-normal rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all duration-500 ${
                 progressPct >= 100 ? "bg-emerald-500" : hasUrgency ? "bg-rose-500" : "bg-violet-500"
               }`} style={{ width: `${Math.min(100, progressPct)}%` }} />
@@ -226,15 +226,15 @@ function InstallmentsBadge({ debtId }) {
                     ? "bg-emerald-50/30 border-emerald-100/80 text-emerald-700"
                     : isOverdue
                       ? "bg-rose-50/30 border-rose-100/80 text-rose-700"
-                      : "bg-slate-50/40 border-slate-200/80 text-slate-600"
+                      : "bg-bg-overlay/40 border-border-normal/80 text-text-secondary"
                   }`}>
-                  <span className="font-semibold text-slate-600">القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
+                  <span className="font-semibold text-text-secondary">القسط {s.installment_no} — {fmtDate(s.due_date)}</span>
                   <span className="number-fmt text-[11px]">{fmt(s.amount)}</span>
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${isPaid
                       ? "bg-emerald-100/80 border-emerald-200 text-emerald-800"
                       : isOverdue
                         ? "bg-rose-100/80 border-rose-200 text-rose-800"
-                        : "bg-slate-100 border-slate-200 text-slate-700"
+                        : "bg-bg-overlay border-border-normal text-text-primary"
                     }`}>
                     {isPaid ? "مسدد" : isOverdue ? "متأخر" : "معلق"}
                   </span>
@@ -285,21 +285,21 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
   });
 
   const renderFilterBar = () => (
-    <div className="bg-slate-50/45 border border-slate-200/50 rounded-[28px] p-5 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.015)] backdrop-blur-md select-none text-right" dir="rtl">
+    <div className="bg-bg-overlay/45 border border-border-normal/50 rounded-[28px] p-5 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.015)] backdrop-blur-md select-none text-right" dir="rtl">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         {/* Type Filter */}
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[11.5px] font-black text-slate-400 ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
+          <span className="text-[11.5px] font-black text-text-muted ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
             <SlidersHorizontal className="h-3.5 w-3.5 text-slate-450" />
             تصفية الحركات:
           </span>
           <div className="flex flex-wrap gap-2">
             {[
-              { id: "all", label: "الكل", color: "hover:border-slate-350 hover:bg-slate-50 text-slate-650 bg-white" },
-              { id: "invoice", label: "مبيعات آجل", color: "hover:border-blue-200 hover:bg-blue-50/30 text-blue-700 bg-white" },
-              { id: "payment", label: "دفعة مسددة", color: "hover:border-emerald-200 hover:bg-emerald-50/30 text-emerald-750 bg-white" },
-              { id: "return", label: "مرتجع", color: "hover:border-rose-200 hover:bg-rose-50/30 text-rose-700 bg-white" },
-              { id: "adjustment", label: "تسوية", color: "hover:border-amber-200 hover:bg-amber-50/30 text-amber-700 bg-white" },
+              { id: "all", label: "الكل", color: "hover:border-slate-350 hover:bg-bg-overlay text-slate-650 bg-bg-surface" },
+              { id: "invoice", label: "مبيعات آجل", color: "hover:border-blue-200 hover:bg-blue-50/30 text-blue-700 bg-bg-surface" },
+              { id: "payment", label: "دفعة مسددة", color: "hover:border-emerald-200 hover:bg-emerald-50/30 text-emerald-750 bg-bg-surface" },
+              { id: "return", label: "مرتجع", color: "hover:border-rose-200 hover:bg-rose-50/30 text-rose-700 bg-bg-surface" },
+              { id: "adjustment", label: "تسوية", color: "hover:border-amber-200 hover:bg-amber-50/30 text-amber-700 bg-bg-surface" },
             ].map(btn => {
               const active = filterType === btn.id;
               return (
@@ -309,7 +309,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                   className={`text-2sm font-black px-4 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     active 
                       ? "bg-primary border-primary text-white shadow-[0_4px_14px_rgba(15,23,42,0.12)] scale-[1.02]" 
-                      : `${btn.color} border-slate-200/80 shadow-sm hover:scale-[1.01]`
+                      : `${btn.color} border-border-normal/80 shadow-sm hover:scale-[1.01]`
                   }`}
                 >
                   {btn.label}
@@ -320,38 +320,38 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
         </div>
 
         {/* Date Filter */}
-        <div className="flex flex-wrap items-center gap-3 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0">
-          <span className="text-[11.5px] font-black text-slate-400 ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-3 border-t lg:border-t-0 border-border-subtle pt-4 lg:pt-0">
+          <span className="text-[11.5px] font-black text-text-muted ml-1.5 flex items-center gap-1.5 shrink-0 uppercase tracking-wider">
             <Calendar className="h-3.5 w-3.5 text-slate-450" />
             تحديد الفترة:
           </span>
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* From Date Pill */}
-            <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
+            <div className="flex items-center gap-2 bg-bg-surface border border-border-normal/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
               <span className="text-[11px] font-black text-slate-450 shrink-0">من</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-text-primary bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
             {/* To Date Pill */}
-            <div className="flex items-center gap-2 bg-white border border-slate-200/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
+            <div className="flex items-center gap-2 bg-bg-surface border border-border-normal/85 rounded-2xl px-3.5 py-1.5 shadow-sm focus-within:border-slate-450 focus-within:ring-1 focus-within:ring-slate-200 transition-all">
               <span className="text-[11px] font-black text-slate-450 shrink-0">إلى</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="text-2sm font-black text-slate-700 bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
+                className="text-2sm font-black text-text-primary bg-transparent border-0 p-0 m-0 outline-none focus:outline-none focus:ring-0 w-28 cursor-pointer text-center"
               />
             </div>
 
             {(startDate || endDate) && (
               <button
                 onClick={() => { setStartDate(""); setEndDate(""); }}
-                className="p-2 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200/80 hover:border-rose-250 rounded-2xl transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+                className="p-2 bg-bg-overlay hover:bg-rose-50 text-text-secondary hover:text-rose-600 border border-border-normal/80 hover:border-rose-250 rounded-2xl transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
                 title="إعادة تعيين الفترة"
               >
                 <X className="h-4 w-4 stroke-[2.5px]" />
@@ -538,11 +538,11 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
     return (
       <div className="space-y-3">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
+          <div key={i} className="rounded-xl border border-border-normal bg-bg-surface p-4 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-bg-overlay animate-pulse" />
             <div className="flex-1 space-y-2">
-              <div className="h-3 bg-slate-100 rounded animate-pulse w-1/3" />
-              <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-bg-overlay rounded animate-pulse w-1/3" />
+              <div className="h-2 bg-bg-overlay rounded animate-pulse w-2/3" />
             </div>
           </div>
         ))}
@@ -552,11 +552,11 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-350 gap-4 border border-dashed border-slate-200 rounded-[24px] bg-white/40 max-w-5xl mx-auto shadow-inner animate-fade-in">
-        <div className="p-4 rounded-full bg-slate-50 border border-slate-100/80 shadow-sm">
-          <FileText className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
+      <div className="flex flex-col items-center justify-center py-20 text-slate-350 gap-4 border border-dashed border-border-normal rounded-[24px] bg-bg-surface/40 max-w-5xl mx-auto shadow-inner animate-fade-in">
+        <div className="p-4 rounded-full bg-bg-overlay border border-border-subtle/80 shadow-sm">
+          <FileText className="h-7 w-7 text-text-muted stroke-[1.5px]" />
         </div>
-        <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مسجلة في هذا الحساب حالياً</span>
+        <span className="font-extrabold text-sm text-text-secondary tracking-tight">لا توجد حركات مالية مسجلة في هذا الحساب حالياً</span>
       </div>
     );
   }
@@ -566,11 +566,11 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
       <div className="max-w-5xl mx-auto flex flex-col relative px-1 select-none">
         {renderFilterBar()}
         
-        <div className="flex flex-col items-center justify-center py-16 text-slate-350 gap-4 border border-dashed border-slate-200 rounded-[28px] bg-white/40 shadow-inner animate-fade-in text-right">
-          <div className="p-4 rounded-full bg-slate-50 border border-slate-100 shadow-sm">
-            <SlidersHorizontal className="h-7 w-7 text-slate-400 stroke-[1.5px]" />
+        <div className="flex flex-col items-center justify-center py-16 text-slate-350 gap-4 border border-dashed border-border-normal rounded-[28px] bg-bg-surface/40 shadow-inner animate-fade-in text-right">
+          <div className="p-4 rounded-full bg-bg-overlay border border-border-subtle shadow-sm">
+            <SlidersHorizontal className="h-7 w-7 text-text-muted stroke-[1.5px]" />
           </div>
-          <span className="font-extrabold text-sm text-slate-500 tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
+          <span className="font-extrabold text-sm text-text-secondary tracking-tight">لا توجد حركات مالية مطابقة للفلاتر المحددة حالياً</span>
           <button 
             onClick={() => { setFilterType("all"); setStartDate(""); setEndDate(""); }}
             className="text-[11px] font-black text-blue-650 bg-blue-50 border border-blue-150 rounded-xl px-4 py-2 hover:bg-blue-100 transition-all cursor-pointer shadow-sm"
@@ -591,9 +591,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
         const cfg = !isOpening ? EVENT_TYPES[ev.type] : {
           icon: FileText,
           label: "رصيد افتتاحي",
-          color: "text-slate-500",
-          bg: "bg-slate-50/80",
-          border: "border-slate-200"
+          color: "text-text-secondary",
+          bg: "bg-bg-overlay/80",
+          border: "border-border-normal"
         };
         const Icon = cfg.icon;
 
@@ -652,9 +652,9 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
             label: "تسوية يدوية"
           },
           opening: {
-            bezel: "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200/80",
+            bezel: "bg-gradient-to-br from-slate-50 to-slate-100/50 border-border-normal/80",
             borderRight: "border-r-slate-400",
-            badge: "bg-slate-100 text-slate-700 border-slate-200/60",
+            badge: "bg-bg-overlay text-text-primary border-border-normal/60",
             label: "رصيد افتتاحي"
           }
         }[ev.type];
@@ -664,17 +664,17 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
             {/* ① Timeline Node — squircle + connecting lines only, w-16 */}
             <div className="flex flex-col items-center shrink-0 w-16 relative select-none">
               {/* Dual-layered connecting line track */}
-              <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[3.5px] bg-slate-100 rounded-full pointer-events-none" />
+              <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[3.5px] bg-bg-overlay rounded-full pointer-events-none" />
               <div className={`absolute left-1/2 -translate-x-1/2 w-[2px] pointer-events-none ${
                 index === 0 
                   ? "top-8 bottom-0 bg-gradient-to-b from-blue-500 to-slate-200" 
                   : index === filteredEvents.length - 1 
                     ? "top-0 h-8 bg-gradient-to-b from-slate-200 to-transparent" 
-                    : "top-0 bottom-0 bg-slate-200"
+                    : "top-0 bottom-0 bg-border-normal"
               }`} />
               
               {/* Date Squircle */}
-              <div className="w-16 rounded-[22px] bg-white border border-slate-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative py-2.5">
+              <div className="w-16 rounded-[22px] bg-bg-surface border border-border-normal/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center z-10 transition-all duration-300 hover:scale-105 hover:border-slate-450 hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group cursor-pointer relative py-2.5">
                 <span className={`absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-6.5 w-6.5 rounded-lg border ${cfg.bg} ${cfg.color} ${cfg.border} shadow-[0_2px_6px_rgba(0,0,0,0.04)] z-20 transition-transform duration-300 group-hover:scale-110`}>
                   <Icon className="h-3.5 w-3.5 stroke-[2.3px]" />
                 </span>
@@ -683,15 +683,15 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                     <span className="text-[9px] font-black text-slate-450 uppercase tracking-wide leading-none whitespace-nowrap">
                       {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { month: "short", year: "numeric" })}
                     </span>
-                    <span className="text-[20px] font-black text-slate-800 font-mono tracking-tighter leading-none mt-1">
+                    <span className="text-[20px] font-black text-text-primary font-mono tracking-tighter leading-none mt-1">
                       {new Date(ev.date).toLocaleDateString("ar-EG-u-nu-latn", { day: "2-digit" })}
                     </span>
-                    <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight leading-none mt-1">
+                    <span className="text-[9px] font-bold text-text-muted font-mono tracking-tight leading-none mt-1">
                       {new Date(ev.date).toLocaleTimeString("ar-EG-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: true })}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-[10.5px] font-black text-slate-500 leading-none">البداية</span>
+                  <span className="text-[10.5px] font-black text-text-secondary leading-none">البداية</span>
                 )}
               </div>
             </div>
@@ -702,22 +702,22 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
               const decreased = ev.balanceAfter < ev.balanceBefore - 0.005;
               return (
                 <div className="flex flex-col items-center gap-[3px] shrink-0 self-start pt-1 w-[76px]">
-                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">قبل</span>
+                  <span className="text-[7px] font-black text-text-muted uppercase tracking-wider leading-none">قبل</span>
                   <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceBefore > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceBefore < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
-                    : "bg-slate-50 text-slate-500 border-slate-200/70"
+                    : "bg-bg-overlay text-text-secondary border-border-normal/70"
                   }`}>{fmt(Math.abs(ev.balanceBefore))}</span>
 
                   <svg viewBox="0 0 24 6" className="w-[32px] h-[5px]" fill="none">
                     <line x1="0" y1="3" x2="24" y2="3" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2 2"/>
                   </svg>
 
-                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-wider leading-none">بعد</span>
+                  <span className="text-[7px] font-black text-text-muted uppercase tracking-wider leading-none">بعد</span>
                   <span className={`text-[9px] number-fmt-primary px-1.5 py-[2px] rounded-md border w-full text-center leading-none ${
                     ev.balanceAfter > 0.005 ? "bg-rose-50 text-rose-700 border-rose-200/70"
                     : ev.balanceAfter < -0.005 ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
-                    : "bg-slate-50/80 text-slate-400 border-slate-200/50"
+                    : "bg-bg-overlay/80 text-text-muted border-border-normal/50"
                   }`}>{fmt(Math.abs(ev.balanceAfter))}</span>
 
                   {(increased || decreased) && (
@@ -750,7 +750,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
               transition={{ type: "spring", stiffness: 350, damping: 28, delay: Math.min(0.3, index * 0.02) }}
               className={`flex-1 p-[3px] rounded-[28px] border shadow-[0_8px_24px_rgba(0,0,0,0.015)] backdrop-blur-md transition-all duration-300 ${theme.bezel}`}
             >
-              <div className={`bg-white rounded-[24px] p-5 md:p-6 relative overflow-hidden border border-slate-100/80 ${theme.borderRight} flex flex-col gap-4 shadow-[inset_0_2px_4px_rgba(255,255,255,1)]`}>
+              <div className={`bg-bg-surface rounded-[24px] p-5 md:p-6 relative overflow-hidden border border-border-subtle/80 ${theme.borderRight} flex flex-col gap-4 shadow-[inset_0_2px_4px_rgba(255,255,255,1)]`}>
                 <div className="flex flex-col gap-4">
                   {/* ── Main Asymmetric Ledger Row ── */}
                   <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 min-w-0 w-full">
@@ -760,7 +760,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                       <div className="flex items-center gap-2.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[16px] font-black text-slate-800 tracking-tight leading-none">
+                            <span className="text-[16px] font-black text-text-primary tracking-tight leading-none">
                               {isOpening ? "رصيد افتتاحي سابق" : cfg.label}
                             </span>
                             <span className={`inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm ${theme.badge}`}>
@@ -774,7 +774,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                           </div>
                           
                           <div className="mt-2.5 flex items-center gap-1.5">
-                            <span className="text-[9.5px] font-bold text-slate-400 select-none">المرجع:</span>
+                            <span className="text-[9.5px] font-bold text-text-muted select-none">المرجع:</span>
                             {ev.type === "ajal_payment" && ev.invoiceNo ? (
                               <button
                                 onClick={() => onOpenInvoice({ id: ev.invoiceId, invoice_no: ev.invoiceNo })}
@@ -785,7 +785,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                                 <ExternalLink className="h-3 w-3 stroke-[2.2px]" />
                               </button>
                             ) : (
-                              <span className="text-[11px] font-black text-slate-500 font-mono bg-slate-50 border border-slate-200/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
+                              <span className="text-[11px] font-black text-text-secondary font-mono bg-bg-overlay border border-border-normal/50 px-1.5 py-0.5 rounded-[5px] select-all tracking-tight" title={ev.ref || "رصيد البداية"}>
                                 {isOpening ? "سجل افتتاحي" : ev.ref}
                               </span>
                             )}
@@ -833,8 +833,8 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                         </div>
                       )}
                       {!isDocRow && !isOpening && ev.methodLabel && (
-                        <span className="inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border bg-slate-50 border-slate-200 text-slate-650 shadow-sm">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                        <span className="inline-flex items-center gap-1.5 text-[9.5px] font-extrabold px-2.5 py-1.5 rounded-xl border bg-bg-overlay border-border-normal text-slate-650 shadow-sm">
+                          <span className="h-1.5 w-1.5 rounded-full bg-text-muted" />
                           {ev.methodLabel}
                         </span>
                       )}
@@ -860,7 +860,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                             <span className="text-[8.5px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded-lg leading-none">بدون فاتورة</span>
                           </span>
                         ) : (
-                          <span className="text-[11.5px] text-slate-455 font-semibold border-r-2 border-slate-200 pr-2 block truncate max-w-[240px]" title={ev.description}>
+                          <span className="text-[11.5px] text-slate-455 font-semibold border-r-2 border-border-normal pr-2 block truncate max-w-[240px]" title={ev.description}>
                             {ev.description}
                           </span>
                         )
@@ -882,20 +882,20 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
 
                     {/* Column 3: Unified Ledger Cockpit Widget */}
                     <div className="shrink-0 flex flex-row items-center gap-3">
-                      <div className="flex items-center gap-3 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-2.5 hover:bg-slate-50/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
+                      <div className="flex items-center gap-3 bg-bg-overlay/80 border border-border-normal/80 rounded-2xl p-2.5 hover:bg-bg-overlay/90 transition-all duration-300 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.02)]">
                         {/* Metric 1: Total Transaction Value */}
                         <div className="flex flex-col items-end px-3 py-0.5 flex-1 min-w-0">
                           <span className="text-[9px] font-black text-slate-450 uppercase tracking-wider mb-1 select-none">
                             {isOpening ? "القيمة الافتتاحية" : isDocRow ? "إجمالي الفاتورة" : ev.type === "return" ? "إجمالي المرتجع" : ev.type === "payment" || ev.type === "ajal_payment" ? "المبلغ المسدد" : "قيمة التسوية"}
                           </span>
-                          <div className="text-[18px] number-fmt-primary text-slate-800 tracking-tight leading-none flex items-baseline gap-0.5 truncate">
+                          <div className="text-[18px] number-fmt-primary text-text-primary tracking-tight leading-none flex items-baseline gap-0.5 truncate">
                             <span>{fmt(isOpening ? ev.impactAmount : isDocRow ? ev.invoiceTotal : ev.type === "return" ? (ev.totalAmount || ev.impactAmount) : ev.impactAmount)}</span>
-                            <span className="text-[9.5px] font-bold text-slate-400 mr-0.5">ج.م</span>
+                            <span className="text-[9.5px] font-bold text-text-muted mr-0.5">ج.م</span>
                           </div>
                         </div>
 
                         {/* Vertical Divider */}
-                        {hasImpact && <div className="h-10 w-[1px] bg-slate-200/80 self-center" />}
+                        {hasImpact && <div className="h-10 w-[1px] bg-border-normal/80 self-center" />}
 
                         {/* Metric 2: Balance Impact */}
                         {hasImpact && (
@@ -942,7 +942,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                       {ev.type === "invoice" && (
                         <button
                           onClick={() => onOpenInvoice(ev.raw)}
-                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-200/80 hover:border-blue-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-bg-overlay hover:bg-blue-50 text-text-muted hover:text-blue-600 border border-border-normal/80 hover:border-blue-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
                           title="عرض تفاصيل الفاتورة"
                         >
                           <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
@@ -951,7 +951,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                       {ev.type === "return" && (
                         <button
                           onClick={() => onOpenReturn(ev.raw)}
-                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-bg-overlay hover:bg-rose-50 text-text-muted hover:text-rose-600 border border-border-normal/80 hover:border-rose-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
                           title="عرض تفاصيل المرتجع"
                         >
                           <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
@@ -960,7 +960,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
                       {ev.type === "ajal_payment" && ev.invoiceId && (
                         <button
                           onClick={() => onOpenInvoice({ id: ev.invoiceId })}
-                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-violet-50 text-slate-400 hover:text-violet-600 border border-slate-200/80 hover:border-violet-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
+                          className="h-8.5 w-8.5 flex items-center justify-center rounded-xl bg-bg-overlay hover:bg-violet-50 text-text-muted hover:text-violet-600 border border-border-normal/80 hover:border-violet-200 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 group"
                           title="عرض الفاتورة الأصلية"
                         >
                           <Eye className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
@@ -971,7 +971,7 @@ function MovementsTab({ party, partyType, onOpenInvoice, onOpenOriginalInvoice, 
 
                   {/* ── Installments expandable within invoice row ── */}
                   {isDocRow && isInstallments && ev.raw?.debt_id && (
-                    <div className="px-1.5 pb-2.5 border-t border-slate-100 pt-3">
+                    <div className="px-1.5 pb-2.5 border-t border-border-subtle pt-3">
                       <InstallmentsBadge debtId={ev.raw.debt_id} />
                     </div>
                   )}
@@ -1413,34 +1413,34 @@ export default function CustomerAccountsPage() {
   const instDueCount = instDue ? instDue.overdue + instDue.due_today + instDue.upcoming : 0;
 
   return (
-    <div className="flex flex-1 min-h-0 bg-slate-100 overflow-hidden font-sans" dir="rtl">
+    <div className="flex flex-1 min-h-0 bg-bg-overlay overflow-hidden font-sans" dir="rtl">
 
       {/* ── Left Sidebar Panel ── */}
-      <div className="w-[360px] bg-slate-50/40 border-l border-slate-200/80 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] select-none">
-        <div className="p-4.5 border-b border-slate-200/50 bg-slate-50/20 space-y-4">
+      <div className="w-[360px] bg-bg-overlay/40 border-l border-border-normal/80 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] select-none">
+        <div className="p-4.5 border-b border-border-normal/50 bg-bg-overlay/20 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="h-9 w-9 rounded-xl bg-blue-50/80 text-blue-650 border border-blue-100/50 flex items-center justify-center shadow-[inset_0_1px_2px_rgba(255,255,255,1)]">
                 <Users className="h-4.5 w-4.5 stroke-[2.3px]" />
               </div>
-              <h1 className="text-[13.5px] font-black text-slate-800 tracking-tight">حسابات العملاء</h1>
+              <h1 className="text-[13.5px] font-black text-text-primary tracking-tight">حسابات العملاء</h1>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center rounded-xl border border-border-normal bg-bg-surface shadow-sm overflow-hidden">
                 <PermissionGate page="customer_accounts" action="add">
                   <button
                     onClick={() => navigate("/accounts/customers/import")}
-                    className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
+                    className="flex h-8 w-8 items-center justify-center text-text-muted hover:bg-bg-overlay hover:text-text-primary active:scale-[0.95] transition-all duration-200 cursor-pointer"
                     title="استيراد من Excel"
                   >
                     <Upload className="h-3.5 w-3.5" />
                   </button>
                 </PermissionGate>
-                <div className="w-px h-4 bg-slate-200 shrink-0" />
+                <div className="w-px h-4 bg-border-normal shrink-0" />
                 <PermissionGate page="customer_accounts" action="print">
                   <button
                     onClick={() => setShowExport(true)}
-                    className="flex h-8 w-8 items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 active:scale-[0.95] transition-all duration-200 cursor-pointer"
+                    className="flex h-8 w-8 items-center justify-center text-text-muted hover:bg-bg-overlay hover:text-text-primary active:scale-[0.95] transition-all duration-200 cursor-pointer"
                     title="تصدير Excel"
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -1450,7 +1450,7 @@ export default function CustomerAccountsPage() {
               <PermissionGate page="customer_accounts" action="add">
                 <button onClick={() => setShowCreate(true)}
                   className="flex h-9 items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-4 text-xs font-black text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)] hover:shadow-[0_4px_14px_rgba(59,130,246,0.5)] active:scale-[0.96] transition-all duration-200 cursor-pointer whitespace-nowrap">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white/20">
+                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-bg-surface/20">
                     <Plus className="h-3 w-3 stroke-[3.5px]" />
                   </span>
                   عميل جديد
@@ -1460,12 +1460,12 @@ export default function CustomerAccountsPage() {
           </div>
 
           <div data-help="search-bar" className="relative">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 focus-within:text-blue-650 transition-colors stroke-[2.3px]" />
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted focus-within:text-blue-650 transition-colors stroke-[2.3px]" />
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               placeholder="البحث بالاسم، الهاتف، الكود..."
-              className="w-full h-10 rounded-xl border border-slate-200 bg-slate-100/50 focus:bg-white pr-10 pl-9 text-2sm font-bold text-slate-700 placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
+              className="w-full h-10 rounded-xl border border-border-normal bg-bg-overlay/50 focus:bg-bg-surface pr-10 pl-9 text-2sm font-bold text-text-primary placeholder-slate-400/80 outline-none transition-all focus:border-blue-500/80 focus:shadow-[0_4px_16px_rgba(37,99,235,0.03)] focus:ring-4 focus:ring-blue-500/[0.03]" />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-bg-overlay text-text-muted hover:text-text-secondary">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -1480,7 +1480,7 @@ export default function CustomerAccountsPage() {
                 {filter === f.id && (
                   <motion.div
                     layoutId="activeFilterBg"
-                    className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_5px_rgba(0,0,0,0.05)] -z-10"
+                    className="absolute inset-0 bg-bg-surface rounded-lg shadow-[0_2px_5px_rgba(0,0,0,0.05)] -z-10"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -1497,12 +1497,12 @@ export default function CustomerAccountsPage() {
             className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-black transition-all active:scale-[0.98] ${
               viewMode === "normal"
                 ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                : "border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay"
             }`}
           >
             <Users className="h-4 w-4 stroke-[2.5px]" />
             العملاء
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "normal" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>{normalCount}</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "normal" ? "bg-bg-surface/20 text-white" : "bg-bg-overlay text-text-secondary"}`}>{normalCount}</span>
           </button>
           <button
             onClick={() => { setViewMode("fast"); setSelected(null); }}
@@ -1514,12 +1514,12 @@ export default function CustomerAccountsPage() {
           >
             <span className="text-sm leading-none">📱</span>
             واتساب سريع
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "fast" ? "bg-white/20 text-white" : "bg-green-100 text-green-700"}`}>{fastCount}</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${viewMode === "fast" ? "bg-bg-surface/20 text-white" : "bg-green-100 text-green-700"}`}>{fastCount}</span>
           </button>
         </div>
 
         {/* ── Net Balance Typographic Summary ── */}
-        <div data-help="balance-card" className="mx-4.5 mt-4 mb-2.5 bg-slate-100/65 border border-slate-200/50 rounded-2xl p-4.5 transition-all duration-300">
+        <div data-help="balance-card" className="mx-4.5 mt-4 mb-2.5 bg-bg-overlay/65 border border-border-normal/50 rounded-2xl p-4.5 transition-all duration-300">
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-[10.5px] font-bold text-slate-450 tracking-wide uppercase">صافي مديونية العملاء</span>
             {summaryLoading ? (
@@ -1530,9 +1530,9 @@ export default function CustomerAccountsPage() {
           </div>
 
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-[23px] number-fmt-primary tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-slate-800"}`}>
+            <span className={`text-[23px] number-fmt-primary tracking-tight ${netBalance > 0 ? "text-rose-600" : netBalance < 0 ? "text-emerald-600" : "text-text-primary"}`}>
               {summaryLoading ? (
-                <span className="inline-block w-16 h-7 bg-slate-200 rounded animate-pulse" />
+                <span className="inline-block w-16 h-7 bg-border-normal rounded animate-pulse" />
               ) : (
                 fmt(netBalance ?? 0)
               )}
@@ -1554,11 +1554,11 @@ export default function CustomerAccountsPage() {
         {/* ── Customers List Scroll ── */}
         <div data-help="main-table" className="flex-1 overflow-y-auto px-1 pb-4">
           {loading ? (
-            <div className="py-20 text-center text-2sm font-bold text-slate-400 animate-pulse">جاري تحميل القائمة...</div>
+            <div className="py-20 text-center text-2sm font-bold text-text-muted animate-pulse">جاري تحميل القائمة...</div>
           ) : filtered.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-              {viewMode === "fast" ? <span className="text-3xl opacity-70">📱</span> : <Users className="h-9 w-9 text-slate-300 opacity-60" />}
-              <p className="text-2sm font-bold text-slate-400">
+              {viewMode === "fast" ? <span className="text-3xl opacity-70">📱</span> : <Users className="h-9 w-9 text-text-muted opacity-60" />}
+              <p className="text-2sm font-bold text-text-muted">
                 {search ? "لا يوجد نتائج مطابقة للبحث" : viewMode === "fast" ? "لا توجد جهات واتساب سريعة بعد" : "لا يوجد عملاء"}
               </p>
               {viewMode === "fast" && !search && (
@@ -1588,9 +1588,9 @@ export default function CustomerAccountsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(0.2, index * 0.015) }}
                 onClick={() => selectCustomer(c, activeTab)}
-                className={`py-3.5 px-4.5 cursor-pointer border-b border-slate-100/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
+                className={`py-3.5 px-4.5 cursor-pointer border-b border-border-subtle/80 transition-all duration-200 relative group flex items-center justify-between gap-3 ${isSelected
                     ? "bg-blue-50/65 border-r-[4.5px] border-r-blue-600 border-b-blue-100/40"
-                    : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-slate-100/40"
+                    : "bg-transparent border-r-[4.5px] border-r-transparent hover:bg-bg-overlay/40"
                   }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -1598,7 +1598,7 @@ export default function CustomerAccountsPage() {
                   <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0 transition-all duration-200 ${
                     isSelected 
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-300/30" 
-                      : "bg-slate-200/50 text-slate-550"
+                      : "bg-border-normal/50 text-slate-550"
                   }`}
                   >
                     {c.name?.charAt(0)}
@@ -1606,7 +1606,7 @@ export default function CustomerAccountsPage() {
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <div className={`text-[12.5px] font-extrabold truncate transition-colors leading-none ${isSelected ? "text-blue-900" : "text-slate-800"}`}>{c.name}</div>
+                      <div className={`text-[12.5px] font-extrabold truncate transition-colors leading-none ${isSelected ? "text-blue-900" : "text-text-primary"}`}>{c.name}</div>
                       {nearLimit && (
                         <span className="flex items-center shrink-0" title="تنبيه: اقتراب من الحد الائتماني">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
@@ -1618,12 +1618,12 @@ export default function CustomerAccountsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono font-bold leading-none">{c.phone || c.code || "—"}</div>
+                    <div className="text-[11px] text-text-muted font-mono font-bold leading-none">{c.phone || c.code || "—"}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 select-none">
-                  <span className={`text-sm number-fmt-primary tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className={`text-sm number-fmt-primary tracking-tight leading-none ${b > 0 ? "text-rose-600" : b < 0 ? "text-emerald-600" : "text-text-muted"}`}>
                     {fmt(Math.abs(b))}
                   </span>
                   {b > 0 && <span className="text-[8.5px] font-extrabold text-rose-500 leading-none mt-1 tracking-wide">عليه دين</span>}
@@ -1638,31 +1638,31 @@ export default function CustomerAccountsPage() {
       {/* ── Right Panel ── */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {!selected ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-350 bg-slate-50/20">
-            <div className="p-5 rounded-full bg-slate-100/50 border border-slate-200/50 shadow-inner">
-              <Users className="h-14 w-14 text-slate-400 opacity-60" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-350 bg-bg-overlay/20">
+            <div className="p-5 rounded-full bg-bg-overlay/50 border border-border-normal/50 shadow-inner">
+              <Users className="h-14 w-14 text-text-muted opacity-60" />
             </div>
-            <p className="text-sm font-bold text-slate-400">برجاء اختيار أحد العملاء من القائمة الجانبية لعرض الملف والتحركات المالية</p>
+            <p className="text-sm font-bold text-text-muted">برجاء اختيار أحد العملاء من القائمة الجانبية لعرض الملف والتحركات المالية</p>
           </div>
         ) : (
           <>
             {/* Customer Header Panel */}
-            <div className="bg-white border-b border-slate-200/50 px-4 sm:px-6 py-4 sm:py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
+            <div className="bg-bg-surface border-b border-border-normal/50 px-4 sm:px-6 py-4 sm:py-5 shrink-0 shadow-[0_4px_24px_rgba(0,0,0,0.015)] relative z-10">
               <div className="flex flex-col gap-4">
                 {/* Top row: Customer Info + Balance (side by side on sm+) */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
                   {/* Customer Info & Avatar */}
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     {/* Avatar */}
-                    <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-[18px] flex items-center justify-center text-[16px] sm:text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br ${getAvatarBg(selected.name)} border-2 border-white ring-4 ring-slate-100/60`}>
+                    <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-[18px] flex items-center justify-center text-[16px] sm:text-[18px] font-black text-white shrink-0 shadow-md shadow-slate-200/20 bg-gradient-to-br ${getAvatarBg(selected.name)} border-2 border-border-normal ring-4 ring-slate-100/60`}>
                       {selected.name?.charAt(0)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-[14px] sm:text-[16px] font-black text-slate-900 truncate leading-tight tracking-tight">{selected.name}</h2>
+                        <h2 className="text-[14px] sm:text-[16px] font-black text-text-primary truncate leading-tight tracking-tight">{selected.name}</h2>
                         <button
                           onClick={() => setShowEdit(true)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                          className="p-1.5 text-text-muted hover:text-blue-600 hover:bg-bg-overlay rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
                           title="تعديل بيانات الملف"
                         >
                           <ExternalLink className="h-4 w-4 stroke-[2.2px]" />
@@ -1671,7 +1671,7 @@ export default function CustomerAccountsPage() {
                           <PermissionGate page="customers" action="delete">
                             <button
                               onClick={() => handleDeleteCustomer(selected)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
+                              className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0 cursor-pointer active:scale-95"
                               title="حذف / أرشفة العميل"
                             >
                               <Trash2 className="h-4 w-4 stroke-[2.2px]" />
@@ -1681,25 +1681,25 @@ export default function CustomerAccountsPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-1.5">
                         {selected.phone && (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-extrabold bg-slate-50/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-slate-100/60 shadow-sm">
-                            <Phone className="h-3 w-3 text-slate-400 stroke-[2.2px]" />
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary font-extrabold bg-bg-overlay/80 border border-slate-150 rounded-xl px-2.5 py-1 transition-all hover:bg-bg-overlay/60 shadow-sm">
+                            <Phone className="h-3 w-3 text-text-muted stroke-[2.2px]" />
                             <span className="font-mono">{selected.phone}</span>
                             <button
                               onClick={() => handleCopy(selected.phone, "phone")}
                               className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
                             >
-                              {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                              {copiedBadge === "phone" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-text-muted" />}
                             </button>
                           </span>
                         )}
                         {selected.code && (
-                          <span className="text-[11px] font-extrabold font-mono bg-slate-50/80 text-slate-500 border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-slate-100/60 shadow-sm">
+                          <span className="text-[11px] font-extrabold font-mono bg-bg-overlay/80 text-text-secondary border border-slate-150 px-2.5 py-1 rounded-xl flex items-center gap-1.5 transition-all hover:bg-bg-overlay/60 shadow-sm">
                             <span>كود: {selected.code}</span>
                             <button
                               onClick={() => handleCopy(selected.code, "code")}
                               className="hover:text-blue-650 p-0.5 transition-colors mr-0.5 cursor-pointer"
                             >
-                              {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                              {copiedBadge === "code" ? <Check className="h-3 w-3 text-emerald-500 animate-scale" /> : <Copy className="h-3 w-3 text-text-muted" />}
                             </button>
                           </span>
                         )}
@@ -1720,16 +1720,16 @@ export default function CustomerAccountsPage() {
                           ? "bg-rose-500/10 border-rose-200/40 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.08)]" 
                           : bal < 0 
                             ? "bg-emerald-500/10 border-emerald-200/40 text-emerald-600 shadow-[0_2px_10px_var(--primary-glow)]" 
-                            : "bg-slate-100 border-slate-200/60 text-slate-400"
+                            : "bg-bg-overlay border-border-normal/60 text-text-muted"
                       }`}>
                         {bal > 0 ? <TrendingUp className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.3px]" /> : bal < 0 ? <TrendingDown className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.3px]" /> : <Check className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.5px]" />}
                       </div>
                       <div>
-                        <div className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none block">
+                        <div className="text-[10px] sm:text-[11px] font-black text-text-muted uppercase tracking-widest leading-none block">
                           {bal > 0 ? "المبلغ اللي عليه" : bal < 0 ? "اللي ليه عندنا" : "الحساب مسوّى"}
                         </div>
                         <div className="flex items-center gap-1.5 mt-1">
-                          <div className={`text-[18px] sm:text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-slate-800"}`}>
+                          <div className={`text-[18px] sm:text-[20px] number-fmt-primary leading-none tracking-tight ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-650" : "text-text-primary"}`}>
                             {fmt(Math.abs(bal))}
                           </div>
                           <span className={`text-[10px] sm:text-[10.5px] font-extrabold ${bal > 0 ? "text-rose-450" : bal < 0 ? "text-emerald-450" : "text-slate-450"}`}>ج.م</span>
@@ -1745,9 +1745,9 @@ export default function CustomerAccountsPage() {
                       <div className="mt-2.5 space-y-1.5">
                         <div className="flex justify-between text-[9.5px] font-extrabold text-slate-455">
                           <span className={creditPct > 90 ? "text-rose-600" : creditPct > 70 ? "text-orange-600" : "text-emerald-600"}>مستنفذ من الحد {Math.round(creditPct)}%</span>
-                          <span className="number-fmt-primary text-slate-600">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
+                          <span className="number-fmt-primary text-text-secondary">{fmt(bal)} / {fmt(creditLimit)} ج.م</span>
                         </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+                        <div className="h-1.5 bg-bg-overlay rounded-full overflow-hidden relative shadow-inner">
                           <div className={`h-full rounded-full transition-all duration-500 ${creditPct > 90
                               ? "bg-rose-500"
                               : creditPct > 70
@@ -1779,7 +1779,7 @@ export default function CustomerAccountsPage() {
                       whileHover={{ y: -1, scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { setAdjForm({ amount: "", direction: "subtract", reason: "" }); setShowAdjust(true); }}
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-bg-surface border border-border-normal hover:border-slate-350 hover:bg-bg-overlay px-4 py-2.5 text-text-primary shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold"
                     >
                       <SlidersHorizontal className="h-4 w-4 text-slate-450 stroke-[2.2px]" />
                       <span>تسوية رصيد</span>
@@ -1790,7 +1790,7 @@ export default function CustomerAccountsPage() {
                       type="button"
                       onClick={() => setReportMenuOpen((v) => !v)}
                       disabled={!!reportExporting}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2.5 text-slate-700 shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold disabled:opacity-60"
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-bg-surface border border-border-normal hover:border-slate-350 hover:bg-bg-overlay px-4 py-2.5 text-text-primary shadow-sm transition-all duration-200 cursor-pointer text-2sm font-extrabold disabled:opacity-60"
                     >
                       <Download className="h-4 w-4 text-slate-450 stroke-[2.2px]" />
                       <span>{reportExporting ? "جاري التصدير..." : "طباعة / تصدير"}</span>
@@ -1803,7 +1803,7 @@ export default function CustomerAccountsPage() {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -6, scale: 0.98 }}
                           transition={{ duration: 0.14 }}
-                          className="absolute left-0 sm:left-auto sm:right-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                          className="absolute left-0 sm:left-auto sm:right-0 top-full z-30 mt-2 w-52 overflow-hidden rounded-xl border border-border-normal bg-bg-surface shadow-xl"
                         >
                           {[
                             { format: "print", label: "طباعة مباشرة", icon: Printer },
@@ -1817,7 +1817,7 @@ export default function CustomerAccountsPage() {
                                 key={item.format}
                                 type="button"
                                 onClick={() => handleStatementExport(item.format)}
-                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
+                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right text-xs font-black text-text-primary transition-colors hover:bg-bg-overlay"
                               >
                                 <span>{item.label}</span>
                                 <Icon className="h-4 w-4 text-slate-450" />
@@ -1897,51 +1897,51 @@ export default function CustomerAccountsPage() {
                   <span className="text-[11px] font-black text-amber-800">الفاتورة الأصلية للمرتجع — هذه الفاتورة مرتبطة بمرتجع مبيعات</span>
                 </div>
               )}
-              <p className="text-[11px] text-slate-400 font-bold font-mono mb-4">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
+              <p className="text-[11px] text-text-muted font-bold font-mono mb-4">{detailInvoice.invoice_no || `#${detailInvoice.id}`}</p>
 
               {detailLoading ? (
-                <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
+                <div className="flex flex-col items-center justify-center h-48 text-text-muted gap-3">
                   <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                   <span className="text-2sm font-bold">جاري تحميل تفاصيل الفاتورة...</span>
                 </div>
               ) : detailData ? (
                 <>
-                  <div className="rounded-2xl bg-slate-50/80 border border-slate-200/60 p-4 mb-4">
+                  <div className="rounded-2xl bg-bg-overlay/80 border border-border-normal/60 p-4 mb-4">
                     <div className="grid grid-cols-2 gap-3.5 text-2sm">
-                      <div><span className="font-bold text-slate-400">العميل المستفيد:</span> <span className="font-bold text-slate-800">{detailData.customer_name || "—"}</span></div>
-                      <div><span className="font-bold text-slate-400">طريقة سداد الفاتورة:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-bold ${PTYPE_COLOR[detailData.payment_type] || "text-slate-650 bg-slate-100 border-slate-200"}`}>{arMethod(detailData.payment_type)}</span></div>
-                      <div><span className="font-bold text-slate-400">تاريخ المعاملة:</span> <span className="font-bold text-slate-800 font-mono">{fmtDate(detailData.created_at)}</span></div>
-                      <div><span className="font-bold text-slate-400">حالة السداد:</span> <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${detailData.status === "paid" ? "bg-emerald-100/80 text-emerald-700" : detailData.status === "cancelled" ? "bg-rose-100/80 text-rose-700" : "bg-amber-100/80 text-amber-700"}`}>{detailData.status === "paid" ? "مسدد بالكامل" : detailData.status === "cancelled" ? "ملغي" : "آجل غير كامل السداد"}</span></div>
+                      <div><span className="font-bold text-text-muted">العميل المستفيد:</span> <span className="font-bold text-text-primary">{detailData.customer_name || "—"}</span></div>
+                      <div><span className="font-bold text-text-muted">طريقة سداد الفاتورة:</span> <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-bold ${PTYPE_COLOR[detailData.payment_type] || "text-slate-650 bg-bg-overlay border-border-normal"}`}>{arMethod(detailData.payment_type)}</span></div>
+                      <div><span className="font-bold text-text-muted">تاريخ المعاملة:</span> <span className="font-bold text-text-primary font-mono">{fmtDate(detailData.created_at)}</span></div>
+                      <div><span className="font-bold text-text-muted">حالة السداد:</span> <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${detailData.status === "paid" ? "bg-emerald-100/80 text-emerald-700" : detailData.status === "cancelled" ? "bg-rose-100/80 text-rose-700" : "bg-amber-100/80 text-amber-700"}`}>{detailData.status === "paid" ? "مسدد بالكامل" : detailData.status === "cancelled" ? "ملغي" : "آجل غير كامل السداد"}</span></div>
                     </div>
                   </div>
 
                   {/* Lines Receipt */}
-                  <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
-                    <div className="bg-slate-50/80 grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-bold text-slate-500 border-b border-slate-200/60">
+                  <div className="rounded-2xl border border-border-normal/80 overflow-hidden mb-4 shadow-sm bg-bg-surface">
+                    <div className="bg-bg-overlay/80 grid grid-cols-12 gap-2 px-4 py-2.5 text-[11px] font-bold text-text-secondary border-b border-border-normal/60">
                       <div className="col-span-5">اسم البند/الصنف</div>
                       <div className="col-span-2 text-center">الكمية</div>
                       <div className="col-span-2 text-center">سعر الوحدة</div>
                       <div className="col-span-1 text-center">خصم</div>
                       <div className="col-span-2 text-left">الإجمالي</div>
                     </div>
-                    <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                    <div className="divide-y divide-border-subtle max-h-48 overflow-y-auto">
                       {detailData.lines?.map((line, i) => (
-                        <div key={i} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/40 transition-colors">
+                        <div key={i} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-bg-overlay/40 transition-colors">
                           <div className="col-span-5 flex flex-col min-w-0">
-                            {(line.item_code || line.code) && <span className="font-mono text-[11px] text-slate-400 whitespace-normal break-words leading-tight">{line.item_code || line.code}</span>}
-                            <span className="text-2sm font-bold text-slate-800 whitespace-normal break-words leading-tight">{line.item_name || line.name}</span>
+                            {(line.item_code || line.code) && <span className="font-mono text-[11px] text-text-muted whitespace-normal break-words leading-tight">{line.item_code || line.code}</span>}
+                            <span className="text-2sm font-bold text-text-primary whitespace-normal break-words leading-tight">{line.item_name || line.name}</span>
                           </div>
                           <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{line.quantity}</div>
                           <div className="col-span-2 text-center number-fmt text-[11px] text-slate-650">{fmt(line.unit_price)}</div>
                           <div className="col-span-1 text-center number-fmt text-[11px] text-rose-500">{line.discount > 0 ? fmt(line.discount) : "—"}</div>
-                          <div className="col-span-2 text-left number-fmt text-[11px] text-slate-800">{fmt(line.line_total)}</div>
+                          <div className="col-span-2 text-left number-fmt text-[11px] text-text-primary">{fmt(line.line_total)}</div>
                         </div>
                       ))}
                     </div>
                     <div className="bg-primary text-white px-4 py-4.5">
-                      <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">إجمالي الأصناف الفرعي</span><span className="number-fmt">{fmt(detailData.subtotal)} ج.م</span></div>
-                      {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">خصم إضافي للفاتورة</span><span className="number-fmt text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
-                      {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-slate-400">رسوم / تكلفة إضافية</span><span className="number-fmt text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
+                      <div className="flex justify-between text-[11px] mb-2"><span className="text-text-muted">إجمالي الأصناف الفرعي</span><span className="number-fmt">{fmt(detailData.subtotal)} ج.م</span></div>
+                      {Number(detailData.discount) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-text-muted">خصم إضافي للفاتورة</span><span className="number-fmt text-rose-350">- {fmt(detailData.discount)} ج.م</span></div>}
+                      {Number(detailData.increase) > 0 && <div className="flex justify-between text-[11px] mb-2"><span className="text-text-muted">رسوم / تكلفة إضافية</span><span className="number-fmt text-amber-350">+ {fmt(detailData.increase)} ج.م</span></div>}
                       <div className="flex justify-between text-sm font-bold border-t border-slate-700/80 pt-3 mt-3">
                         <span className="text-slate-355">إجمالي قيمة الفاتورة النهائي</span>
                         <span className="number-fmt text-emerald-350">{fmt(detailData.total)} ج.م</span>
@@ -1951,21 +1951,21 @@ export default function CustomerAccountsPage() {
 
                   {/* Payment Methods Breakdown */}
                   {detailData.payments?.length > 0 && (
-                    <div className="rounded-2xl border border-slate-200/80 overflow-hidden mb-4 shadow-sm bg-white">
-                      <div className="bg-slate-50/80 px-4 py-2.5 text-[11px] font-bold text-slate-500 border-b border-slate-200/60 uppercase">
+                    <div className="rounded-2xl border border-border-normal/80 overflow-hidden mb-4 shadow-sm bg-bg-surface">
+                      <div className="bg-bg-overlay/80 px-4 py-2.5 text-[11px] font-bold text-text-secondary border-b border-border-normal/60 uppercase">
                         توزيع القنوات المالية المستلمة
                       </div>
-                      <div className="divide-y divide-slate-100">
+                      <div className="divide-y divide-border-subtle">
                         {detailData.payments.map((p, i) => (
                           <div key={i} className="flex items-center justify-between px-4 py-3">
                             <span className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border ${p.method === "cash" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
                                 p.method === "credit" ? "bg-amber-50 text-amber-700 border-amber-200/60" :
                                   p.method === "bank" ? "bg-sky-50 text-sky-700 border-sky-200/60" :
-                                    "bg-slate-150 text-slate-750 border-slate-200/60"
+                                    "bg-slate-150 text-slate-750 border-border-normal/60"
                               }`}>
                               {arMethod(p.method) || p.method_name || p.method}
                             </span>
-                            <span className="number-fmt text-sm text-slate-800">{fmt(p.amount)} <span className="text-[11px] font-bold text-slate-400 mr-0.5">ج.م</span></span>
+                            <span className="number-fmt text-sm text-text-primary">{fmt(p.amount)} <span className="text-[11px] font-bold text-text-muted mr-0.5">ج.م</span></span>
                           </div>
                         ))}
                       </div>
@@ -1981,7 +1981,7 @@ export default function CustomerAccountsPage() {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+                <div className="flex flex-col items-center justify-center py-10 text-text-muted gap-2">
                   <FileText className="h-8 w-8 opacity-30" />
                   <span className="font-bold text-sm">تعذر عرض تفاصيل الفاتورة المطلوبة</span>
                 </div>
@@ -1997,10 +1997,10 @@ export default function CustomerAccountsPage() {
         {detailReturn && (
           <Modal onClose={() => { setDetailReturn(null); setDetailReturnData(null); }} title="تفاصيل مرتجع المبيعات" showDetach={false}>
             <div className="p-6">
-              <p className="text-[11px] text-slate-400 font-bold font-mono mb-4">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
+              <p className="text-[11px] text-text-muted font-bold font-mono mb-4">{detailReturn.doc_no || `#${detailReturn.id}`}</p>
 
               {detailReturnLoading ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 animate-pulse text-2sm font-black">
+                <div className="flex items-center justify-center h-32 text-text-muted animate-pulse text-2sm font-black">
                   <RefreshCw className="h-5 w-5 animate-spin ml-2" /> جاري التحميل...
                 </div>
               ) : detailReturnData ? (
@@ -2010,14 +2010,14 @@ export default function CustomerAccountsPage() {
                   return (
                     <>
                       {/* Meta info */}
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
+                      <div className="rounded-xl bg-bg-overlay border border-border-normal p-4 mb-3">
                         <div className="grid grid-cols-2 gap-3 text-2sm">
-                          <div><span className="font-black text-slate-400">العميل:</span> <span className="font-bold text-slate-800">{d.customer_name || "—"}</span></div>
-                          <div><span className="font-black text-slate-400">التاريخ:</span> <span className="font-bold text-slate-800">{fmtDate(d.created_at)}</span></div>
-                          <div><span className="font-black text-slate-400">طريقة الاسترداد:</span> <span className="font-bold text-slate-800">{RMETHOD[d.refund_method] || d.refund_method || "—"}</span></div>
+                          <div><span className="font-black text-text-muted">العميل:</span> <span className="font-bold text-text-primary">{d.customer_name || "—"}</span></div>
+                          <div><span className="font-black text-text-muted">التاريخ:</span> <span className="font-bold text-text-primary">{fmtDate(d.created_at)}</span></div>
+                          <div><span className="font-black text-text-muted">طريقة الاسترداد:</span> <span className="font-bold text-text-primary">{RMETHOD[d.refund_method] || d.refund_method || "—"}</span></div>
                           {d.original_invoice_no && (
                             <div>
-                              <span className="font-black text-slate-400">الفاتورة الأصلية: </span>
+                              <span className="font-black text-text-muted">الفاتورة الأصلية: </span>
                               <button
                                 onClick={() => { setDetailReturn(null); setDetailReturnData(null); setDetailInvoiceIsOriginal(true); setDetailInvoice({ id: d.invoice_id, invoice_no: d.original_invoice_no }); }}
                                 className="font-mono font-black text-blue-600 hover:text-blue-700 hover:underline text-2sm cursor-pointer"
@@ -2027,45 +2027,45 @@ export default function CustomerAccountsPage() {
                             </div>
                           )}
                           {d.reason && (
-                            <div className="col-span-2"><span className="font-black text-slate-400">السبب:</span> <span className="font-bold text-slate-800">{d.reason}</span></div>
+                            <div className="col-span-2"><span className="font-black text-text-muted">السبب:</span> <span className="font-bold text-text-primary">{d.reason}</span></div>
                           )}
                           {d.notes && (
-                            <div className="col-span-2"><span className="font-black text-slate-400">ملاحظات:</span> <span className="font-bold text-slate-800">{d.notes}</span></div>
+                            <div className="col-span-2"><span className="font-black text-text-muted">ملاحظات:</span> <span className="font-bold text-text-primary">{d.notes}</span></div>
                           )}
                         </div>
                       </div>
 
                       {Array.isArray(d.lines) && d.lines.length > 0 && (
-                        <div className="rounded-xl border border-slate-200 overflow-hidden mb-4 max-h-[300px] overflow-y-auto">
+                        <div className="rounded-xl border border-border-normal overflow-hidden mb-4 max-h-[300px] overflow-y-auto">
                           <table className="w-full text-[11.5px] border-collapse">
-                            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <thead className="bg-bg-overlay border-b border-border-normal sticky top-0">
                               <tr>
-                                <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
-                                <th className="px-2 py-2 text-center font-black text-slate-500">الكمية</th>
-                                <th className="px-2 py-2 text-center font-black text-slate-500">السعر</th>
-                                <th className="px-3 py-2 text-center font-black text-slate-500">الإجمالي</th>
+                                <th className="px-3 py-2 text-right font-black text-text-secondary">الصنف</th>
+                                <th className="px-2 py-2 text-center font-black text-text-secondary">الكمية</th>
+                                <th className="px-2 py-2 text-center font-black text-text-secondary">السعر</th>
+                                <th className="px-3 py-2 text-center font-black text-text-secondary">الإجمالي</th>
                               </tr>
                             </thead>
                             <tbody>
                               {d.lines.map((l, i) => (
-                                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                                <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay">
                                   <td className="px-3 py-2">
                                     <div className="flex flex-col">
-                                      {(l.item_code || l.code) && <span className="font-mono text-[11px] text-slate-400">{l.item_code || l.code}</span>}
-                                      <span className="font-bold text-slate-800">{l.item_name || "—"}</span>
+                                      {(l.item_code || l.code) && <span className="font-mono text-[11px] text-text-muted">{l.item_code || l.code}</span>}
+                                      <span className="font-bold text-text-primary">{l.item_name || "—"}</span>
                                     </div>
                                   </td>
-                                  <td className="px-2 py-2 text-center text-slate-600">{l.quantity}</td>
-                                  <td className="px-2 py-2 text-center number-fmt text-slate-600">{fmt(l.unit_price)}</td>
+                                  <td className="px-2 py-2 text-center text-text-secondary">{l.quantity}</td>
+                                  <td className="px-2 py-2 text-center number-fmt text-text-secondary">{fmt(l.unit_price)}</td>
                                   <td className="px-3 py-2 text-center number-fmt-primary text-rose-700">{fmt(l.line_total || (l.quantity * l.unit_price))}</td>
                                 </tr>
                               ))}
                             </tbody>
-                            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                            <tfoot className="bg-bg-overlay border-t-2 border-border-normal">
                               {(Number(d.discount) > 0 || Number(d.increase) > 0) && (
                                 <tr>
-                                  <td colSpan={3} className="px-3 py-1.5 text-right font-bold text-slate-500">إجمالي الأصناف</td>
-                                  <td className="px-3 py-1.5 text-center number-fmt text-slate-600">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
+                                  <td colSpan={3} className="px-3 py-1.5 text-right font-bold text-text-secondary">إجمالي الأصناف</td>
+                                  <td className="px-3 py-1.5 text-center number-fmt text-text-secondary">{fmt(Number(d.total) + Number(d.discount || 0) - Number(d.increase || 0))}</td>
                                 </tr>
                               )}
                               {Number(d.discount) > 0 && (
@@ -2074,9 +2074,9 @@ export default function CustomerAccountsPage() {
                               {Number(d.increase) > 0 && (
                                 <tr><td colSpan={3} className="px-3 py-1.5 text-right font-bold text-emerald-600">زيادة المرتجع</td><td className="px-3 py-1.5 text-center number-fmt text-emerald-600">+ {fmt(d.increase)}</td></tr>
                               )}
-                              <tr className="border-t border-slate-200">
-                                <td colSpan={3} className="px-3 py-2 text-right font-black text-slate-800">صافي المرتجع</td>
-                                <td className="px-3 py-2 text-center number-fmt-primary text-slate-900 text-sm">{fmt(d.total)}</td>
+                              <tr className="border-t border-border-normal">
+                                <td colSpan={3} className="px-3 py-2 text-right font-black text-text-primary">صافي المرتجع</td>
+                                <td className="px-3 py-2 text-center number-fmt-primary text-text-primary text-sm">{fmt(d.total)}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -2085,17 +2085,17 @@ export default function CustomerAccountsPage() {
 
                       {/* Refund split */}
                       {(Number(d.cash_amount) > 0.005 || Number(d.credit_amount) > 0.005) && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-4 mb-4 flex flex-col gap-1.5 text-2sm">
-                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تفاصيل الاسترداد</span>
+                        <div className="rounded-xl border border-border-normal bg-bg-surface p-4 mb-4 flex flex-col gap-1.5 text-2sm">
+                          <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">تفاصيل الاسترداد</span>
                           {Number(d.cash_amount) > 0.005 && (
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-slate-500">نقداً (صندوق)</span>
+                              <span className="font-bold text-text-secondary">نقداً (صندوق)</span>
                               <span className="number-fmt text-emerald-700">{fmt(d.cash_amount)} ج.م</span>
                             </div>
                           )}
                           {Number(d.credit_amount) > 0.005 && (
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-slate-500">خصم من الآجل (رصيد)</span>
+                              <span className="font-bold text-text-secondary">خصم من الآجل (رصيد)</span>
                               <span className="number-fmt text-rose-600">{fmt(d.credit_amount)} ج.م</span>
                             </div>
                           )}
@@ -2113,7 +2113,7 @@ export default function CustomerAccountsPage() {
                   );
                 })()
               ) : (
-                <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2">
+                <div className="flex flex-col items-center justify-center h-32 text-text-muted gap-2">
                   <FileText className="h-8 w-8 opacity-40" />
                   <span className="font-black text-sm">لا توجد تفاصيل</span>
                 </div>
@@ -2146,7 +2146,7 @@ export default function CustomerAccountsPage() {
       {showPayment && selected && (
         <Modal onClose={() => setShowPayment(false)} title={payForm.direction === "add" ? "رد دفعة مالية للعميل" : "تحصيل دفعة مالية من العميل"} showDetach={false}>
           <div className="p-6">
-              <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-slate-800 font-bold">{selected.name}</span></p>
+              <p className="text-2sm text-slate-450 font-bold mb-3.5">الحساب المالي المستهدف: <span className="text-text-primary font-bold">{selected.name}</span></p>
               {bal !== 0 && (
                 <div className={`${bal > 0 ? "bg-rose-50/40 border-rose-100 text-rose-800" : "bg-emerald-50/40 border-emerald-100 text-emerald-800"} border rounded-2xl p-3.5 mb-4 text-2sm font-bold flex justify-between items-center`}>
                   <span>{bal > 0 ? "المبلغ اللي عليه:" : "اللي ليه عندنا:"}</span>
@@ -2163,12 +2163,12 @@ export default function CustomerAccountsPage() {
               {!payForm.schedule_id && (
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <button onClick={() => setPayForm(f => ({ ...f, direction: "subtract" }))}
-                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "subtract" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "subtract" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-border-normal text-text-muted hover:border-slate-350"}`}>
                     <div className="text-[16px] mb-1">↑</div>تحصيل دفعة
                     <div className="text-[10px] font-medium mt-0.5 opacity-70">(قبض من العميل)</div>
                   </button>
                   <button onClick={() => setPayForm(f => ({ ...f, direction: "add" }))}
-                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "add" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-2.5 rounded-2xl border-2 text-2sm font-bold transition-all ${payForm.direction === "add" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-border-normal text-text-muted hover:border-slate-350"}`}>
                     <div className="text-[16px] mb-1">↓</div>رد دفعة
                     <div className="text-[10px] font-medium mt-0.5 opacity-70">(دفع للعميل)</div>
                   </button>
@@ -2178,13 +2178,13 @@ export default function CustomerAccountsPage() {
               <div className="space-y-4">
                 {customerSchedules.length > 0 && (
                   <div>
-                    <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ربط الدفعة بمعاد قسط <span className="text-slate-300 font-normal">(اختياري)</span></label>
+                    <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ربط الدفعة بمعاد قسط <span className="text-text-muted font-normal">(اختياري)</span></label>
                     <select ref={payAmountRef} autoFocus value={payForm.schedule_id} onChange={e => {
                       const val = e.target.value;
                       const sched = customerSchedules.find(s => String(s.id) === val);
                       setPayForm(f => ({ ...f, schedule_id: val, amount: sched ? String(sched.amount) : f.amount }));
                     }}
-                      className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-violet-500"
+                      className="w-full h-11.5 rounded-xl border border-border-normal px-4 text-2sm font-bold bg-bg-surface outline-none focus:border-violet-500"
                       onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })}>
                       <option value="">-- دفعة عامة (بدون ربط) --</option>
                       {customerSchedules.map(s => (
@@ -2198,7 +2198,7 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">المبلغ المقبوض أو المسترد <span className="text-rose-500">*</span></label>
                   <input ref={!customerSchedules.length ? payAmountRef : undefined} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                    className={`w-full h-11.5 rounded-xl border px-4 text-[17px] number-fmt outline-none focus:shadow-sm ${payForm.schedule_id ? "bg-slate-50 border-violet-200 text-slate-500 cursor-not-allowed" : "border-slate-200 focus:border-blue-500 focus:shadow-sm"}`}
+                    className={`w-full h-11.5 rounded-xl border px-4 text-[17px] number-fmt outline-none focus:shadow-sm ${payForm.schedule_id ? "bg-bg-overlay border-violet-200 text-text-secondary cursor-not-allowed" : "border-border-normal focus:border-blue-500 focus:shadow-sm"}`}
                     placeholder="0.00" autoFocus={!customerSchedules.length} readOnly={!!payForm.schedule_id}
                     onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} />
                   {payForm.schedule_id && (
@@ -2210,16 +2210,16 @@ export default function CustomerAccountsPage() {
                 {Number(payForm.amount) > 0 && (() => {
                   const newBal = payForm.direction === "add" ? bal + Number(payForm.amount) : bal - Number(payForm.amount);
                   return (
-                    <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
+                    <div className="bg-bg-overlay/50 rounded-2xl p-3 border border-border-normal/60">
                       <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع بعد الدفعة:</p>
-                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
+                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-text-secondary"} flex items-center gap-1.5`}>
                         {fmt(Math.abs(newBal))} ج.م
                         {newBal > 0 ? (
                           <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
                         ) : newBal < 0 ? (
                           <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">دائن</span>
                         ) : (
-                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200/60">صفر</span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-bg-overlay text-text-secondary border border-border-normal/60">صفر</span>
                         )}
                       </p>
                     </div>
@@ -2229,7 +2229,7 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قناة استلام أو رد النقدية <span className="text-rose-500">*</span></label>
                   <select ref={payMethodRef} value={payForm.method_id} onChange={e => setPayForm(f => ({ ...f, method_id: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-bold bg-white outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: customerSchedules.length ? payAmountRef : payAmountRef })}>
+                    className="w-full h-11.5 rounded-xl border border-border-normal px-4 text-2sm font-bold bg-bg-surface outline-none focus:border-blue-500" onKeyDown={e => handleKeyDown(e, { nextRef: payNotesRef, prevRef: customerSchedules.length ? payAmountRef : payAmountRef })}>
                     <option value="">-- اختر القناة المالية --</option>
                     {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
@@ -2237,7 +2237,7 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">ملاحظات توضيحية على الدفعة (اختياري)</label>
                   <input ref={payNotesRef} value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" onKeyDown={e => handleKeyDown(e, { nextRef: paySubmitRef, prevRef: payMethodRef })} />
+                    className="w-full h-11.5 rounded-xl border border-border-normal px-4 text-2sm font-semibold outline-none focus:border-blue-500" placeholder="مثال: دفعة تحت الحساب للفواتير المعلقة" onKeyDown={e => handleKeyDown(e, { nextRef: paySubmitRef, prevRef: payMethodRef })} />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -2258,9 +2258,9 @@ export default function CustomerAccountsPage() {
         <Modal onClose={() => setShowAdjust(false)} title="تسوية رصيد حساب العميل يدوياً" showDetach={false}>
           <div className="p-6">
                 <p className="text-2sm text-slate-450 font-bold mb-4 flex items-center gap-1.5 flex-wrap">
-                العميل: <span className="text-slate-800 font-bold">{selected.name}</span>
-                <span className="text-slate-300">—</span>قبل التسوية:
-                <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-500"}`}>{fmt(Math.abs(bal))} ج.م</span>
+                العميل: <span className="text-text-primary font-bold">{selected.name}</span>
+                <span className="text-text-muted">—</span>قبل التسوية:
+                <span className={`number-fmt ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-text-secondary"}`}>{fmt(Math.abs(bal))} ج.م</span>
                 {bal > 0 ? (
                   <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
                 ) : bal < 0 ? (
@@ -2276,12 +2276,12 @@ export default function CustomerAccountsPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => setAdjForm(f => ({ ...f, direction: "subtract" }))}
-                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "subtract" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-border-normal text-text-muted hover:border-slate-350"}`}>
                     <div className="text-[18px] mb-1">↓</div>تخفيض مديونية العميل
                     <div className="text-[11px] font-medium mt-0.5 opacity-70">(خصم / إعفاء خاص)</div>
                   </button>
                   <button onClick={() => setAdjForm(f => ({ ...f, direction: "add" }))}
-                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-200 text-slate-400 hover:border-slate-350"}`}>
+                    className={`p-3 rounded-2xl border-2 text-2sm font-bold transition-all ${adjForm.direction === "add" ? "border-rose-500 bg-rose-50 text-rose-700" : "border-border-normal text-text-muted hover:border-slate-350"}`}>
                     <div className="text-[18px] mb-1">↑</div>رفع مديونية العميل
                     <div className="text-[11px] font-medium mt-0.5 opacity-70">(إضافة دين / قيد تصحيح)</div>
                   </button>
@@ -2289,14 +2289,14 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">قيمة التسوية المطلوبة <span className="text-rose-500">*</span></label>
                   <input ref={adjAmountRef} type="number" value={adjForm.amount} onChange={e => setAdjForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
+                    className="w-full h-11.5 rounded-xl border border-border-normal px-4 text-[17px] number-fmt outline-none focus:border-blue-500 focus:shadow-sm" placeholder="0.00" autoFocus onKeyDown={e => handleKeyDown(e, { nextRef: adjReasonRef })} />
                 </div>
                 {adjForm.amount > 0 && (() => {
                   const newBal = adjForm.direction === "subtract" ? bal - Number(adjForm.amount) : bal + Number(adjForm.amount);
                   return (
-                    <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-200/60">
+                    <div className="bg-bg-overlay/50 rounded-2xl p-3 border border-border-normal/60">
                       <p className="text-[11px] font-bold text-slate-450 mb-1">صافي الرصيد المتوقع لحساب العميل بعد الحفظ:</p>
-                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-slate-500"} flex items-center gap-1.5`}>
+                      <p className={`text-[17px] number-fmt ${newBal > 0 ? "text-rose-600" : newBal < 0 ? "text-emerald-600" : "text-text-secondary"} flex items-center gap-1.5`}>
                         {fmt(Math.abs(newBal))} ج.م
                         {newBal > 0 ? (
                           <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60">مديون</span>
@@ -2310,7 +2310,7 @@ export default function CustomerAccountsPage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-450 mb-1.5 block uppercase">سبب وقيد التسوية اليدوية (مطلوب) <span className="text-rose-500">*</span></label>
                   <input ref={adjReasonRef} value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))}
-                    className="w-full h-11.5 rounded-xl border border-slate-200 px-4 text-2sm outline-none focus:border-blue-500 font-semibold"
+                    className="w-full h-11.5 rounded-xl border border-border-normal px-4 text-2sm outline-none focus:border-blue-500 font-semibold"
                     placeholder="مثال: تسوية خصومات مسموح بها للفواتير السابقة" onKeyDown={e => handleKeyDown(e, { nextRef: adjSubmitRef, prevRef: adjAmountRef })} />
                 </div>
               </div>

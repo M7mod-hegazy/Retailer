@@ -25,7 +25,7 @@ function formatMoney(v) {
 function CategoryAvatar({ url, name, skuPrefix }) {
   const src = resolveImageUrl(url);
   if (src) {
-    return <img src={src} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover border border-slate-200/50 shadow-sm" />;
+    return <img src={src} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover border border-border-normal/50 shadow-sm" />;
   }
 
   // Generate a distinct gradient color based on character codes of the name
@@ -65,7 +65,7 @@ function SpotlightCard({ children, className = "", onClick, isSelected }) {
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
       className={`relative overflow-hidden rounded-[24px] border p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] cursor-default ${
-        isSelected ? "ring-2 ring-emerald-500/20 border-emerald-500 bg-emerald-50/10" : "bg-white border-slate-200/60 hover:border-slate-350"
+        isSelected ? "ring-2 ring-emerald-500/20 border-emerald-500 bg-emerald-50/10" : "bg-bg-surface border-border-normal/60 hover:border-slate-350"
       } ${className}`}
     >
       {isHovered && (
@@ -266,26 +266,26 @@ export default function CategoriesPage() {
   if (loading) {
     return (
       <div className="flex flex-col gap-6 px-6 md:px-8 py-8 min-h-[100dvh] bg-[var(--bg-base)]" dir="rtl">
-        <div className="h-32 rounded-2xl bg-slate-200 animate-pulse w-full" />
+        <div className="h-32 rounded-2xl bg-border-normal animate-pulse w-full" />
         <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-slate-200 animate-pulse" />
+          <div className="h-12 w-12 rounded-2xl bg-border-normal animate-pulse" />
           <div className="space-y-2">
-            <div className="h-5 w-48 bg-slate-200 rounded animate-pulse" />
-            <div className="h-3 w-72 bg-slate-100 rounded animate-pulse" />
+            <div className="h-5 w-48 bg-border-normal rounded animate-pulse" />
+            <div className="h-3 w-72 bg-bg-overlay rounded animate-pulse" />
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+            <div key={i} className="rounded-2xl border border-border-normal bg-bg-surface p-5 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-slate-100 animate-pulse" />
+                <div className="h-10 w-10 rounded-xl bg-bg-overlay animate-pulse" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-slate-100 rounded animate-pulse w-1/2" />
-                  <div className="h-2 bg-slate-50 rounded animate-pulse w-2/3" />
+                  <div className="h-3 bg-bg-overlay rounded animate-pulse w-1/2" />
+                  <div className="h-2 bg-bg-overlay rounded animate-pulse w-2/3" />
                 </div>
               </div>
               <div className="flex gap-4 pt-2">
-                {[...Array(3)].map((_, j) => <div key={j} className="h-2 bg-slate-50 rounded animate-pulse flex-1" />)}
+                {[...Array(3)].map((_, j) => <div key={j} className="h-2 bg-bg-overlay rounded animate-pulse flex-1" />)}
               </div>
             </div>
           ))}
@@ -307,7 +307,7 @@ export default function CategoriesPage() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none">أقسام الأصناف</h1>
-            <p className="text-xs font-bold text-slate-500 mt-2 block tracking-wider leading-none">إدارة تصنيفات المنتجات وتحليلاتها التشغيلية والمالية.</p>
+            <p className="text-xs font-bold text-text-secondary mt-2 block tracking-wider leading-none">إدارة تصنيفات المنتجات وتحليلاتها التشغيلية والمالية.</p>
           </div>
         </div>
         <PermissionGate page="categories" action="add">
@@ -331,7 +331,7 @@ export default function CategoriesPage() {
               <Tag className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">إجمالي الأقسام</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest leading-none mb-2">إجمالي الأقسام</p>
               <p className="text-2xl font-black text-zinc-900 leading-none font-mono">{aggregateStats.totalCategories}</p>
             </div>
           </div>
@@ -345,7 +345,7 @@ export default function CategoriesPage() {
               <Box className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">إجمالي الأصناف</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest leading-none mb-2">إجمالي الأصناف</p>
               <p className="text-2xl font-black text-zinc-900 leading-none font-mono">{aggregateStats.totalItems}</p>
             </div>
           </div>
@@ -367,7 +367,7 @@ export default function CategoriesPage() {
             ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20" 
             : stats.avgMargin >= 15 
             ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20" 
-            : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-zinc-800/40";
+            : "bg-bg-overlay text-text-secondary border-border-normal dark:bg-zinc-800/40";
 
           return (
             <SpotlightCard
@@ -386,15 +386,15 @@ export default function CategoriesPage() {
                     <h3 className="text-base font-black text-zinc-900 truncate leading-none">{cat.name}</h3>
                   </div>
                   <p className="text-[11px] font-bold text-slate-450 mt-2 block tracking-wider leading-none">
-                    {stats.totalItems} صنف <span className="text-slate-300 font-normal">|</span> {stats.activeItems} نشط
+                    {stats.totalItems} صنف <span className="text-text-muted font-normal">|</span> {stats.activeItems} نشط
                   </p>
                 </div>
               </div>
 
               {/* Stats Row */}
               <div className="grid grid-cols-1 gap-2.5 mb-5">
-                <div className="rounded-2xl p-2.5 text-center bg-slate-50/50 dark:bg-zinc-900/30 border border-slate-100/40">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">متوسط الهامش</p>
+                <div className="rounded-2xl p-2.5 text-center bg-bg-overlay/50 dark:bg-zinc-900/30 border border-border-subtle/40">
+                  <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1.5">متوسط الهامش</p>
                   <span className={`inline-flex px-2 py-0.5 rounded-lg border text-xs font-black leading-none font-mono ${marginColor}`}>
                     {stats.avgMargin.toFixed(1)}%
                   </span>
@@ -402,10 +402,10 @@ export default function CategoriesPage() {
               </div>
 
               {/* Heatmap Micro Margin bar */}
-              <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mb-5 overflow-hidden">
+              <div className="w-full bg-bg-overlay dark:bg-zinc-800 rounded-full h-1.5 mb-5 overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-500 ${
-                    stats.avgMargin >= 30 ? "bg-emerald-500" : stats.avgMargin >= 15 ? "bg-amber-500" : "bg-slate-400"
+                    stats.avgMargin >= 30 ? "bg-emerald-500" : stats.avgMargin >= 15 ? "bg-amber-500" : "bg-text-muted"
                   }`} 
                   style={{ width: `${Math.min(100, Math.max(5, stats.avgMargin))}%` }} 
                 />
@@ -425,7 +425,7 @@ export default function CategoriesPage() {
                   <PermissionGate page="categories" action="edit">
                     <button
                       onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
-                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-505 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 shadow-sm transition-all cursor-pointer"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-bg-overlay text-slate-505 hover:text-text-primary hover:bg-bg-overlay border border-border-normal/60 shadow-sm transition-all cursor-pointer"
                       title="تعديل"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -450,7 +450,7 @@ export default function CategoriesPage() {
       {/* Empty State */}
       {categories.length === 0 && (
         <div className="relative z-10 flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-5 border border-slate-200/50">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-overlay text-text-muted mb-5 border border-border-normal/50">
             <Tag className="h-7 w-7" />
           </div>
           <h3 className="text-base font-black text-zinc-800">لا توجد أقسام بعد</h3>
@@ -483,7 +483,7 @@ export default function CategoriesPage() {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-white overflow-hidden"
+                className="relative w-full max-w-md bg-bg-surface rounded-3xl p-6 shadow-2xl border border-border-normal overflow-hidden"
               >
                 <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${blocked ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}>
                   {blocked ? <AlertCircle className="h-6 w-6" /> : <Trash2 className="h-6 w-6" />}
@@ -493,7 +493,7 @@ export default function CategoriesPage() {
                   {blocked ? "لا يمكن حذف هذا القسم الآن" : "تأكيد حذف القسم"}
                 </h3>
                 
-                <p className="mt-2 text-xs font-bold text-slate-500 leading-relaxed">
+                <p className="mt-2 text-xs font-bold text-text-secondary leading-relaxed">
                   {blocked
                     ? `القسم "${deleteModal.name}" مرتبط بعدد ${linkedItems.length} صنف. انقل الأصناف لقسم آخر أو احذفها أولاً، لتتمكن من حذف القسم.`
                     : `سيتم حذف القسم "${deleteModal.name}" نهائياً من قاعدة البيانات لأنه لا يحتوي على أي أصناف مرتبطة.`}
@@ -506,7 +506,7 @@ export default function CategoriesPage() {
                     </div>
                     <div className="space-y-1.5 max-h-[160px] overflow-y-auto no-scrollbar">
                       {linkedItems.slice(0, 4).map((item) => (
-                        <div key={item.id} className="truncate rounded-xl border border-rose-100/30 bg-white px-3 py-2 text-2sm font-bold text-slate-700">
+                        <div key={item.id} className="truncate rounded-xl border border-rose-100/30 bg-bg-surface px-3 py-2 text-2sm font-bold text-text-primary">
                           {item.code ? `${item.code} - ` : ""}{item.name}
                         </div>
                       ))}
@@ -523,7 +523,7 @@ export default function CategoriesPage() {
                   <button
                     type="button"
                     onClick={() => setDeleteModal(null)}
-                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                    className="rounded-xl border border-border-normal px-5 py-2.5 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-colors"
                   >
                     إغلاق
                   </button>
@@ -557,7 +557,7 @@ export default function CategoriesPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-white overflow-hidden flex flex-col"
+              className="relative w-full max-w-md bg-bg-surface rounded-3xl p-6 shadow-2xl border border-border-normal overflow-hidden flex flex-col"
             >
               <h3 className="text-lg font-black text-zinc-950 mb-5">
                 {catModal.mode === "edit" ? "تعديل القسم" : isFirstCategory ? "إضافة القسم الأول (الفئة 1)" : `إضافة قسم جديد — الفئة ${String(Number(catDraft.sku_prefix) || categories.length + 1)}`}
@@ -565,7 +565,7 @@ export default function CategoriesPage() {
               
               <form onSubmit={submitCategory} className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-[10px] font-black text-slate-400 uppercase tracking-widest">كود SKU للفئة</label>
+                  <label className="mb-2 block text-[10px] font-black text-text-muted uppercase tracking-widest">كود SKU للفئة</label>
                   <div className="relative">
                     <input
                       ref={skuPrefixRef}
@@ -575,14 +575,14 @@ export default function CategoriesPage() {
                       onKeyDown={e => handleKeyDown(e, { nextRef: nameRef })}
                       className={`w-full h-11 rounded-xl border px-4 font-mono text-sm font-bold outline-none transition-all ${
                         catModal.mode === "edit" 
-                          ? "bg-slate-50 text-slate-400 border-slate-205 cursor-not-allowed" 
-                          : "bg-slate-50/50 border-slate-200/60 focus:bg-white focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10"
+                          ? "bg-bg-overlay text-text-muted border-slate-205 cursor-not-allowed" 
+                          : "bg-bg-overlay/50 border-border-normal/60 focus:bg-bg-surface focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10"
                       }`}
                     />
                     {catModal.mode === "edit" && <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-350" />}
                   </div>
                   {catModal.mode === "add" && (
-                    <div className="mt-1 text-[9px] font-black text-slate-400">تم اختيار الرقم التالي تلقائياً، ويمكنك تعديله قبل الحفظ.</div>
+                    <div className="mt-1 text-[9px] font-black text-text-muted">تم اختيار الرقم التالي تلقائياً، ويمكنك تعديله قبل الحفظ.</div>
                   )}
                 </div>
 
@@ -606,16 +606,16 @@ export default function CategoriesPage() {
                       onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: skuPrefixRef })}
                       required
                       placeholder="زيوت، بويات، أدوات صحية..."
-                      className="w-full h-11 rounded-xl border border-slate-200/60 bg-slate-50/50 px-4 text-sm font-bold outline-none focus:bg-white focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400"
+                      className="w-full h-11 rounded-xl border border-border-normal/60 bg-bg-overlay/50 px-4 text-sm font-bold outline-none focus:bg-bg-surface focus:border-emerald-450 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-text-muted"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
+                <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle mt-4">
                   <button
                     type="button"
                     onClick={() => setCatModal(null)}
-                    className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+                    className="rounded-xl border border-border-normal px-5 py-2.5 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-colors"
                   >
                     إلغاء
                   </button>

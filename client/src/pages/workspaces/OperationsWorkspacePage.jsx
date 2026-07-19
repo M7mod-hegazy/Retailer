@@ -7,6 +7,7 @@ import ChequesPage from "../operations/ChequesPage";
 import InstallmentsPage from "../operations/InstallmentsPage";
 import TreasuryTransferPage from "../operations/TreasuryTransfer";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const CHEQUES_TAB = { value: "cheques", label: "الشيكات", icon: Receipt };
 const BASE_TABS = [
@@ -15,6 +16,7 @@ const BASE_TABS = [
 ];
 
 export default function OperationsWorkspacePage() {
+  usePageTour('operations_workspace');
   const [searchParams, setSearchParams] = useSearchParams();
   const chequesEnabled = useFeatureEnabled("feature_cheques");
   const tabs = chequesEnabled ? [CHEQUES_TAB, ...BASE_TABS] : BASE_TABS;
@@ -29,14 +31,14 @@ export default function OperationsWorkspacePage() {
   return (
     <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4" data-help-root="operations_workspace">
       <section className="space-y-5">
-        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div className="rounded-[28px] border border-border-normal bg-bg-surface px-5 py-5 shadow-sm">
           <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
               <Landmark className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">مركز العمليات المالية</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-black text-text-primary">مركز العمليات المالية</h1>
+              <p className="mt-1 text-sm text-text-secondary">
                 كل الحركات المساندة مثل الشيكات والأقساط والتحويلات مجمعة في مكان واحد بدل التنقل بين صفحات متقاربة.
               </p>
             </div>

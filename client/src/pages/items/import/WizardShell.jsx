@@ -288,14 +288,14 @@ export default function WizardShell({ wizard }) {
           animation: shake 0.5s ease-in-out;
         }
       `}</style>
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
+      <div className="rounded-2xl border border-border-normal/60 bg-bg-surface p-5 shadow-card">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-black text-slate-400 font-mono">الخطوة {currentIndex + 1} من {visibleSteps.length}</div>
-            <h2 className="mt-1.5 text-2xl font-black text-slate-900 font-display">{currentStep.title}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500 font-title">{currentStep.helper}</p>
+            <div className="text-xs font-black text-text-muted font-mono">الخطوة {currentIndex + 1} من {visibleSteps.length}</div>
+            <h2 className="mt-1.5 text-2xl font-black text-text-primary font-display">{currentStep.title}</h2>
+            <p className="mt-1 text-sm font-semibold text-text-secondary font-title">{currentStep.helper}</p>
           </div>
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4.5 py-2 text-xs font-black text-slate-600 font-mono shadow-sm">
+          <div className="rounded-xl border border-border-normal/80 bg-bg-overlay/50 px-4.5 py-2 text-xs font-black text-text-secondary font-mono shadow-sm">
             التالي: {nextStep?.title || "نهاية الاستيراد"}
           </div>
         </div>
@@ -322,13 +322,13 @@ export default function WizardShell({ wizard }) {
                     : done
                     ? "border-emerald-150 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-50"
                     : blocked
-                    ? "border-slate-200 bg-slate-100 text-slate-300 cursor-not-allowed"
-                    : "border-slate-200 bg-slate-50/50 text-slate-400 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300"
+                    ? "border-border-normal bg-bg-overlay text-text-muted cursor-not-allowed"
+                    : "border-border-normal bg-bg-overlay/50 text-text-muted hover:bg-bg-overlay hover:text-text-secondary hover:border-border-strong"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
                 title={blocked ? "أكمل الخطوات المطلوبة أولا" : step.helper}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`text-[10px] font-black font-mono transition-colors ${active ? "text-emerald-400" : done ? "text-emerald-600" : "text-slate-400"}`}>
+                  <div className={`text-[10px] font-black font-mono transition-colors ${active ? "text-emerald-400" : done ? "text-emerald-600" : "text-text-muted"}`}>
                     #{index + 1}
                   </div>
                   {hasBlocking && !done && (
@@ -359,33 +359,33 @@ export default function WizardShell({ wizard }) {
           <CurrentComponent wizard={wizard} goNext={goNext} goToStepId={goToStepId} />
         </div>
         {transition ? (
-          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-white/60 p-6 text-center backdrop-blur-sm rounded-2xl animate-in fade-in duration-200">
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-bg-surface/60 p-6 text-center backdrop-blur-sm rounded-2xl animate-in fade-in duration-200">
             <div className="flex flex-col items-center">
               <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-4 ring-emerald-500/10">
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
-              <h3 className="mt-3.5 text-sm font-black text-slate-800 font-display">{transition.title}</h3>
+              <h3 className="mt-3.5 text-sm font-black text-text-primary font-display">{transition.title}</h3>
             </div>
           </div>
         ) : null}
       </div>
 
-      <div className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white/90 px-6 py-4.5 shadow-elevated backdrop-blur-md transition-all duration-300">
+      <div className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border-normal/80 bg-bg-surface/90 px-6 py-4.5 shadow-elevated backdrop-blur-md transition-all duration-300">
         <button
           type="button"
           onClick={() => prevStep && setActiveStep(prevStep.id)}
           disabled={!prevStep || wizard.loading || Boolean(transition)}
-          className="inline-flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+          className="inline-flex items-center gap-2.5 rounded-xl border border-border-normal bg-bg-surface px-5 py-3 text-sm font-black text-text-primary shadow-sm transition-all duration-200 hover:bg-bg-overlay hover:border-border-strong active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
         >
           <ChevronRight className="h-5 w-5" /> السابق
         </button>
-        <div className="text-sm font-bold text-slate-500 font-title">
+        <div className="text-sm font-bold text-text-secondary font-title">
           {currentStep.id === "review" ? "مراجعة القرارات والتنفيذ" : currentStep.id === "done" ? "اكتمل الاستيراد" : nextStep ? `التالي: ${nextStep.title}` : "لا توجد خطوات أخرى"}
         </div>
         {currentStep.id !== "done" ? (
           <div className="relative group/next flex items-center gap-3.5">
             {validationStatus.reason && (
-              <div className={`absolute bottom-full left-0 mb-3.5 z-40 w-72 p-4 rounded-2xl border bg-white shadow-elevated text-xs font-bold leading-relaxed transition-all duration-350 transform origin-bottom-left scale-90 opacity-0 pointer-events-none group-hover/next:scale-100 group-hover/next:opacity-100 group-hover/next:pointer-events-auto ${
+              <div className={`absolute bottom-full left-0 mb-3.5 z-40 w-72 p-4 rounded-2xl border bg-bg-surface shadow-elevated text-xs font-bold leading-relaxed transition-all duration-350 transform origin-bottom-left scale-90 opacity-0 pointer-events-none group-hover/next:scale-100 group-hover/next:opacity-100 group-hover/next:pointer-events-auto ${
                 shake ? "scale-100 opacity-100 pointer-events-auto animate-shake" : ""
               } ${
                 validationStatus.isValid
@@ -395,13 +395,13 @@ export default function WizardShell({ wizard }) {
                 <div className="flex items-start gap-3">
                   <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${validationStatus.isValid ? "bg-emerald-500 shadow-sm" : "bg-amber-500 animate-pulse shadow-sm"}`} />
                   <div>
-                    <div className="font-black text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                    <div className="font-black text-[10px] uppercase tracking-wider text-text-muted mb-1">
                       {validationStatus.isValid ? "التحقق: جاهز" : "التحقق: غير مكتمل"}
                     </div>
                     <div>{validationStatus.reason}</div>
                   </div>
                 </div>
-                <div className={`absolute top-full left-6 -mt-1.5 h-3 w-3 rotate-45 border-r border-b bg-white ${
+                <div className={`absolute top-full left-6 -mt-1.5 h-3 w-3 rotate-45 border-r border-b bg-bg-surface ${
                   validationStatus.isValid ? "border-emerald-250" : "border-amber-250"
                 }`} />
               </div>

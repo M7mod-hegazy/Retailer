@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock, ChevronDown, Copy } from "lucide-react";
+import { Save, Settings2, Globe, Loader2, RefreshCw, XCircle, Monitor, Info, Lock, ChevronDown, Copy, Building2, SlidersHorizontal, Wallet, Printer, Palette, Gauge, Puzzle, Keyboard, DatabaseBackup, LifeBuoy, Coins, Percent, TrendingUp, AlertTriangle, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../services/api";
@@ -23,38 +23,40 @@ import { useAuthStore } from "../../stores/authStore";
 import FeaturesTab from "./FeaturesTab";
 import ShortcutsTab from "./ShortcutsTab";
 import { getMeta, getHint, getPlaceholder, getDefault, findMissingCritical, fieldKeyToTab } from "../../utils/fieldMeta";
+import { COUNTRIES } from "../../utils/countryCodes";
 import { useConfirm } from "../../hooks/useConfirm";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import CriticalSettingsWarning from "../../components/ui/CriticalSettingsWarning";
+import { useUnsavedChangesGuard } from "../../hooks/useUnsavedChangesGuard";
+import { SettingsUnsavedModal } from "../../components/ui/SettingsUnsavedModal";
+import { useShortcutStore } from "../../shortcuts/shortcutStore";
 
 const tabs = [
-  { id: "identity", label: "هوية التطبيق", hint: "اسم الشركة والشعار وبيانات الفرع" },
-  { id: "general", label: "عام", hint: "اللغة وواجهة نقطة البيع وسجل النشاط" },
-  { id: "financial", label: "المالية والضرائب", hint: "العملة والضريبة وحدود الخصم وهوامش الربح" },
-  { id: "printing", label: "الطباعة", hint: "مقاسات الإيصال ومعاينة القوالب" },
-  { id: "appearance", label: "المظهر", hint: "الخطوط والألوان ونمط الأرقام — نظام ألوان متكامل للواجهة" },
-  { id: "performance", label: "الرسوميات والأداء", hint: "إعدادات الرسوميات والأداء لأنظمة التشغيل البطيئة" },
-  { id: "features", label: "الميزات", hint: "تفعيل أو تعطيل وحدات متخصصة حسب نوع متجرك" },
-  { id: "shortcuts", label: "اختصارات لوحة المفاتيح", hint: "تخصيص اختصارات لوحة المفاتيح لكل شاشة" },
-  { id: "maintenance", label: "النسخ الاحتياطي والبيانات", hint: "إنشاء واستعادة وتصدير النسخ وتفريغ قاعدة البيانات" },
-  { id: "help", label: "المساعدة", hint: "الدليل السريع ومراجع الدعم" },
+  { id: "identity", label: "بيانات المحل", hint: "اسم محلك، اللوجو، عنونك، والتفاصيل اللي بتظهر للزباين", icon: Building2 },
+  { id: "general", label: "إعدادات عامة", hint: "شكل الكاشير، لغة البرنامج، وسجل الحركات", icon: SlidersHorizontal },
+  { id: "financial", label: "الفلوس والضرائب", hint: "العملة، الضريبة، حدود الخصم، ونسبة المكسب", icon: Wallet },
+  { id: "printing", label: "الطباعة والفواتير", hint: "مقاس ورق الطباعة وتصميم الفواتير", icon: Printer },
+  { id: "appearance", label: "شكل البرنامج", hint: "ألوان البرنامج، الخطوط، وشكل الأرقام", icon: Palette },
+  { id: "performance", label: "الأداء والسرعة", hint: "لو جهازك تقيل، تقدر تخفف الرسوميات من هنا عشان البرنامج يبقى طلقة", icon: Gauge },
+  { id: "features", label: "ميزات إضافية", hint: "شغّل أو اقفل ميزات معينة على حسب شغل محلك (مطعم، صيانة، واتساب، إلخ)", icon: Puzzle },
+  { id: "shortcuts", label: "اختصارات الكيبورد", hint: "ظبط زراير الكيبورد عشان تنجز وتسرّع شغلك على الكاشير", icon: Keyboard },
+  { id: "maintenance", label: "النسخ الاحتياطي (الباك أب)", hint: "احفظ بياناتك في أمان، استرجعها، أو صفّر الداتا لو هتبدأ من جديد", icon: DatabaseBackup },
+  { id: "help", label: "المساعدة والدعم", hint: "لو وقفت معاك حاجة، الشروحات هنا وكمان طرق التواصل معانا", icon: LifeBuoy },
 ];
 
-function Tab({ active, hasDirty, onClick, children }) {
+function Tab({ active, icon: Icon, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-6 py-4 text-sm font-black uppercase tracking-widest border-b-2 transition-all min-w-[120px] ${
+      className={`group flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-[13px] font-black transition-all motion-safe:hover:-translate-y-px ${
         active
-          ? "border-slate-800 text-slate-900 bg-slate-50/50"
-          : "border-transparent text-slate-400 hover:text-slate-800 hover:bg-slate-50/30"
+          ? "bg-primary text-white shadow-lg shadow-emerald-500/20"
+          : "text-text-secondary hover:bg-bg-surface hover:text-text-primary hover:shadow-sm"
       }`}
     >
+      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-text-muted group-hover:text-text-secondary"}`} />
       {children}
-      {hasDirty && (
-        <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-amber-500 shadow-sm" />
-      )}
     </button>
   );
 }
@@ -62,12 +64,32 @@ function Tab({ active, hasDirty, onClick, children }) {
 function FieldGroup({ title, hint, children }) {
   return (
     <section className="space-y-4">
-      <div className="border-b border-slate-100 pb-3">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">{title}</h3>
-        {hint && <p className="mt-1 text-[11px] font-bold text-slate-400">{hint}</p>}
+      <div className="border-b border-border-subtle pb-3">
+        <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">{title}</h3>
+        {hint && <p className="mt-1 text-[11px] font-bold text-text-muted">{hint}</p>}
       </div>
       <div>{children}</div>
     </section>
+  );
+}
+
+function ToggleRow({ label, hint, checked, onChange }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <div className="flex-1">
+        <h4 className="text-[13px] font-black text-text-primary">{label}</h4>
+        {hint && <p className="mt-1 text-[11px] font-bold text-text-muted leading-relaxed">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onChange}
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-emerald-500" : "bg-border-strong"}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-bg-surface shadow transition-transform ${checked ? "-translate-x-6" : "-translate-x-1"}`} />
+      </button>
+    </div>
   );
 }
 
@@ -75,10 +97,10 @@ function InfoTip({ text }) {
   if (!text) return null;
   return (
     <span className="group relative cursor-help shrink-0">
-      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
-      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+      <Info className="h-3 w-3 text-text-muted hover:text-text-secondary transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-900 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
         {text}
-        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-900" />
       </div>
     </span>
   );
@@ -87,8 +109,8 @@ function InfoTip({ text }) {
 function DefaultBadge({ value }) {
   if (value === undefined || value === null || value === "") return null;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">
-      <span className="text-slate-400">الافتراضي:</span> {value}
+    <span className="inline-flex items-center gap-1 rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-bold text-text-secondary border border-border-normal">
+      <span className="text-text-muted">الافتراضي:</span> {value}
     </span>
   );
 }
@@ -102,7 +124,7 @@ function DenseInput({ label, required, metaKey, ...props }) {
     (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
   );
   return (
-    <label className="block space-y-1.5 focus-within:text-slate-900 text-slate-500 transition-colors group">
+    <label className="block space-y-1.5 focus-within:text-text-primary text-text-secondary transition-colors group">
       <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest">
         {label}
         {required && <span className="text-rose-500">*</span>}
@@ -117,15 +139,15 @@ function DenseInput({ label, required, metaKey, ...props }) {
         {...props}
         data-field-key={metaKey}
         placeholder={props.placeholder || placeholder}
-        className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal ${
+        className={`w-full rounded-md border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-text-muted placeholder:font-normal ${
           isCriticalEmpty
-            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-            : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600 focus:ring-2 focus:ring-amber-400/20"
+            : "border-border-normal bg-bg-input text-text-primary hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
         }`}
       />
       {meta && (
-        <span className="block text-[10px] font-bold text-slate-400 mt-0.5 opacity-0 group-focus-within:opacity-100 transition-opacity">
-          <span className="text-slate-300">الافتراضي:</span> {meta.defaultValue ?? "—"}
+        <span className="block text-[10px] font-bold text-text-muted mt-0.5 opacity-0 group-focus-within:opacity-100 transition-opacity">
+          <span className="text-text-muted">الافتراضي:</span> {meta.defaultValue ?? "—"}
         </span>
       )}
     </label>
@@ -140,7 +162,7 @@ function DenseSelect({ label, options, metaKey, ...props }) {
     (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
   );
   return (
-    <label className="block space-y-1.5 focus-within:text-slate-900 text-slate-500 transition-colors group">
+    <label className="block space-y-1.5 focus-within:text-text-primary text-text-secondary transition-colors group">
       <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest">
         {label}
         {hint && <InfoTip text={hint} />}
@@ -153,10 +175,10 @@ function DenseSelect({ label, options, metaKey, ...props }) {
       <select
         {...props}
         data-field-key={metaKey}
-        className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all ${
+        className={`w-full rounded-md border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all ${
           isCriticalEmpty
-            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-            : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600 focus:ring-2 focus:ring-amber-400/20"
+            : "border-border-normal bg-bg-input text-text-primary hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
         }`}
       >
         {options.map((o) => (
@@ -164,8 +186,8 @@ function DenseSelect({ label, options, metaKey, ...props }) {
         ))}
       </select>
       {meta && (
-        <span className="block text-[10px] font-bold text-slate-400 mt-0.5 opacity-0 group-focus-within:opacity-100 transition-opacity">
-          <span className="text-slate-300">الافتراضي:</span> {
+        <span className="block text-[10px] font-bold text-text-muted mt-0.5 opacity-0 group-focus-within:opacity-100 transition-opacity">
+          <span className="text-text-muted">الافتراضي:</span> {
             (meta.options ? meta.options.find(o => o.value === meta.defaultValue)?.label?.ar || meta.defaultValue : meta.defaultValue) ?? "—"
           }
         </span>
@@ -193,13 +215,14 @@ function normalizeSettings(data) {
   return mapped;
 }
 
-function isDirty(original, current) {
-  if (original === current) return false;
-  for (const key of Object.keys(current)) {
+function countChanges(original, current) {
+  let count = 0;
+  const allKeys = new Set([...Object.keys(original), ...Object.keys(current)]);
+  for (const key of allKeys) {
     if (EXCLUDE_KEYS.has(key)) continue;
-    if (String(original[key] ?? "") !== String(current[key] ?? "")) return true;
+    if (String(original[key] ?? "") !== String(current[key] ?? "")) count++;
   }
-  return false;
+  return count;
 }
 
 function AppearancePreviewBar({ settings }) {
@@ -218,7 +241,7 @@ function AppearancePreviewBar({ settings }) {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-40 shadow-lg"
       style={{ borderTop: "1px solid var(--border-normal)", backgroundColor: "var(--bg-surface)" }}
     >
       <button
@@ -292,7 +315,6 @@ export default function SettingsPage() {
   const isDev = authUser?.role === "dev" || String(authUser?.username || "").toLowerCase() === "m7mod";
   const visibleTabs = isDev ? tabs : tabs.filter((t) => t.id !== "features");
   const originalRef = useRef({});
-  const autoSaveTimer = useRef(null);
   const settingsRef   = useRef({});
   const pendingTabRef = useRef(null);
   const focusAttemptRef = useRef(0);
@@ -307,6 +329,13 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const snap = useShortcutStore.getState().snapshot();
+      shortcutSnapshotRef.current = snap;
+    }
+  }, [loading]);
 
   // Non-dev users can't open the Features tab even via ?tab=features URL
   useEffect(() => {
@@ -350,15 +379,12 @@ export default function SettingsPage() {
     return () => clearTimeout(timer);
   }, [focusField, loading, activeTab]);
 
-  const dirty = isDirty(originalRef.current, settings);
-
-  useEffect(() => {
-    if (dirty) {
-      const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
-      window.addEventListener("beforeunload", handler);
-      return () => window.removeEventListener("beforeunload", handler);
-    }
-  }, [dirty]);
+  const changeCount = countChanges(originalRef.current, settings);
+  const dirty = changeCount > 0;
+  const { blocker } = useUnsavedChangesGuard(dirty);
+  const activeTabMeta = visibleTabs.find((t) => t.id === activeTab) || visibleTabs[0];
+  const [blockerSaving, setBlockerSaving] = useState(false);
+  const shortcutSnapshotRef = useRef(null);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -428,23 +454,6 @@ export default function SettingsPage() {
     if (key.startsWith("feature_")) {
       useAppSettingsStore.getState().applySettings({ [key]: value });
     }
-    if (activeTab === "printing") {
-      clearTimeout(autoSaveTimer.current);
-      autoSaveTimer.current = setTimeout(() => silentSave(settingsRef.current), 1200);
-    }
-  };
-
-  const silentSave = async (snap) => {
-    try {
-      const payload = Object.entries(snap).map(([k, v]) => ({ setting_key: k, setting_value: String(v) }));
-      await api.post("/api/settings/bulk", { settings: payload });
-      // Sync the global settings store so all hooks (useFeatureEnabled, etc.) see the new values immediately
-      useAppSettingsStore.getState().applySettings(snap);
-      originalRef.current = JSON.parse(JSON.stringify(snap));
-    } catch (err) {
-      console.error("Silent save failed:", err);
-      throw err;
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -456,13 +465,17 @@ export default function SettingsPage() {
         setting_value: String(v),
       }));
       await api.post("/api/settings/bulk", { settings: payload });
+      await useShortcutStore.getState().persist();
+      shortcutSnapshotRef.current = useShortcutStore.getState().snapshot();
       originalRef.current = JSON.parse(JSON.stringify(settings));
       toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully");
       applyFontSettings(settings);
       applyColorTheme(settings);
       useAppSettingsStore.getState().applySettings(settings);
+      return true;
     } catch {
       toast.error(isRTL ? "فشل حفظ الإعدادات" : "Failed to save settings");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -473,6 +486,9 @@ export default function SettingsPage() {
     setSettings(original);
     settingsRef.current = original;
     applyColorTheme(original);
+    if (shortcutSnapshotRef.current) {
+      useShortcutStore.getState().restoreSnapshot(shortcutSnapshotRef.current);
+    }
     toast(isRTL ? "تم تجاهل التغييرات" : "Changes discarded", { icon: "↩️" });
   };
 
@@ -489,11 +505,23 @@ export default function SettingsPage() {
     setActiveTab(tabId);
   };
 
+  const handleBlockerSave = async () => {
+    setBlockerSaving(true);
+    const ok = await handleSubmit();
+    setBlockerSaving(false);
+    if (ok) blocker.proceed?.();
+  };
+
+  const handleBlockerDiscard = () => {
+    handleDiscard();
+    blocker.proceed?.();
+  };
+
   if (loading)
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3 text-slate-400">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+        <div className="flex flex-col items-center gap-3 text-text-muted">
+          <Loader2 className="h-8 w-8 animate-spin text-text-secondary" />
           <span className="text-sm font-bold">{isRTL ? "جاري تحميل الإعدادات..." : "Loading settings..."}</span>
         </div>
       </div>
@@ -502,9 +530,9 @@ export default function SettingsPage() {
   if (fetchError)
     return (
       <div className="flex h-full items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4 text-slate-400">
+        <div className="flex flex-col items-center gap-4 text-text-muted">
           <XCircle className="h-10 w-10 text-rose-400" />
-          <span className="text-sm font-bold text-slate-500">
+          <span className="text-sm font-bold text-text-secondary">
             {isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings"}
           </span>
           <div className="flex items-center gap-3">
@@ -517,7 +545,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={copySettingsError}
-              className="flex items-center gap-2 rounded-sm border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500 transition-all hover:bg-slate-100 active:scale-95"
+              className="flex items-center gap-2 rounded-sm border border-border-strong px-4 py-2.5 text-sm font-bold text-text-secondary transition-all hover:bg-bg-overlay active:scale-95"
               title={isRTL ? "نسخ تفاصيل الخطأ" : "Copy error details"}
             >
               <Copy className="h-4 w-4" />
@@ -532,59 +560,48 @@ export default function SettingsPage() {
     <div className={`standard-page-container font-sans flex flex-col gap-6 pb-20 ${isRTL ? "text-right" : "text-left"}`}>
       
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-slate-400">
-             <Settings2 className="h-4 w-4" />
-             <span className="text-[11px] font-black uppercase tracking-widest">إعدادات النظام</span>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-primary text-white shadow-lg shadow-emerald-500/20 ring-1 ring-inset ring-white/15">
+            <Settings2 className="h-6 w-6" />
           </div>
-          <h1 className="text-[24px] font-black text-slate-900">{isRTL ? "تهيئة وتخصيص الفرع" : "System Configuration"}</h1>
-          <p className="text-sm font-bold text-slate-400">التحكم المركزي في الهوية والطباعة واللغة والنسخ الاحتياطي</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {dirty && (
-            <button
-              onClick={handleDiscard}
-              className="flex items-center gap-2 rounded-sm border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:text-rose-600 active:scale-95"
-            >
-              <XCircle className="h-4 w-4" />
-              {isRTL ? "تجاهل التغييرات" : "Discard"}
-            </button>
-          )}
-          <PermissionGate page="settings" action="edit_general">
-            <button
-              data-help="save-button"
-              onClick={handleSubmit}
-              disabled={saving || !dirty}
-              className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-text-muted">
+              <span className="text-[11px] font-black uppercase tracking-widest">إعدادات النظام</span>
+              <span className="text-[11px] font-bold text-text-muted">/</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">{activeTabMeta?.label}</span>
+              {settings.branch_name && (
+                <>
+                  <span className="text-[11px] font-bold text-text-muted">·</span>
+                  <span className="inline-flex items-center rounded-full border border-border-normal bg-bg-overlay px-2 py-0.5 text-[10px] font-black normal-case tracking-normal text-text-secondary">
+                    {settings.branch_name}
+                  </span>
+                </>
               )}
-              {saving ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ الإعدادات" : "Save Settings")}
-            </button>
-          </PermissionGate>
+            </div>
+            <h1 className="text-[24px] font-black text-text-primary leading-tight">{isRTL ? "تهيئة وتخصيص الفرع" : "System Configuration"}</h1>
+            <span className="block h-[3px] w-8 rounded-full bg-primary" />
+            <p className="text-sm font-bold text-text-muted">{activeTabMeta?.hint}</p>
+          </div>
         </div>
       </div>
 
+      {/* Tab Dock */}
+      <div data-help="settings-tabs" className="flex items-center gap-1 overflow-x-auto rounded-lg border border-border-normal bg-bg-overlay/60 p-1.5 scrollbar-hide">
+        {visibleTabs.map((tab) => (
+          <Tab
+            key={tab.id}
+            active={activeTab === tab.id}
+            icon={tab.icon}
+            onClick={() => handleTabClick(tab.id)}
+          >
+            {tab.label}
+          </Tab>
+        ))}
+      </div>
+
       {/* Main Workspace */}
-      <div className="flex flex-col rounded-sm border border-slate-200 bg-white shadow-sm overflow-hidden flex-1">
-         
-         {/* Tabs Strip */}
-         <div data-help="settings-tabs" className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 pt-2 px-4 scrollbar-hide">
-            {visibleTabs.map((tab) => (
-              <Tab
-                key={tab.id}
-                active={activeTab === tab.id}
-                hasDirty={dirty}
-                onClick={() => handleTabClick(tab.id)}
-              >
-                {tab.label}
-              </Tab>
-            ))}
-         </div>
+      <div className="flex flex-col rounded-sm border border-border-normal bg-bg-surface shadow-sm overflow-hidden flex-1">
 
           {/* Content Area */}
            <div className="p-6 md:p-8 pb-16 overflow-y-auto w-full">
@@ -617,133 +634,114 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "general" && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Interface & Display */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
-                      <Globe className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white shadow-sm">
+                      <Globe className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">الواجهة والعرض</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        لغة العرض الافتراضية وشكل نقطة البيع الافتراضي للمستخدمين الجدد
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">اللغة وشكل العرض</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        لغة البرنامج وشكل شاشة الكاشير اللي بيفتح عليها للناس الجديدة
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-x-6 gap-y-5 md:grid-cols-3 lg:grid-cols-4">
-                     <DenseSelect metaKey="language" label="تغيير اللغة الافتراضية" value={settings.language ?? getDefault("language")} onChange={(e) => handleChange("language", e.target.value)} options={[
-                        {value: "ar", label: "العربية (RTL)"}, {value: "en", label: "English (LTR)"}
+                     <DenseSelect metaKey="language" label="لغة البرنامج الافتراضية" value={settings.language ?? getDefault("language")} onChange={(e) => handleChange("language", e.target.value)} options={[
+                        {value: "ar", label: "عربي (RTL)"}, {value: "en", label: "إنجليزي (LTR)"}
                      ]} />
+                     <div className="space-y-1.5">
+                       <label className="block text-[11px] font-black uppercase tracking-widest text-text-secondary">
+                         الدولة الافتراضية للواتساب
+                       </label>
+                       <select
+                         value={settings.whatsapp_default_country || "EG"}
+                         onChange={(e) => handleChange("whatsapp_default_country", e.target.value)}
+                         className="w-full rounded-md border border-border-normal bg-bg-input py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
+                       >
+                         {COUNTRIES.map((c) => (
+                           <option key={c.code} value={c.code}>
+                             {c.flag} {c.name} (+{c.dial})
+                           </option>
+                         ))}
+                       </select>
+                       <span className="block text-[10px] font-bold text-text-muted mt-0.5">
+                         الكود اللي بيتحط لوحده لما تفتح شاشة الواتساب عشان تبعت رسالة
+                       </span>
+                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-start gap-3 rounded-sm border border-orange-200 bg-orange-50 p-4 text-orange-600">
+                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-600">
                     <Globe className="h-5 w-5 mt-0.5 shrink-0" />
                     <div>
-                      <div className="text-2sm font-black uppercase tracking-widest text-orange-800">تلميح بخصوص الأنظمة</div>
+                      <div className="text-2sm font-black uppercase tracking-widest text-orange-800">خلي بالك</div>
                       <div className="text-[11px] leading-relaxed font-bold opacity-90 mt-1 text-orange-700">
-                        التغيير هنا يتطلب إعادة تحميل وقد يتم فرضه على بقية الموظفين. استخدم الجلوبات في القائمة العلوية لتغيير واجهتك المحلية فقط.
+                        أي تغيير هنا بيسمّع مع كل الموظفين وبيحتاج ريفريش. لو عايز تغير لغتك إنت بس، استخدم الأيقونة اللي فوق في الشريط.
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6">
-                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">عرض نقطة البيع الافتراضي</h4>
-                    <div className="flex rounded-lg border border-slate-200 overflow-hidden w-fit">
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">شكل شاشة الكاشير (POS) الافتراضي</h4>
+                    <div className="flex rounded-lg border border-border-normal bg-bg-surface overflow-hidden w-fit">
                       <button
                         type="button"
-                        onClick={async () => {
-                          const updated = { ...settings, default_pos_view: "detailed" };
-                          handleChange("default_pos_view", "detailed");
-                          try {
-                            await silentSave(updated);
-                            originalRef.current = JSON.parse(JSON.stringify(updated));
-                            toast.success("تم حفظ عرض الشبكة كافتراضي");
-                          } catch {
-                            toast.error("فشل الحفظ - تحقق من الاتصال");
-                          }
-                        }}
-                        className={`px-4 py-2 text-2sm font-black transition-all ${v(settings, "default_pos_view") === "detailed" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                        onClick={() => handleChange("default_pos_view", "detailed")}
+                        className={`px-4 py-2 text-2sm font-black transition-all ${v(settings, "default_pos_view") === "detailed" ? "bg-primary text-white" : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"}`}
                       >
-                        شبكة / تفصيلي
+                        مربعات (شبكة)
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          const updated = { ...settings, default_pos_view: "list" };
-                          handleChange("default_pos_view", "list");
-                          try {
-                            await silentSave(updated);
-                            originalRef.current = JSON.parse(JSON.stringify(updated));
-                            toast.success("تم حفظ عرض القائمة كافتراضي");
-                          } catch {
-                            toast.error("فشل الحفظ - تحقق من الاتصال");
-                          }
-                        }}
-                        className={`px-4 py-2 text-2sm font-black transition-all ${settings.default_pos_view === "list" ? "bg-primary text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                        onClick={() => handleChange("default_pos_view", "list")}
+                        className={`px-4 py-2 text-2sm font-black transition-all ${settings.default_pos_view === "list" ? "bg-primary text-white" : "bg-bg-surface text-text-secondary hover:bg-bg-overlay"}`}
                       >
-                        قائمة
+                        سطور (قائمة)
                       </button>
                     </div>
-                    <p className="mt-2 text-[11px] font-bold text-slate-400">يحدد العرض الذي يظهر للمستخدم عند فتح شاشة البيع لأول مرة</p>
+                    <p className="mt-2 text-[11px] font-bold text-text-muted">الشكل اللي بيشوفه الكاشير أول ما يفتح الشاشة</p>
                   </div>
 
-                  <div className="mt-6">
-                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">تصغير القائمة الجانبية في نقطة البيع</h4>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={posAutoRail}
-                      onClick={() => setPosAutoRail(!posAutoRail)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${posAutoRail ? "bg-emerald-500" : "bg-slate-300"}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${posAutoRail ? "-translate-x-6" : "-translate-x-1"}`} />
-                    </button>
-                    <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، تُطوى القائمة الجانبية تلقائياً إلى شريط أيقونات داخل شاشة البيع لإتاحة مساحة أكبر (يمكن توسيعها يدوياً وقت الحاجة). إعداد خاص بهذا الجهاز.</p>
-                  </div>
-
-                  <div className="mt-6">
-                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">الصوت في نقطة البيع</h4>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(v(settings, "pos_voice_enabled"))}
-                      onClick={() => handleChange("pos_voice_enabled", v(settings, "pos_voice_enabled") ? 0 : 1)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${v(settings, "pos_voice_enabled") ? "bg-emerald-500" : "bg-slate-300"}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v(settings, "pos_voice_enabled") ? "-translate-x-6" : "-translate-x-1"}`} />
-                    </button>
-                    <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، يُصدر النظام صوت تنبيه (بييب) عند إضافة صنف إلى الفاتورة أو مسح باركود. يُفضّل إيقافه في البيئات الهادئة.</p>
+                  <div className="mt-6 divide-y divide-border-normal/70 rounded-lg border border-border-normal bg-bg-surface px-4">
+                    <ToggleRow
+                      label="ضم القائمة الجانبية في الكاشير"
+                      hint="لو شغلتها، القائمة الجانبية هتتقفل وتبقى أيقونات بس عشان تفضّي مساحة لشاشة الكاشير (دي بتشتغل على الجهاز ده بس)."
+                      checked={posAutoRail}
+                      onChange={() => setPosAutoRail(!posAutoRail)}
+                    />
+                    <ToggleRow
+                      label="أصوات شاشة الكاشير"
+                      hint="شغّل دي لو عايز تسمع صوت (تيت) لما تضرب صنف بالباركود أو تضيف حاجة للفاتورة."
+                      checked={Boolean(v(settings, "pos_voice_enabled"))}
+                      onChange={() => handleChange("pos_voice_enabled", v(settings, "pos_voice_enabled") ? 0 : 1)}
+                    />
                   </div>
                 </section>
 
                 {/* Smart Lock */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-violet-600 text-white">
-                      <Lock className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm">
+                      <Lock className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">قفل الشاشة الذكي</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        قفل الشاشة تلقائياً بعد فترة من عدم النشاط لحماية الجلسة
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">القفل الذكي (حماية الجهاز)</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        لو محدش لمس الجهاز، الشاشة تتقفل لوحدها عشان تحمي شغلك.
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">تفعيل القفل الذكي</h4>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={Boolean(v(settings, "smart_lock_enabled"))}
-                      onClick={() => handleChange("smart_lock_enabled", v(settings, "smart_lock_enabled") ? 0 : 1)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${v(settings, "smart_lock_enabled") ? "bg-emerald-500" : "bg-slate-300"}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${v(settings, "smart_lock_enabled") ? "-translate-x-6" : "-translate-x-1"}`} />
-                    </button>
-                    <p className="mt-2 text-[11px] font-bold text-slate-400">عند التفعيل، يُقفل النظام تلقائياً بعد فترة من عدم استخدام لوحة المفاتيح أو الفأرة أو اللمس</p>
+                  <div className="rounded-lg border border-border-normal bg-bg-surface px-4">
+                    <ToggleRow
+                      label="شغّل القفل الذكي"
+                      hint="لو فعلتها، البرنامج هيقفل لوحده بعد وقت معين لو محدش شغال عليه."
+                      checked={Boolean(v(settings, "smart_lock_enabled"))}
+                      onChange={() => handleChange("smart_lock_enabled", v(settings, "smart_lock_enabled") ? 0 : 1)}
+                    />
                   </div>
 
                   <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 max-w-lg mt-6">
@@ -757,21 +755,21 @@ export default function SettingsPage() {
                       onChange={(e) => handleChange("smart_lock_timeout_minutes", Number(e.target.value))}
                     />
                   </div>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400 leading-relaxed max-w-lg">
-                    عدد الدقائق التي يمكن أن يبقى فيها النظام دون استخدام قبل أن يُقفل تلقائياً. القيمة الافتراضية: 15 دقيقة
+                  <p className="mt-2 text-[11px] font-bold text-text-muted leading-relaxed max-w-lg">
+                    الجهاز يقفل بعد كام دقيقة لو محدش بيعمل حاجة عليه؟ (الافتراضي 15 دقيقة)
                   </p>
                 </section>
 
                 {/* Alerts */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-amber-600 text-white">
-                      <RefreshCw className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white shadow-sm">
+                      <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">تنبيهات الفواتير المعلقة</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        مدة بقاء الفاتورة في حالة معلقة قبل تغيير لون التنبيه في شاشة المبيعات
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">تنبيهات الفواتير المعلقة</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        لو كاشير علق فاتورة ونسيها، البرنامج هيغير لونها بعد وقت معين عشان يفكرك بيها.
                       </p>
                     </div>
                   </div>
@@ -796,21 +794,45 @@ export default function SettingsPage() {
                       onChange={(e) => handleChange("held_red_hours", Number(e.target.value))}
                     />
                   </div>
-                  <p className="mt-2 text-[11px] font-bold text-slate-400 leading-relaxed max-w-lg">
-                    بعد المدة المحددة يتحول لون الفاتورة المعلقة إلى الأصفر ثم الأحمر لتنبيه المشرف بضرورة متابعتها
+
+                  {/* Visual timeline — turns the two raw numbers into a scaled zone map */}
+                  {(() => {
+                    const yellowAt = Math.max(1, Number(v(settings, "held_yellow_hours")) || 1);
+                    const redAt = Math.max(yellowAt + 1, Number(v(settings, "held_red_hours")) || yellowAt + 1);
+                    const scale = redAt * 1.2;
+                    const yellowPct = (yellowAt / scale) * 100;
+                    const redPct = (redAt / scale) * 100;
+                    return (
+                      <div className="mt-5 max-w-lg">
+                        <div className="flex h-2.5 w-full overflow-hidden rounded-full border border-border-normal">
+                          <div className="h-full bg-emerald-400" style={{ width: `${yellowPct}%` }} />
+                          <div className="h-full bg-amber-400" style={{ width: `${redPct - yellowPct}%` }} />
+                          <div className="h-full bg-rose-400" style={{ width: `${100 - redPct}%` }} />
+                        </div>
+                        <div className="relative mt-1.5 h-4 text-[10px] font-black text-text-muted">
+                          <span className="absolute right-0">0 س</span>
+                          <span className="absolute -translate-x-1/2" style={{ [isRTL ? "right" : "left"]: `${yellowPct}%` }}>{yellowAt} س</span>
+                          <span className="absolute -translate-x-1/2" style={{ [isRTL ? "right" : "left"]: `${redPct}%` }}>{redAt} س</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <p className="mt-4 text-[11px] font-bold text-text-muted leading-relaxed max-w-lg">
+                    اللون هيقلب أصفر بعد كام ساعة؟ وبعدين أحمر لو طولت أكتر.. عشان المشرف ياخد باله.
                   </p>
                 </section>
 
                 {/* Audit Log */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-blue-600 text-white">
-                      <RefreshCw className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+                      <History className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">سجل النشاط</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        التحكم في مدة الاحتفاظ بسجلات حركة المستخدمين في النظام للأرشفة والتدقيق
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">سجل حركات الموظفين</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        هنحتفظ بسجل الموظفين (مين عمل إيه وإمتى) لمدة كام يوم قبل ما نمسحه؟
                       </p>
                     </div>
                   </div>
@@ -836,17 +858,17 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "financial" && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Currency & Tax */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-emerald-600 text-white">
-                      <Globe className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                      <Coins className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">العملة والضرائب</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        إعدادات العملة وطريقة تطبيق الضريبة على الفواتير والمشتريات
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">إعدادات الضريبة والعملة</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        رمز العملة بتاعتك، وهل بتطبق ضريبة ولا لأ؟
                       </p>
                     </div>
                   </div>
@@ -857,44 +879,72 @@ export default function SettingsPage() {
                       {value: 0, label: "0"}, {value: 2, label: "2"}, {value: 3, label: "3"}
                     ]} />
                     <DenseSelect
-                      label="تفعيل الضريبة"
+                      label="حساب الضريبة"
                       metaKey="tax_enabled"
                       value={Number(v(settings, "tax_enabled"))}
                       onChange={(e) => handleChange("tax_enabled", Number(e.target.value))}
-                      options={[{ value: 1, label: "مفعّل" }, { value: 0, label: "غير مفعّل" }]}
+                      options={[{ value: 1, label: "شغّالة" }, { value: 0, label: "مقفولة" }]}
                     />
                     {Number(v(settings, "tax_enabled")) === 1 && (
                       <>
-                        <DenseSelect label="نوع الضريبة الافتراضي" metaKey="tax_type" value={v(settings, "tax_type")} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
-                          {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "شاملة الضريبة"}, {value: "exclusive", label: "غير شاملة الضريبة"}
+                        <DenseSelect label="نظام الضريبة الافتراضي" metaKey="tax_type" value={v(settings, "tax_type")} onChange={(e) => handleChange("tax_type", e.target.value)} options={[
+                          {value: "none", label: "بدون ضريبة"}, {value: "inclusive", label: "السعر شامل الضريبة"}, {value: "exclusive", label: "الضريبة بتنضاف ع السعر"}
                         ]} />
                         <DenseInput label="نسبة الضريبة (%)" metaKey="tax_rate" type="number" step="0.01" value={v(settings, "tax_rate")} onChange={(e) => handleChange("tax_rate", e.target.value)} />
                       </>
                     )}
                   </div>
+
+                  {/* Live preview — turns the abstract symbol/decimals/tax fields into a real formatted line */}
+                  {(() => {
+                    const decimals = Number(v(settings, "decimal_places")) || 0;
+                    const symbol = v(settings, "currency_symbol") || "ر.س";
+                    const taxOn = Number(v(settings, "tax_enabled")) === 1;
+                    const taxType = v(settings, "tax_type");
+                    const rate = Number(v(settings, "tax_rate")) || 0;
+                    const fmt = (n) => n.toFixed(decimals);
+                    const base = 1000;
+                    let taxAmount = 0, total = base;
+                    if (taxOn && taxType === "exclusive") { taxAmount = (base * rate) / 100; total = base + taxAmount; }
+                    else if (taxOn && taxType === "inclusive") { taxAmount = base - base / (1 + rate / 100); total = base; }
+                    return (
+                      <div className="mt-5 max-w-sm rounded-lg border border-dashed border-border-strong bg-bg-surface p-4">
+                        <div className="mb-2 text-[10px] font-black uppercase tracking-widest text-text-muted">معاينة حية — صنف بسعر {fmt(base)} {symbol}</div>
+                        <div className="space-y-1.5 text-[13px] font-bold text-text-secondary">
+                          <div className="flex justify-between"><span>سعر الصنف</span><span>{fmt(taxOn && taxType === "inclusive" ? base - taxAmount : base)} {symbol}</span></div>
+                          {taxOn && taxType !== "none" && (
+                            <div className="flex justify-between text-amber-600"><span>ضريبة ({fmt(rate)}%{taxType === "inclusive" ? " شاملة" : ""})</span><span>{fmt(taxAmount)} {symbol}</span></div>
+                          )}
+                          <div className="flex justify-between border-t border-border-subtle pt-1.5 text-text-primary">
+                            <span>الإجمالي</span><span>{fmt(total)} {symbol}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </section>
 
                 {/* Discount Limits */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-rose-600 text-white">
-                      <Globe className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white shadow-sm">
+                      <Percent className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">حدود الخصم</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        تحديد الحد الأقصى للخصم المسموح به على الفواتير لحماية هامش الربح
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">الخصومات المسموحة</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        عشان تحمي أرباحك، تقدر تحدد أقصى نسبة خصم الكاشير يقدر يعملها للزبون.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <DenseSelect
-                      label="حد الخصم الأقصى"
+                      label="وضع ليميت للخصم؟"
                       metaKey="discount_cap_enabled"
                       value={Number(v(settings, "discount_cap_enabled"))}
                       onChange={(e) => handleChange("discount_cap_enabled", Number(e.target.value))}
-                      options={[{ value: 1, label: "مفعّل" }, { value: 0, label: "بدون حد (غير مفعّل)" }]}
+                      options={[{ value: 1, label: "أيوة حط حد أقصى" }, { value: 0, label: "لأ سيبها مفتوحة" }]}
                     />
                     <DenseInput
                       label="الحد الأقصى للخصم (%)"
@@ -905,18 +955,34 @@ export default function SettingsPage() {
                       onChange={(e) => handleChange("max_discount_percent", Number(e.target.value))}
                     />
                   </div>
+
+                  {Number(v(settings, "discount_cap_enabled")) === 1 && (() => {
+                    const cap = Math.min(100, Math.max(0, Number(v(settings, "max_discount_percent")) || 0));
+                    return (
+                      <div className="mt-5 max-w-lg">
+                        <div className="relative h-2.5 w-full rounded-full bg-border-normal">
+                          <div className="h-full rounded-full bg-rose-400" style={{ width: `${cap}%` }} />
+                          <span className="absolute -top-5 -translate-x-1/2 text-[10px] font-black text-rose-600" style={{ [isRTL ? "right" : "left"]: `${cap}%` }}>{cap}%</span>
+                        </div>
+                        <div className="mt-1 flex justify-between text-[10px] font-black text-text-muted">
+                          <span>0%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </section>
 
                 {/* Profit Margins */}
-                <section>
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-indigo-600 text-white">
-                      <Globe className="h-3.5 w-3.5" />
+                <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+                  <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+                      <TrendingUp className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">هوامش الربح والتسعير</h3>
-                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-                        إعدادات حساب التكلفة وحدود الهامش لتحليل الربحية
+                      <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">التسعير ونسب المكسب</h3>
+                      <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                        النظام بيحسب تكلفة الأصناف إزاي؟ وإيه هو هامش الربح اللي بتستهدفه؟
                       </p>
                     </div>
                   </div>
@@ -950,11 +1016,11 @@ export default function SettingsPage() {
                       onChange={(e) => handleChange("target_margin_percent", Number(e.target.value))}
                     />
                   </div>
-                  <div className="mt-4 flex items-start gap-3 rounded-sm border border-blue-100 bg-blue-50/60 p-3 text-blue-700 text-[11px] font-bold leading-relaxed">
+                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-blue-700 text-[11px] font-bold leading-relaxed">
                     <span className="shrink-0 mt-0.5">ℹ</span>
                     <span>
-                      طريقة حساب التكلفة تُستخدم في تحليل الربح عند إنشاء فواتير الشراء وفي تقارير هامش الربح.
-                      FIFO وLIFO محسوبان لحظة إنشاء التقرير فقط وليس في الوقت الفعلي.
+                      النظام بيستخدم طريقة التكلفة دي عشان يعرف مكسبك الفعلي في تقارير الأرباح. 
+                      للعلم: طريقة (FIFO) و (LIFO) بتتحسب وقت ما تطلع التقرير بس.
                     </span>
                   </div>
                 </section>
@@ -963,7 +1029,7 @@ export default function SettingsPage() {
 
             {activeTab === "printing" && (
               <div data-help="print-section">
-                <PrintingSettingsPanel settings={settings} onChange={handleChange} />
+                <PrintingSettingsPanel settings={settings} onChange={handleChange} onDirty={() => handleChange("_print_ui_dirty", Date.now())} />
               </div>
             )}
 
@@ -976,11 +1042,11 @@ export default function SettingsPage() {
             )}
 
             {activeTab === "features" && isDev && (
-              <FeaturesTab settings={settings} onChange={handleChange} onSilentSave={silentSave} />
+              <FeaturesTab settings={settings} onChange={handleChange} />
             )}
 
             {activeTab === "shortcuts" && (
-              <ShortcutsTab />
+              <ShortcutsTab onChange={handleChange} />
             )}
 
             {activeTab === "maintenance" && (
@@ -1004,6 +1070,58 @@ export default function SettingsPage() {
         operationLabel="معاينة إعدادات الطباعة"
       />
       <ConfirmDialog open={confirmState.open} title={confirmState.title} message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+      <SettingsUnsavedModal
+        open={blocker.state === "blocked"}
+        onSave={handleBlockerSave}
+        onDiscard={handleBlockerDiscard}
+        onCancel={() => blocker.reset?.()}
+        saving={blockerSaving}
+        lang={isRTL ? "ar" : "en"}
+      />
+
+      {/* Sticky bottom save bar — only visible when there are unsaved changes */}
+      {dirty && (
+        <div
+          className="fixed left-0 right-0 z-50 border-t border-border-normal bg-bg-surface shadow-[0_-4px_20px_rgba(0,0,0,0.08)] transition-all duration-300"
+          style={{ bottom: activeTab === "appearance" ? "64px" : "0px" }}
+        >
+          <div className="flex items-center justify-between gap-4 px-6 py-3">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
+              </span>
+              <span className="text-[12px] font-black text-amber-700">
+                {isRTL ? `تغييرات غير محفوظة (${changeCount})` : `Unsaved changes (${changeCount})`}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDiscard}
+                className="flex items-center gap-2 rounded-sm border border-border-normal bg-bg-surface px-4 py-2 text-sm font-black text-text-secondary shadow-sm transition-all hover:bg-bg-overlay hover:text-rose-600 active:scale-95"
+              >
+                <XCircle className="h-4 w-4" />
+                {isRTL ? "تجاهل" : "Discard"}
+              </button>
+              <PermissionGate page="settings" action="edit_general">
+                <button
+                  data-help="save-button"
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-sm bg-primary px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:bg-primary-600 active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {saving ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ الإعدادات" : "Save Settings")}
+                </button>
+              </PermissionGate>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -487,8 +487,47 @@ if (!gotTheLock) {
     });
   });
 
-  app.on("before-quit", async () => {
+  app.on("before-quit", async (event) => {
+    if (app.hasSentQuitNotification) return;
+    // Prevent Electron from killing the process while we send the Telegram
+    // notification.  Without this, Electron ignores the async handler's
+    // returned Promise and exits before the HTTP request completes.
+    event.preventDefault();
+    app.hasSentQuitNotification = true;
     app.isQuitting = true;
+
+    // ── Telegram: fire APP_QUIT notification before the DB shuts down ────────
+    try {
+      const { notifyOwner, EVENT_TYPES: TG } = require("../server/src/services/telegramService");
+      const { getDb, initDb } = require("../server/src/config/database");
+      let db;
+      try {
+        db = getDb();
+      } catch (_) {
+        // Dev mode: the Express server runs in a separate process, so this
+        // process never initialized a DB. Open the dev server's DB file so
+        // APP_QUIT still reaches the owner (SQLite WAL handles the second
+        // process fine). Packaged builds always hit the getDb() branch.
+        const devDbPath = path.join(__dirname, "..", "server", "data", "retailer.db");
+        if (!fs.existsSync(devDbPath)) throw new Error("no dev db");
+        db = initDb(devDbPath);
+      }
+      let userName = "غير محدد";
+      try {
+        const row = db.prepare(
+          "SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users ORDER BY id ASC LIMIT 1"
+        ).get();
+        if (row?.name) userName = row.name;
+      } catch (_) {}
+      await Promise.race([
+        notifyOwner(TG.APP_QUIT, {
+          userName,
+          reason: "إغلاق التطبيق",
+          createdAt: new Date().toISOString(),
+        }),
+        new Promise((r) => setTimeout(r, 5000)),
+      ]);
+    } catch (_) {}
 
     // ALWAYS close the DB connection cleanly, even during updates.
     // In the update path, the NSIS installer does taskkill /F — if the DB
@@ -520,6 +559,11 @@ if (!gotTheLock) {
     closeChildWindows();
     destroyTray();
     stopEmbeddedServer().catch(() => {});
+
+    // Force-exit after cleanup — app.exit() bypasses the normal quit sequence
+    // so we don't re-enter this handler.  give the event loop one tick to flush
+    // any pending I/O (the Telegram HTTP response).
+    setImmediate(() => app.exit(0));
   });
 
   app.on("window-all-closed", () => {

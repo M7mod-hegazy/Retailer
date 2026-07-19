@@ -120,7 +120,7 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.15 }}
-            className={`w-full ${maxWidth} flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden rounded-md bg-white shadow-2xl ring-1 ring-slate-900/5`}
+            className={`w-full ${maxWidth} flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden rounded-md bg-bg-surface shadow-2xl ring-1 ring-slate-900/5`}
             onClick={(e) => e.stopPropagation()}
           >
             {title && (
@@ -133,7 +133,7 @@ export default function Modal({ open, title, onClose, onDetach: userOnDetach, ch
         </motion.div>
       )}
       {open && isDetached && (
-        <div className="flex h-dvh flex-col overflow-hidden bg-white">
+        <div className="flex h-dvh flex-col overflow-hidden bg-bg-surface">
           {title && (
             <TitleBar title={title} onClose={onClose} showDetach={false} />
           )}

@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { usePermission } from "../../hooks/usePermission";
 import { getSyncConfig, saveSyncConfig, verifySyncConnection, getWebhookStatus, updateWebhookConfig, registerWebhook, testWebhook } from "../../services/syncService";
 import { useSyncStore } from "../../stores/syncStore";
+import { usePageTour } from '../../hooks/usePageTour';
 
 const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || "";
 const STORE_PROMO_URL = import.meta.env.VITE_STORE_PROMO_URL || "";
@@ -50,7 +51,7 @@ function TestRow({ icon: Icon, label, status }) {
   const bg = { pending: "bg-bg-base", loading: "bg-primary-50", success: "bg-success-bg", error: "bg-danger-bg" };
   return (
     <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${bg[status]}`}>
-      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-bg-surface flex items-center justify-center flex-shrink-0">
         <Icon className={`h-4 w-4 ${status === "error" ? "text-danger-text" : status === "success" ? "text-success-text" : "text-text-muted"}`} />
       </div>
       <span className={`text-xs font-bold flex-1 ${status === "error" ? "text-danger-text" : status === "success" ? "text-success-text" : "text-text-secondary"}`}>{label}</span>
@@ -80,6 +81,7 @@ const borderErr = "border-danger-border";
 const borderDef = "border-border-strong";
 
 export default function SyncConfig({ store: propStore = null, onSave: propOnSave = null }) {
+  usePageTour('sync_config');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const canConfigure = usePermission("sync", "configure");
@@ -161,13 +163,13 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
           <div className="max-w-6xl mx-auto px-6 py-8">
             <div className="flex items-center justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/15 backdrop-blur-sm rounded-full text-xs font-bold mb-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-surface/15 backdrop-blur-sm rounded-full text-xs font-bold mb-3">
                   <Link2 className="h-3.5 w-3.5" />ربط المتجر الإلكتروني
                 </div>
                 <h1 className="text-2xl font-black tracking-tight">المزامنة مع متجرك الإلكتروني</h1>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => navigate("/sync")} className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-primary rounded-xl text-sm font-black hover:opacity-90 transition active:scale-95 shadow-lg">
+                <button onClick={() => navigate("/sync")} className="inline-flex items-center gap-2 px-5 py-2.5 bg-bg-surface text-primary rounded-xl text-sm font-black hover:opacity-90 transition active:scale-95 shadow-lg">
                   <ArrowLeftRight className="h-4 w-4" />الذهاب للمزامنة
                 </button>
               </div>
@@ -191,11 +193,11 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => runTest()} disabled={testing} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 rounded-lg text-xs font-bold text-success-text hover:bg-white transition border border-success-border/50">
+              <button onClick={() => runTest()} disabled={testing} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-surface/80 rounded-lg text-xs font-bold text-success-text hover:bg-bg-surface transition border border-success-border/50">
                 {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 اختبار
               </button>
-              {canConfigure && <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 rounded-lg text-xs font-bold text-text-primary hover:bg-white transition border border-border-subtle/50">
+              {canConfigure && <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-surface/80 rounded-lg text-xs font-bold text-text-primary hover:bg-bg-surface transition border border-border-subtle/50">
                 <Settings2 className="h-3.5 w-3.5" />تعديل
               </button>}
             </div>
@@ -232,7 +234,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-text-primary">تفعيل المزامنة التلقائية</span>
                 <button onClick={() => canConfigure && setAutoSync(!autoSync)} disabled={!canConfigure} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} ${canConfigure ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
+                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-bg-surface rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
               </div>
               {autoSync && (
@@ -281,7 +283,7 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
     <div className="min-h-screen bg-bg-page pb-16">
       <div className="bg-gradient-to-b from-primary via-primary-600 to-primary/90 text-white">
         <div className="max-w-4xl mx-auto px-6 py-12 md:py-14 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/15 backdrop-blur-sm rounded-full text-xs font-bold mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-bg-surface/15 backdrop-blur-sm rounded-full text-xs font-bold mb-4">
             <Link2 className="h-3.5 w-3.5" />ربط المتجر الإلكتروني
           </div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-2">المزامنة مع متجرك الإلكتروني</h1>
@@ -450,20 +452,20 @@ export default function SyncConfig({ store: propStore = null, onSave: propOnSave
                       <span className="relative flex h-5 w-5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-text opacity-75" /><span className="relative inline-flex rounded-full h-5 w-5 bg-success-text" /></span>
                       <span className="text-sm font-black text-success-text">تم الاتصال بنجاح</span>
                     </div>
-                    <div className="bg-white/60 rounded-xl p-3">
+                    <div className="bg-bg-surface/60 rounded-xl p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <RefreshCw className="h-4 w-4 text-primary" />
                           <span className="text-xs font-bold text-text-primary">مزامنة تلقائية</span>
                         </div>
                         <button onClick={() => canConfigure && setAutoSync(!autoSync)} disabled={!canConfigure} className={`relative w-12 h-7 rounded-full transition-colors duration-200 flex-shrink-0 ${autoSync ? "bg-primary" : "bg-gray-200"} ${canConfigure ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
-                          <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
+                          <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-bg-surface rounded-full shadow-sm transition-transform duration-200 ${autoSync ? "translate-x-5" : "translate-x-0"}`} />
                         </button>
                       </div>
                       {autoSync && (
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-[11px] text-text-muted">كل</span>
-                          <select value={syncInterval} onChange={(e) => canConfigure && setSyncInterval(Number(e.target.value))} disabled={!canConfigure} className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-text-primary">
+                          <select value={syncInterval} onChange={(e) => canConfigure && setSyncInterval(Number(e.target.value))} disabled={!canConfigure} className="bg-bg-surface border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-text-primary">
                             <option value={5}>5 د</option><option value={10}>10 د</option><option value={15}>15 د</option><option value={30}>30 د</option><option value={60}>60 د</option><option value={120}>120 د</option>
                           </select>
                         </div>

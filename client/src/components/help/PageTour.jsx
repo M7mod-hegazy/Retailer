@@ -52,13 +52,32 @@ function buildPopupStyle(rect, placement) {
 
   const base = { position: 'fixed', width: POPUP_W, zIndex: 9999 };
 
+  let style;
   switch (placement) {
-    case 'bottom': return { ...base, top: rect.bottom + GAP, left: clampX(cx - POPUP_W / 2) };
-    case 'top':    return { ...base, bottom: vh - rect.top + GAP, left: clampX(cx - POPUP_W / 2) };
-    case 'right':  return { ...base, left: rect.right + GAP, top: clampY(cy - POPUP_H_EST / 2) };
-    case 'left':   return { ...base, right: vw - rect.left + GAP, top: clampY(cy - POPUP_H_EST / 2) };
-    default:       return { ...base, top: rect.bottom + GAP, left: clampX(cx - POPUP_W / 2) };
+    case 'bottom': style = { ...base, top: rect.bottom + GAP, left: clampX(cx - POPUP_W / 2) }; break;
+    case 'top':    style = { ...base, top: Math.max(EDGE_PAD, rect.top - GAP - POPUP_H_EST), left: clampX(cx - POPUP_W / 2) }; break;
+    case 'right':  style = { ...base, left: Math.min(rect.right + GAP, vw - POPUP_W - EDGE_PAD), top: clampY(cy - POPUP_H_EST / 2) }; break;
+    case 'left':   style = { ...base, left: Math.max(EDGE_PAD, rect.left - GAP - POPUP_W), top: clampY(cy - POPUP_H_EST / 2) }; break;
+    default:       style = { ...base, top: rect.bottom + GAP, left: clampX(cx - POPUP_W / 2) };
   }
+
+  // Final viewport clamp: ensure popup never leaves the screen
+  if (style.top !== undefined) {
+    style.top = Math.max(EDGE_PAD, Math.min(style.top, vh - POPUP_H_EST - EDGE_PAD));
+  }
+  if (style.left !== undefined) {
+    style.left = Math.max(EDGE_PAD, Math.min(style.left, vw - POPUP_W - EDGE_PAD));
+  }
+  if (style.right !== undefined) {
+    style.right = Math.max(EDGE_PAD, Math.min(style.right, vw - POPUP_W - EDGE_PAD));
+  }
+
+  // Guard against NaN: if any numeric property is NaN, fall back to a safe default
+  if (Number.isNaN(style.top))    style.top  = EDGE_PAD;
+  if (Number.isNaN(style.left))   style.left = vw / 2 - POPUP_W / 2;
+  if (Number.isNaN(style.right))  style.right = EDGE_PAD;
+
+  return style;
 }
 
 function buildCenteredStyle() {
@@ -372,9 +391,12 @@ function TopicPicker({ pageKey, onSelect, onClose }) {
   const pageConfig = helpContent[pageKey];
   const steps = useMemo(() => (pageConfig ? collectHelpSteps(pageKey) : []), [pageKey, pageConfig]);
   if (!pageConfig) return null;
+  // Show all explicit steps (including those on inactive tabs) —
+  // the tour's tab-switching logic will handle finding them.
+  // Only filter out auto-discovered steps that aren't currently visible.
   const visibleSteps = steps
     .map((step, index) => ({ step, index }))
-    .filter(({ step }) => isStepVisible(step));
+    .filter(({ step }) => !step.auto || isStepVisible(step));
 
   return (
     <>
@@ -525,16 +547,23 @@ export function PageTour() {
 
   const applyRect = useCallback((el, step) => {
     const rect = el.getBoundingClientRect();
+    // Cap spotlight height so it doesn't swallow the entire screen on large containers
+    const MAX_SPOTLIGHT_H = Math.min(window.innerHeight * 0.45, 400);
+    const spotH = Math.min(rect.height, MAX_SPOTLIGHT_H);
+    // Center the spotlight vertically on the element
+    const spotTop = rect.top + (rect.height - spotH) / 2;
     setIsCentered(false);
     setSpotlightStyle({
-      top:    rect.top    - SPOTLIGHT_PAD,
+      top:    spotTop     - SPOTLIGHT_PAD,
       left:   rect.left   - SPOTLIGHT_PAD,
       width:  rect.width  + SPOTLIGHT_PAD * 2,
-      height: rect.height + SPOTLIGHT_PAD * 2,
+      height: spotH       + SPOTLIGHT_PAD * 2,
     });
-    const dir = resolvePlacement(rect, step.placement ?? 'bottom', isRTL);
+    // Use a virtual rect with capped height for popup positioning
+    const virtualRect = { ...rect, top: spotTop, height: spotH, bottom: spotTop + spotH };
+    const dir = resolvePlacement(virtualRect, step.placement ?? 'bottom', isRTL);
     setResolvedDir(dir);
-    setPopupStyle(buildPopupStyle(rect, dir));
+    setPopupStyle(buildPopupStyle(virtualRect, dir));
   }, [isRTL]);
 
   // Fallback: anchor popup to page root so it's never floating dead-center
@@ -566,6 +595,17 @@ export function PageTour() {
     }
     const el = getStepElement(step);
     if (!el) {
+      // Tab-aware: if step belongs to a specific tab, try switching to it first
+      if (step.tab && retriesLeft === RETRY_DELAYS.length) {
+        const tabButton = document.querySelector(`[data-help-tab="${step.tab}"]`);
+        if (tabButton) {
+          tabButton.click();
+          // Wait for React re-render after tab switch, then retry
+          const t = setTimeout(() => tryFind(step, retriesLeft - 1), 400);
+          retryRef.current.push(t);
+          return;
+        }
+      }
       // Try unveil trigger on the first attempt (before retries)
       if (retriesLeft === RETRY_DELAYS.length && step.unveil) {
         const trigger = document.querySelector(step.unveil);
@@ -593,11 +633,11 @@ export function PageTour() {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
       // Poll rAF until scroll stabilizes — then apply rect
-      const container = document.documentElement;
-      let lastScrollTop = container.scrollTop;
+      const scrollContainer = document.querySelector('main.overflow-y-auto') ?? document.documentElement;
+      let lastScrollTop = scrollContainer.scrollTop;
       let stableFrames = 0;
       const poll = () => {
-        const cur = container.scrollTop;
+        const cur = scrollContainer.scrollTop;
         if (Math.abs(cur - lastScrollTop) < 2) {
           stableFrames++;
           if (stableFrames >= 3) {
@@ -629,20 +669,51 @@ export function PageTour() {
   useEffect(() => {
     recalculate();
     window.addEventListener('resize', recalculate);
-    let scrollTimer;
+
+    // Immediate spotlight repositioning on scroll — no debounce, no tryFind
+    let rafId = null;
     const onScroll = () => {
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(recalculate, 80);
+      if (rafId) return; // already queued
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        if (!isTourVisible || !currentStep) return;
+        if (isScrollingRef.current) return;
+        const el = getStepElement(currentStep);
+        if (!el) return;
+        // Directly recompute position from the live getBoundingClientRect
+        const rect = el.getBoundingClientRect();
+        const MAX_SPOTLIGHT_H = Math.min(window.innerHeight * 0.45, 400);
+        const spotH = Math.min(rect.height, MAX_SPOTLIGHT_H);
+        const spotTop = rect.top + (rect.height - spotH) / 2;
+        setSpotlightStyle({
+          top:    spotTop     - SPOTLIGHT_PAD,
+          left:   rect.left   - SPOTLIGHT_PAD,
+          width:  rect.width  + SPOTLIGHT_PAD * 2,
+          height: spotH       + SPOTLIGHT_PAD * 2,
+        });
+        const virtualRect = { ...rect, top: spotTop, height: spotH, bottom: spotTop + spotH };
+        const dir = resolvePlacement(virtualRect, currentStep.placement ?? 'bottom', isRTL);
+        setResolvedDir(dir);
+        setPopupStyle(buildPopupStyle(virtualRect, dir));
+      });
     };
+
+    // The app scrolls inside <main class="overflow-y-auto">, not on window.
+    // Scroll events don't bubble, so we must listen on the actual scroll container.
+    const scrollContainer = document.querySelector('main.overflow-y-auto')
+      ?? document.querySelector('[data-help-root]')
+      ?? document.documentElement;
+    scrollContainer.addEventListener('scroll', onScroll, true);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('resize', recalculate);
+      scrollContainer.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('scroll', onScroll, true);
-      clearTimeout(scrollTimer);
+      if (rafId) cancelAnimationFrame(rafId);
       retryRef.current.forEach(clearTimeout);
       retryRef.current = [];
     };
-  }, [recalculate]);
+  }, [recalculate, isRTL, currentStep, isTourVisible]);
 
   // Safety hatch: Escape always dismisses the tour/picker. Even if a future overlay change
   // were to trap pointer input, the user can always recover with the keyboard.

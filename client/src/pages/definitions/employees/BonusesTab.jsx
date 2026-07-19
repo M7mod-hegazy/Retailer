@@ -24,9 +24,9 @@ const BONUS_TYPES = [
 ];
 
 const STATUS_MAP = {
-  active: { label: "نشط", class: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-400" },
-  completed: { label: "مطبق", class: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  cancelled: { label: "ملغي", class: "bg-slate-50 text-slate-500 border-slate-200", dot: "bg-slate-400" },
+  active: { label: "شغّالة", class: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-400" },
+  completed: { label: "اتطبقت", class: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  cancelled: { label: "اتلغيت", class: "bg-bg-overlay text-text-secondary border-border-normal", dot: "bg-text-muted" },
 };
 
 export default function BonusesTab({ employee }) {
@@ -65,7 +65,7 @@ export default function BonusesTab({ employee }) {
     e.preventDefault();
     const amount = getTransactionAmount();
     if (amount <= 0) {
-      toast.error("يجب إدخال مبلغ صحيح");
+      toast.error("ادخل مبلغ صحيح");
       return;
     }
     setSubmitting(true);
@@ -80,13 +80,13 @@ export default function BonusesTab({ employee }) {
         notes: form.notes,
       });
       if (res.data?.success) {
-        toast.success("تم إضافة المكافأة");
+        toast.success("المكافأة اتضافت بنجاح");
         setShowForm(false);
         resetForm();
         loadBonuses();
       }
     } catch { 
-      toast.error("فشل إضافة المكافأة");
+      toast.error("المكافأة ما اتضافتش");
       setBonuses(prev => prev.filter(b => b.id !== tempId));
     } finally { setSubmitting(false); }
   }
@@ -97,11 +97,11 @@ export default function BonusesTab({ employee }) {
     try {
       const res = await api.delete(`/api/employees/${employee.id}/bonuses/${id}`);
       if (res.data?.success) {
-        toast.success("تم إلغاء المكافأة");
+        toast.success("المكافأة اتلغت بنجاح");
         loadBonuses();
       }
     } catch {
-      toast.error("فشل إلغاء المكافأة");
+      toast.error("المكافأة ما اتلغتش");
       if (removed) {
         setBonuses(prev => [...prev, removed]);
       }
@@ -130,19 +130,19 @@ export default function BonusesTab({ employee }) {
             <div className="flex-1">
               <p className="text-sm font-black text-emerald-800">المكافئات</p>
               <p className="text-xs font-bold text-emerald-600 mt-1 leading-relaxed">
-                سجّل مكافآت الأداء أو الحافز — متكررة (كل فترة) أو لمرة واحدة. يمكنك استخدام "حساب من الأيام" لتحويل أيام العمل لمبلغ. المكافآت المتكررة بتتضاف تلقائياً مع كل صرف راتب.
+                سجّل مكافآت الأداء أو الحافز — متكررة (كل فترة) أو مرة واحدة. تقدر تستخدم "حساب من الأيام" عشان تحول أيام الشغل لمبلغ. المكافآت المتكررة بتتضاف تلقائياً مع كل صرف راتب.
               </p>
             </div>
             <button onClick={() => localStorage.setItem('emp-tab-info-bonuses', '1')}
-              className="text-emerald-400 hover:text-emerald-600 text-xs font-black shrink-0">فهمت</button>
+              className="text-emerald-400 hover:text-emerald-600 text-xs font-black shrink-0">تمام</button>
           </motion.div>
         );
       })()}
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-black text-slate-800">المكافئات</h3>
-          <p className="text-xs text-slate-500 mt-0.5">مكافئات وإضافات على الراتب</p>
+          <h3 className="text-lg font-black text-text-primary">المكافئات</h3>
+          <p className="text-xs text-text-secondary mt-0.5">مكافئات وإضافات على الراتب</p>
         </div>
         {canManage && (
           <motion.button
@@ -178,7 +178,7 @@ export default function BonusesTab({ employee }) {
                   <select
                     value={form.bonus_type}
                     onChange={e => setForm({ ...form, bonus_type: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-white focus:border-emerald-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-bg-surface focus:border-emerald-400"
                   >
                     {BONUS_TYPES.map(t => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -190,7 +190,7 @@ export default function BonusesTab({ employee }) {
                   <select
                     value={form.amount_mode}
                     onChange={e => setForm({ ...form, amount_mode: e.target.value, amount: "", days: "" })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-white focus:border-emerald-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-bg-surface focus:border-emerald-400"
                   >
                     <option value="amount">مبلغ ثابت</option>
                     <option value="days" disabled={!canUseDayAmount}>عدد أيام</option>
@@ -207,7 +207,7 @@ export default function BonusesTab({ employee }) {
                     step={form.amount_mode === "days" ? "0.25" : "1"}
                     value={form.amount_mode === "days" ? form.days : form.amount}
                     onChange={e => setForm(form.amount_mode === "days" ? { ...form, days: e.target.value } : { ...form, amount: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-white focus:border-emerald-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-bg-surface focus:border-emerald-400"
                   />
                 </div>
                 <div className="space-y-1">
@@ -215,15 +215,15 @@ export default function BonusesTab({ employee }) {
                   <input
                     value={form.notes}
                     onChange={e => setForm({ ...form, notes: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-white focus:border-emerald-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-emerald-200 bg-bg-surface focus:border-emerald-400"
                   />
                 </div>
               </div>
 
               {canUseDayAmount && effectiveAmount > 0 && (() => {
                 const label = effectiveDays < 1
-                  ? "أقل من يوم عمل"
-                  : ["يعادل", formatSalaryDays(effectiveDays), "يوم عمل"].join(" ");
+                  ? "أقل من يوم شغل"
+                  : ["يعادل", formatSalaryDays(effectiveDays), "يوم شغل"].join(" ");
                 return (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-1">
@@ -256,7 +256,7 @@ export default function BonusesTab({ employee }) {
                   disabled={submitting}
                   className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-border-normal/30 border-t-white" />}
                   تأكيد الإضافة
                 </button>
               </div>
@@ -270,24 +270,24 @@ export default function BonusesTab({ employee }) {
           const st = STATUS_MAP[b.status] || STATUS_MAP.active;
           const typeLabel = BONUS_TYPES.find(t => t.value === b.bonus_type)?.label || b.bonus_type;
           return (
-            <div key={b.id} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+            <div key={b.id} className="bg-bg-surface border border-border-normal rounded-xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`text-[11px] font-black px-2 py-0.5 rounded-full border ${st.class}`}>{st.label}</span>
                   <span className="text-sm font-bold text-emerald-600 font-mono">{Number(b.amount).toLocaleString()} ج.م</span>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{typeLabel}</span>
+                  <span className="text-xs font-bold text-text-secondary bg-bg-overlay px-2 py-0.5 rounded">{typeLabel}</span>
                   {b.is_recurring ? (
                     <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1">
-                      <Gift className="h-3 w-3" /> نشط
+                      <Gift className="h-3 w-3" /> متكرر
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-400">مرة واحدة</span>
+                    <span className="text-[10px] font-bold text-text-muted">مرة واحدة</span>
                   )}
                 </div>
                 {b.status === 'active' && canManage && (
                   <button
                     onClick={() => setDeleteTarget(b)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all"
+                    className="h-7 w-7 flex items-center justify-center rounded-lg text-text-muted hover:bg-rose-50 hover:text-rose-500 transition-all"
                     title="إلغاء المكافأة"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -295,31 +295,31 @@ export default function BonusesTab({ employee }) {
                 )}
               </div>
 
-              {b.notes && <p className="text-xs text-slate-400">{b.notes}</p>}
+              {b.notes && <p className="text-xs text-text-muted">{b.notes}</p>}
 
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-border-subtle pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">التسلسل الزمني</h4>
+                  <h4 className="text-[10px] font-black text-text-muted uppercase tracking-wider">التفصيل</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-[11px] text-slate-600 font-bold">تم الإنشاء</span>
-                    <span className="text-[10px] text-slate-400">{formatDateTime(b.created_at)}</span>
+                    <span className="text-[11px] text-text-secondary font-bold">اتضاف</span>
+                    <span className="text-[10px] text-text-muted">{formatDateTime(b.created_at)}</span>
                   </div>
                   {b.status === 'completed' && (
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                      <span className="text-[11px] text-slate-600 font-bold">تم التطبيق</span>
-                      <span className="text-[10px] text-slate-400">{formatDateTime(b.completed_at || b.created_at)}</span>
+                      <span className="text-[11px] text-text-secondary font-bold">اتطبق</span>
+                      <span className="text-[10px] text-text-muted">{formatDateTime(b.completed_at || b.created_at)}</span>
                     </div>
                   )}
                   {b.status === 'cancelled' && (
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                      <span className="text-[11px] text-slate-600 font-bold">تم الإلغاء</span>
-                      <span className="text-[10px] text-slate-400">{formatDateTime(b.cancelled_at || b.created_at)}</span>
+                      <div className="w-2 h-2 rounded-full bg-text-muted shrink-0" />
+                      <span className="text-[11px] text-text-secondary font-bold">اتلغى</span>
+                      <span className="text-[10px] text-text-muted">{formatDateTime(b.cancelled_at || b.created_at)}</span>
                     </div>
                   )}
                 </div>
@@ -329,8 +329,8 @@ export default function BonusesTab({ employee }) {
         })}
         {!loading && bonuses.length === 0 && (
           <div className="text-center py-12">
-            <Gift className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-400">لا توجد مكافئات</p>
+            <Gift className="h-10 w-10 text-text-muted mx-auto mb-3" />
+            <p className="text-sm font-bold text-text-muted">لسه ما فيه مكافئات</p>
           </div>
         )}
       </div>
@@ -338,7 +338,7 @@ export default function BonusesTab({ employee }) {
       <ConfirmDialog
         open={!!deleteTarget}
         title="إلغاء المكافأة"
-        message={`هل تريد إلغاء مكافأة "${BONUS_TYPES.find(t => t.value === deleteTarget?.bonus_type)?.label || deleteTarget?.bonus_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
+        message={`هل انت متأكد إنك عايز تلغي المكافأة "${BONUS_TYPES.find(t => t.value === deleteTarget?.bonus_type)?.label || deleteTarget?.bonus_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
         onConfirm={() => { handleCancel(deleteTarget.id); setDeleteTarget(null); }}
         onCancel={() => setDeleteTarget(null)}
       />

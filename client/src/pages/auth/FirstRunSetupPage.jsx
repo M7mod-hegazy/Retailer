@@ -57,27 +57,27 @@ export default function FirstRunSetupPage({ onDone }) {
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
             <CheckCircle2 className="w-11 h-11 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900">تم إنشاء حساب المدير</h2>
-          <p className="text-slate-400 text-sm">جاري فتح شاشة الدخول...</p>
+          <h2 className="text-2xl font-black text-text-primary">تم إنشاء حساب المدير</h2>
+          <p className="text-text-muted text-sm">جاري فتح شاشة الدخول...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-[var(--bg-base)] text-slate-800 font-sans" dir="rtl">
+    <div className="fixed inset-0 overflow-y-auto bg-[var(--bg-base)] text-text-primary font-sans" dir="rtl">
       <div className="flex min-h-full items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-[520px] bg-white rounded-[2rem] border border-slate-200/70 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.10)] p-8 md:p-10"
+          className="w-full max-w-[520px] bg-bg-surface rounded-[2rem] border border-border-normal/70 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.10)] p-8 md:p-10"
         >
           <div className="flex flex-col items-center text-center mb-8">
             <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl text-emerald-600 mb-5">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h1 className="text-[26px] font-black text-slate-900 mb-2">الإعداد الأولي</h1>
-            <p className="text-[15px] text-slate-500 font-medium leading-relaxed">
+            <h1 className="text-[26px] font-black text-text-primary mb-2">الإعداد الأولي</h1>
+            <p className="text-[15px] text-text-secondary font-medium leading-relaxed">
               لا يوجد أي مستخدم بعد. أنشئ حساب المدير الأول للنظام — سيملك كامل الصلاحيات.
             </p>
           </div>
@@ -104,7 +104,7 @@ export default function FirstRunSetupPage({ onDone }) {
               onFieldKeyDown={e => handleKeyDown(e, { nextRef: passwordRef, prevRef: fullNameRef })}
             />
             <div className="flex flex-col gap-2">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+              <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
                 كلمة المرور <span className="text-emerald-600">*</span>
               </label>
               <div className="relative">
@@ -116,14 +116,14 @@ export default function FirstRunSetupPage({ onDone }) {
                   value={form.password}
                   onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
                   onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: usernameRef })}
-                  className="w-full h-12 bg-slate-50/80 rounded-xl px-4 pl-11 text-sm font-bold text-zinc-900 outline-none border-2 border-slate-200 focus:border-emerald-500 focus:bg-white transition-colors"
+                  className="w-full h-12 bg-bg-overlay/80 rounded-xl px-4 pl-11 text-sm font-bold text-zinc-900 outline-none border-2 border-border-normal focus:border-emerald-500 focus:bg-bg-surface transition-colors"
                   placeholder="••••••••"
                   dir="ltr"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-zinc-700"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-zinc-700"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -166,7 +166,7 @@ export default function FirstRunSetupPage({ onDone }) {
 function Field({ label, icon: Icon, value, onChange, placeholder, required, dir, inputRef, onFieldKeyDown }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+      <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
         {label} {required && <span className="text-emerald-600">*</span>}
       </label>
       <div className="relative">
@@ -177,11 +177,11 @@ function Field({ label, icon: Icon, value, onChange, placeholder, required, dir,
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onFieldKeyDown}
-          className="w-full h-12 bg-slate-50/80 rounded-xl px-4 pr-11 text-sm font-bold text-zinc-900 outline-none border-2 border-slate-200 focus:border-emerald-500 focus:bg-white transition-colors"
+          className="w-full h-12 bg-bg-overlay/80 rounded-xl px-4 pr-11 text-sm font-bold text-zinc-900 outline-none border-2 border-border-normal focus:border-emerald-500 focus:bg-bg-surface transition-colors"
           placeholder={placeholder}
           dir={dir}
         />
-        <Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
       </div>
     </div>
   );

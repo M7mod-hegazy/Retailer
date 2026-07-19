@@ -6,7 +6,7 @@ export default function UnauthorizedPage() {
   const navigate = useNavigate();
   return (
     <div dir="rtl" className="flex min-h-[70vh] w-full items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200/80 bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200/80 bg-bg-surface p-8 text-center shadow-sm">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
           <ShieldAlert strokeWidth={1.75} className="h-7 w-7" />
         </div>

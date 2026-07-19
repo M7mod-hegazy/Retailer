@@ -72,7 +72,7 @@ export default function PurchaseFormBottomBar({
           {/* Supplier search — first on the line */}
           <div className="relative flex items-center gap-1.5 shrink-0">
             <div className="relative z-[70]">
-              <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
                 type="text"
                 value={supplierQuery}
@@ -102,7 +102,7 @@ export default function PurchaseFormBottomBar({
             </div>
             {!isLocked && (
               <button onClick={onAddSupplier} title="إضافة مورد جديد"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white/70 text-zinc-600 hover:bg-white transition-colors">
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-bg-surface/70 text-zinc-600 hover:bg-bg-surface transition-colors">
                 <Plus className="h-3.5 w-3.5" />
               </button>
             )}
@@ -124,13 +124,13 @@ export default function PurchaseFormBottomBar({
           </div>
 
           {/* Counts */}
-          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
+          <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-border-normal/40 shrink-0">
             <ShoppingCart className="h-3 w-3 text-zinc-400" />
             <span className="text-2sm font-black text-zinc-800">{itemCount}</span>
             <span className="text-[10px] font-bold text-zinc-500">صنف</span>
           </div>
           {quantityCount > 0 && (
-            <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-white/40 shrink-0">
+            <div className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 border border-border-normal/40 shrink-0">
               <span className="text-2sm font-black text-zinc-800">{quantityCount}</span>
               <span className="text-[10px] font-bold text-zinc-500">كمية</span>
             </div>
@@ -144,7 +144,7 @@ export default function PurchaseFormBottomBar({
               disabled={isLocked}
               onChange={e => onDiscountChange?.(Math.min(totals.sub, Math.max(0, Number(e.target.value) || 0)))}
               placeholder="0"
-              className="min-w-[34px] rounded border border-rose-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400" />
+              className="min-w-[34px] rounded border border-rose-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-rose-400" />
             <span className="text-[10px] font-bold text-rose-600 whitespace-nowrap">خصم</span>
           </label>
 
@@ -154,7 +154,7 @@ export default function PurchaseFormBottomBar({
               disabled={isLocked}
               onChange={e => onIncreaseChange?.(Math.max(0, Number(e.target.value) || 0))}
               placeholder="0"
-              className="min-w-[34px] rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400" />
+              className="min-w-[34px] rounded border border-blue-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400" />
             <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">إضافة</span>
           </label>
 
@@ -196,7 +196,7 @@ export default function PurchaseFormBottomBar({
 
           {/* ── Cash: immediate ── */}
           {paymentMode === "cash" && (
-            <div className="flex items-center gap-1 bg-white/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-bg-surface/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm shrink-0">
               <Banknote className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="text-[11px] font-bold text-zinc-600 whitespace-nowrap">سداد فوري — خصم من الخزينة</span>
             </div>
@@ -218,9 +218,9 @@ export default function PurchaseFormBottomBar({
 
           {/* ── Multi: per-method inputs + distribution check ── */}
           {paymentMode === "multi" && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-white/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 bg-bg-surface/80 rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
               {paymentMethods.length === 0 ? (
-                <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">لا توجد وسائل دفع مُعرّفة</span>
+                <span className="text-[11px] font-bold text-text-muted whitespace-nowrap">لا توجد وسائل دفع مُعرّفة</span>
               ) : (
                 paymentMethods.map(m => (
                   <div key={m.id} className="flex items-center gap-0.5 shrink-0">
@@ -229,7 +229,7 @@ export default function PurchaseFormBottomBar({
                       disabled={isLocked || ((m.type === "credit" || m.category === "credit") && !supplier)}
                       onChange={(e) => onMultiAmountsChange?.(prev => ({ ...prev, [m.id]: e.target.value }))}
                       placeholder="0"
-                      className="w-[64px] rounded border border-zinc-200 bg-white/70 px-1 py-0.5 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-[var(--primary)] transition-colors" />
+                      className="w-[64px] rounded border border-zinc-200 bg-bg-surface/70 px-1 py-0.5 text-center text-2sm font-bold text-zinc-700 outline-none focus:border-[var(--primary)] transition-colors" />
                     <button type="button" title="املأ المتبقي"
                       onClick={() => {
                         const other = Object.entries(multiAmounts)
@@ -253,9 +253,9 @@ export default function PurchaseFormBottomBar({
           {/* ── Smart live supplier balance change ── */}
           {supplier && (
             <div className="mr-auto flex items-center gap-1.5">
-              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1 shrink-0">
-                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">الرصيد الحالي</span>
-                <span className={`text-2sm font-mono font-black ${curBal > 0.005 ? "text-rose-600" : curBal < -0.005 ? "text-emerald-600" : "text-slate-700"}`}>{formatMoney(curBal)}</span>
+              <div className="flex items-center gap-1.5 rounded-lg bg-bg-overlay border border-border-subtle px-2 py-1 shrink-0">
+                <span className="text-[10px] font-bold text-text-secondary whitespace-nowrap">الرصيد الحالي</span>
+                <span className={`text-2sm font-mono font-black ${curBal > 0.005 ? "text-rose-600" : curBal < -0.005 ? "text-emerald-600" : "text-text-primary"}`}>{formatMoney(curBal)}</span>
               </div>
               {creditEffect > 0 && lines.length > 0 && (
                 <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1 shrink-0">
@@ -274,7 +274,7 @@ export default function PurchaseFormBottomBar({
         <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
           <PermissionGate page="purchases" action="print">
             <button onClick={onPrint} disabled={!lines.length}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-bg-surface/90 px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 transition-all active:scale-[0.95] shadow-sm">
               <Printer className="h-3 w-3" /> طباعة
             </button>
           </PermissionGate>

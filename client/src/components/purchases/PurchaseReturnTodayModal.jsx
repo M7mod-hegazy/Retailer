@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { X, RefreshCw, ArrowUpDown, Pencil, Trash2, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -26,13 +26,13 @@ function toDateInput(date = new Date()) {
 function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا توجد نتائج" }) {
   if (!items.length) {
     return (
-      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-slate-400 shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md p-4 text-center text-2sm font-bold text-text-muted shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
         {emptyLabel}
       </div>
     );
   }
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-slate-100 bg-white/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
+    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[12px] border border-border-subtle bg-bg-surface/95 backdrop-blur-md shadow-[0_10px_40px_-5px_rgba(0,0,0,0.1)]">
       <div className="max-h-[280px] overflow-y-auto p-1 custom-scrollbar">
         {items.map((item, i) => (
           <button
@@ -40,17 +40,17 @@ function LookupList({ items, onPick, activeIndex, query, emptyLabel = "لا تو
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(item)}
-            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-amber-50/80" : "hover:bg-slate-50"}`}
+            className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2.5 text-start transition-all ${activeIndex === i ? "bg-amber-50/80" : "hover:bg-bg-overlay"}`}
           >
             <div className="flex items-center gap-2">
               {item.primary_image_url || item.image_url || item.image ? (
-                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-slate-200" />
+                <img src={resolveImageUrl(item.primary_image_url || item.image_url || item.image)} alt={item.name} className="w-8 h-8 rounded-md object-cover border border-border-normal" />
               ) : (
-                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200"><Package className="w-4 h-4 text-slate-300" /></div>
+                <div className="w-8 h-8 rounded-md bg-bg-overlay flex items-center justify-center border border-border-normal"><Package className="w-4 h-4 text-text-muted" /></div>
               )}
               <div className="flex flex-col gap-0.5">
-                <span className={`text-sm font-black ${activeIndex === i ? "text-amber-900" : "text-slate-800"}`}><Highlight text={item.name} query={query} /></span>
-                <span className="font-mono text-[11px] text-slate-400 font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
+                <span className={`text-sm font-black ${activeIndex === i ? "text-amber-900" : "text-text-primary"}`}><Highlight text={item.name} query={query} /></span>
+                <span className="font-mono text-[11px] text-text-muted font-bold"><Highlight text={item.item_code || item.code || item.barcode || `#${item.id}`} query={query} /></span>
               </div>
             </div>
           </button>
@@ -68,7 +68,7 @@ const SETTLEMENT_LABELS = {
 
 const STATUS_STYLES = {
   active: { label: "نشط", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  cancelled: { label: "ملغي", cls: "bg-bg-overlay text-text-secondary border-border-normal" },
 };
 
 export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
@@ -86,37 +86,37 @@ export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
   return (
     <div className="flex flex-col gap-4">
       {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+        <div className="flex items-center justify-center h-32 text-text-muted font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
           <div className="flex items-center justify-between rounded-sm bg-amber-50 border border-amber-200 px-4 py-3">
             <div className="flex items-center gap-4 text-sm flex-wrap">
               <span className="font-black text-amber-800">مرتجع #{detail?.doc_no || ret.doc_no}</span>
-              <span className="text-slate-600">المورد: <strong>{(detail || ret).supplier_name || "—"}</strong></span>
-              <span className="text-slate-500">{(detail || ret).created_at ? formatArabicDateTime(new Date((detail || ret).created_at)) : "—"}</span>
+              <span className="text-text-secondary">المورد: <strong>{(detail || ret).supplier_name || "—"}</strong></span>
+              <span className="text-text-secondary">{(detail || ret).created_at ? formatArabicDateTime(new Date((detail || ret).created_at)) : "—"}</span>
               {Number((detail || ret).discount) > 0 && <span className="font-bold text-rose-600">خصم: −{formatMoney((detail || ret).discount)}</span>}
               {Number((detail || ret).increase) > 0 && <span className="font-bold text-emerald-600">زيادة: +{formatMoney((detail || ret).increase)}</span>}
               <span className="font-bold text-amber-700">صافي المرتجع: {formatMoney((detail || ret).total)} ج.م</span>
             </div>
           </div>
-          <div className="max-h-[240px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[240px] overflow-auto rounded-sm border border-border-normal">
             <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+              <thead className="bg-bg-overlay border-b border-border-normal sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
-                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">التكلفة</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكود</th>
+                  <th className="px-4 py-2.5 text-right font-black text-text-secondary">الصنف</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكمية</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">التكلفة</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
                 {((detail || ret).lines || []).map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || "—"}</td>
-                    <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
+                  <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay">
+                    <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-text-secondary">{l.item_code || "—"}</td>
+                    <td className="px-4 py-2.5 font-bold text-text-primary">{l.item_name_ar || l.item_name || l.name}</td>
+                    <td className="px-3 py-2.5 text-center text-text-secondary">{l.quantity}</td>
+                    <td className="px-3 py-2.5 text-center text-text-secondary">{formatMoney(l.unit_cost)}</td>
                     <td className="px-3 py-2.5 text-center number-fmt text-amber-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
                   </tr>
                 ))}
@@ -125,35 +125,35 @@ export function ReturnPreviewModal({ ret, onClose, onNavigate: propNavigate }) {
           </div>
           {/* Payment breakdown */}
           {detail && (detail.settlement_type === "split" ? (
-            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل طريقة التسوية</p>
+            <div className="rounded-sm border border-border-normal bg-bg-overlay px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-2">تفاصيل طريقة التسوية</p>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">نقداً</span>
+                <span className="text-text-secondary">نقداً</span>
                 <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.cash_amount)} ج.م</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">رصيد حساب</span>
+                <span className="text-text-secondary">رصيد حساب</span>
                 <span className="number-fmt-primary text-amber-700">{formatMoney(detail.credit_amount)} ج.م</span>
               </div>
             </div>
           ) : detail.settlement_type === "cash" ? (
-            <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">طريقة التسوية</p>
+            <div className="rounded-sm border border-border-normal bg-bg-overlay px-4 py-3 space-y-1.5 text-2sm">
+              <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-2">طريقة التسوية</p>
               <div className="flex justify-between items-center">
-                <span className="text-slate-600">نقداً</span>
+                <span className="text-text-secondary">نقداً</span>
                 <span className="number-fmt-primary text-emerald-700">{formatMoney(detail.total)} ج.م</span>
               </div>
             </div>
           ) : null)}
           {(detail || ret).notes && (
-            <div className="rounded-sm border border-slate-200 bg-amber-50 px-4 py-2.5 text-2sm text-slate-600">
-              <span className="font-black text-slate-500 text-[11px] uppercase tracking-widest">ملاحظات: </span>{(detail || ret).notes}
+            <div className="rounded-sm border border-border-normal bg-amber-50 px-4 py-2.5 text-2sm text-text-secondary">
+              <span className="font-black text-text-secondary text-[11px] uppercase tracking-widest">ملاحظات: </span>{(detail || ret).notes}
             </div>
           )}
         </>
       )}
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <button onClick={onClose} className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">رجوع</button>
+      <div className="flex items-center justify-between border-t border-border-normal pt-4">
+        <button onClick={onClose} className="rounded-sm border border-border-normal px-5 py-2 text-sm font-bold text-text-secondary hover:bg-bg-overlay">رجوع</button>
         <button onClick={() => { onClose(); propNavigate?.("/purchases/returns/new"); }} className="flex items-center gap-2 rounded-sm bg-amber-700 px-6 py-2 text-sm font-black text-white hover:bg-amber-800 transition-colors">
           <Pencil className="h-4 w-4" /> فتح وتعديل
         </button>
@@ -173,7 +173,7 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
     }
   };
   const [data, setData] = useState([]);
-  const [summary, setSummary] = useState({ count: 0, total: 0 });
+  const [summary, setSummary] = useState({ count: 0, total: 0, byMethod: {} });
   const [loading, setLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState(initialFilters?.dateFrom ?? toDateInput());
   const [dateTo, setDateTo] = useState(initialFilters?.dateTo ?? toDateInput());
@@ -344,57 +344,104 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
   }
 
   const docColumns = [
-    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (r) => r.doc_no || "—" },
-    { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.supplier_name || "—" },
-    { id: "original_purchase_no", header: "أمر الشراء", width: 140, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.original_purchase_no ? r.original_purchase_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black bg-amber-50 text-amber-700 border-amber-200">مباشر</span> },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-amber-700", render: (r) => formatMoney(r.total) },
-    { id: "settlement_type", header: "طريقة التسوية", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (r) => {
-      const settlementType = r.settlement_type || "account";
-      const info = SETTLEMENT_LABELS[settlementType] || SETTLEMENT_LABELS.account;
-      const isSplit = settlementType === "split";
-      const cashAmt = isSplit ? Number(r.cash_amount || 0) : 0;
-      const creditAmt = isSplit ? Number(r.credit_amount || 0) : 0;
-      return (
-        <div className="flex flex-col gap-0.5">
-          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          {isSplit && (
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold text-emerald-600">نقداً: {formatMoney(cashAmt)}</span>
-              <span className="text-[11px] font-bold text-amber-600">حساب: {formatMoney(creditAmt)}</span>
-            </div>
-          )}
+    { id: "doc_no", header: "رقم المستند", width: 145, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 font-mono text-2sm font-black text-text-primary text-center",
+      render: (r) => r.doc_no || "—" },
+    { id: "supplier_name", header: "المورد", width: 150, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-2sm font-bold text-text-primary text-center",
+      render: (r) => r.supplier_name || "—" },
+    { id: "original_purchase_no", header: "أمر الشراء", width: 148, sortable: false,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 font-mono text-[11px] font-bold text-text-secondary text-center",
+      render: (r) => r.original_purchase_no ? r.original_purchase_no : <span className="inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black bg-warning-bg text-warning-text border-warning-border">مباشر</span> },
+    { id: "total", header: "الإجمالي", width: 110, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 number-fmt-primary text-sm text-warning-text text-center",
+      render: (r) => formatMoney(r.total) },
+    { id: "settlement_type", header: "طريقة التسوية", width: 160, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2",
+      render: (r) => {
+        const settlementType = r.settlement_type || "account";
+        const info = SETTLEMENT_LABELS[settlementType] || SETTLEMENT_LABELS.account;
+        const isSplit = settlementType === "split";
+        const cashAmt = isSplit ? Number(r.cash_amount || 0) : 0;
+        const creditAmt = isSplit ? Number(r.credit_amount || 0) : 0;
+        return (
+          <div className="flex flex-col gap-0.5 items-center">
+            <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+            {isSplit && (
+              <div className="flex flex-col gap-0.5 items-center">
+                <span className="text-[11px] font-bold text-success-text">نقداً: {formatMoney(cashAmt)}</span>
+                <span className="text-[11px] font-bold text-warning-text">حساب: {formatMoney(creditAmt)}</span>
+              </div>
+            )}
+          </div>
+        );
+      } },
+    { id: "created_by", header: "المستخدم", width: 100, sortable: false,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-[11px] font-bold text-text-secondary whitespace-nowrap text-center",
+      render: (r) => r.created_by_username || "—" },
+    { id: "created_at", header: "الوقت", width: 140, sortable: true,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-[11px] text-text-muted number-fmt whitespace-nowrap text-center",
+      render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "actions", header: "", width: 70, headerClass: "px-2", cellClass: "px-2",
+      render: (r) => (
+        <div className="flex gap-1 justify-center">
+          <button onClick={() => gotoTarget("/purchases/returns/new")} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
+          <button onClick={() => handleCancel(r)} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
-      );
-    } },
-    { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (r) => r.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
-    { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (r) => (
-      <div className="flex gap-1">
-        <button onClick={() => gotoTarget("/purchases/returns/new")} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={() => handleCancel(r)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
-      </div>
-    )},
+      )},
   ];
 
   const itemColumns = [
-    { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.item_code || "—" },
-    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
-    { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
-    { id: "supplier_name", header: "المورد", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.supplier_name || "—" },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_cost) },
-    { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt text-sm text-amber-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
-    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] text-slate-500 number-fmt whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
-    { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
-      <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); gotoTarget("/purchases/returns/new"); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
-      </div>
-    )},
+    { id: "item_code", header: "كود الصنف", width: 100,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 font-mono text-[11px] font-bold text-text-secondary text-center",
+      render: (r) => r.item_code || "—" },
+    { id: "item_name", header: "اسم الصنف", width: 170,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-2sm font-bold text-text-primary text-center",
+      render: (r) => r.item_name || "—" },
+    { id: "doc_no", header: "المستند", width: 130,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 font-mono text-[11px] font-black text-text-primary text-center",
+      render: (r) => r.doc_no || "—" },
+    { id: "supplier_name", header: "المورد", width: 120,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-[11px] font-bold text-text-secondary text-center",
+      render: (r) => r.supplier_name || "—" },
+    { id: "quantity", header: "الكمية", width: 70,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-center number-fmt text-2sm text-text-secondary",
+      render: (r) => Number(r.quantity) },
+    { id: "unit_cost", header: "التكلفة", width: 95,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 number-fmt text-2sm text-text-primary text-center",
+      render: (r) => formatMoney(r.unit_cost) },
+    { id: "line_total", header: "الإجمالي", width: 105,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 number-fmt text-sm text-warning-text text-center",
+      render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
+    { id: "created_at", header: "التاريخ", width: 135,
+      headerClass: "text-center px-2 font-black uppercase tracking-widest text-text-muted",
+      cellClass: "px-2 text-[11px] text-text-muted number-fmt whitespace-nowrap text-center",
+      render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "actions", header: "", width: 50, cellClass: "px-2",
+      render: (r) => (
+        <div className="flex gap-1 justify-center">
+          <button onClick={(e) => { e.stopPropagation(); gotoTarget("/purchases/returns/new"); }} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="تعديل"><Pencil className="h-3.5 w-3.5" /></button>
+        </div>
+      )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="سجل مرتجعات المشتريات" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="purchase-return-today">
+      <Modal open={open} onClose={onClose} title="سجل مرتجعات المشتريات" maxWidth="max-w-7xl" onDetach={handleDetach} showDetach={true} modalType="purchase-return-today">
         <div className="flex flex-col gap-4">
           {/* Context banner */}
           <div className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2">
@@ -407,7 +454,7 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
             <input ref={docSearchRef} value={docSearch} onChange={e => setDocSearch(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { nextRef: itemSearchRef })}
               placeholder="RET-0001..."
-              className="flex-1 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+              className="flex-1 rounded-sm border border-amber-200 bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             <span className="text-[11px] font-black text-amber-700 shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
               <input ref={itemSearchRef}
@@ -422,7 +469,7 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="w-full rounded-sm border border-amber-200 bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
               {itemLookupOpen && (
                 <LookupList items={filteredItems} onPick={(item) => { setItemSearch(item.code || item.barcode || item.name); setItemLookupOpen(false); }}
                   activeIndex={activeItemIndex} query={itemSearch} />
@@ -438,26 +485,26 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">من</label>
               <input ref={dateFromRef} type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef, prevRef: itemSearchRef })}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="rounded-sm border border-amber-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">إلى</label>
               <input ref={dateToRef} type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: sortRef, prevRef: dateFromRef })}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="rounded-sm border border-amber-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">ترتيب</label>
               <select ref={sortRef} value={sort} onChange={(e) => setSort(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateToRef })}
-                className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500">
+                className="rounded-sm border border-amber-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="doc_no">رقم المستند</option>
                 <option value="settlement_type">طريقة التسوية</option>
               </select>
               <button onClick={() => setDir((d) => d === "asc" ? "desc" : "asc")}
-                className="flex h-8 w-8 items-center justify-center rounded-sm border border-amber-200 bg-white hover:bg-amber-100 transition-colors">
+                className="flex h-8 w-8 items-center justify-center rounded-sm border border-amber-200 bg-bg-surface hover:bg-amber-100 transition-colors">
                 <ArrowUpDown className="h-3.5 w-3.5 text-amber-600" />
               </button>
             </div>
@@ -466,7 +513,7 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
                 <label className="text-[11px] font-black text-amber-700 uppercase tracking-widest">المستخدم</label>
                 <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, { nextRef: supplierQueryRef, prevRef: sortRef })}
-                  className="rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500">
+                  className="rounded-sm border border-amber-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
@@ -492,9 +539,9 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
                   handleKeyDown(e, { nextRef: submitBtnRef, prevRef: userSelectRef });
                 }}
                 placeholder="كل الموردين..."
-                className="w-[140px] rounded-sm border border-amber-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
+                className="w-[140px] rounded-sm border border-amber-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100" />
               {supplierQuery && (
-                <button onClick={() => { setSupplierQuery(""); setSupplierId(""); }} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => { setSupplierQuery(""); setSupplierId(""); }} className="text-text-muted hover:text-text-secondary">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -505,20 +552,20 @@ export default function PurchaseReturnTodayModal({ open, onClose, onNavigate: pr
             </div>
             <button ref={submitBtnRef} onClick={loadData}
               onKeyDown={e => handleKeyDown(e, { prevRef: supplierQueryRef })}
-              className="flex items-center gap-1.5 rounded-sm border border-amber-200 bg-white px-3 py-1.5 text-2sm font-black text-amber-700 hover:bg-amber-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-sm border border-amber-200 bg-bg-surface px-3 py-1.5 text-2sm font-black text-amber-700 hover:bg-amber-100 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>
           </div>
           {/* Summary strip */}
-          <div className="flex items-center gap-4 rounded-sm bg-amber-800 px-4 py-3">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">عدد المرتجعات</span>
-              <span className="number-fmt-primary text-[20px] text-white leading-none">{summary.count}</span>
+          <div className="flex items-center gap-0 rounded-sm bg-bg-overlay overflow-hidden border border-border-subtle">
+            <div className="flex flex-col items-center px-4 py-3 shrink-0">
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">عدد المرتجعات</span>
+              <span className="font-mono text-[22px] font-black text-text-primary leading-none">{summary.count}</span>
             </div>
-            <div className="h-8 w-px bg-amber-700" />
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-amber-300 uppercase tracking-widest">إجمالي المرتجعات</span>
-              <span className="number-fmt-primary text-[20px] text-amber-300 leading-none">{formatMoney(summary.total)}</span>
+            <div className="h-10 w-px bg-border-subtle shrink-0" />
+            <div className="flex flex-col items-center px-4 py-3 shrink-0">
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">إجمالي المرتجعات</span>
+              <span className="font-mono text-[22px] font-black text-warning-text leading-none">{formatMoney(summary.total)}</span>
             </div>
           </div>
           {/* Table */}

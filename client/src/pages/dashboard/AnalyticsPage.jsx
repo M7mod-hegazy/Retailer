@@ -26,16 +26,16 @@ const zeroSummary = {
   upcomingInstallments: 0,
 };
 
-function ChartTooltip({ active, payload, label, isCurrency = true, showMargin = false }) {
+const ChartTooltip = React.memo(function ChartTooltip({ active, payload, label, isCurrency = true, showMargin = false }) {
   if (!active || !payload || !payload.length) return null;
   return (
-    <div className="rounded-[16px] border border-white/40 bg-white/70 backdrop-blur-2xl px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
-      <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+    <div className="rounded-[16px] border border-border-normal/40 bg-bg-surface/70 backdrop-blur-2xl px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
+      <div className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-1">{label}</div>
       {payload.map((entry, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
-          <span className="text-[13px] font-bold text-slate-500">{entry.name}:</span>
-          <span className="text-[18px] font-black text-slate-900">
+          <span className="text-[13px] font-bold text-text-secondary">{entry.name}:</span>
+          <span className="text-[18px] font-black text-text-primary">
             {entry.dataKey === "margin_percent" ? `${Number(entry.value).toFixed(1)}%` :
              isCurrency ? <CurrencyDisplay value={entry.value} /> : Number(entry.value).toLocaleString()}
           </span>
@@ -43,36 +43,63 @@ function ChartTooltip({ active, payload, label, isCurrency = true, showMargin = 
       ))}
     </div>
   );
-}
+});
 
-function TrendBadge({ current, previous, inverse = false }) {
+const TrendBadge = React.memo(function TrendBadge({ current, previous, inverse = false }) {
   const pct = previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : 0;
   const isUp = pct > 0;
   const isDown = pct < 0;
   const good = inverse ? isDown : isUp;
   return (
     <span className={`inline-flex items-center gap-0.5 text-[11px] font-black px-1.5 py-0.5 rounded-full ${
-      Math.abs(pct) < 0.5 ? "bg-slate-100 text-slate-500" :
+      Math.abs(pct) < 0.5 ? "bg-bg-overlay text-text-secondary" :
       good ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
     }`}>
       {Math.abs(pct) < 0.5 ? "—" : isUp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       {Math.abs(pct).toFixed(1)}%
     </span>
   );
-}
+});
 
 const DAY_NAMES = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const HOUR_LABELS = Array.from({length:13}, (_,i) => `${String(i+8).padStart(2,"0")}:00`);
 
-function SensitiveValue({ children, canView, fallback }) {
+function useInView(options = {}) {
+  const [isInView, setIsInView] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsInView(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "200px", ...options });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, isInView];
+}
+
+function LazySection({ children, fallback }) {
+  const [ref, isInView] = useInView();
+  return (
+    <div ref={ref}>
+      {isInView ? children : (fallback || <div className="min-h-[200px]" />)}
+    </div>
+  );
+}
+
+const SensitiveValue = React.memo(function SensitiveValue({ children, canView, fallback }) {
   if (canView) return children;
   return (
-    <span className="inline-flex items-center gap-1.5 text-slate-300 select-none" title="بيانات مقيدة">
+    <span className="inline-flex items-center gap-1.5 text-text-muted select-none" title="بيانات مقيدة">
       <span>🔒</span>
       <span className="text-[10px] font-black tracking-widest uppercase">مقيد</span>
     </span>
   );
-}
+});
 
 export default function AnalyticsPage() {
   usePageTour('analytics');
@@ -153,7 +180,7 @@ export default function AnalyticsPage() {
   // Global Period — shared across chart, heatmap, and items
   const [globalDateMode, setGlobalDateMode] = useState("predefined");
   const [globalCustomDates, setGlobalCustomDates] = useState({ start: "", end: "" });
-  const [globalRange, setGlobalRange] = useState(14);
+  const [globalRange, setGlobalRange] = useState(1);
 
   // Initial Dashboard Mount
   useEffect(() => {
@@ -161,13 +188,12 @@ export default function AnalyticsPage() {
       setLoading(true);
       try {
         const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-        const [summaryRes, stockRes, expensesRes, revenuesRes, marginRes, expiringRes, whRes, comparisonRes, healthRes] = await Promise.all([
+        const [summaryRes, stockRes, expensesRes, revenuesRes, marginRes, whRes, comparisonRes, healthRes] = await Promise.all([
           api.get("/api/dashboard"),
           api.get("/api/reports/low-stock"),
           api.get(`/api/expenses?date_from=${todayIso}&date_to=${todayIso}`),
           api.get(`/api/revenues?date_from=${todayIso}&date_to=${todayIso}`),
           api.get("/api/reports/margin-alerts").catch(() => ({ data: { data: [] } })),
-          api.get("/api/reports/expiring-soon").catch(() => ({ data: { data: [], stats: null } })),
           api.get("/api/warehouses").catch(() => ({ data: { data: [] } })),
           api.get("/api/dashboard/comparison"),
           api.get("/api/dashboard/inventory-health").catch(() => ({ data: { data: null } })),
@@ -176,8 +202,6 @@ export default function AnalyticsPage() {
         setSummary(summaryRes.data?.data || zeroSummary);
         setLowStock(stockRes.data?.data?.slice(0, 5) || []);
         setBelowMargin(marginRes.data?.data?.slice(0, 5) || []);
-        setExpiringSoon(expiringRes.data?.data || []);
-        setExpiryStats(expiringRes.data?.stats || null);
         setWarehouses(whRes.data?.data || []);
         setComparison(comparisonRes.data?.data || null);
         if (healthRes.data?.data) setHealthCounts(healthRes.data.data);
@@ -198,18 +222,13 @@ export default function AnalyticsPage() {
     loadDashboard();
   }, []);
 
-  // Fetch Items Dynamic
+  // Fetch Items Dynamic — uses resolvedPeriod so end_date is always sent
   useEffect(() => {
     async function loadItems() {
       setItemsLoading(true);
       try {
-        let qs = "";
-        if (globalDateMode === "custom") {
-           qs = `?start_date=${globalCustomDates.start || ""}&end_date=${globalCustomDates.end || ""}`;
-        } else {
-           const start_date = new Date(Date.now() - globalRange * 86400000).toISOString().split('T')[0];
-           qs = `?start_date=${start_date}`;
-        }
+        const { start, end } = resolvedPeriod;
+        const qs = `?start_date=${start || ""}&end_date=${end || ""}`;
         const res = await api.get("/api/reports/run/sales-by-item" + qs);
         const allItems = res.data?.data || [];
         const sorted = itemsSort === "top" ? allItems : [...allItems].reverse();
@@ -226,6 +245,7 @@ export default function AnalyticsPage() {
 
   // Fetch Expiry Data Dynamic
   useEffect(() => {
+    if (!expiryEnabled) return;
     async function loadExpiry() {
       const params = new URLSearchParams();
       params.set("days", "90");
@@ -237,20 +257,15 @@ export default function AnalyticsPage() {
       setExpiryStats(res.data?.stats || null);
     }
     loadExpiry();
-  }, [expiryStatusFilter, expiryWarehouseId, expirySearch]);
+  }, [expiryEnabled, expiryStatusFilter, expiryWarehouseId, expirySearch]);
 
   // Fetch Chart Dynamic  
   useEffect(() => {
     async function loadChartData() {
       setChartLoading(true);
       try {
-        let qs = "";
-        if (globalDateMode === "custom") {
-           qs = `?start_date=${globalCustomDates.start || ""}&end_date=${globalCustomDates.end || ""}`;
-        } else {
-           const start_date = new Date(Date.now() - globalRange * 86400000).toISOString().split('T')[0];
-           qs = `?start_date=${start_date}`;
-        }
+        const { start, end } = resolvedPeriod;
+        const qs = `?start_date=${start || ""}&end_date=${end || ""}`;
         const res = await api.get(`/api/reports/sales-summary${qs}`);
         const salesRows = res.data?.data || [];
 
@@ -551,15 +566,15 @@ export default function AnalyticsPage() {
       <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-6 bg-[var(--bg-base)]">
         <div className="relative flex items-center justify-center h-20 w-20">
           <div className="absolute inset-0 rounded-full animate-ping bg-slate-900 opacity-10"></div>
-          <Activity className="h-8 w-8 animate-pulse text-slate-800" />
+          <Activity className="h-8 w-8 animate-pulse text-text-primary" />
         </div>
-        <div className="text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">بنحضر البيانات...</div>
+        <div className="text-[11px] font-black tracking-[0.2em] text-text-muted uppercase">بنحضر البيانات...</div>
       </div>
     );
   }
 
   return (
-    <div ref={pageContentRef} className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative overflow-x-hidden" dir="rtl">
+    <div ref={pageContentRef} className="flex flex-col min-h-full font-sans bg-[var(--bg-base)] p-4 md:p-8 relative" dir="rtl">
 
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-6 relative z-10 w-full max-w-[1400px] mx-auto gap-4">
@@ -568,23 +583,23 @@ export default function AnalyticsPage() {
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">الرؤية والتحليلات</h1>
-            <p className="text-sm font-bold text-slate-500 mt-1">
+            <h1 className="text-3xl font-black text-text-primary tracking-tight">الرؤية والتحليلات</h1>
+            <p className="text-sm font-bold text-text-secondary mt-1">
               راقب أداء المبيعات لحظة بلحظة لقرارات أسرع وأدق.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportSnapshot} disabled={exporting}
-            className="flex items-center gap-2 rounded-[16px] border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-95 shadow-sm disabled:opacity-50">
+            className="flex items-center gap-2 rounded-[16px] border border-border-normal bg-bg-surface px-4 py-2.5 text-[12px] font-black text-text-primary hover:bg-bg-overlay transition-all active:scale-95 shadow-sm disabled:opacity-50">
             <Download className="w-4 h-4" /> {exporting ? "جاري التصدير..." : "تصدير لمحة"}
           </button>
-          <Link to="/reports/center" className="hidden md:flex items-center gap-4 bg-white border border-slate-200 rounded-[20px] py-2 px-4 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group">
+          <Link to="/reports/center" className="hidden md:flex items-center gap-4 bg-bg-surface border border-border-normal rounded-[20px] py-2 px-4 shadow-sm hover:shadow-md hover:border-border-strong transition-all group">
             <div className="flex flex-col text-left items-end">
-              <span className="text-[11px] font-black tracking-widest text-slate-400 uppercase">المركز</span>
-              <span className="text-sm font-bold text-slate-700">تقارير مفصلة</span>
+              <span className="text-[11px] font-black tracking-widest text-text-muted uppercase">المركز</span>
+              <span className="text-sm font-bold text-text-primary">تقارير مفصلة</span>
             </div>
-            <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center group-hover:bg-slate-100 text-slate-400 group-hover:text-slate-600 transition-colors">
+            <div className="w-10 h-10 rounded-[14px] bg-bg-overlay flex items-center justify-center group-hover:bg-bg-overlay text-text-muted group-hover:text-text-secondary transition-colors">
               <FileText className="w-5 h-5" />
             </div>
           </Link>
@@ -594,27 +609,27 @@ export default function AnalyticsPage() {
       <div className="w-full max-w-[1400px] mx-auto space-y-5 relative z-10">
 
         {/* Global Period Selector */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-white border border-slate-200/80 px-5 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border-normal/80 px-5 py-3 shadow-sm sticky top-0 z-20 backdrop-blur-xl bg-bg-surface/90">
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <span className="text-[13px] font-black text-slate-600">الفترة:</span>
+            <Calendar className="w-4 h-4 text-text-muted" />
+            <span className="text-[13px] font-black text-text-secondary">الفترة:</span>
           </div>
-          <div className="flex p-0.5 bg-slate-100 rounded-[12px] items-center shadow-inner border border-slate-200">
+          <div className="flex p-0.5 bg-bg-overlay rounded-[12px] items-center shadow-inner border border-border-normal">
             <select ref={globalDateModeRef}
               value={globalDateMode}
               onChange={e => setGlobalDateMode(e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, { nextRef: globalStartRef })}
-              className="bg-slate-200/50 hover:bg-slate-200 border-none outline-none text-[11px] font-black text-slate-700 py-1.5 px-2 rounded-[9px] transition-colors cursor-pointer"
+              className="bg-border-normal/50 hover:bg-border-normal border-none outline-none text-[11px] font-black text-text-primary py-1.5 px-2 rounded-[9px] transition-colors cursor-pointer"
             >
               <option value="predefined">فترة محددة</option>
               <option value="custom">تاريخ مخصص</option>
             </select>
-            <div className="h-4 w-px bg-slate-300 mx-1" />
+            <div className="h-4 w-px bg-border-strong mx-1" />
             {globalDateMode === "predefined" ? (
               <div className="flex">
                 {[1, 7, 14, 30].map(days => (
                   <button key={days} onClick={() => setGlobalRange(days)}
-                    className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${globalRange === days ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
+                    className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${globalRange === days ? "bg-indigo-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary hover:bg-border-normal/50"}`}
                   >{days === 1 ? 'يوم' : days === 7 ? 'أسبوع' : days === 14 ? '١٤ي' : 'شهر'}</button>
                 ))}
               </div>
@@ -624,14 +639,14 @@ export default function AnalyticsPage() {
                   type="date" value={globalCustomDates.start}
                   onChange={e => setGlobalCustomDates(c => ({...c, start: e.target.value}))}
                   onKeyDown={(e) => handleKeyDown(e, { nextRef: globalEndRef, prevRef: globalDateModeRef })}
-                  className="text-[11px] bg-white rounded-[8px] px-2 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                  className="text-[11px] bg-bg-surface rounded-[8px] px-2 py-1 outline-none border border-border-normal font-mono shadow-sm"
                 />
-                <span className="text-[11px] uppercase font-black tracking-widest text-slate-400">الي</span>
+                <span className="text-[11px] uppercase font-black tracking-widest text-text-muted">الي</span>
                 <input ref={globalEndRef}
                   type="date" value={globalCustomDates.end}
                   onChange={e => setGlobalCustomDates(c => ({...c, end: e.target.value}))}
                   onKeyDown={(e) => handleKeyDown(e, { nextRef: globalDateModeRef, prevRef: globalStartRef })}
-                  className="text-[11px] bg-white rounded-[8px] px-2 py-1 outline-none border border-slate-200 font-mono shadow-sm"
+                  className="text-[11px] bg-bg-surface rounded-[8px] px-2 py-1 outline-none border border-border-normal font-mono shadow-sm"
                 />
               </div>
             )}
@@ -641,7 +656,7 @@ export default function AnalyticsPage() {
         {/* Live snapshot — these cards are always "now" and intentionally do NOT follow the period selector */}
         <div className="flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <h2 className="text-[13px] font-black text-slate-500 uppercase tracking-widest">مؤشرات الفترة دي — {periodLabel}</h2>
+          <h2 className="text-[13px] font-black text-text-secondary uppercase tracking-widest">مؤشرات الفترة دي — {periodLabel}</h2>
         </div>
 
         {/* Metrics Ribbon */}
@@ -675,37 +690,37 @@ export default function AnalyticsPage() {
         {/* Selected Period Comparison Strip */}
         {currentPeriodCompare && previousPeriodCompare && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">مبيعات الفترة</span>
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/60 p-4 flex flex-col gap-1 shadow-sm">
+              <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">مبيعات الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.net_sales ?? currentPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
+                <span className="text-[22px] font-black text-text-primary tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.net_sales ?? currentPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
                 <TrendBadge current={Number(currentPeriodCompare.net_sales ?? currentPeriodCompare.gross_sales ?? 0)} previous={Number(previousPeriodCompare.net_sales ?? previousPeriodCompare.gross_sales ?? 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">{periodLabel} · السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.net_sales ?? previousPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
+              <span className="text-[11px] font-bold text-text-muted">{periodLabel} · السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.net_sales ?? previousPeriodCompare.gross_sales ?? 0} /></SensitiveValue></span>
             </div>
-            <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">فواتير الفترة</span>
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/60 p-4 flex flex-col gap-1 shadow-sm">
+              <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">فواتير الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums">{currentPeriodCompare.invoice_count || 0}</span>
+                <span className="text-[22px] font-black text-text-primary tabular-nums">{currentPeriodCompare.invoice_count || 0}</span>
                 <TrendBadge current={Number(currentPeriodCompare.invoice_count || 0)} previous={Number(previousPeriodCompare.invoice_count || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">السابق: {previousPeriodCompare.invoice_count || 0}</span>
+              <span className="text-[11px] font-bold text-text-muted">السابق: {previousPeriodCompare.invoice_count || 0}</span>
             </div>
-            <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ربح الفترة</span>
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/60 p-4 flex flex-col gap-1 shadow-sm">
+              <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">ربح الفترة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
+                <span className="text-[22px] font-black text-text-primary tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
                 <TrendBadge current={Number(currentPeriodCompare.gross_profit || 0)} previous={Number(previousPeriodCompare.gross_profit || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
+              <span className="text-[11px] font-bold text-text-muted">السابق: <SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={previousPeriodCompare.gross_profit || 0} /></SensitiveValue></span>
             </div>
-            <div className="rounded-[20px] bg-white border border-slate-200/60 p-4 flex flex-col gap-1 shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">متوسط الفاتورة</span>
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/60 p-4 flex flex-col gap-1 shadow-sm">
+              <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">متوسط الفاتورة</span>
               <div className="flex items-center gap-2">
-                <span className="text-[22px] font-black text-slate-900 tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.avg_basket || 0} /></SensitiveValue></span>
+                <span className="text-[22px] font-black text-text-primary tabular-nums"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={currentPeriodCompare.avg_basket || 0} /></SensitiveValue></span>
                 <TrendBadge current={Number(currentPeriodCompare.avg_basket || 0)} previous={Number(previousPeriodCompare.avg_basket || 0)} />
               </div>
-              <span className="text-[11px] font-bold text-slate-400">مقارنة بالفترة السابقة المساوية</span>
+              <span className="text-[11px] font-bold text-text-muted">مقارنة بالفترة السابقة المساوية</span>
             </div>
           </div>
         )}
@@ -713,35 +728,35 @@ export default function AnalyticsPage() {
         <div className="grid gap-5 xl:grid-cols-[1fr_minmax(350px,400px)]">
           
           {/* Main Chart Area */}
-          <div data-help="sales-chart" className="flex flex-col min-w-0 rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
+          <div data-help="sales-chart" className="flex flex-col min-w-0 rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 md:p-8 shadow-sm">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-6">
               <div>
-                <h2 className="text-[20px] font-black text-slate-900 tracking-tight">حركة المبيعات</h2>
+                <h2 className="text-[20px] font-black text-text-primary tracking-tight">حركة المبيعات</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  <span className="text-2sm font-bold text-slate-500">مبيعات الفترة المحددة · {periodLabel}</span>
+                  <span className="text-2sm font-bold text-text-secondary">مبيعات الفترة المحددة · {periodLabel}</span>
                 </div>
               </div>
 
               {/* Controls */}
               <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
                 {/* Metric Selector */}
-                <div className="flex p-1 bg-slate-100 rounded-[14px]">
+                <div className="flex p-1 bg-bg-overlay rounded-[14px]">
                   <button
                     onClick={() => setChartMetric("revenue")}
-                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "revenue" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "revenue" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                   >
                     بالقيمة
                   </button>
                   <button
                     onClick={() => setChartMetric("profit")}
-                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "profit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "profit" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                   >
                     بالربح
                   </button>
                   <button
                     onClick={() => setChartMetric("count")}
-                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-4 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${chartMetric === "count" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                   >
                     بالعدد
                   </button>
@@ -750,7 +765,7 @@ export default function AnalyticsPage() {
                 <button
                   onClick={() => setShowMarginLine(v => !v)}
                   className={`px-3 py-1.5 rounded-[10px] text-[11px] font-black transition-all border ${
-                    showMarginLine ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-transparent hover:border-slate-200"
+                    showMarginLine ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-bg-overlay text-text-secondary border-transparent hover:border-border-normal"
                   }`}
                 >
                   <Percent className="w-3.5 h-3.5 inline ml-1" />
@@ -762,8 +777,8 @@ export default function AnalyticsPage() {
             
             <div className="h-[360px] min-h-[360px] min-w-0 flex-1 relative">
               {!canViewSensitive && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-[24px]">
-                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg-surface/60 backdrop-blur-[2px] rounded-[24px]">
+                  <div className="flex flex-col items-center gap-2 text-text-muted">
                     <span className="text-2xl">🔒</span>
                     <span className="text-[13px] font-black tracking-widest">بيانات مالية مقيدة</span>
                   </div>
@@ -826,19 +841,19 @@ export default function AnalyticsPage() {
           <div className="flex flex-col gap-5">
             
             {/* Top Categories Distribution */}
-            <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
+            <div className="rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm flex flex-col">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-[16px] font-black text-slate-900 tracking-tight">توزيع المبيعات بالأقسام</h3>
-                  <p className="mt-0.5 text-[11px] font-bold text-slate-400">{periodLabel}</p>
+                  <h3 className="text-[16px] font-black text-text-primary tracking-tight">توزيع المبيعات بالأقسام</h3>
+                  <p className="mt-0.5 text-[11px] font-bold text-text-muted">{periodLabel}</p>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-[14px]">
-                  <PieChart className="w-5 h-5 text-slate-500" />
+                <div className="bg-bg-overlay p-2 rounded-[14px]">
+                  <PieChart className="w-5 h-5 text-text-secondary" />
                 </div>
               </div>
               <div className="flex-1 space-y-3">
                 {topCategories.length === 0 ? (
-                  <div className="text-center text-sm text-slate-400 font-bold py-6">مفيش بيانات كافية للأقسام</div>
+                  <div className="text-center text-sm text-text-muted font-bold py-6">مفيش بيانات كافية للأقسام</div>
                 ) : (
                   topCategories.map((cat, idx) => {
                     const maxRev = topCategories[0].revenue || 1;
@@ -847,15 +862,15 @@ export default function AnalyticsPage() {
                     return (
                       <div key={idx} className="relative">
                         <div className="flex justify-between text-[11px] font-black mb-1.5 relative z-10 px-1">
-                          <span className="text-slate-700">{cat.category_name}</span>
-                          <span className="text-slate-900"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={cat.revenue || 0} /></SensitiveValue></span>
+                          <span className="text-text-primary">{cat.category_name}</span>
+                          <span className="text-text-primary"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={cat.revenue || 0} /></SensitiveValue></span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-bg-overlay rounded-full overflow-hidden">
                           <div className="h-full bg-slate-900 rounded-full" style={{ width: `${percent}%` }} />
                         </div>
                         {canViewSensitive && (
                           <div className="flex items-center justify-between mt-1 px-1">
-                            <span className="text-[10px] font-bold text-slate-400">ربح: <CurrencyDisplay value={cat.gross_profit || 0} /></span>
+                            <span className="text-[10px] font-bold text-text-muted">ربح: <CurrencyDisplay value={cat.gross_profit || 0} /></span>
                             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${margin >= 20 ? "bg-emerald-50 text-emerald-700" : margin >= 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>
                               {margin.toFixed(1)}%
                             </span>
@@ -869,17 +884,17 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Cash Flow Mini-Chart */}
-            <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm relative">
+            <div className="rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm relative">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ArrowLeftRight className="w-5 h-5 text-slate-400" />
+                  <ArrowLeftRight className="w-5 h-5 text-text-muted" />
                   <SmartTooltip content={"التدفق النقدي بيشمل كل الإيرادات والمصروفات خلال الفترة\n\nالمبيعات الكل: كل طرق الدفع (نقدي + بطاقة + آجل)\nالمبيعات النقدية: بس اللي اتدفعت كاش فعلياً\n\nالفرق بينهم هو المبيعات الآجلة وبطاقة الائتمان"} side="top" wide>
-                    <h3 className="text-[14px] font-black text-slate-900">التدفق النقدي · {periodLabel}</h3>
+                    <h3 className="text-[14px] font-black text-text-primary">التدفق النقدي · {periodLabel}</h3>
                   </SmartTooltip>
                 </div>
               </div>
               {!canViewSensitive ? (
-                <div className="h-20 flex items-center justify-center text-slate-300 font-bold text-sm gap-2">
+                <div className="h-20 flex items-center justify-center text-text-muted font-bold text-sm gap-2">
                   <span>🔒</span> بيانات مقيدة
                 </div>
               ) : cashFlow.length > 0 ? (
@@ -908,14 +923,14 @@ export default function AnalyticsPage() {
                           if (!active || !payload?.length) return null;
                           const d = payload[0].payload;
                           return (
-                            <div className="rounded-[12px] border border-white/40 bg-white/80 backdrop-blur px-3 py-2 text-xs shadow-lg">
-                              <div className="font-bold text-slate-500 mb-1">{label}</div>
+                            <div className="rounded-[12px] border border-border-normal/40 bg-bg-surface/80 backdrop-blur px-3 py-2 text-xs shadow-lg">
+                              <div className="font-bold text-text-secondary mb-1">{label}</div>
                               <div className="text-emerald-700 font-bold">كل المبيعات: <CurrencyDisplay value={d.sales} /></div>
                               <div className="text-indigo-600 font-bold">مبيعات نقدية: <CurrencyDisplay value={d.cash_sales} /></div>
                               <div className="text-amber-500 font-bold">إيرادات: <CurrencyDisplay value={d.revenues} /></div>
                               <div className="text-rose-600 font-bold">مصروفات: <CurrencyDisplay value={d.expenses} /></div>
                               {d.withdrawals > 0 && <div className="text-rose-400 font-bold">مسحوبات: <CurrencyDisplay value={d.withdrawals} /></div>}
-                              <div className={`border-t border-slate-100 mt-1 pt-1 font-black ${d.net >= 0 ? "text-emerald-800" : "text-rose-800"}`}>
+                              <div className={`border-t border-border-subtle mt-1 pt-1 font-black ${d.net >= 0 ? "text-emerald-800" : "text-rose-800"}`}>
                                 الصافي (كل المبيعات): <CurrencyDisplay value={d.net} />
                               </div>
                               <div className={`font-black ${d.cash_net >= 0 ? "text-indigo-700" : "text-rose-700"}`}>
@@ -931,12 +946,12 @@ export default function AnalyticsPage() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-20 flex items-center justify-center text-slate-400 font-bold text-sm">مفيش بيانات</div>
+                <div className="h-20 flex items-center justify-center text-text-muted font-bold text-sm">مفيش بيانات</div>
               )}
               {canViewSensitive && cashFlow.length > 0 && (
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-subtle">
                   <SmartTooltip content={"كل المبيعات (نقدي + آجل + بطاقة) + الإيرادات المنفصلة"} side="bottom">
-                    <span className="text-[11px] font-bold text-slate-500 cursor-help">
+                    <span className="text-[11px] font-bold text-text-secondary cursor-help">
                       الداخل: <CurrencyDisplay value={cashFlow.reduce((s, d) => s + d.sales + d.revenues, 0)} />
                     </span>
                   </SmartTooltip>
@@ -958,11 +973,11 @@ export default function AnalyticsPage() {
                    <div className="text-[11px] font-bold text-indigo-200 mt-1 uppercase tracking-widest">كل الأصناف</div>
                  </div>
               </div>
-              <div className="rounded-[24px] bg-white p-5 border border-slate-200 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                 <Boxes className="w-6 h-6 text-slate-400" />
+              <div className="rounded-[24px] bg-bg-surface p-5 border border-border-normal flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                 <Boxes className="w-6 h-6 text-text-muted" />
                  <div>
-                   <div className="text-[28px] font-black tracking-tighter text-slate-900 leading-none mt-2">{inventoryHealth.lowStock}</div>
-                   <div className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">أصناف ناقصة</div>
+                   <div className="text-[28px] font-black tracking-tighter text-text-primary leading-none mt-2">{inventoryHealth.lowStock}</div>
+                   <div className="text-[11px] font-bold text-text-muted mt-1 uppercase tracking-widest">أصناف ناقصة</div>
                  </div>
               </div>
             </div>
@@ -971,36 +986,37 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Day-of-Week Heatmap */}
-        <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
+        <LazySection>
+        <div className="rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 md:p-8 shadow-sm">
           {/* Header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-[16px] bg-slate-50 flex items-center justify-center text-slate-500">
+              <div className="w-11 h-11 rounded-[16px] bg-bg-overlay flex items-center justify-center text-text-secondary">
                 <Grid3X3 className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-[18px] font-black text-slate-900 tracking-tight">خريطة حرارة المبيعات</h2>
-                <p className="text-2sm font-bold text-slate-500">توزيع المبيعات حسب اليوم والساعة · {periodLabel}</p>
+                <h2 className="text-[18px] font-black text-text-primary tracking-tight">خريطة حرارة المبيعات</h2>
+                <p className="text-2sm font-bold text-text-secondary">توزيع المبيعات حسب اليوم والساعة · {periodLabel}</p>
               </div>
             </div>
 
             {/* Controls row */}
             <div className="flex flex-wrap items-center gap-2">
               {/* Metric toggle */}
-              <div className="flex p-0.5 bg-slate-100 rounded-[12px]">
+              <div className="flex p-0.5 bg-bg-overlay rounded-[12px]">
                 <button onClick={() => setHeatmapMetric("total_sales")}
-                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "total_sales" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "total_sales" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                 >بالقيمة</button>
                 <button onClick={() => setHeatmapMetric("invoice_count")}
-                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "invoice_count" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`px-3 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapMetric === "invoice_count" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                 >بالعدد</button>
               </div>
 
               {/* Granularity toggle */}
-              <div className="flex p-0.5 bg-slate-100 rounded-[12px]">
+              <div className="flex p-0.5 bg-bg-overlay rounded-[12px]">
                 {[1, 2, 4].map(g => (
                   <button key={g} onClick={() => setHeatmapGranularity(g)}
-                    className={`px-2.5 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapGranularity === g ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    className={`px-2.5 py-1.5 rounded-[9px] text-[11px] font-black transition-all ${heatmapGranularity === g ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
                   >{g === 1 ? "ساعة" : g === 2 ? "ساعتين" : "٤س"}</button>
                 ))}
               </div>
@@ -1008,7 +1024,7 @@ export default function AnalyticsPage() {
 
 
               {heatmapLoading && (
-                <div className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin" />
+                <div className="w-4 h-4 rounded-full border-2 border-border-strong border-t-slate-600 animate-spin" />
               )}
             </div>
           </div>
@@ -1055,8 +1071,8 @@ export default function AnalyticsPage() {
                   <div className="sticky top-0 z-20 bg-[var(--bg-surface)]" />
                   {bucketLabels.map((label, bi) => (
                     <div key={label} className="sticky top-0 z-20 bg-[var(--bg-surface)] flex flex-col items-center justify-center mb-1 h-10 leading-tight">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{bucketDisplay[bi]}</span>
-                      <span className="text-[7px] font-bold text-slate-300 mt-0.5">{bucketSize === 1 ? 'ساعة' : `${bucketSize} ساعات`}</span>
+                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{bucketDisplay[bi]}</span>
+                      <span className="text-[7px] font-bold text-text-muted mt-0.5">{bucketSize === 1 ? 'ساعة' : `${bucketSize} ساعات`}</span>
                     </div>
                   ))}
 
@@ -1068,7 +1084,7 @@ export default function AnalyticsPage() {
                     const rowData = bucketedArr.filter(b => b.day === dayStr);
                     return (
                       <React.Fragment key={dayStr}>
-                        <div className="sticky right-0 z-10 bg-[var(--bg-surface)] text-[12px] font-bold text-slate-500 flex items-center h-10 pl-2 whitespace-nowrap">
+                        <div className="sticky right-0 z-10 bg-[var(--bg-surface)] text-[12px] font-bold text-text-secondary flex items-center h-10 pl-2 whitespace-nowrap">
                           {rowLabel}
                         </div>
                         {bucketLabels.map((bLabel, bi) => {
@@ -1112,89 +1128,91 @@ export default function AnalyticsPage() {
                     right: Math.min(hoveredCell.rect.right + 12, window.innerWidth - 280),
                     top: Math.max(hoveredCell.rect.top - 10, 8),
                   }}>
-                    <div className="rounded-[14px] bg-white px-5 py-3 text-xs shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-slate-200 whitespace-nowrap">
-                      <div className="font-black text-slate-900 mb-1.5">{hoveredCell.rowLabel} — {hoveredCell.bLabel}</div>
-                      <div className="text-slate-500 flex gap-5">
-                        <span>الفواتير: <strong className="text-slate-800">{Number(hoveredCell.cell?.invoice_count || 0).toLocaleString()}</strong></span>
-                        <span>المبيعات: <strong className="text-slate-800">{Number(hoveredCell.cell?.total_sales || 0).toLocaleString()} ج.م</strong></span>
+                    <div className="rounded-[14px] bg-bg-surface px-5 py-3 text-xs shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-border-normal whitespace-nowrap">
+                      <div className="font-black text-text-primary mb-1.5">{hoveredCell.rowLabel} — {hoveredCell.bLabel}</div>
+                      <div className="text-text-secondary flex gap-5">
+                        <span>الفواتير: <strong className="text-text-primary">{Number(hoveredCell.cell?.invoice_count || 0).toLocaleString()}</strong></span>
+                        <span>المبيعات: <strong className="text-text-primary">{Number(hoveredCell.cell?.total_sales || 0).toLocaleString()} ج.م</strong></span>
                       </div>
                       {Number(hoveredCell.cell?.avg_sale || 0) > 0 && (
-                        <div className="text-slate-500 mt-1">
-                          متوسط الفاتورة: <strong className="text-slate-800">{Number(hoveredCell.cell?.avg_sale).toLocaleString()} ج.م</strong>
+                        <div className="text-text-secondary mt-1">
+                          متوسط الفاتورة: <strong className="text-text-primary">{Number(hoveredCell.cell?.avg_sale).toLocaleString()} ج.م</strong>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
                 {/* Legend */}
-                <div className="flex items-center justify-center gap-3 mt-5 pt-4 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-400">منخفض</span>
+                <div className="flex items-center justify-center gap-3 mt-5 pt-4 border-t border-border-subtle">
+                  <span className="text-[11px] font-bold text-text-muted">منخفض</span>
                   <div className="flex h-3 w-36 rounded-full overflow-hidden" style={{
                     background: "linear-gradient(to left, color-mix(in srgb, var(--bg-surface) 95%, var(--primary) 5%), color-mix(in srgb, var(--bg-surface) 70%, var(--primary) 30%), color-mix(in srgb, var(--bg-surface) 40%, var(--primary) 60%))",
                   }} />
-                  <span className="text-[11px] font-bold text-slate-400">مرتفع</span>
-                  <span className="w-px h-4 bg-slate-200" />
-                  <span className="text-[11px] font-bold text-slate-400">{heatmapMetric === "total_sales" ? "قيمة المبيعات" : "عدد الفواتير"}</span>
-                  <span className="w-px h-4 bg-slate-200" />
-                  <span className="text-[11px] font-bold text-slate-400">{heatmapGranularity === 1 ? "كل ساعة" : heatmapGranularity === 2 ? "كل ساعتين" : "كل ٤ ساعات"}</span>
-                  <span className="w-px h-4 bg-slate-200" />
-                  <span className="text-[11px] font-bold text-slate-400">{globalDateMode === "custom" ? "مخصص" : `${globalRange} يوم`}</span>
+                  <span className="text-[11px] font-bold text-text-muted">مرتفع</span>
+                  <span className="w-px h-4 bg-border-normal" />
+                  <span className="text-[11px] font-bold text-text-muted">{heatmapMetric === "total_sales" ? "قيمة المبيعات" : "عدد الفواتير"}</span>
+                  <span className="w-px h-4 bg-border-normal" />
+                  <span className="text-[11px] font-bold text-text-muted">{heatmapGranularity === 1 ? "كل ساعة" : heatmapGranularity === 2 ? "كل ساعتين" : "كل ٤ ساعات"}</span>
+                  <span className="w-px h-4 bg-border-normal" />
+                  <span className="text-[11px] font-bold text-text-muted">{globalDateMode === "custom" ? "مخصص" : `${globalRange} يوم`}</span>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-40 text-sm font-bold text-slate-400">
+              <div className="flex items-center justify-center h-40 text-sm font-bold text-text-muted">
                 {heatmapLoading ? "بنحمل البيانات..." : "مفيش بيانات كافية"}
               </div>
             );
           })()}
         </div>
+        </LazySection>
 
         {/* Peak-hours insight — derived from the heatmap data above */}
         {peakInsight && (peakInsight.bestDay || peakInsight.bestCell) && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-[20px] bg-white border border-slate-200/70 p-4 flex items-center gap-3 shadow-sm">
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/70 p-4 flex items-center gap-3 shadow-sm">
               <div className="w-10 h-10 rounded-[14px] bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5" /></div>
               <div className="min-w-0">
-                <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">أفضل يوم</div>
-                <div className="text-[15px] font-black text-slate-900 truncate">{peakInsight.bestDay?.name || "—"}</div>
-                {canViewSensitive && peakInsight.bestDay && <div className="text-[11px] font-bold text-slate-500"><CurrencyDisplay value={peakInsight.bestDay.value} /></div>}
+                <div className="text-[11px] font-black text-text-muted uppercase tracking-widest">أفضل يوم</div>
+                <div className="text-[15px] font-black text-text-primary truncate">{peakInsight.bestDay?.name || "—"}</div>
+                {canViewSensitive && peakInsight.bestDay && <div className="text-[11px] font-bold text-text-secondary"><CurrencyDisplay value={peakInsight.bestDay.value} /></div>}
               </div>
             </div>
-            <div className="rounded-[20px] bg-white border border-slate-200/70 p-4 flex items-center gap-3 shadow-sm">
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/70 p-4 flex items-center gap-3 shadow-sm">
               <div className="w-10 h-10 rounded-[14px] bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><Clock className="w-5 h-5" /></div>
               <div className="min-w-0">
-                <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ساعة الذروة</div>
-                <div className="text-[15px] font-black text-slate-900">{peakInsight.bestHour ? `${String(peakInsight.bestHour.hour).padStart(2, "0")}:00` : "—"}</div>
-                {canViewSensitive && peakInsight.bestHour && <div className="text-[11px] font-bold text-slate-500"><CurrencyDisplay value={peakInsight.bestHour.value} /></div>}
+                <div className="text-[11px] font-black text-text-muted uppercase tracking-widest">ساعة الذروة</div>
+                <div className="text-[15px] font-black text-text-primary">{peakInsight.bestHour ? `${String(peakInsight.bestHour.hour).padStart(2, "0")}:00` : "—"}</div>
+                {canViewSensitive && peakInsight.bestHour && <div className="text-[11px] font-bold text-text-secondary"><CurrencyDisplay value={peakInsight.bestHour.value} /></div>}
               </div>
             </div>
-            <div className="rounded-[20px] bg-white border border-slate-200/70 p-4 flex items-center gap-3 shadow-sm">
+            <div className="rounded-[20px] bg-bg-surface border border-border-normal/70 p-4 flex items-center gap-3 shadow-sm">
               <div className="w-10 h-10 rounded-[14px] bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></div>
               <div className="min-w-0">
-                <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">أقوى فترة مبيعات</div>
-                <div className="text-[15px] font-black text-slate-900 truncate">{peakInsight.bestCell ? `${peakInsight.bestCell.name} ${String(peakInsight.bestCell.hour).padStart(2, "0")}:00` : "—"}</div>
-                {canViewSensitive && peakInsight.bestCell && <div className="text-[11px] font-bold text-slate-500"><CurrencyDisplay value={peakInsight.bestCell.value} /></div>}
+                <div className="text-[11px] font-black text-text-muted uppercase tracking-widest">أقوى فترة مبيعات</div>
+                <div className="text-[15px] font-black text-text-primary truncate">{peakInsight.bestCell ? `${peakInsight.bestCell.name} ${String(peakInsight.bestCell.hour).padStart(2, "0")}:00` : "—"}</div>
+                {canViewSensitive && peakInsight.bestCell && <div className="text-[11px] font-bold text-text-secondary"><CurrencyDisplay value={peakInsight.bestCell.value} /></div>}
               </div>
             </div>
           </div>
         )}
 
         {/* Lower Row: Top Selling Items & Top Customers & Low Stock */}
+        <LazySection>
         <div className="grid gap-5 xl:grid-cols-[2fr_1fr_1fr]">
           
           {/* Top Selling Items */}
-          <div data-help="top-items" className="rounded-[32px] border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">
+          <div data-help="top-items" className="rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 md:p-8 shadow-sm">
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-[18px] font-black text-slate-900 tracking-tight">
+                <h2 className="text-[18px] font-black text-text-primary tracking-tight">
                   الأصناف {itemsSort === 'top' ? 'الأكثر' : 'الأقل'} مبيعاً
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                   <select ref={itemsSortRef} value={itemsSort} onChange={e => setItemsSort(e.target.value)} onKeyDown={(e) => handleKeyDown(e, {})} className="text-2sm font-bold bg-white border border-slate-200 shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-slate-700 cursor-pointer">
+                   <select ref={itemsSortRef} value={itemsSort} onChange={e => setItemsSort(e.target.value)} onKeyDown={(e) => handleKeyDown(e, {})} className="text-2sm font-bold bg-bg-surface border border-border-normal shadow-sm rounded-[10px] px-2 py-1.5 outline-none text-text-primary cursor-pointer">
                      <option value="top">الأكثر مبيعاً</option>
                      <option value="bottom">الأقل مبيعاً</option>
                    </select>
-<span className="text-[11px] font-bold text-slate-400">{periodLabel}</span>
+<span className="text-[11px] font-bold text-text-muted">{periodLabel}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
@@ -1210,7 +1228,7 @@ export default function AnalyticsPage() {
 
             {topItems.length > 0 && (() => {
               const max = Math.max(...topItems.map(i => Number(i.revenue || 0)), 1);
-              const rankColors = ["bg-amber-400", "bg-slate-400", "bg-orange-400", "bg-slate-300", "bg-slate-200"];
+              const rankColors = ["bg-amber-400", "bg-text-muted", "bg-orange-400", "bg-border-strong", "bg-border-normal"];
               return (
                 <div className="flex flex-col gap-3 mb-4">
                   {topItems.map((item, idx) => {
@@ -1218,20 +1236,20 @@ export default function AnalyticsPage() {
                     const margin = Number(item.margin_percent || 0);
                     return (
                       <div key={idx} className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0 ${rankColors[idx] || "bg-slate-200"}`}>{idx + 1}</span>
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0 ${rankColors[idx] || "bg-border-normal"}`}>{idx + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-bold text-slate-800 truncate">
-                              {item.item_code && <span className="font-mono text-[10px] font-black text-slate-400 ml-1" dir="ltr">{item.item_code} · </span>}
+                            <span className="text-sm font-bold text-text-primary truncate">
+                              {item.item_code && <span className="font-mono text-[10px] font-black text-text-muted ml-1" dir="ltr">{item.item_code} · </span>}
                               {item.item_name}
                             </span>
-                            <span className="text-sm font-black text-slate-900 tabular-nums shrink-0 mr-3"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={item.revenue} /></SensitiveValue></span>
+                            <span className="text-sm font-black text-text-primary tabular-nums shrink-0 mr-3"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={item.revenue} /></SensitiveValue></span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="flex-1 h-2 bg-bg-overlay rounded-full overflow-hidden">
                               <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="text-[10px] font-black tabular-nums shrink-0 text-slate-500 w-14 text-left">{Number(item.quantity_sold || 0)} و</span>
+                            <span className="text-[10px] font-black tabular-nums shrink-0 text-text-secondary w-14 text-left">{Number(item.quantity_sold || 0)} و</span>
                             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${margin >= 20 ? "bg-emerald-50 text-emerald-700" : margin >= 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>
                               {margin.toFixed(1)}%
                             </span>
@@ -1244,10 +1262,10 @@ export default function AnalyticsPage() {
               );
             })()}
             {topItems.length === 0 && !itemsLoading && (
-              <div className="text-center py-10 text-sm text-slate-400 font-bold">مفيش مبيعات في الفترة دي</div>
+              <div className="text-center py-10 text-sm text-text-muted font-bold">مفيش مبيعات في الفترة دي</div>
             )}
             {itemsLoading && (
-              <div className="flex items-center justify-center py-10 text-slate-300 animate-pulse">
+              <div className="flex items-center justify-center py-10 text-text-muted animate-pulse">
                 <Activity className="w-6 h-6 animate-spin" />
               </div>
             )}
@@ -1270,34 +1288,34 @@ export default function AnalyticsPage() {
           )}
 
           {/* Top Customers Widget */}
-          <div className="rounded-[32px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
+          <div className="rounded-[32px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm flex flex-col">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-start gap-2">
-                <Users className="mt-0.5 w-5 h-5 text-slate-500" />
+                <Users className="mt-0.5 w-5 h-5 text-text-secondary" />
                 <div>
-                  <h3 className="text-[16px] font-black text-slate-900">أفضل العملاء</h3>
-                  <p className="mt-0.5 text-[11px] font-bold text-slate-400">{periodLabel}</p>
+                  <h3 className="text-[16px] font-black text-text-primary">أفضل العملاء</h3>
+                  <p className="mt-0.5 text-[11px] font-bold text-text-muted">{periodLabel}</p>
                 </div>
               </div>
               <Link to="/reports/center" className="text-[10px] font-black text-indigo-600 hover:underline">تقرير كامل ←</Link>
             </div>
             {topCustomers.length === 0 ? (
-              <div className="text-center py-8 text-sm text-slate-400 font-bold">مفيش بيانات</div>
+              <div className="text-center py-8 text-sm text-text-muted font-bold">مفيش بيانات</div>
             ) : (
               <div className="flex-1 space-y-2">
                 {topCustomers.map((c, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-[14px] hover:bg-slate-50 transition-colors">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white shrink-0 ${i === 0 ? "bg-amber-400" : i === 1 ? "bg-slate-400" : i === 2 ? "bg-orange-400" : "bg-slate-200 text-slate-500"}`}>
+                  <div key={i} className="flex items-center gap-3 p-2 rounded-[14px] hover:bg-bg-overlay transition-colors">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white shrink-0 ${i === 0 ? "bg-amber-400" : i === 1 ? "bg-text-muted" : i === 2 ? "bg-orange-400" : "bg-border-normal text-text-secondary"}`}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-slate-800 truncate">{c.customer_name}</div>
-                      <div className="text-[10px] font-bold text-slate-400">
+                      <div className="text-sm font-bold text-text-primary truncate">{c.customer_name}</div>
+                      <div className="text-[10px] font-bold text-text-muted">
                         {Number(c.invoice_count || 0)} فاتورة
                         {c.phone && <span className="mr-2 font-mono">{c.phone}</span>}
                       </div>
                     </div>
-                    <span className="text-sm font-black text-slate-900 tabular-nums shrink-0"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={c.total_sales} /></SensitiveValue></span>
+                    <span className="text-sm font-black text-text-primary tabular-nums shrink-0"><SensitiveValue canView={canViewSensitive}><CurrencyDisplay value={c.total_sales} /></SensitiveValue></span>
                   </div>
                 ))}
               </div>
@@ -1305,13 +1323,13 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Low Stock Detailed List */}
-          <div className="rounded-[32px] border border-orange-200/50 bg-gradient-to-b from-orange-50/50 to-white p-6 shadow-sm flex flex-col">
+          <div className="rounded-[32px] border border-orange-200/50 bg-gradient-to-b from-orange-50/50 to-bg-surface p-6 shadow-sm flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[16px] bg-orange-100/50 text-orange-600 flex items-center justify-center border border-orange-100">
                   <Pickaxe className="w-5 h-5" />
                 </div>
-                <h2 className="text-[16px] font-black text-slate-900 tracking-tight">تنبيهات المخزون</h2>
+                <h2 className="text-[16px] font-black text-text-primary tracking-tight">تنبيهات المخزون</h2>
               </div>
               {lowStock.length > 0 && (
                 <button
@@ -1353,25 +1371,25 @@ export default function AnalyticsPage() {
             
             <div className="flex-1 flex flex-col gap-2">
               {lowStock.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 h-full text-center bg-white rounded-[16px] border border-slate-100">
+                <div className="flex flex-col items-center justify-center py-8 h-full text-center bg-bg-surface rounded-[16px] border border-border-subtle">
                    <div className="w-12 h-12 bg-emerald-100/50 rounded-full flex items-center justify-center text-emerald-500 mb-3">
                      <Sparkles className="w-5 h-5" />
                    </div>
-                   <span className="text-[14px] font-black text-slate-800">المخزون تمام — مفيش مشاكل</span>
-                   <span className="text-2sm font-bold text-slate-500 mt-1">مفيش أصناف تحت الحد الأدنى للطلب.</span>
+                   <span className="text-[14px] font-black text-text-primary">المخزون تمام — مفيش مشاكل</span>
+                   <span className="text-2sm font-bold text-text-secondary mt-1">مفيش أصناف تحت الحد الأدنى للطلب.</span>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {lowStock.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-[16px] border border-slate-100 bg-white p-3 hover:border-orange-200 transition-all hover:shadow-sm group">
+                    <div key={item.id} className="flex items-center justify-between rounded-[16px] border border-border-subtle bg-bg-surface p-3 hover:border-orange-200 transition-all hover:shadow-sm group">
                       <div className="min-w-0 flex flex-col gap-0.5">
-                        <span className="font-bold text-slate-800 text-sm">{item.name}</span>
+                        <span className="font-bold text-text-primary text-sm">{item.name}</span>
                         {item.item_code ? (
-                          <span className="font-mono text-[11px] font-bold text-slate-500 tabular-nums" dir="ltr">SKU: {item.item_code}</span>
+                          <span className="font-mono text-[11px] font-bold text-text-secondary tabular-nums" dir="ltr">SKU: {item.item_code}</span>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">رصيد</span>
+                        <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">رصيد</span>
                         <span className="inline-flex items-center justify-center h-7 px-3 bg-red-50 text-red-600 rounded-full text-[11px] font-black ring-1 ring-red-100 group-hover:scale-105 transition-transform">
                           {Number(item.quantity || 0)}
                         </span>
@@ -1389,25 +1407,27 @@ export default function AnalyticsPage() {
           </div>
 
         </div>
+        </LazySection>
 
         {/* Payment Flow Preview */}
-        <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm">
+        <LazySection>
+        <div className="rounded-[28px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-slate-500" />
+              <Wallet className="h-5 w-5 text-text-secondary" />
               <div>
-                <h3 className="text-[16px] font-black text-slate-900">تدفقات وسائل الدفع</h3>
-                <p className="text-[11px] font-bold text-slate-400">{periodLabel}</p>
+                <h3 className="text-[16px] font-black text-text-primary">تدفقات وسائل الدفع</h3>
+                <p className="text-[11px] font-bold text-text-muted">{periodLabel}</p>
               </div>
             </div>
-            <Link to={paymentFlowReportHref} className="inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white hover:bg-slate-800">
+            <Link to={paymentFlowReportHref} className="inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white hover:bg-slate-900">
               فتح التقرير التفصيلي
             </Link>
           </div>
           {!canViewSensitive ? (
-            <div className="flex items-center justify-center py-8 text-sm font-bold text-slate-300">بيانات مقيدة</div>
+            <div className="flex items-center justify-center py-8 text-sm font-bold text-text-muted">بيانات مقيدة</div>
           ) : paymentFlow.length === 0 ? (
-            <div className="py-8 text-center text-sm font-bold text-slate-400">مفيش تدفقات مسجلة في الفترة</div>
+            <div className="py-8 text-center text-sm font-bold text-text-muted">مفيش تدفقات مسجلة في الفترة</div>
           ) : (() => {
             const totalIn = paymentFlow.reduce((s, m) => s + Number(m.total_in || 0), 0);
             const totalOut = paymentFlow.reduce((s, m) => s + Number(m.total_out || 0), 0);
@@ -1419,16 +1439,16 @@ export default function AnalyticsPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-2xl bg-emerald-50 p-4 text-center"><div className="text-[11px] font-black text-emerald-700">داخل</div><div className="mt-1 text-lg font-black text-emerald-800"><CurrencyDisplay value={totalIn} /></div></div>
                   <div className="rounded-2xl bg-rose-50 p-4 text-center"><div className="text-[11px] font-black text-rose-700">خارج</div><div className="mt-1 text-lg font-black text-rose-800"><CurrencyDisplay value={totalOut} /></div></div>
-                  <div className="rounded-2xl bg-slate-50 p-4 text-center"><div className="text-[11px] font-black text-slate-500">الصافي</div><div className={`mt-1 text-lg font-black ${net < 0 ? "text-rose-700" : "text-slate-900"}`}><CurrencyDisplay value={net} /></div></div>
+                  <div className="rounded-2xl bg-bg-overlay p-4 text-center"><div className="text-[11px] font-black text-text-secondary">الصافي</div><div className={`mt-1 text-lg font-black ${net < 0 ? "text-rose-700" : "text-text-primary"}`}><CurrencyDisplay value={net} /></div></div>
                 </div>
                 <div className="space-y-3">
                   {top.map((m) => (
                     <div key={m.method_id || m.method_name}>
                       <div className="mb-1 flex items-center justify-between text-[11px] font-black">
-                        <span className="text-slate-700">{m.method_name || "غير محدد"} <span className="text-[10px] text-slate-400">({m.transaction_count || 0})</span></span>
-                        <span className={Number(m.net_amount || 0) < 0 ? "text-rose-700" : "text-slate-900"}><CurrencyDisplay value={m.net_amount || 0} /></span>
+                        <span className="text-text-primary">{m.method_name || "غير محدد"} <span className="text-[10px] text-text-muted">({m.transaction_count || 0})</span></span>
+                        <span className={Number(m.net_amount || 0) < 0 ? "text-rose-700" : "text-text-primary"}><CurrencyDisplay value={m.net_amount || 0} /></span>
                       </div>
-                      <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-full bg-slate-100 p-1">
+                      <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-full bg-bg-overlay p-1">
                         <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${Math.max(3, (Number(m.total_in || 0) / max) * 100)}%` }} />
                         <div className="h-2 justify-self-end rounded-full bg-rose-500" style={{ width: `${Math.max(3, (Number(m.total_out || 0) / max) * 100)}%` }} />
                       </div>
@@ -1439,27 +1459,29 @@ export default function AnalyticsPage() {
             );
           })()}
         </div>
+        </LazySection>
 
         {/* Payment Mix + Discount Leakage */}
+        <LazySection>
         <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
           {/* Payment Mix */}
-          <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
+          <div className="rounded-[28px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm flex flex-col">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-slate-500" />
-                <h3 className="text-[16px] font-black text-slate-900">توزيع طرق الدفع</h3>
+                <Wallet className="w-5 h-5 text-text-secondary" />
+                <h3 className="text-[16px] font-black text-text-primary">توزيع طرق الدفع</h3>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">{periodLabel}</span>
+              <span className="text-[11px] font-bold text-text-muted">{periodLabel}</span>
             </div>
             {!canViewSensitive ? (
-              <div className="flex-1 flex items-center justify-center text-slate-300 font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
+              <div className="flex-1 flex items-center justify-center text-text-muted font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
             ) : paymentMix.length === 0 ? (
-              <div className="text-center py-8 text-sm text-slate-400 font-bold">مفيش مبيعات في الفترة</div>
+              <div className="text-center py-8 text-sm text-text-muted font-bold">مفيش مبيعات في الفترة</div>
             ) : (() => {
               const labels = { cash: "نقدي", card: "بطاقة", credit: "آجل", wallet: "محفظة", installments: "تقسيط", bank_transfer: "تحويل بنكي", multi: "متعدد" };
               const total = paymentMix.reduce((s, p) => s + Number(p.total_sales || 0), 0) || 1;
               const sorted = [...paymentMix].sort((a, b) => Number(b.total_sales || 0) - Number(a.total_sales || 0));
-              const colors = ["bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-slate-400"];
+              const colors = ["bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-text-muted"];
               return (
                 <div className="flex-1 space-y-3">
                   {sorted.map((p, idx) => {
@@ -1467,10 +1489,10 @@ export default function AnalyticsPage() {
                     return (
                       <div key={idx}>
                         <div className="flex justify-between text-[11px] font-black mb-1 px-1">
-                          <span className="text-slate-700">{labels[p.payment_type] || p.payment_type} <span className="text-[10px] font-bold text-slate-400">({Number(p.invoice_count || 0)} فاتورة)</span></span>
-                          <span className="text-slate-900"><CurrencyDisplay value={p.total_sales || 0} /> <span className="text-[10px] text-slate-400">{pct.toFixed(0)}%</span></span>
+                          <span className="text-text-primary">{labels[p.payment_type] || p.payment_type} <span className="text-[10px] font-bold text-text-muted">({Number(p.invoice_count || 0)} فاتورة)</span></span>
+                          <span className="text-text-primary"><CurrencyDisplay value={p.total_sales || 0} /> <span className="text-[10px] text-text-muted">{pct.toFixed(0)}%</span></span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-bg-overlay rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${colors[idx % colors.length]}`} style={{ width: `${Math.max(2, pct)}%` }} />
                         </div>
                       </div>
@@ -1482,38 +1504,38 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Discount Leakage */}
-          <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col">
+          <div className="rounded-[28px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm flex flex-col">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Percent className="w-5 h-5 text-amber-500" />
-                <h3 className="text-[16px] font-black text-slate-900">تسرّب الخصومات</h3>
+                <h3 className="text-[16px] font-black text-text-primary">تسرّب الخصومات</h3>
                 <SmartTooltip content={"نسبة الخصومات من قيمة البيع = إجمالي الخصومات ÷ (المبيعات + الخصومات)\n\nنسبة الخصومات من الربح = إجمالي الخصومات ÷ صافي الربح\n\nلو النسبة من الربح > 30%، يبقى الخصم بياكل حتة كبيرة من أرباحك — الأحسن تراجع سياسة الخصم"} side="top" wide>
-                  <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                  <Info className="w-4 h-4 text-text-muted cursor-help" />
                 </SmartTooltip>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">{periodLabel}</span>
+              <span className="text-[11px] font-bold text-text-muted">{periodLabel}</span>
             </div>
             {!canViewSensitive ? (
-              <div className="flex-1 flex items-center justify-center text-slate-300 font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
+              <div className="flex-1 flex items-center justify-center text-text-muted font-bold text-sm gap-2 py-8"><span>🔒</span> بيانات مقيدة</div>
             ) : (
               <div className="flex-1 flex flex-col justify-center gap-4">
                 <SmartTooltip content={"إجمالي قيمة الخصومات اللي اتدفعت على كل الفواتير في الفترة دي"} side="bottom">
                   <div className="flex flex-col items-center cursor-help">
                     <span className="text-[34px] font-black text-amber-600 leading-none"><CurrencyDisplay value={periodTotals.discount} /></span>
-                    <span className="text-[11px] font-bold text-slate-400 mt-1">إجمالي الخصومات الممنوحة</span>
+                    <span className="text-[11px] font-bold text-text-muted mt-1">إجمالي الخصومات الممنوحة</span>
                   </div>
                 </SmartTooltip>
                 <div className="grid grid-cols-2 gap-2">
                   <SmartTooltip content={"نسبة الخصومات مقارنة بقيمة المبيعات total قبل الخصم\n\nكل ما كانت النسبة أقل، كل ما كان أفضل"} side="bottom">
-                    <div className="rounded-[16px] bg-slate-50 p-3 text-center cursor-help">
-                      <div className="text-[18px] font-black text-slate-800">{periodTotals.discountRate.toFixed(1)}%</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-0.5">من قيمة البيع</div>
+                    <div className="rounded-[16px] bg-bg-overlay p-3 text-center cursor-help">
+                      <div className="text-[18px] font-black text-text-primary">{periodTotals.discountRate.toFixed(1)}%</div>
+                      <div className="text-[10px] font-bold text-text-muted mt-0.5">من قيمة البيع</div>
                     </div>
                   </SmartTooltip>
                   <SmartTooltip content={"نسبة الخصومات مقارنة بصافي الربح\n\nأكتر من 30% معناه إن الخصم بياكل جزء كبير من الأرباح"} side="bottom">
-                    <div className={`rounded-[16px] p-3 text-center cursor-help ${periodTotals.discountVsProfit > 30 ? "bg-rose-50" : "bg-slate-50"}`}>
-                      <div className={`text-[18px] font-black ${periodTotals.discountVsProfit > 30 ? "text-rose-600" : "text-slate-800"}`}>{periodTotals.discountVsProfit.toFixed(0)}%</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-0.5">من صافي الربح</div>
+                    <div className={`rounded-[16px] p-3 text-center cursor-help ${periodTotals.discountVsProfit > 30 ? "bg-rose-50" : "bg-bg-overlay"}`}>
+                      <div className={`text-[18px] font-black ${periodTotals.discountVsProfit > 30 ? "text-rose-600" : "text-text-primary"}`}>{periodTotals.discountVsProfit.toFixed(0)}%</div>
+                      <div className="text-[10px] font-bold text-text-muted mt-0.5">من صافي الربح</div>
                     </div>
                   </SmartTooltip>
                 </div>
@@ -1524,27 +1546,29 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
+        </LazySection>
 
         {/* Dead / Slow-moving Stock */}
-        <div className="rounded-[28px] border border-slate-200/80 bg-white p-6 shadow-sm flex flex-col gap-4">
+        <LazySection>
+        <div className="rounded-[28px] border border-border-normal/80 bg-bg-surface p-6 shadow-sm flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[16px] bg-slate-100 text-slate-500 flex items-center justify-center"><Package className="w-5 h-5" /></div>
+            <div className="w-10 h-10 rounded-[16px] bg-bg-overlay text-text-secondary flex items-center justify-center"><Package className="w-5 h-5" /></div>
             <div className="flex-1">
-              <h2 className="text-[16px] font-black text-slate-900 tracking-tight">مخزون راكد — مفيش مبيعات في الفترة دي</h2>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">أصناف عليها رصيد وماتباعتش في {periodLabel} — فلوس معلقة</p>
+              <h2 className="text-[16px] font-black text-text-primary tracking-tight">مخزون راكد — مفيش مبيعات في الفترة دي</h2>
+              <p className="text-[11px] font-bold text-text-muted mt-0.5">أصناف عليها رصيد وماتباعتش في {periodLabel} — فلوس معلقة</p>
             </div>
             <Link to="/reports/center" className="text-[11px] font-black text-indigo-600 hover:underline shrink-0">تقرير كامل ←</Link>
           </div>
           {deadStock.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-[16px] border border-slate-100">
+            <div className="flex flex-col items-center justify-center py-8 text-center bg-bg-overlay/50 rounded-[16px] border border-border-subtle">
               <Sparkles className="w-6 h-6 text-emerald-400 mb-2" />
-              <span className="text-[13px] font-black text-slate-700">مفيش مخزون راكد في الفترة دي</span>
+              <span className="text-[13px] font-black text-text-primary">مفيش مخزون راكد في الفترة دي</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-right text-sm">
                 <thead>
-                  <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                  <tr className="text-[10px] font-black uppercase tracking-widest text-text-muted border-b border-border-subtle">
                     <th className="py-2 px-2 text-right">الصنف</th>
                     <th className="py-2 px-2 text-right">الفئة</th>
                     <th className="py-2 px-2 text-center">الرصيد</th>
@@ -1552,14 +1576,14 @@ export default function AnalyticsPage() {
                     <th className="py-2 px-2 text-center">آخر بيع</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-border-subtle">
                   {deadStock.map((d, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/60">
-                      <td className="py-2.5 px-2 font-bold text-slate-800">{d.item_name}</td>
-                      <td className="py-2.5 px-2 text-[12px] font-bold text-slate-500">{d.category_name || "—"}</td>
-                      <td className="py-2.5 px-2 text-center font-black text-slate-700 tabular-nums">{Number(d.quantity || 0)}</td>
-                      {canViewSensitive && <td className="py-2.5 px-2 text-center font-black text-slate-900 tabular-nums"><CurrencyDisplay value={d.total_value || 0} /></td>}
-                      <td className="py-2.5 px-2 text-center text-[11px] font-bold text-slate-400">{d.last_sale_date || d.aging_bucket || "بدون حركة"}</td>
+                    <tr key={idx} className="hover:bg-bg-overlay/60">
+                      <td className="py-2.5 px-2 font-bold text-text-primary">{d.item_name}</td>
+                      <td className="py-2.5 px-2 text-[12px] font-bold text-text-secondary">{d.category_name || "—"}</td>
+                      <td className="py-2.5 px-2 text-center font-black text-text-primary tabular-nums">{Number(d.quantity || 0)}</td>
+                      {canViewSensitive && <td className="py-2.5 px-2 text-center font-black text-text-primary tabular-nums"><CurrencyDisplay value={d.total_value || 0} /></td>}
+                      <td className="py-2.5 px-2 text-center text-[11px] font-bold text-text-muted">{d.last_sale_date || d.aging_bucket || "بدون حركة"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1567,46 +1591,50 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
+        </LazySection>
 
         {/* Two-period comparison */}
+        <LazySection>
         <PeriodCompareSection
           compareA={compareA} setCompareA={setCompareA}
           compareB={compareB} setCompareB={setCompareB}
           result={compareResult} loading={compareLoading} onRun={runCompare}
           canViewSensitive={canViewSensitive} handleKeyDown={handleKeyDown}
         />
+        </LazySection>
 
         {/* Margin Health */}
-        <div className="rounded-[28px] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-4">
+        <LazySection>
+        <div className="rounded-[28px] bg-bg-surface/70 backdrop-blur-xl border border-border-normal/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[16px] bg-rose-100/50 text-rose-600 flex items-center justify-center border border-rose-100">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h2 className="text-[16px] font-black text-slate-900 tracking-tight">صحة الهوامش</h2>
+            <h2 className="text-[16px] font-black text-text-primary tracking-tight">صحة الهوامش</h2>
             <SmartTooltip content={"الهامش = (سعر البيع - متوسط التكلفة) ÷ سعر البيع × 100\n\nالأصناف اللي هنا: التكلفة بتاعتها >= سعر البيع يعني مكسبش فيها حاجة أو خسران\n\nبيتحسب على أساس متوسط التكلفة المرجح (WACC)"} side="top" wide>
-              <Info className="w-4 h-4 text-slate-400 cursor-help" />
+              <Info className="w-4 h-4 text-text-muted cursor-help" />
             </SmartTooltip>
             <Link to="/reports/margin-health" className="mr-auto text-[11px] font-black text-indigo-600 hover:underline">تقرير كامل ←</Link>
           </div>
           <div className="flex-1 flex flex-col gap-3">
             {belowMargin.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 h-full text-center bg-white rounded-[16px] border border-slate-100">
+              <div className="flex flex-col items-center justify-center py-8 h-full text-center bg-bg-surface rounded-[16px] border border-border-subtle">
                 <div className="w-12 h-12 bg-emerald-100/50 rounded-full flex items-center justify-center text-emerald-500 mb-3">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <span className="text-[14px] font-black text-slate-800">هوامش الربح كويسة</span>
-                <span className="text-2sm font-bold text-slate-500 mt-1">مفيش أصناف تحت الحد الأدنى للهامش.</span>
+                <span className="text-[14px] font-black text-text-primary">هوامش الربح كويسة</span>
+                <span className="text-2sm font-bold text-text-secondary mt-1">مفيش أصناف تحت الحد الأدنى للهامش.</span>
               </div>
             ) : (
               <div className="space-y-2">
                 {belowMargin.map((item) => (
                   <div key={item.item_id || item.id} className="flex items-center justify-between rounded-[16px] border border-rose-100 bg-rose-50/40 p-3">
                     <div className="flex flex-col min-w-0">
-                      {(item.item_code || item.code) && <span className="font-mono text-[11px] text-slate-400">{item.item_code || item.code}</span>}
-                      <span className="font-bold text-slate-800 text-sm">{item.item_name || item.name}</span>
+                      {(item.item_code || item.code) && <span className="font-mono text-[11px] text-text-muted">{item.item_code || item.code}</span>}
+                      <span className="font-bold text-text-primary text-sm">{item.item_name || item.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">هامش</span>
+                      <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">هامش</span>
                       <span className="inline-flex items-center justify-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[11px] font-black ring-1 ring-rose-200">
                         <SensitiveValue canView={canViewSensitive}>{Number(item.current_margin_percent ?? 0).toFixed(1)}%</SensitiveValue>
                       </span>
@@ -1622,22 +1650,24 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
+        </LazySection>
 
         {/* Expiry Tracking Dashboard */}
+        <LazySection>
         {expiryEnabled && (
-        <div className="rounded-[28px] bg-white/70 backdrop-blur-xl border border-amber-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-4">
+        <div className="rounded-[28px] bg-bg-surface/70 backdrop-blur-xl border border-amber-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)] p-6 flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[16px] bg-amber-100/50 text-amber-600 flex items-center justify-center border border-amber-100">
               <Clock className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h2 className="text-[16px] font-black text-slate-900 tracking-tight">
+              <h2 className="text-[16px] font-black text-text-primary tracking-tight">
                 تتبع تواريخ الانتهاء
                 {expiryStats?.tracked_items > 0 && (
-                  <span className="mr-2 text-[13px] font-bold text-slate-400">· {expiryStats.tracked_items} صنف مُفعّل</span>
+                  <span className="mr-2 text-[13px] font-bold text-text-muted">· {expiryStats.tracked_items} صنف مُفعّل</span>
                 )}
               </h2>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              <p className="text-[11px] font-bold text-text-muted mt-0.5">
                 رصد شامل لصلاحية الأصناف — منتهية، حرجة، وتحذيرية
               </p>
             </div>
@@ -1675,7 +1705,7 @@ export default function AnalyticsPage() {
           )}
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex p-0.5 bg-slate-100 rounded-[12px] gap-0.5">
+            <div className="flex p-0.5 bg-bg-overlay rounded-[12px] gap-0.5">
               {[
                 { key: "all", label: "الكل" },
                 { key: "expired", label: "منتهي" },
@@ -1687,8 +1717,8 @@ export default function AnalyticsPage() {
                   onClick={() => setExpiryStatusFilter(tab.key)}
                   className={`px-3 py-1.5 rounded-[10px] text-[11px] font-black transition-all ${
                     expiryStatusFilter === tab.key
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
+                      ? "bg-bg-surface text-text-primary shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
                   }`}>
                   {tab.label}
                 </button>
@@ -1698,7 +1728,7 @@ export default function AnalyticsPage() {
             <select ref={expiryWhRef} value={expiryWarehouseId}
               onChange={e => setExpiryWarehouseId(e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, { nextRef: expirySearchRef })}
-              className="text-[11px] font-bold bg-white border border-slate-200 rounded-[10px] px-2 py-1.5 outline-none text-slate-600 cursor-pointer">
+              className="text-[11px] font-bold bg-bg-surface border border-border-normal rounded-[10px] px-2 py-1.5 outline-none text-text-secondary cursor-pointer">
               <option value="">كل المخازن</option>
               {warehouses.map(w => (
                 <option key={w.id} value={w.id}>{w.name}</option>
@@ -1710,12 +1740,12 @@ export default function AnalyticsPage() {
                 onChange={e => setExpirySearch(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, { nextRef: expiryWhRef, prevRef: expiryWhRef })}
                 placeholder="بحث بالاسم أو الكود أو الدفعة..."
-                className="w-full text-[11px] bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 outline-none text-slate-700 placeholder:text-slate-300 font-bold" />
+                className="w-full text-[11px] bg-bg-surface border border-border-normal rounded-[10px] px-3 py-1.5 outline-none text-text-primary placeholder:text-text-muted font-bold" />
             </div>
 
             {(expiryStatusFilter !== "all" || expiryWarehouseId || expirySearch) && (
               <button onClick={() => { setExpiryStatusFilter("all"); setExpiryWarehouseId(""); setExpirySearch(""); }}
-                className="text-[10px] font-black text-slate-400 hover:text-slate-600 px-2 py-1">
+                className="text-[10px] font-black text-text-muted hover:text-text-secondary px-2 py-1">
                 إعادة تعيين
               </button>
             )}
@@ -1724,14 +1754,14 @@ export default function AnalyticsPage() {
           {expiringSoon.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 rounded-[16px] border border-dashed border-amber-200 bg-amber-50/30">
               <Package className="w-8 h-8 text-amber-300 mb-3" />
-              <span className="text-sm font-black text-slate-500">
+              <span className="text-sm font-black text-text-secondary">
                 {expiryStatusFilter !== "all"
                   ? "مفيش دفعات في التصنيف ده"
                   : expiryStats?.tracked_items > 0
                     ? `${expiryStats.tracked_items} صنف مفعّل عليه التتبع — مفيش دفعات منتهية قريباً`
                     : "مفيش دفعات مسجلة"}
               </span>
-              <span className="text-[11px] font-bold text-slate-400 mt-1 text-center max-w-xs">
+              <span className="text-[11px] font-bold text-text-muted mt-1 text-center max-w-xs">
                 {expiryStatusFilter !== "all"
                   ? "حاول تغيير الفلتر أو المخزن"
                   : expiryStats?.tracked_without_batches > 0
@@ -1768,24 +1798,24 @@ export default function AnalyticsPage() {
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <Link to={`/items?search=${encodeURIComponent(b.item_name)}`}
-                            className="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors truncate">
+                            className="font-bold text-text-primary text-sm hover:text-indigo-600 transition-colors truncate">
                             {b.item_name}
                           </Link>
                           {b.batch_no && (
-                            <span className="font-mono text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                            <span className="font-mono text-[10px] font-bold text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded shrink-0">
                               {b.batch_no}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           {b.item_code && (
-                            <span className="font-mono text-[10px] text-slate-400">{b.item_code}</span>
+                            <span className="font-mono text-[10px] text-text-muted">{b.item_code}</span>
                           )}
                           {b.warehouse_name && (
-                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{b.warehouse_name}</span>
+                            <span className="text-[10px] font-bold text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">{b.warehouse_name}</span>
                           )}
-                          <span className="text-[10px] font-bold text-slate-500">{b.quantity} وحدة</span>
-                          <span className="text-[10px] font-bold text-slate-400">{b.expiry_date}</span>
+                          <span className="text-[10px] font-bold text-text-secondary">{b.quantity} وحدة</span>
+                          <span className="text-[10px] font-bold text-text-muted">{b.expiry_date}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -1794,7 +1824,7 @@ export default function AnalyticsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-200/60 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-border-normal/60 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${barColor}`}
                         style={{ width: `${pct}%` }} />
                     </div>
@@ -1814,17 +1844,18 @@ export default function AnalyticsPage() {
           )}
 
           {expiryStats && expiringSoon.length > 0 && (
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400">
+            <div className="flex items-center justify-between pt-1 border-t border-border-subtle">
+              <span className="text-[10px] font-bold text-text-muted">
                 إجمالي {expiryStats.total_batches} دفعة — {expiryStats.total_quantity} وحدة
               </span>
-              <span className="text-[10px] font-bold text-slate-300">
+              <span className="text-[10px] font-bold text-text-muted">
                 {expiringSoon.length} معروض
               </span>
             </div>
           )}
         </div>
         )}
+        </LazySection>
 
         {alertsModalOpen && (
           <AlertsDetailModal
@@ -1862,35 +1893,35 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 pb-6 pt-20" dir="rtl">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-3xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+      <div className="relative w-full max-w-3xl mt-0 flex flex-col rounded-[28px] bg-bg-surface shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border-subtle bg-bg-overlay/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[16px] bg-rose-100/50 text-rose-600 flex items-center justify-center border border-rose-100">
               <TriangleAlert className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-[20px] font-black text-slate-900">التنبيهات الحالية</h2>
-              <p className="text-[12px] font-bold text-slate-400 mt-0.5">{healthCounts.total} تنبيه — مشاكل في المخزون محتاجة متابعة</p>
+              <h2 className="text-[20px] font-black text-text-primary">التنبيهات الحالية</h2>
+              <p className="text-[12px] font-bold text-text-muted mt-0.5">{healthCounts.total} تنبيه — مشاكل في المخزون محتاجة متابعة</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
-            <X className="w-5 h-5 text-slate-600" />
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-bg-overlay hover:bg-border-normal flex items-center justify-center transition-colors">
+            <X className="w-5 h-5 text-text-secondary" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 px-8 py-4 border-b border-slate-100 bg-slate-50/30">
+        <div className="flex gap-2 px-8 py-4 border-b border-border-subtle bg-bg-overlay/30">
           {tabs.map(t => {
             const Icon = t.icon;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-[14px] text-[12px] font-black transition-all border ${
-                  tab === t.key ? t.color + " shadow-sm" : "text-slate-400 border-transparent hover:border-slate-200"
+                  tab === t.key ? t.color + " shadow-sm" : "text-text-muted border-transparent hover:border-border-normal"
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 {t.label}
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200/50 text-slate-500">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-border-normal/50 text-text-secondary">
                   {t.count}
                 </span>
               </button>
@@ -1900,7 +1931,7 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
 
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-300">
+            <div className="flex items-center justify-center py-16 text-text-muted">
               <Activity className="w-6 h-6 animate-spin" />
               <span className="mr-3 text-sm font-bold">بنحمل البيانات...</span>
             </div>
@@ -1908,8 +1939,8 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
             lowStock.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
-                <span className="text-[16px] font-black text-slate-700">مفيش نواقص دلوقتي</span>
-                <span className="text-[12px] font-bold text-slate-400 mt-1">كل الأصناف عندها رصيد كافي</span>
+                <span className="text-[16px] font-black text-text-primary">مفيش نواقص دلوقتي</span>
+                <span className="text-[12px] font-bold text-text-muted mt-1">كل الأصناف عندها رصيد كافي</span>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1917,13 +1948,13 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
                   <div key={item.id} className="flex items-center justify-between rounded-[16px] border border-orange-100 bg-orange-50/40 p-4 hover:shadow-sm transition-all">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800 text-sm">{item.name}</span>
-                        {item.item_code && <span className="font-mono text-[10px] font-bold text-slate-400">• {item.item_code}</span>}
+                        <span className="font-bold text-text-primary text-sm">{item.name}</span>
+                        {item.item_code && <span className="font-mono text-[10px] font-bold text-text-muted">• {item.item_code}</span>}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[11px] font-bold text-slate-500">الرصيد الحالي: <span className="text-red-600">{Number(item.quantity || 0)}</span></span>
-                        {item.min_stock_qty > 0 && <span className="text-[11px] font-bold text-slate-500">الحد الأدنى: {Number(item.min_stock_qty)}</span>}
-                        {item.last_supplier_name && <span className="text-[11px] font-bold text-slate-400">المورد: {item.last_supplier_name}</span>}
+                        <span className="text-[11px] font-bold text-text-secondary">الرصيد الحالي: <span className="text-red-600">{Number(item.quantity || 0)}</span></span>
+                        {item.min_stock_qty > 0 && <span className="text-[11px] font-bold text-text-secondary">الحد الأدنى: {Number(item.min_stock_qty)}</span>}
+                        {item.last_supplier_name && <span className="text-[11px] font-bold text-text-muted">المورد: {item.last_supplier_name}</span>}
                       </div>
                     </div>
                     <Link to={`/items?search=${encodeURIComponent(item.name)}`}
@@ -1944,8 +1975,8 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
             belowMargin.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
-                <span className="text-[16px] font-black text-slate-700">هوامش الربح كويسة</span>
-                <span className="text-[12px] font-bold text-slate-400 mt-1">مفيش أصناف بتتباع بخسارة</span>
+                <span className="text-[16px] font-black text-text-primary">هوامش الربح كويسة</span>
+                <span className="text-[12px] font-bold text-text-muted mt-1">مفيش أصناف بتتباع بخسارة</span>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1953,12 +1984,12 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
                   <div key={item.item_id || item.id} className="flex items-center justify-between rounded-[16px] border border-rose-100 bg-rose-50/40 p-4 hover:shadow-sm transition-all">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800 text-sm">{item.item_name || item.name}</span>
-                        {(item.item_code || item.code) && <span className="font-mono text-[10px] font-bold text-slate-400">• {item.item_code || item.code}</span>}
+                        <span className="font-bold text-text-primary text-sm">{item.item_name || item.name}</span>
+                        {(item.item_code || item.code) && <span className="font-mono text-[10px] font-bold text-text-muted">• {item.item_code || item.code}</span>}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[11px] font-bold text-slate-500">التكلفة: <CurrencyDisplay value={item.cost_price || item.purchase_price} /></span>
-                        <span className="text-[11px] font-bold text-slate-500">البيع: <CurrencyDisplay value={item.sale_price} /></span>
+                        <span className="text-[11px] font-bold text-text-secondary">التكلفة: <CurrencyDisplay value={item.cost_price || item.purchase_price} /></span>
+                        <span className="text-[11px] font-bold text-text-secondary">البيع: <CurrencyDisplay value={item.sale_price} /></span>
                       </div>
                     </div>
                     <span className="inline-flex items-center h-7 px-3 bg-rose-100 text-rose-700 rounded-full text-[11px] font-black ring-1 ring-rose-200">
@@ -1978,8 +2009,8 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
             expiringSoon.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Sparkles className="w-10 h-10 text-emerald-400 mb-3" />
-                <span className="text-[16px] font-black text-slate-700">مفيش دفعات على وشك الانتهاء</span>
-                <span className="text-[12px] font-bold text-slate-400 mt-1">كل التواريخ سارية</span>
+                <span className="text-[16px] font-black text-text-primary">مفيش دفعات على وشك الانتهاء</span>
+                <span className="text-[12px] font-bold text-text-muted mt-1">كل التواريخ سارية</span>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1997,13 +2028,13 @@ function AlertsDetailModal({ data, loading, onClose, healthCounts }) {
                     <div key={b.id} className={`flex items-center justify-between rounded-[16px] border p-4 ${statusBg} hover:shadow-sm transition-all`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 text-sm">{b.item_name}</span>
-                          {b.batch_no && <span className="font-mono text-[10px] font-bold text-slate-400">• {b.batch_no}</span>}
+                          <span className="font-bold text-text-primary text-sm">{b.item_name}</span>
+                          {b.batch_no && <span className="font-mono text-[10px] font-bold text-text-muted">• {b.batch_no}</span>}
                         </div>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[11px] font-bold text-slate-500">{b.quantity} وحدة</span>
-                          <span className="text-[11px] font-bold text-slate-500">تاريخ: {b.expiry_date}</span>
-                          {b.warehouse_name && <span className="text-[11px] font-bold text-slate-400">مخزن: {b.warehouse_name}</span>}
+                          <span className="text-[11px] font-bold text-text-secondary">{b.quantity} وحدة</span>
+                          <span className="text-[11px] font-bold text-text-secondary">تاريخ: {b.expiry_date}</span>
+                          {b.warehouse_name && <span className="text-[11px] font-bold text-text-muted">مخزن: {b.warehouse_name}</span>}
                         </div>
                       </div>
                       <span className={`inline-flex items-center h-7 px-3 rounded-full text-[11px] font-black ring-1 shrink-0 ${badgeCls}`}>
@@ -2069,7 +2100,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
 
   const SortTh = ({ label, k }) => (
     <th onClick={() => setSort(s => ({ key: k, dir: s.key === k && s.dir === "desc" ? "asc" : "desc" }))}
-      className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-700 select-none whitespace-nowrap">
+      className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-primary select-none whitespace-nowrap">
       <span className="flex items-center gap-1">
         {label}
         {sort.key === k ? (sort.dir === "desc" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />) : null}
@@ -2082,24 +2113,24 @@ function TopItemsModal({ items, onClose, dateLabel }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 pb-6 pt-20" dir="rtl">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-6xl mt-0 flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
+      <div className="relative w-full max-w-6xl mt-0 flex flex-col rounded-[28px] bg-bg-surface shadow-2xl overflow-hidden max-h-[calc(100dvh-7rem)]">
 
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border-subtle bg-bg-overlay/50 shrink-0">
           <div>
-            <h2 className="text-[20px] font-black text-slate-900">تحليل الأصناف الأكثر مبيعاً</h2>
-            <p className="text-[12px] font-bold text-slate-400 mt-0.5">{dateLabel} · {items.length} صنف</p>
+            <h2 className="text-[20px] font-black text-text-primary">تحليل الأصناف الأكثر مبيعاً</h2>
+            <p className="text-[12px] font-bold text-text-muted mt-0.5">{dateLabel} · {items.length} صنف</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
-            <X className="w-5 h-5 text-slate-600" />
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-bg-overlay hover:bg-border-normal flex items-center justify-center transition-colors">
+            <X className="w-5 h-5 text-text-secondary" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-px bg-slate-100 border-b border-slate-100">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-px bg-bg-overlay border-b border-border-subtle">
             {[
               { label: "إجمالي الإيراد", val: totals.revenue, currency: true, color: "text-emerald-700 bg-emerald-50" },
               { label: "إجمالي الربح", val: totals.gross_profit, currency: true, color: "text-indigo-700 bg-indigo-50" },
-              { label: "إجمالي التكلفة", val: totals.cost, currency: true, color: "text-slate-700 bg-slate-50" },
+              { label: "إجمالي التكلفة", val: totals.cost, currency: true, color: "text-text-primary bg-bg-overlay" },
               { label: "إجمالي الكميات", val: totals.quantity_sold, currency: false, color: "text-sky-700 bg-sky-50", suffix: " وحدة" },
               { label: "المرتجعات", val: totals.returns_amount, currency: true, color: "text-rose-700 bg-rose-50" },
               { label: "إجمالي الخصومات", val: totals.total_discount, currency: true, color: "text-amber-700 bg-amber-50" },
@@ -2113,12 +2144,12 @@ function TopItemsModal({ items, onClose, dateLabel }) {
             ))}
           </div>
 
-          <div className="px-8 py-6 border-b border-slate-100">
+          <div className="px-8 py-6 border-b border-border-subtle">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">المحور:</span>
+              <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest">المحور:</span>
               {[["revenue", "الإيراد"], ["gross_profit", "الربح الصافي"], ["quantity_sold", "الكمية"]].map(([k, lbl]) => (
                 <button key={k} onClick={() => setMetric(k)}
-                  className={`px-3 py-1 rounded-full text-[11px] font-black transition-all ${metric === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  className={`px-3 py-1 rounded-full text-[11px] font-black transition-all ${metric === k ? "bg-indigo-600 text-white" : "bg-bg-overlay text-text-secondary hover:bg-border-normal"}`}>
                   {lbl}
                 </button>
               ))}
@@ -2133,15 +2164,15 @@ function TopItemsModal({ items, onClose, dateLabel }) {
                   : metric === "quantity_sold" ? "bg-sky-500" : "bg-indigo-500";
                 return (
                   <div key={idx} className="flex items-center gap-3">
-                    <span className="w-5 text-[10px] font-black text-slate-400 text-left shrink-0">{idx + 1}</span>
-                    <span className="w-36 text-[11px] font-bold text-slate-700 truncate shrink-0">
-                      {item.item_code && <span className="font-mono text-[10px] font-black text-slate-400" dir="ltr">{item.item_code} · </span>}
+                    <span className="w-5 text-[10px] font-black text-text-muted text-left shrink-0">{idx + 1}</span>
+                    <span className="w-36 text-[11px] font-bold text-text-primary truncate shrink-0">
+                      {item.item_code && <span className="font-mono text-[10px] font-black text-text-muted" dir="ltr">{item.item_code} · </span>}
                       {item.item_name}
                     </span>
-                    <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-5 bg-bg-overlay rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-[11px] font-black text-slate-800 tabular-nums w-24 text-left shrink-0">
+                    <span className="text-[11px] font-black text-text-primary tabular-nums w-24 text-left shrink-0">
                       {metric === "quantity_sold" ? `${Number(val).toLocaleString()} و` : <CurrencyDisplay value={val} />}
                     </span>
                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full w-14 text-center shrink-0 ${margin >= 20 ? "bg-emerald-50 text-emerald-700" : margin >= 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>
@@ -2156,15 +2187,15 @@ function TopItemsModal({ items, onClose, dateLabel }) {
           <div className="px-8 py-5">
             <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={(e) => handleKeyDown(e, { nextRef: searchRef })}
               placeholder="بحث بالاسم أو الكود أو الفئة..."
-              className="w-full max-w-sm rounded-[12px] border border-slate-200 px-4 py-2 text-sm font-bold outline-none focus:border-indigo-400 mb-4" />
+              className="w-full max-w-sm rounded-[12px] border border-border-normal px-4 py-2 text-sm font-bold outline-none focus:border-indigo-400 mb-4" />
 
             <div className="overflow-x-auto">
               <table className="w-full text-right text-sm border-collapse">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="border-b-2 border-slate-200">
-                    <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400 w-8">#</th>
+                <thead className="sticky top-0 bg-bg-surface">
+                  <tr className="border-b-2 border-border-normal">
+                    <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted w-8">#</th>
                     <SortTh label="الصنف" k="item_name" />
-                    <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">الفئة</th>
+                    <th className="px-3 py-3 text-right text-[10px] font-black uppercase tracking-widest text-text-muted">الفئة</th>
                     <SortTh label="الكمية" k="quantity_sold" />
                     <SortTh label="متوسط سعر البيع" k="avg_unit_price" />
                     <SortTh label="الإيراد" k="revenue" />
@@ -2175,25 +2206,25 @@ function TopItemsModal({ items, onClose, dateLabel }) {
                     <SortTh label="المرتجعات" k="returns_amount" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-border-subtle">
                   {sorted.map((item, idx) => {
                     const margin = Number(item.margin_percent || 0);
                     const profit = Number(item.gross_profit || 0);
                     return (
-                      <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-3 py-2.5 text-[11px] font-black text-slate-400 tabular-nums">{idx + 1}</td>
+                      <tr key={idx} className="hover:bg-bg-overlay/60 transition-colors">
+                        <td className="px-3 py-2.5 text-[11px] font-black text-text-muted tabular-nums">{idx + 1}</td>
                         <td className="px-3 py-2.5">
                           <div className="flex flex-col">
-                            {item.item_code && <span className="font-mono text-[10px] font-black text-slate-400" dir="ltr">{item.item_code}</span>}
-                            <span className="font-bold text-slate-800 text-sm">{item.item_name}</span>
+                            {item.item_code && <span className="font-mono text-[10px] font-black text-text-muted" dir="ltr">{item.item_code}</span>}
+                            <span className="font-bold text-text-primary text-sm">{item.item_name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-[11px] font-bold text-slate-500">{item.category_name || "—"}</td>
-                        <td className="px-3 py-2.5 font-black text-slate-700 tabular-nums">{Number(item.quantity_sold || 0).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 font-bold text-slate-600 tabular-nums"><CurrencyDisplay value={item.avg_unit_price} /></td>
-                        <td className="px-3 py-2.5 font-black text-slate-900 tabular-nums"><CurrencyDisplay value={item.revenue} /></td>
-                        <td className="px-3 py-2.5 font-bold text-amber-700 tabular-nums">{Number(item.total_discount || 0) > 0 ? <CurrencyDisplay value={item.total_discount} /> : <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2.5 font-bold text-slate-600 tabular-nums"><CurrencyDisplay value={item.cost} /></td>
+                        <td className="px-3 py-2.5 text-[11px] font-bold text-text-secondary">{item.category_name || "—"}</td>
+                        <td className="px-3 py-2.5 font-black text-text-primary tabular-nums">{Number(item.quantity_sold || 0).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 font-bold text-text-secondary tabular-nums"><CurrencyDisplay value={item.avg_unit_price} /></td>
+                        <td className="px-3 py-2.5 font-black text-text-primary tabular-nums"><CurrencyDisplay value={item.revenue} /></td>
+                        <td className="px-3 py-2.5 font-bold text-amber-700 tabular-nums">{Number(item.total_discount || 0) > 0 ? <CurrencyDisplay value={item.total_discount} /> : <span className="text-text-muted">—</span>}</td>
+                        <td className="px-3 py-2.5 font-bold text-text-secondary tabular-nums"><CurrencyDisplay value={item.cost} /></td>
                         <td className="px-3 py-2.5 tabular-nums">
                           <span className={`font-black ${profit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                             <CurrencyDisplay value={profit} />
@@ -2205,7 +2236,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
                           </span>
                         </td>
                         <td className="px-3 py-2.5 font-bold text-rose-600 tabular-nums">
-                          {Number(item.returns_amount || 0) > 0 ? <CurrencyDisplay value={item.returns_amount} /> : <span className="text-slate-300">—</span>}
+                          {Number(item.returns_amount || 0) > 0 ? <CurrencyDisplay value={item.returns_amount} /> : <span className="text-text-muted">—</span>}
                         </td>
                       </tr>
                     );
@@ -2213,7 +2244,7 @@ function TopItemsModal({ items, onClose, dateLabel }) {
                 </tbody>
               </table>
               {sorted.length === 0 && (
-                <div className="text-center py-12 text-slate-400 font-bold">مفيش نتائج</div>
+                <div className="text-center py-12 text-text-muted font-bold">مفيش نتائج</div>
               )}
             </div>
           </div>
@@ -2233,7 +2264,7 @@ function pctChange(a, b) {
   return ((b - a) / Math.abs(a)) * 100;
 }
 
-function CompareDelta({ a, b, inverse = false, points = false }) {
+const CompareDelta = React.memo(function CompareDelta({ a, b, inverse = false, points = false }) {
   if (a == null || b == null) return null;
   const diff = points ? (b - a) : pctChange(a, b);
   if (diff == null) return null;
@@ -2242,26 +2273,26 @@ function CompareDelta({ a, b, inverse = false, points = false }) {
   const flat = Math.abs(diff) < (points ? 0.1 : 0.5);
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${
-      flat ? "bg-slate-100 text-slate-500" : good ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+      flat ? "bg-bg-overlay text-text-secondary" : good ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
     }`}>
       {flat ? "—" : isUp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       {Math.abs(diff).toFixed(1)}{points ? " ن" : "%"}
     </span>
   );
-}
+});
 
 function CompareMetricRow({ label, aVal, bVal, fmt = "currency", inverse = false, points = false }) {
   const render = (v) => {
-    if (v == null) return <span className="text-slate-300">🔒</span>;
+    if (v == null) return <span className="text-text-muted">🔒</span>;
     if (fmt === "currency") return <CurrencyDisplay value={v} />;
     if (fmt === "percent") return `${Number(v).toFixed(1)}%`;
     return Number(v).toLocaleString();
   };
   return (
-    <div className="flex items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0">
-      <span className="text-[12px] font-bold text-slate-500 w-28 shrink-0">{label}</span>
-      <span className="flex-1 text-center text-[13px] font-black text-slate-700 tabular-nums">{render(aVal)}</span>
-      <span className="flex-1 text-center text-[13px] font-black text-slate-900 tabular-nums">{render(bVal)}</span>
+    <div className="flex items-center justify-between gap-2 py-2 border-b border-border-subtle last:border-0">
+      <span className="text-[12px] font-bold text-text-secondary w-28 shrink-0">{label}</span>
+      <span className="flex-1 text-center text-[13px] font-black text-text-primary tabular-nums">{render(aVal)}</span>
+      <span className="flex-1 text-center text-[13px] font-black text-text-primary tabular-nums">{render(bVal)}</span>
       <span className="w-20 text-left shrink-0"><CompareDelta a={aVal} b={bVal} inverse={inverse} points={points} /></span>
     </div>
   );
@@ -2271,31 +2302,31 @@ function PeriodCompareSection({ compareA, setCompareA, compareB, setCompareB, re
   const ready = compareA.start && compareA.end && compareB.start && compareB.end;
   const a = result?.a, b = result?.b;
   return (
-    <div className="rounded-[28px] border border-indigo-200/70 bg-gradient-to-b from-indigo-50/40 to-white p-6 shadow-sm flex flex-col gap-5">
+    <div className="rounded-[28px] border border-indigo-200/70 bg-gradient-to-b from-indigo-50/40 to-bg-surface p-6 shadow-sm flex flex-col gap-5">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-[16px] bg-indigo-100/60 text-indigo-600 flex items-center justify-center border border-indigo-100"><ArrowLeftRight className="w-5 h-5" /></div>
         <div>
-          <h2 className="text-[16px] font-black text-slate-900 tracking-tight">مقارنة فترتين</h2>
-          <p className="text-[11px] font-bold text-slate-400 mt-0.5">اختر فترتين لمقارنة أهم المؤشرات جنباً إلى جنب</p>
+          <h2 className="text-[16px] font-black text-text-primary tracking-tight">مقارنة فترتين</h2>
+          <p className="text-[11px] font-bold text-text-muted mt-0.5">اختر فترتين لمقارنة أهم المؤشرات جنباً إلى جنب</p>
         </div>
       </div>
 
       {/* Pickers */}
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-[16px] bg-white border border-slate-200 p-3 flex flex-col gap-2">
-          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">الفترة الأولى</span>
+        <div className="rounded-[16px] bg-bg-surface border border-border-normal p-3 flex flex-col gap-2">
+          <span className="text-[11px] font-black text-text-secondary uppercase tracking-widest">الفترة الأولى</span>
           <div className="flex items-center gap-2">
-            <input type="date" value={compareA.start} onChange={e => setCompareA(c => ({ ...c, start: e.target.value }))} className="flex-1 text-[11px] bg-slate-50 rounded-[8px] px-2 py-1.5 outline-none border border-slate-200 font-mono" />
-            <span className="text-[10px] font-black text-slate-400">الي</span>
-            <input type="date" value={compareA.end} onChange={e => setCompareA(c => ({ ...c, end: e.target.value }))} className="flex-1 text-[11px] bg-slate-50 rounded-[8px] px-2 py-1.5 outline-none border border-slate-200 font-mono" />
+            <input type="date" value={compareA.start} onChange={e => setCompareA(c => ({ ...c, start: e.target.value }))} className="flex-1 text-[11px] bg-bg-overlay rounded-[8px] px-2 py-1.5 outline-none border border-border-normal font-mono" />
+            <span className="text-[10px] font-black text-text-muted">الي</span>
+            <input type="date" value={compareA.end} onChange={e => setCompareA(c => ({ ...c, end: e.target.value }))} className="flex-1 text-[11px] bg-bg-overlay rounded-[8px] px-2 py-1.5 outline-none border border-border-normal font-mono" />
           </div>
         </div>
-        <div className="rounded-[16px] bg-white border border-slate-200 p-3 flex flex-col gap-2">
+        <div className="rounded-[16px] bg-bg-surface border border-border-normal p-3 flex flex-col gap-2">
           <span className="text-[11px] font-black text-indigo-500 uppercase tracking-widest">الفترة الثانية</span>
           <div className="flex items-center gap-2">
-            <input type="date" value={compareB.start} onChange={e => setCompareB(c => ({ ...c, start: e.target.value }))} className="flex-1 text-[11px] bg-slate-50 rounded-[8px] px-2 py-1.5 outline-none border border-slate-200 font-mono" />
-            <span className="text-[10px] font-black text-slate-400">الي</span>
-            <input type="date" value={compareB.end} onChange={e => setCompareB(c => ({ ...c, end: e.target.value }))} className="flex-1 text-[11px] bg-slate-50 rounded-[8px] px-2 py-1.5 outline-none border border-slate-200 font-mono" />
+            <input type="date" value={compareB.start} onChange={e => setCompareB(c => ({ ...c, start: e.target.value }))} className="flex-1 text-[11px] bg-bg-overlay rounded-[8px] px-2 py-1.5 outline-none border border-border-normal font-mono" />
+            <span className="text-[10px] font-black text-text-muted">الي</span>
+            <input type="date" value={compareB.end} onChange={e => setCompareB(c => ({ ...c, end: e.target.value }))} className="flex-1 text-[11px] bg-bg-overlay rounded-[8px] px-2 py-1.5 outline-none border border-border-normal font-mono" />
           </div>
         </div>
       </div>
@@ -2308,49 +2339,49 @@ function PeriodCompareSection({ compareA, setCompareA, compareB, setCompareB, re
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Column headers */}
           <div className="lg:col-span-2 flex items-center justify-between gap-2 px-1 -mb-1">
-            <span className="text-[11px] font-bold text-slate-400 w-28 shrink-0">المؤشر</span>
-            <span className="flex-1 text-center text-[11px] font-black text-slate-500">الأولى</span>
+            <span className="text-[11px] font-bold text-text-muted w-28 shrink-0">المؤشر</span>
+            <span className="flex-1 text-center text-[11px] font-black text-text-secondary">الأولى</span>
             <span className="flex-1 text-center text-[11px] font-black text-indigo-600">الثانية</span>
-            <span className="w-20 text-left shrink-0 text-[11px] font-bold text-slate-400">التغير</span>
+            <span className="w-20 text-left shrink-0 text-[11px] font-bold text-text-muted">التغير</span>
           </div>
 
           {/* Sales & profit */}
-          <div className="rounded-[16px] bg-white border border-slate-200 p-4">
-            <h4 className="text-[12px] font-black text-slate-700 mb-2">المبيعات والربح</h4>
+          <div className="rounded-[16px] bg-bg-surface border border-border-normal p-4">
+            <h4 className="text-[12px] font-black text-text-primary mb-2">المبيعات والربح</h4>
             <CompareMetricRow label="صافي المبيعات" aVal={a.net_sales} bVal={b.net_sales} fmt="currency" />
             <CompareMetricRow label="إجمالي الربح" aVal={a.gross_profit} bVal={b.gross_profit} fmt="currency" />
             <CompareMetricRow label="هامش الربح" aVal={a.margin_percent} bVal={b.margin_percent} fmt="percent" points />
           </div>
 
           {/* Volume & basket */}
-          <div className="rounded-[16px] bg-white border border-slate-200 p-4">
-            <h4 className="text-[12px] font-black text-slate-700 mb-2">الحجم ومتوسط الفاتورة</h4>
+          <div className="rounded-[16px] bg-bg-surface border border-border-normal p-4">
+            <h4 className="text-[12px] font-black text-text-primary mb-2">الحجم ومتوسط الفاتورة</h4>
             <CompareMetricRow label="عدد الفواتير" aVal={a.invoice_count} bVal={b.invoice_count} fmt="number" />
             <CompareMetricRow label="الوحدات المباعة" aVal={a.items_sold} bVal={b.items_sold} fmt="number" />
             <CompareMetricRow label="متوسط الفاتورة" aVal={a.avg_basket} bVal={b.avg_basket} fmt="currency" />
           </div>
 
           {/* Returns & discounts */}
-          <div className="rounded-[16px] bg-white border border-slate-200 p-4">
-            <h4 className="text-[12px] font-black text-slate-700 mb-2">المرتجعات والخصومات</h4>
+          <div className="rounded-[16px] bg-bg-surface border border-border-normal p-4">
+            <h4 className="text-[12px] font-black text-text-primary mb-2">المرتجعات والخصومات</h4>
             <CompareMetricRow label="نسبة المرتجعات" aVal={a.return_rate} bVal={b.return_rate} fmt="percent" inverse points />
             <CompareMetricRow label="قيمة المرتجعات" aVal={a.returns_total} bVal={b.returns_total} fmt="currency" inverse />
             <CompareMetricRow label="إجمالي الخصومات" aVal={a.total_discount} bVal={b.total_discount} fmt="currency" inverse />
           </div>
 
           {/* Top mover */}
-          <div className="rounded-[16px] bg-white border border-slate-200 p-4">
-            <h4 className="text-[12px] font-black text-slate-700 mb-2">الأبرز في كل فترة</h4>
+          <div className="rounded-[16px] bg-bg-surface border border-border-normal p-4">
+            <h4 className="text-[12px] font-black text-text-primary mb-2">الأبرز في كل فترة</h4>
             <div className="grid grid-cols-2 gap-3 mt-1">
               <div>
-                <div className="text-[10px] font-bold text-slate-400 mb-1">الأولى</div>
-                <div className="text-[13px] font-black text-slate-800 truncate">{a.top_item?.name || "—"}</div>
-                <div className="text-[10px] font-bold text-slate-400 mt-1">أعلى فئة: {a.top_category?.name || "—"}</div>
+                <div className="text-[10px] font-bold text-text-muted mb-1">الأولى</div>
+                <div className="text-[13px] font-black text-text-primary truncate">{a.top_item?.name || "—"}</div>
+                <div className="text-[10px] font-bold text-text-muted mt-1">أعلى فئة: {a.top_category?.name || "—"}</div>
               </div>
               <div>
                 <div className="text-[10px] font-bold text-indigo-500 mb-1">الثانية</div>
-                <div className="text-[13px] font-black text-slate-900 truncate">{b.top_item?.name || "—"}</div>
-                <div className="text-[10px] font-bold text-slate-400 mt-1">أعلى فئة: {b.top_category?.name || "—"}</div>
+                <div className="text-[13px] font-black text-text-primary truncate">{b.top_item?.name || "—"}</div>
+                <div className="text-[10px] font-bold text-text-muted mt-1">أعلى فئة: {b.top_category?.name || "—"}</div>
               </div>
             </div>
           </div>
@@ -2364,10 +2395,10 @@ function PeriodCompareSection({ compareA, setCompareA, compareB, setCompareB, re
 // HELPER COMPONENTS
 // -------------------------------------------------------------
 
-function BentoMetric({ title, value, icon: Icon, theme = "default", trend, hint }) {
+const BentoMetric = React.memo(function BentoMetric({ title, value, icon: Icon, theme = "default", trend, hint }) {
   const THEMES = {
-    default: "bg-white border-white text-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
-    dark: "bg-slate-900 border-slate-800 text-white shadow-[0_8px_30px_rgba(15,23,42,0.6)]",
+    default: "bg-bg-surface border-border-normal text-text-primary shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
+    dark: "bg-slate-900 border-border-strong text-white shadow-[0_8px_30px_rgba(15,23,42,0.6)]",
     alert: "bg-red-50 border-red-100 text-red-900 shadow-[0_4px_20px_rgba(0,0,0,0.02)]",
   };
 
@@ -2377,21 +2408,21 @@ function BentoMetric({ title, value, icon: Icon, theme = "default", trend, hint 
   return (
     <div className={`relative overflow-hidden rounded-[24px] border p-5 transition-all hover:scale-[1.02] hover:shadow-lg duration-300 group cursor-default ${currentTheme}`}>
       {hint && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block pointer-events-none">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 hidden w-56 rounded-lg bg-slate-900 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block pointer-events-none">
           {hint}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 h-2 w-2 rotate-45 bg-slate-900" />
         </div>
       )}
       <div className="flex flex-col gap-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10 text-white' : theme === 'alert' ? 'bg-red-100/50 text-red-600' : 'bg-slate-50 text-slate-500'}`}>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-bg-surface/10 text-white' : theme === 'alert' ? 'bg-red-100/50 text-red-600' : 'bg-bg-overlay text-text-secondary'}`}>
            <Icon className="w-5 h-5" />
         </div>
         <div>
-           <div className={`flex items-center gap-1.5 text-2sm font-bold mb-1 ${isDark ? 'text-slate-400' : theme === 'alert' ? 'text-red-700/70' : 'text-slate-500'}`}>
+           <div className={`flex items-center gap-1.5 text-2sm font-bold mb-1 ${isDark ? 'text-text-muted' : theme === 'alert' ? 'text-red-700/70' : 'text-text-secondary'}`}>
              {title}
-             {hint && <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />}
+             {hint && <span className="inline-block w-1.5 h-1.5 rounded-full bg-border-strong opacity-0 group-hover:opacity-100 transition-opacity" />}
            </div>
-           <div className={`text-[20px] lg:text-[22px] font-black tracking-tight leading-none ${isDark ? 'text-white' : theme === 'alert' ? 'text-red-900' : 'text-slate-900'}`}>
+           <div className={`text-[20px] lg:text-[22px] font-black tracking-tight leading-none ${isDark ? 'text-white' : theme === 'alert' ? 'text-red-900' : 'text-text-primary'}`}>
              {value}
            </div>
         </div>
@@ -2401,4 +2432,4 @@ function BentoMetric({ title, value, icon: Icon, theme = "default", trend, hint 
       )}
     </div>
   );
-}
+});

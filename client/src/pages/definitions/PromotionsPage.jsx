@@ -181,12 +181,12 @@ export default function PromotionsPage() {
                  return (
                     <div key={promo.id} className="group flex flex-col justify-between rounded-3xl border p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-indigo-100 hover:shadow-[0_12px_30px_-10px_rgba(79,70,229,0.15)] relative overflow-hidden" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-surface)" }}>
                        {/* Background accent */}
-                       <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full pointer-events-none transition-opacity duration-500 ${isActive ? 'bg-emerald-400/10 group-hover:bg-emerald-400/20' : 'bg-slate-300/10'}`} />
+                       <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full pointer-events-none transition-opacity duration-500 ${isActive ? 'bg-emerald-400/10 group-hover:bg-emerald-400/20' : 'bg-border-strong/10'}`} />
                        
                        <div className="relative z-10">
                          <div className="flex items-start justify-between mb-4">
                            <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-widest uppercase ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/50' : 'ring-1 ring-slate-200/50'}`} style={{ color: isActive ? undefined : "var(--text-secondary)", backgroundColor: isActive ? undefined : "var(--bg-overlay)" }}>
-                             {isActive ? <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
+                             {isActive ? <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> : <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />}
                              {isActive ? "نشط" : "متوقف"}
                            </div>
                            
@@ -217,7 +217,7 @@ export default function PromotionsPage() {
                          </div>
                        </div>
                        
-                       <div className="mt-6 flex items-center gap-4 border-t border-slate-50 pt-4 relative z-10">
+                       <div className="mt-6 flex items-center gap-4 border-t border-border-subtle pt-4 relative z-10">
                          <div className="flex flex-col gap-0.5">
                            <span className="flex items-center gap-1 text-[11px] font-black uppercase" style={{ color: "var(--text-muted)" }}><Calendar className="w-3 h-3" /> يبدأ</span>
                            <span className="text-2sm font-bold font-mono" style={{ color: "var(--text-secondary)" }}>{promo.starts_at || "—"}</span>
@@ -248,7 +248,7 @@ export default function PromotionsPage() {
                 value={formData.name} 
                 onChange={(e) => setFormData(p => ({...p, name: e.target.value}))} 
                 onKeyDown={e => handleKeyDown(e, { nextRef: ruleTypeRef })}
-                className="w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none transition-all focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100"
                 style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)", color: "var(--text-primary)" }}
                 placeholder="مثال: خصم عيد الفطر"
               />
@@ -263,7 +263,7 @@ export default function PromotionsPage() {
                     value={formData.rule_type} 
                     onChange={(e) => setFormData(p => ({...p, rule_type: e.target.value}))}
                     onKeyDown={e => handleKeyDown(e, { nextRef: ruleValueRef, prevRef: nameRef })}
-                    className="w-full appearance-none rounded-xl border pl-4 pr-10 py-3 text-sm font-bold outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    className="w-full appearance-none rounded-xl border pl-4 pr-10 py-3 text-sm font-bold outline-none transition-all focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100"
                     style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)", color: "var(--text-primary)" }}
                   >
                     <option value="percentage_off_total">خصم نسبة (%) من الإجمالي</option>
@@ -282,7 +282,7 @@ export default function PromotionsPage() {
                     value={formData.rule_value} 
                     onChange={(e) => setFormData(p => ({...p, rule_value: e.target.value}))} 
                     onKeyDown={e => handleKeyDown(e, { nextRef: startsAtRef, prevRef: ruleTypeRef })}
-                    className="w-full rounded-xl border px-4 py-3 text-sm font-black font-mono text-indigo-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-left"
+                    className="w-full rounded-xl border px-4 py-3 text-sm font-black font-mono text-indigo-700 outline-none transition-all focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100 text-left"
                     style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)" }}
                     placeholder="0"
                     dir="ltr"
@@ -301,7 +301,7 @@ export default function PromotionsPage() {
                   value={formData.starts_at} 
                   onChange={(e) => setFormData(p => ({...p, starts_at: e.target.value}))} 
                   onKeyDown={e => handleKeyDown(e, { nextRef: endsAtRef, prevRef: ruleValueRef })}
-                  className="w-full rounded-xl border px-4 py-3 text-sm font-bold font-mono outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border px-4 py-3 text-sm font-bold font-mono outline-none transition-all focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100"
                   style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)", color: "var(--text-secondary)" }}
                 />
               </div>
@@ -313,7 +313,7 @@ export default function PromotionsPage() {
                   value={formData.ends_at} 
                   onChange={(e) => setFormData(p => ({...p, ends_at: e.target.value}))} 
                   onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: startsAtRef })}
-                  className="w-full rounded-xl border px-4 py-3 text-sm font-bold font-mono outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border px-4 py-3 text-sm font-bold font-mono outline-none transition-all focus:border-indigo-400 focus:bg-bg-surface focus:ring-2 focus:ring-indigo-100"
                   style={{ borderColor: "var(--border-normal)", backgroundColor: "var(--bg-overlay)", color: "var(--text-secondary)" }}
                 />
               </div>
@@ -322,7 +322,7 @@ export default function PromotionsPage() {
             <div className="pt-2">
               <label className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-all ${formData.is_active ? 'border-emerald-200 bg-emerald-50' : ''}`} style={{ borderColor: formData.is_active ? undefined : "var(--border-normal)", backgroundColor: formData.is_active ? undefined : "var(--bg-overlay)" }}>
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${formData.is_active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200'}`} style={{ color: formData.is_active ? undefined : "var(--text-muted)" }}>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${formData.is_active ? 'bg-emerald-100 text-emerald-600' : 'bg-border-normal'}`} style={{ color: formData.is_active ? undefined : "var(--text-muted)" }}>
                     <Power className="w-5 h-5" />
                   </div>
                   <div className="flex flex-col">
@@ -330,8 +330,8 @@ export default function PromotionsPage() {
                     <span className={`text-[11px] font-bold ${formData.is_active ? 'text-emerald-700' : ''}`} style={{ color: formData.is_active ? undefined : "var(--text-secondary)" }}>{formData.is_active ? 'العرض مفعل وجاهز للتطبيق' : 'العرض متوقف مؤقتاً'}</span>
                   </div>
                 </div>
-                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_active ? 'translate-x-1' : 'translate-x-6'}`} />
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_active ? 'bg-emerald-500' : 'bg-border-strong'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-bg-surface transition-transform ${formData.is_active ? 'translate-x-1' : 'translate-x-6'}`} />
                 </div>
               </label>
             </div>
@@ -350,7 +350,7 @@ export default function PromotionsPage() {
                 disabled={submitting}
                 className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-black text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-border-normal/30 border-t-white" />}
                 حفظ التغييرات
               </button>
             </div>

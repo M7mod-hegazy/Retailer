@@ -67,21 +67,21 @@ export default function Step1Upload({ wizard, goNext }) {
   }, [fakeLoading, goNext]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 md:p-10 shadow-card transition-all duration-300 hover:shadow-elevated" dir="rtl">
+    <div className="relative overflow-hidden rounded-2xl border border-border-normal/80 bg-bg-surface p-6 md:p-10 shadow-card transition-all duration-300 hover:shadow-elevated" dir="rtl">
       {/* Fake Loading Overlay */}
       {fakeLoading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/75 p-6 text-center backdrop-blur-md animate-in fade-in duration-300">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-bg-surface/75 p-6 text-center backdrop-blur-md animate-in fade-in duration-300">
           <div className="flex flex-col items-center max-w-sm">
             <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-4 ring-emerald-500/10">
               <Sparkles className="h-7 w-7 animate-pulse" />
               <div className="absolute inset-[-3px] rounded-2xl border-2 border-emerald-500/10 border-t-emerald-600 animate-spin" />
             </div>
             
-            <h3 className="mt-5 text-lg font-black text-slate-800 font-display">جاري تجهيز وتحليل الملف</h3>
+            <h3 className="mt-5 text-lg font-black text-text-primary font-display">جاري تجهيز وتحليل الملف</h3>
             <p className="mt-1 text-xs font-black text-emerald-600 font-mono tracking-wide">{Math.floor(progress)}%</p>
             
             {/* Progress Bar */}
-            <div className="mt-4 h-1.5 w-56 overflow-hidden rounded-full bg-slate-100 p-[1px] ring-1 ring-slate-200/50">
+            <div className="mt-4 h-1.5 w-56 overflow-hidden rounded-full bg-bg-overlay p-[1px] ring-1 ring-slate-200/50">
               <div 
                 className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-teal-500 transition-all duration-100 ease-out" 
                 style={{ width: `${progress}%` }}
@@ -89,7 +89,7 @@ export default function Step1Upload({ wizard, goNext }) {
             </div>
             
             {/* Dynamic Status Text */}
-            <div className="mt-4 text-xs font-bold text-slate-500 transition-all duration-300 animate-in fade-in-50">
+            <div className="mt-4 text-xs font-bold text-text-secondary transition-all duration-300 animate-in fade-in-50">
               {statusMessages[statusIndex]}
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function Step1Upload({ wizard, goNext }) {
               ? "border-emerald-200 bg-emerald-50/10 cursor-default"
               : wizard.dragActive 
               ? "border-emerald-500 bg-emerald-50/50 ring-4 ring-emerald-100/50 cursor-pointer" 
-              : "border-slate-200 bg-slate-50/50 hover:border-slate-350 hover:bg-slate-50/80 cursor-pointer"
+              : "border-border-normal bg-bg-overlay/50 hover:border-slate-350 hover:bg-bg-overlay/80 cursor-pointer"
           }`}
         >
           {/* File Input */}
@@ -123,15 +123,15 @@ export default function Step1Upload({ wizard, goNext }) {
               </div>
               
               {/* Title & Description */}
-              <h3 className="mt-5 text-xl font-black text-slate-900 font-display">ارفع ملف الأصناف</h3>
-              <p className="mt-2 max-w-md text-xs font-semibold leading-relaxed text-slate-500 font-title">
+              <h3 className="mt-5 text-xl font-black text-text-primary font-display">ارفع ملف الأصناف</h3>
+              <p className="mt-2 max-w-md text-xs font-semibold leading-relaxed text-text-secondary font-title">
                 اسحب ملف Excel أو CSV وأفلته هنا، أو اضغط لاختيار ملف من جهازك
               </p>
 
               {/* Supported Files Info Badges */}
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono tracking-wide">xlsx / xls / csv</span>
-                <span className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1 text-[10px] font-black text-slate-500 font-mono tracking-wide">غير محدود</span>
+                <span className="rounded-lg bg-bg-surface border border-border-normal/80 px-2.5 py-1 text-[10px] font-black text-text-secondary font-mono tracking-wide">xlsx / xls / csv</span>
+                <span className="rounded-lg bg-bg-surface border border-border-normal/80 px-2.5 py-1 text-[10px] font-black text-text-secondary font-mono tracking-wide">غير محدود</span>
                 <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">معالجة فورية</span>
               </div>
             </>
@@ -142,18 +142,18 @@ export default function Step1Upload({ wizard, goNext }) {
                 <CheckCircle2 className="h-7 w-7 animate-in zoom-in-50 duration-300" />
               </div>
               
-              <h3 className="mt-4 text-lg font-black text-slate-900 font-display">تم قراءة الملف بنجاح</h3>
+              <h3 className="mt-4 text-lg font-black text-text-primary font-display">تم قراءة الملف بنجاح</h3>
               <p className="mt-1 text-xs font-bold text-emerald-700 font-mono truncate max-w-lg" dir="ltr">{wizard.fileName}</p>
               
               {/* Stats Grid */}
               <div className="mt-5 grid grid-cols-2 gap-3 w-full max-w-sm">
-                <div className="rounded-xl border border-slate-150 bg-white p-3 shadow-sm text-center">
-                  <div className="text-[9px] font-black text-slate-400 font-mono tracking-wider">الأعمدة</div>
-                  <div className="mt-0.5 text-sm font-black text-slate-800">{wizard.importStats.totalColumns}</div>
+                <div className="rounded-xl border border-slate-150 bg-bg-surface p-3 shadow-sm text-center">
+                  <div className="text-[9px] font-black text-text-muted font-mono tracking-wider">الأعمدة</div>
+                  <div className="mt-0.5 text-sm font-black text-text-primary">{wizard.importStats.totalColumns}</div>
                 </div>
-                <div className="rounded-xl border border-slate-150 bg-white p-3 shadow-sm text-center">
-                  <div className="text-[9px] font-black text-slate-400 font-mono tracking-wider">الصفوف</div>
-                  <div className="mt-0.5 text-sm font-black text-slate-800">{wizard.importStats.totalRows}</div>
+                <div className="rounded-xl border border-slate-150 bg-bg-surface p-3 shadow-sm text-center">
+                  <div className="text-[9px] font-black text-text-muted font-mono tracking-wider">الصفوف</div>
+                  <div className="mt-0.5 text-sm font-black text-text-primary">{wizard.importStats.totalRows}</div>
                 </div>
               </div>
 
@@ -163,7 +163,7 @@ export default function Step1Upload({ wizard, goNext }) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); wizard.fileInputRef.current?.click(); }}
                   disabled={wizard.reading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-650 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:border-slate-350"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-4 py-2 text-xs font-black text-slate-650 shadow-sm transition-all duration-200 hover:bg-bg-overlay hover:border-slate-350"
                 >
                   <Upload className="h-3.5 w-3.5" /> تغيير الملف
                 </button>
@@ -174,7 +174,7 @@ export default function Step1Upload({ wizard, goNext }) {
 
         {/* Footnote Options */}
         <div className="mt-8 flex flex-col items-center gap-3.5">
-          <p className="text-[10px] font-semibold leading-relaxed text-slate-400 text-center max-w-md">
+          <p className="text-[10px] font-semibold leading-relaxed text-text-muted text-center max-w-md">
             يرجى التأكد من أن الملف يحتوي على صف العناوين في السطر الأول. سيقوم النظام بمطابقة أعمدة الجدول تلقائياً بالخطوة التالية.
           </p>
         </div>

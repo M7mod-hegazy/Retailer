@@ -1429,6 +1429,7 @@
   "telegram.presetDetailed": "مفصّل",
   "telegram.presetBrief": "مختصر",
   "telegram.previewMessage": "معاينة الرسالة",
+  "telegram.choosePreset": "اختر صيغة الإشعار",
   "telegram.categoryEventsCount": "{{enabled}}/{{total}} مفعّل",
   "telegram.expandCategory": "عرض الأحداث",
   "telegram.collapseCategory": "إخفاء الأحداث",

@@ -164,27 +164,47 @@ api.interceptors.response.use(
     }
 
     if (status === 401 && !isAuthLoginRequest) {
-      const { logout } = useAuthStore.getState();
-      logout();
+      // Public endpoints (e.g. /api/settings) are called before login — do NOT
+      // trigger logout or redirect for them; the caller handles the error itself.
+      const isPublicEndpoint = reqUrl.includes("/api/settings");
+      if (!isPublicEndpoint) {
+        const { logout } = useAuthStore.getState();
+        logout();
 
-      if (!isRedirectingToLogin && typeof window !== "undefined") {
-        isRedirectingToLogin = true;
-        const currentPath = window.location.pathname || "";
-        if (!currentPath.startsWith("/login")) {
-          const loginPath =
-            window.location.protocol === "file:"
-              ? "#/login"
-              : "/login";
-          window.location.replace(loginPath);
+        if (!isRedirectingToLogin && typeof window !== "undefined") {
+          isRedirectingToLogin = true;
+          const currentPath = window.location.pathname || "";
+          if (!currentPath.startsWith("/login")) {
+            const loginPath =
+              window.location.protocol === "file:"
+                ? "#/login"
+                : "/login";
+            window.location.replace(loginPath);
+          }
+          window.setTimeout(() => {
+            isRedirectingToLogin = false;
+          }, 800);
         }
-        window.setTimeout(() => {
-          isRedirectingToLogin = false;
-        }, 800);
       }
     }
 
     return Promise.reject(error);
   },
 );
+
+// Tell the server the user is logging out so it can fire the Telegram
+// USER_LOGOUT owner notification. Fire-and-forget — never blocks the UI and
+// never fails the logout. The token is captured up-front because callers clear
+// the auth store immediately after, before the request actually dispatches.
+export function notifyServerLogout(reason) {
+  try {
+    const { token } = useAuthStore.getState();
+    if (!token) return;
+    api.post("/api/auth/logout", { reason: reason || "تسجيل خروج" }, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 7000,
+    }).catch(() => {});
+  } catch (_) { /* non-critical */ }
+}
 
 export default api;

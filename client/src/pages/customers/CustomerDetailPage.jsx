@@ -51,7 +51,7 @@ export default function CustomerDetailPage() {
           </div>
         ))}
       </div>
-      <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+      <div className="rounded-xl border border-border-normal overflow-hidden bg-bg-surface shadow-sm">
         <DataGrid
           data={[
             { id: 1, field: "الهاتف", value: customer.phone || "-" },
@@ -62,8 +62,8 @@ export default function CustomerDetailPage() {
           rowKey="id"
           className="border-0"
           columns={[
-            { id: "field", header: "البيان", width: 200, sortable: true, cellClass: "font-bold text-slate-800" },
-            { id: "value", header: "القيمة", width: 400, sortable: true, cellClass: "text-slate-600 font-mono" },
+            { id: "field", header: "البيان", width: 200, sortable: true, cellClass: "font-bold text-text-primary" },
+            { id: "value", header: "القيمة", width: 400, sortable: true, cellClass: "text-text-secondary font-mono" },
           ]}
         />
       </div>

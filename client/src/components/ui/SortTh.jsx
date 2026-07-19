@@ -14,10 +14,10 @@ export default function SortTh({
   helpText,
 }) {
   const mw = minWidth || 40;
-  const justify = className.includes("hdr-center") ? "justify-center" : "justify-between";
+  const justify = (className.includes("hdr-center") || className.includes("text-center")) ? "justify-center" : "justify-between";
   return (
     <th
-      className={`relative select-none border-l border-slate-200/80 px-2 py-2 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap transition-colors ${className} ${sortKey && onSort ? "cursor-pointer hover:bg-slate-100" : ""}`}
+      className={`relative select-none border-l border-border-normal/80 px-2 py-2 bg-bg-overlay text-[10px] font-black uppercase tracking-widest text-text-secondary whitespace-nowrap transition-colors ${className} ${sortKey && onSort ? "cursor-pointer hover:bg-bg-overlay" : ""}`}
       style={{ width, minWidth: mw, maxWidth: width }}
       onClick={() => onSort && sortKey && onSort(sortKey)}
       title={helpText || undefined}
@@ -25,7 +25,7 @@ export default function SortTh({
       <div className={`flex items-center ${justify} overflow-hidden`}>
         <span className="truncate">{label}</span>
         {sortKey && sortConfig?.key === sortKey && (
-          <span className="shrink-0 mr-1 text-slate-800">
+          <span className="shrink-0 mr-1 text-text-primary">
             {sortConfig.dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
           </span>
         )}

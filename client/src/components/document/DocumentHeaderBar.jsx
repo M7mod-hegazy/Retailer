@@ -19,7 +19,7 @@ import { ArrowLeft } from "lucide-react";
 // Identity-tinted bottom border so each document type keeps its palette cue
 // while header size/layout stay uniform.
 const ACCENTS = {
-  slate: "border-b border-slate-300",
+  slate: "border-b border-border-strong",
   amber: "border-b border-amber-200",
   emerald: "border-b border-emerald-200",
   "emerald-strong": "border-b-2 border-emerald-500",
@@ -39,13 +39,13 @@ export default function DocumentHeaderBar({
 }) {
   return (
     <header
-      className={`flex h-14 shrink-0 items-center justify-between ${ACCENTS[accent] || ACCENTS.slate} bg-white px-6 ${className}`}
+      className={`flex h-14 shrink-0 items-center justify-between ${ACCENTS[accent] || ACCENTS.slate} bg-bg-surface px-6 ${className}`}
     >
       <div className="flex items-center gap-4">
         {onBack && (
           <button
             onClick={onBack}
-            className="flex h-8 w-8 items-center justify-center rounded-sm border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-border-normal text-text-secondary transition-colors hover:bg-bg-overlay"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -53,10 +53,10 @@ export default function DocumentHeaderBar({
         {(title || subtitle) && (
           <div className="flex flex-col">
             {title && (
-              <h1 className="text-sm font-black text-slate-800">{title}</h1>
+              <h1 className="text-sm font-black text-text-primary">{title}</h1>
             )}
             {subtitle && (
-              <span className="text-[11px] font-bold text-slate-400">
+              <span className="text-[11px] font-bold text-text-muted">
                 {subtitle}
               </span>
             )}
@@ -65,7 +65,7 @@ export default function DocumentHeaderBar({
         {badges.map((b, i) => (
           <span
             key={i}
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${b.cls || "border-slate-200 bg-slate-100 text-slate-600"}`}
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-black ${b.cls || "border-border-normal bg-bg-overlay text-text-secondary"}`}
           >
             {b.label}
           </span>

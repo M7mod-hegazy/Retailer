@@ -37,7 +37,7 @@ export default function RollZoneLayout({ items, settings: s }) {
 
   const wrapRun = (run, i) => {
     let content;
-    if (run.sec === "brand") content = <div style={{ textAlign: "center" }}>{run.nodes}</div>;
+    if (run.sec === "brand") content = <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>{run.nodes}</div>;
     else if (run.sec === "meta") content = <div style={{ fontSize: itemFont, marginBottom: "5px" }}>{run.nodes}</div>;
     else if (run.sec === "totals" || run.sec === "payments") content = <div style={{ fontSize: itemFont }}>{run.nodes}</div>;
     else content = <>{run.nodes}</>;

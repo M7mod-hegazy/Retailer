@@ -29,16 +29,16 @@ export default function AccountExportModal({ open, onClose, entityType, accounts
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-3xl" showDetach={false}>
       <div className="space-y-6" dir="rtl">
-        <div className="rounded-sm border border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="rounded-sm border border-border-normal">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-bg-overlay px-4 py-3">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-black text-slate-800">حقول ملف التصدير</span>
+              <span className="text-sm font-black text-text-primary">حقول ملف التصدير</span>
             </div>
             <button
               type="button"
               onClick={() => setSelectedFields(selectedFields.length === ACCOUNT_EXPORT_FIELDS.length ? [] : ACCOUNT_EXPORT_FIELDS.map((f) => f.key))}
-              className="text-[11px] font-black text-slate-500 hover:text-slate-900"
+              className="text-[11px] font-black text-text-secondary hover:text-text-primary"
             >
               {selectedFields.length === ACCOUNT_EXPORT_FIELDS.length ? "إلغاء الكل" : "تحديد الكل"}
             </button>
@@ -52,19 +52,19 @@ export default function AccountExportModal({ open, onClose, entityType, accounts
                   type="button"
                   onClick={() => toggleField(field.key)}
                   className={`flex items-center justify-between rounded-sm border px-3 py-2 text-2sm font-bold transition-all ${
-                    checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay"
                   }`}
                 >
                   <span>{field.label}</span>
-                  {checked ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-slate-300" />}
+                  {checked ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 text-text-muted" />}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <div className="text-2sm font-bold text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
+          <div className="text-2sm font-bold text-text-secondary">
             سيتم تصدير {accounts?.length || 0} حساب مع {selectedFields.length} حقل بصيغة Excel.
           </div>
           <button

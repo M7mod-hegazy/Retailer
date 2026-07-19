@@ -106,7 +106,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" dir="rtl">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[460px] mx-4 flex flex-col max-h-[90vh]">
+      <div className="bg-bg-surface rounded-xl shadow-2xl w-full max-w-[460px] mx-4 flex flex-col max-h-[90vh]">
 
         <TitleBar title={editMode ? "تعديل بيانات العميل" : "بيانات العميل"} onClose={handleClose} onDetach={handleDetach} />
 
@@ -114,7 +114,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
         <div data-modal-content className="flex-1 overflow-y-auto">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+              <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
             </div>
           )}
 
@@ -126,19 +126,19 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                   {customer.name?.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-[16px] font-black text-slate-900">{customer.name}</p>
+                  <p className="text-[16px] font-black text-text-primary">{customer.name}</p>
                   {customer.code && (
-                    <span className="text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{customer.code}</span>
+                    <span className="text-[11px] font-mono bg-bg-overlay text-text-secondary px-2 py-0.5 rounded-md">{customer.code}</span>
                   )}
                 </div>
               </div>
 
               {/* Balance pill */}
-              <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${bal > 0 ? "bg-rose-50 border border-rose-200" : bal < 0 ? "bg-emerald-50 border border-emerald-200" : "bg-slate-50 border border-slate-200"}`}>
-                <span className={`text-[11px] font-black uppercase tracking-wide ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+              <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${bal > 0 ? "bg-rose-50 border border-rose-200" : bal < 0 ? "bg-emerald-50 border border-emerald-200" : "bg-bg-overlay border border-border-normal"}`}>
+                <span className={`text-[11px] font-black uppercase tracking-wide ${bal > 0 ? "text-rose-500" : bal < 0 ? "text-emerald-600" : "text-text-muted"}`}>
                   {bal > 0 ? "عليه رصيد" : bal < 0 ? "له رصيد" : "مسوّى"}
                 </span>
-                <span className={`text-[18px] number-fmt-primary ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                <span className={`text-[18px] number-fmt-primary ${bal > 0 ? "text-rose-600" : bal < 0 ? "text-emerald-600" : "text-text-muted"}`}>
                   {fmt(Math.abs(bal))} <span className="text-[11px]">ج.م</span>
                 </span>
               </div>
@@ -146,17 +146,17 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Phones */}
               {(customer.phone || extraPhones.length > 0) && (
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">أرقام الهاتف</p>
+                  <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-2">أرقام الهاتف</p>
                   <div className="space-y-1.5">
                     {customer.phone && (
-                      <div className="flex items-center gap-2 text-sm text-slate-700 font-mono">
+                      <div className="flex items-center gap-2 text-sm text-text-primary font-mono">
                         <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                         {customer.phone}
                       </div>
                     )}
                     {extraPhones.map((p, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-slate-500 font-mono">
-                        <Phone className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                      <div key={i} className="flex items-center gap-2 text-sm text-text-secondary font-mono">
+                        <Phone className="h-3.5 w-3.5 text-text-muted shrink-0" />
                         {p}
                       </div>
                     ))}
@@ -167,11 +167,11 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Addresses */}
               {addresses.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">العناوين</p>
+                  <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-2">العناوين</p>
                   <div className="space-y-1.5">
                     {addresses.map((a, i) => (
-                      <div key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                        <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                      <div key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                        <MapPin className="h-3.5 w-3.5 text-text-muted shrink-0 mt-0.5" />
                         {a}
                       </div>
                     ))}
@@ -182,14 +182,14 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               {/* Notes */}
               {customer.notes && (
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">ملاحظات</p>
-                  <p className="text-sm text-slate-600 leading-relaxed">{customer.notes}</p>
+                  <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-1">ملاحظات</p>
+                  <p className="text-sm text-text-secondary leading-relaxed">{customer.notes}</p>
                 </div>
               )}
 
               {/* No contact info */}
               {!customer.phone && extraPhones.length === 0 && addresses.length === 0 && !customer.notes && (
-                <p className="text-sm text-slate-400 text-center py-2">لا توجد بيانات تواصل مضافة</p>
+                <p className="text-sm text-text-muted text-center py-2">لا توجد بيانات تواصل مضافة</p>
               )}
             </div>
           )}
@@ -201,12 +201,12 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
                   الاسم <span className="text-red-500">*</span>
                 </label>
                 <input
                   ref={nameRef}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                  className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   onKeyDown={e => handleKeyDown(e, { nextRef: phone0Ref })}
@@ -215,13 +215,13 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">أرقام الهاتف</label>
+                <label className="block text-xs font-semibold text-text-secondary mb-1.5">أرقام الهاتف</label>
                 <div className="space-y-2">
                   {form.phones.map((phone, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <input
                         ref={i === 0 ? phone0Ref : undefined}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                        className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                         placeholder={i === 0 ? "رقم الهاتف الرئيسي" : "رقم إضافي"}
                         value={phone}
                         onChange={e => setPhone(i, e.target.value)}
@@ -230,7 +230,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                       />
                       {form.phones.length > 1 && (
                         <button type="button" onClick={() => removePhone(i)}
-                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -246,13 +246,13 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">العناوين</label>
+                <label className="block text-xs font-semibold text-text-secondary mb-1.5">العناوين</label>
                 <div className="space-y-2">
                   {form.addresses.map((addr, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <input
                         ref={i === 0 ? address0Ref : undefined}
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                        className="flex-1 border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                         placeholder={i === 0 ? "العنوان الرئيسي (اختياري)" : "عنوان إضافي"}
                         value={addr}
                         onChange={e => setAddress(i, e.target.value)}
@@ -260,7 +260,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
                       />
                       {form.addresses.length > 1 && (
                         <button type="button" onClick={() => removeAddress(i)}
-                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5">
+                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -276,10 +276,10 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ملاحظات</label>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">ملاحظات</label>
                 <textarea
                   ref={notesRef}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
+                  className="w-full border border-border-normal rounded-lg px-3 py-2 text-sm bg-bg-surface focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
                   placeholder="اختياري"
                   rows={2}
                   value={form.notes}
@@ -293,7 +293,7 @@ export default function CustomerInfoModal({ open, customerId, onClose, onUpdated
 
         {/* Footer */}
         {!loading && customer && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 shrink-0">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border-subtle shrink-0">
             {editMode ? (
               <>
                 <Button variant="danger" size="sm" onClick={() => { setEditMode(false); setError(""); }}>

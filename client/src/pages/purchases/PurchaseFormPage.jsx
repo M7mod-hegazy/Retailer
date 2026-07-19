@@ -67,7 +67,7 @@ function toDateInput(date = new Date()) {
 function UnitCell({ unitName }) {
   return (
     <div className="w-full h-full flex items-center justify-center">
-      <span className="text-[11px] font-bold text-slate-600 truncate">{unitName}</span>
+      <span className="text-[11px] font-bold text-text-secondary truncate">{unitName}</span>
     </div>
   );
 }
@@ -80,7 +80,7 @@ const PAYMENT_METHOD_LABELS = {
 const PURCHASE_STATUS_STYLES = {
   active: { label: "نشط", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   voided: { label: "ملغي", cls: "bg-rose-50 text-rose-700 border-rose-200" },
-  cancelled: { label: "ملغي", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  cancelled: { label: "ملغي", cls: "bg-bg-overlay text-text-secondary border-border-normal" },
 };
 
 const SUPPLIER_METHODS = [
@@ -88,7 +88,7 @@ const SUPPLIER_METHODS = [
 ];
 
 const COLOR_MAP = {
-  slate:  { border: "border-slate-800",  bg: "bg-slate-800",  text: "text-slate-800",  light: "bg-slate-50"  },
+  slate:  { border: "border-slate-800",  bg: "bg-slate-900",  text: "text-text-primary",  light: "bg-bg-overlay"  },
   blue:   { border: "border-blue-600",   bg: "bg-blue-600",   text: "text-blue-700",   light: "bg-blue-50"   },
   amber:  { border: "border-amber-500",  bg: "bg-amber-500",  text: "text-amber-700",  light: "bg-amber-50"  },
   rose:   { border: "border-rose-500",   bg: "bg-rose-500",   text: "text-rose-700",   light: "bg-rose-50"   },
@@ -885,14 +885,14 @@ export default function PurchaseFormPage() {
 
   if (loadingExisting) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-50">
-        <div className="text-sm font-black text-slate-400 animate-pulse">جاري تحميل الفاتورة...</div>
+      <div className="flex h-full items-center justify-center bg-bg-overlay">
+        <div className="text-sm font-black text-text-muted animate-pulse">جاري تحميل الفاتورة...</div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full min-h-[600px] flex-col bg-slate-50 font-sans overflow-hidden pb-6 animate-fade-in" dir="rtl">
+    <div className="relative flex h-full min-h-[600px] flex-col bg-bg-overlay font-sans overflow-hidden pb-6 animate-fade-in" dir="rtl">
       {saveSuccess && (
         <InvoiceSaveSuccess
           invoiceNumber={saveSuccess.invoiceNumber}
@@ -910,16 +910,16 @@ export default function PurchaseFormPage() {
       )}
       {priceHelpOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setPriceHelpOpen(false)}>
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-bg-surface rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
                   <Info size={14} className="text-indigo-600" />
                 </div>
-                <span className="text-[13px] font-black text-slate-800">خيارات تحديث السعر</span>
+                <span className="text-[13px] font-black text-text-primary">خيارات تحديث السعر</span>
               </div>
-              <button onClick={() => setPriceHelpOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => setPriceHelpOpen(false)} className="text-text-muted hover:text-text-secondary transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -960,12 +960,12 @@ export default function PurchaseFormPage() {
                 </div>
               </div>
               {/* Tip */}
-              <p className="text-[10px] text-slate-500 text-center">
+              <p className="text-[10px] text-text-secondary text-center">
                 تقدر تغيّر الخيار دة لكل سعر لوحده من خلال الزر الصغيّر جنب كل سعر
               </p>
             </div>
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
+            <div className="px-5 py-3 border-t border-border-subtle flex justify-end">
               <button onClick={() => setPriceHelpOpen(false)}
                 className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-[12px] font-bold hover:bg-indigo-700 transition-colors">
                 فهمت
@@ -993,7 +993,7 @@ export default function PurchaseFormPage() {
               </Link>
             )}
             {invoiceIsActive && (
-              <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-[var(--primary-50)] text-[var(--primary-600)] border-[var(--primary-100)]"}`}>
+              <div className={`flex items-center gap-1.5 rounded-sm px-2 py-1 text-[11px] font-bold border ${isLocked ? "bg-bg-overlay text-text-secondary border-border-normal" : "bg-[var(--primary-50)] text-[var(--primary-600)] border-[var(--primary-100)]"}`}>
                 {isLocked ? <Lock className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />}
                 {isLocked ? "مقفلة" : "نشطة"}
               </div>
@@ -1005,10 +1005,10 @@ export default function PurchaseFormPage() {
             )}
             <div className="flex gap-1.5 items-center">
               <input disabled value={invoiceIsActive ? (docNo || refNo || "") : "—"}
-                className="h-6 w-32 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-black text-slate-500 cursor-not-allowed outline-none text-center" />
+                className="h-6 w-32 rounded-sm border border-border-normal bg-bg-overlay px-2 text-[11px] font-mono font-black text-text-secondary cursor-not-allowed outline-none text-center" />
               <input disabled
                 value={invoiceIsActive && invoiceCreatedAt ? new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "short", timeStyle: "short" }).format(new Date(invoiceCreatedAt)) : "—"}
-                className="h-6 w-40 rounded-sm border border-slate-200 bg-slate-50 px-2 text-[11px] font-mono font-bold text-slate-400 cursor-not-allowed outline-none text-center select-none" />
+                className="h-6 w-40 rounded-sm border border-border-normal bg-bg-overlay px-2 text-[11px] font-mono font-bold text-text-muted cursor-not-allowed outline-none text-center select-none" />
             </div>
           </>
         }
@@ -1086,7 +1086,7 @@ export default function PurchaseFormPage() {
                 <EntryItemThumb item={selectedItem} onView={(imgs) => { const u = resolveImageUrl(imgs[0]); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }} />
                 {/* Item search */}
                 <div data-help="search-bar" className="entry-field entry-field--item">
-                  <label className="entry-label">الصنف <span className="text-[9px] font-mono text-slate-400">(F1)</span></label>
+                  <label className="entry-label">الصنف <span className="text-[9px] font-mono text-text-muted">(F1)</span></label>
                   <CategorySearchField
                     categories={categories}
                     value={listCategoryFilter}
@@ -1178,7 +1178,7 @@ export default function PurchaseFormPage() {
                     )}
                     <button type="button" onClick={() => setPriceHelpOpen(true)}
                       title="اعرف أكثر عن خيارات تحديث السعر"
-                      className="shrink-0 text-slate-400 hover:text-indigo-500 transition-colors">
+                      className="shrink-0 text-text-muted hover:text-indigo-500 transition-colors">
                       <Info size={11} />
                     </button>
                   </div>
@@ -1269,16 +1269,16 @@ export default function PurchaseFormPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">تتبع الانتهاء (FEFO)</p>
                     <div className="flex gap-2">
                       <div className="flex flex-col gap-0.5 flex-1">
-                        <label className="text-[11px] font-bold text-slate-600">تاريخ الانتهاء</label>
+                        <label className="text-[11px] font-bold text-text-secondary">تاريخ الانتهاء</label>
                         <input type="date" value={staging.expiryDate}
                           onChange={e => setStaging(s => ({ ...s, expiryDate: e.target.value }))}
-                          className="w-full h-[33px] border border-slate-300 rounded-sm px-2 text-[12px] font-mono bg-white outline-none focus:border-blue-500" />
+                          className="w-full h-[33px] border border-border-strong rounded-sm px-2 text-[12px] font-mono bg-bg-surface outline-none focus:border-blue-500" />
                       </div>
                       <div className="flex flex-col gap-0.5 flex-1">
-                        <label className="text-[11px] font-bold text-slate-600">رقم الدفعة (اختياري)</label>
+                        <label className="text-[11px] font-bold text-text-secondary">رقم الدفعة (اختياري)</label>
                         <input type="text" value={staging.batchNo} placeholder="BATCH-001"
                           onChange={e => setStaging(s => ({ ...s, batchNo: e.target.value }))}
-                          className="w-full h-[33px] border border-slate-300 rounded-sm px-2 text-[12px] font-mono bg-white outline-none focus:border-blue-500" />
+                          className="w-full h-[33px] border border-border-strong rounded-sm px-2 text-[12px] font-mono bg-bg-surface outline-none focus:border-blue-500" />
                       </div>
                     </div>
                   </div>
@@ -1295,21 +1295,21 @@ export default function PurchaseFormPage() {
                 {/* Column visibility settings — kept inline with the entry bar to save vertical space */}
                 <div ref={colSettingsRef} className="relative shrink-0">
                   <button onClick={() => setColSettingsOpen(p => !p)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all active:scale-90"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-normal bg-bg-surface text-text-muted hover:text-text-secondary hover:bg-bg-overlay transition-all active:scale-90"
                     title="تخصيص الأعمدة"
                   >
                     <Settings2 className="h-4 w-4" />
                   </button>
                   {colSettingsOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
-                      <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                    <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-border-normal bg-bg-surface shadow-xl py-1">
+                      <div className="px-3 py-1.5 text-[10px] font-black text-text-muted uppercase tracking-widest border-b border-border-subtle">الأعمدة الظاهرة</div>
                       {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
                         const labels = { code: "الكود", name: "البيان", quantity: "الكمية", unit_id: "الوحدة", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "الربح", wholesale_price: "جملة", locks: "قفل", warehouse_id: "المخزن", expiry_date: "انتهاء", total: "الإجمالي" };
                         return (
-                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                          <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-overlay cursor-pointer text-2sm font-bold text-text-primary">
                             <input type="checkbox" checked={visibleColumns.includes(cid)}
                               onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                              className="rounded border-border-strong text-indigo-600 focus:ring-indigo-300"
                             />
                             {labels[cid] || cid}
                           </label>
@@ -1332,23 +1332,23 @@ export default function PurchaseFormPage() {
             emptyMessage="لا يوجد أصناف في الفاتورة بعد"
             emptyIcon={<ShoppingCart className="h-12 w-12 mb-2" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-slate-300 max-h-[440px] animate-fade-in"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-bg-surface scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-md border border-border-strong max-h-[440px] animate-fade-in"
             rowClass={(l) => {
               const anyUnlocked = l.update_master_purchase_price === false || l.update_master_sale_price === false || l.update_master_wholesale_price === false;
               return anyUnlocked ? "!bg-amber-50" : "";
             }}
             columns={[
-              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", sortable: false, render: (_, i) => i + 1 },
-              { id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100", render: (l) => l.code || "-" },
+              { id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-text-muted border-l border-border-subtle", sortable: false, render: (_, i) => i + 1 },
+              { id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-text-secondary border-l border-border-subtle", render: (l) => l.code || "-" },
               {
-                id: "name", header: "البيان", width: 220, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
+                id: "name", header: "البيان", width: 220, sortable: true, cellClass: "font-black text-text-primary border-l border-border-subtle px-2", headerClass: "text-right px-2",
                 render: (l) => (
                   <div className="flex items-center gap-2 py-1">
                     {l.primary_image_url && (
                       <img
                         src={resolveImageUrl(l.primary_image_url)}
                         alt="product"
-                        className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-slate-200"
+                        className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-border-normal"
                         onClick={() => { const u = resolveImageUrl(l.primary_image_url); if (u) { setImagePreviewUrl(u); setImageModalOpen(true); } }}
                       />
                     )}
@@ -1357,7 +1357,7 @@ export default function PurchaseFormPage() {
                 ),
                 sortValue: (l) => l.name,
               },
-              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+              { id: "quantity", header: "الكمية", width: 90, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   const u = units.find(u => String(u.id) === String(l.unit_id));
                   const isInt = u?.allow_decimal === 0;
@@ -1374,24 +1374,24 @@ export default function PurchaseFormPage() {
                     />
                   );
                 } },
-              { id: "unit_id", header: "الوحدة", width: 85, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+              { id: "unit_id", header: "الوحدة", width: 85, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle relative",
                 render: (l, i) => {
                   const unitName = l.unit_id ? (units.find(u => String(u.id) === String(l.unit_id))?.name || "أساسية") : "أساسية";
                   return <UnitCell unitName={unitName} />;
                 } },
               {
-                id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
                   const willUpdate = l.update_master_purchase_price !== false;
                   return (
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.unit_cost} disabled={isLocked} data-grid-cell data-row={i} data-col="unit_cost" onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${costChanged ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-text-primary"}`} />
                       {costChanged && (
                         <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(l.original_unit_cost).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(l.original_unit_cost).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_unit_cost) ? "text-rose-500" : "text-emerald-600"}`}>
                             {Number(l.unit_cost).toFixed(2)}
                           </span>
@@ -1413,7 +1413,7 @@ export default function PurchaseFormPage() {
                   );
                 } },
               {
-                id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0 && Number(l.original_sale_price) > 0;
                   const minMargin = printSettings?.min_margin_percent ?? 15;
@@ -1428,8 +1428,8 @@ export default function PurchaseFormPage() {
                         className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${belowMargin ? "bg-rose-50 text-rose-800" : changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50"}`} />
                       {changed && !belowMargin && (
                         <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(l.original_sale_price).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(l.original_sale_price).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                             {Number(l.selling_price).toFixed(2)}
                           </span>
@@ -1453,7 +1453,7 @@ export default function PurchaseFormPage() {
                 }
               },
               {
-                id: "profit_pct", header: "الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+                id: "profit_pct", header: "الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle relative",
                 render: (l, i) => {
                   const cost = Number(l.unit_cost) || 0;
                   const price = Number(l.selling_price) || 0;
@@ -1482,7 +1482,7 @@ export default function PurchaseFormPage() {
                 }
               },
               {
-                id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+                id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0 && Number(l.original_wholesale_price) > 0;
                   const willUpdate = l.update_master_wholesale_price !== false;
@@ -1490,11 +1490,11 @@ export default function PurchaseFormPage() {
                     <div className="relative w-full h-full flex flex-col">
                       <input type="number" step="any" value={l.wholesale_price ?? 0} disabled={isLocked}
                         onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
-                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`} />
+                        className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors disabled:cursor-not-allowed ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-text-primary"}`} />
                       {changed && (
                         <span className="text-[9px] text-center leading-none pb-0.5 flex items-center justify-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(l.original_wholesale_price).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(l.original_wholesale_price).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>
                             {Number(l.wholesale_price).toFixed(2)}
                           </span>
@@ -1517,7 +1517,7 @@ export default function PurchaseFormPage() {
                 }
               },
               {
-                id: "locks", header: "تحديث السعر", width: 110, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-slate-100",
+                id: "locks", header: "تحديث السعر", width: 110, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   if (isLocked) return null;
                   const costChanged = Number(l.unit_cost) !== Number(l.original_unit_cost) && Number(l.unit_cost) > 0 && Number(l.original_unit_cost) > 0;
@@ -1547,7 +1547,7 @@ export default function PurchaseFormPage() {
                   );
                 }
               },
-              { id: "warehouse_id", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100 relative",
+              { id: "warehouse_id", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle relative",
                 render: (l, i) => {
                   const whStock = stockLevels[l.item_id] || {};
                   const hasStockInSelected = l.warehouse_id ? (whStock[l.warehouse_id] || 0) > 0 : false;
@@ -1555,8 +1555,8 @@ export default function PurchaseFormPage() {
                     <div className="relative w-full">
                       <select value={l.warehouse_id} disabled={isLocked} onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
                         className={`w-full h-[40px] text-[11px] font-bold outline-none border-0 ring-0 text-center truncate transition-colors cursor-pointer ${
-                          isLocked ? "bg-transparent text-slate-500 cursor-not-allowed" :
-                          !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-700 focus:bg-indigo-50"
+                          isLocked ? "bg-transparent text-text-secondary cursor-not-allowed" :
+                          !hasStockInSelected && l.warehouse_id ? "bg-rose-50 text-rose-700" : "bg-transparent text-text-primary focus:bg-indigo-50"
                         }`}>
                         {warehouses.map(w => {
                           const sqty = whStock[w.id] || 0;
@@ -1564,7 +1564,7 @@ export default function PurchaseFormPage() {
                         })}
                       </select>
                       {!isLocked && (
-                        <ChevronDown className="absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-slate-400" />
+                        <ChevronDown className="absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 pointer-events-none text-text-muted" />
                       )}
                       {!hasStockInSelected && l.warehouse_id && !isLocked && (
                         <div className="absolute bottom-0 left-0 right-0 text-[8px] font-black text-rose-500 text-center leading-none pb-0.5">
@@ -1574,21 +1574,21 @@ export default function PurchaseFormPage() {
                     </div>
                   );
                 } },
-              { id: "expiry_date", header: "انتهاء", width: 125, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+              { id: "expiry_date", header: "انتهاء", width: 125, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
                 render: (l, i) => {
                   if (!l.track_expiry) return <div className="h-[40px] flex items-center justify-center text-slate-200 text-[10px] select-none">—</div>;
                   return (
                     <input type="date" value={l.expiry_date || ""} disabled={isLocked}
                       onChange={(e) => updateLineField(i, "expiry_date", e.target.value)}
-                      className="w-full h-[40px] text-[11px] font-mono font-bold text-center bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50 text-slate-700 disabled:cursor-not-allowed"
+                      className="w-full h-[40px] text-[11px] font-mono font-bold text-center bg-transparent outline-none border-0 ring-0 focus:ring-0 focus:bg-blue-50 text-text-primary disabled:cursor-not-allowed"
                     />
                   );
                 }
               },
-              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 number-fmt-primary text-sm text-slate-900 bg-slate-50/50 border-l border-slate-100",
+              { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-2", cellClass: "text-center px-2 number-fmt-primary text-sm text-text-primary bg-bg-overlay/50 border-l border-border-subtle",
                 render: (l) => formatNumber(l.total) },
               { id: "actions", header: "", width: 50, sortable: false, cellClass: "p-0 text-center",
-                render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-slate-400 opacity-60 hover:bg-slate-100 hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
+                render: (_, i) => !isLocked && <button onClick={() => removeLine(i)} className="inline-flex h-[40px] w-full items-center justify-center text-text-muted opacity-60 hover:bg-bg-overlay hover:text-rose-500 hover:opacity-100 transition-colors focus:outline-none"><X className="h-4 w-4" /></button> },
             ].filter(c => c.id === "index" || c.id === "actions" || visibleColumns.includes(c.id))}
           />
           </div>
@@ -1611,10 +1611,10 @@ export default function PurchaseFormPage() {
         <PanelEdgeRail collapsed={panelEffectiveCollapsed} onToggle={togglePanel} onResizeStart={(e) => startPanelResize(e, "right")} panelSide="right" />
         <aside className={`shrink-0 flex flex-col gap-3 overflow-y-auto p-3 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth, background: "var(--bg-sidebar)" }}>
           {/* Supplier section — search + details + balance all in one card */}
-          <div className="relative z-20 rounded-md border border-slate-300 bg-white shadow-sm shrink-0">
+          <div className="relative z-20 rounded-md border border-border-strong bg-bg-surface shadow-sm shrink-0">
             {/* Card header */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100 rounded-t-md">
-              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-bg-overlay border-b border-border-subtle rounded-t-md">
+              <h3 className="text-[11px] font-black text-text-secondary uppercase tracking-widest flex items-center gap-1.5">
                 <Building2 className="h-3 w-3" /> المورد
               </h3>
               {supplier && (
@@ -1622,7 +1622,7 @@ export default function PurchaseFormPage() {
                   <button onClick={() => setSupplierInfoOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-orange-500 hover:text-orange-700 transition-colors">
                     <ExternalLink className="h-3 w-3" /> بيانات
                   </button>
-                  <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700">
+                  <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary">
                     <ExternalLink className="h-3 w-3" /> السجل
                   </Link>
                 </div>
@@ -1630,10 +1630,10 @@ export default function PurchaseFormPage() {
             </div>
 
             {/* Search input — always visible */}
-            <div className="p-3 border-b border-slate-100" data-help="supplier-select">
+            <div className="p-3 border-b border-border-subtle" data-help="supplier-select">
               <div className="flex items-center gap-1.5">
                 <div className="relative flex-1">
-                  <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <User className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted pointer-events-none" />
                   <input
                     ref={supplierInputRef}
                     type="text"
@@ -1644,7 +1644,7 @@ export default function PurchaseFormPage() {
                     placeholder={supplier ? supplier.name : "ابحث عن مورد..."}
                     disabled={isLocked}
                     style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
-                    className="w-full border border-slate-300 rounded-sm py-2 pl-3 pr-9 text-2sm font-bold outline-none focus:border-[var(--primary)] disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full border border-border-strong rounded-sm py-2 pl-3 pr-9 text-2sm font-bold outline-none focus:border-[var(--primary)] disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   {supplierLookupOpen && !isLocked && (
                     <SearchDropdown items={filteredSuppliers} onPick={handlePickSupplier} activeIndex={activeSupplierIndex} emptyLabel="لم يتم العثور على مورد" />
@@ -1652,7 +1652,7 @@ export default function PurchaseFormPage() {
                 </div>
                 <button onClick={() => setSupplierModalOpen(true)}
                   disabled={isLocked}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-bg-overlay text-text-secondary hover:bg-border-normal disabled:opacity-40 disabled:cursor-not-allowed">
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
@@ -1670,9 +1670,9 @@ export default function PurchaseFormPage() {
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white text-base font-black">{supplier.name?.[0]}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-800 truncate">{supplier.name}</p>
+                    <p className="text-sm font-black text-text-primary truncate">{supplier.name}</p>
                     {supplier.code && (
-                      <span className="inline-block mt-0.5 text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{supplier.code}</span>
+                      <span className="inline-block mt-0.5 text-[10px] font-mono bg-bg-overlay text-text-secondary px-1.5 py-0.5 rounded">{supplier.code}</span>
                     )}
                   </div>
                 </div>
@@ -1683,16 +1683,16 @@ export default function PurchaseFormPage() {
                   const addresses = parseJsonArr(supplier.addresses);
                   if (phones.length === 0 && addresses.length === 0) return null;
                   return (
-                    <div className="space-y-1 rounded-md bg-slate-50/70 border border-slate-100 px-3 py-2">
+                    <div className="space-y-1 rounded-md bg-bg-overlay/70 border border-border-subtle px-3 py-2">
                       {phones.map((p, i) => (
-                        <div key={`ph${i}`} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
-                          <Phone className={`h-3 w-3 shrink-0 ${i === 0 ? "text-orange-400" : "text-slate-300"}`} />
+                        <div key={`ph${i}`} className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary">
+                          <Phone className={`h-3 w-3 shrink-0 ${i === 0 ? "text-orange-400" : "text-text-muted"}`} />
                           <span dir="ltr" className="font-mono">{p}</span>
                         </div>
                       ))}
                       {addresses.map((a, i) => (
-                        <div key={`ad${i}`} className="flex items-start gap-1.5 text-[11px] font-medium text-slate-600">
-                          <MapPin className="h-3 w-3 shrink-0 mt-0.5 text-slate-400" />
+                        <div key={`ad${i}`} className="flex items-start gap-1.5 text-[11px] font-medium text-text-secondary">
+                          <MapPin className="h-3 w-3 shrink-0 mt-0.5 text-text-muted" />
                           <span className="leading-snug">{a}</span>
                         </div>
                       ))}
@@ -1712,11 +1712,11 @@ export default function PurchaseFormPage() {
                   const balChange = balanceDelta;
                   return (
                     <>
-                      <div className={`flex items-center justify-between rounded-md px-3 py-2 border ${dispBal > 0 ? "bg-rose-50 border-rose-200" : dispBal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
-                        <span className={`text-[10px] font-black uppercase tracking-wide ${dispBal > 0 ? "text-rose-500" : dispBal < 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                      <div className={`flex items-center justify-between rounded-md px-3 py-2 border ${dispBal > 0 ? "bg-rose-50 border-rose-200" : dispBal < 0 ? "bg-emerald-50 border-emerald-200" : "bg-bg-overlay border-border-normal"}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wide ${dispBal > 0 ? "text-rose-500" : dispBal < 0 ? "text-emerald-600" : "text-text-muted"}`}>
                           {isEditMode ? "الرصيد قبل التعديل" : dispBal > 0 ? "عليه رصيد" : dispBal < 0 ? "له رصيد" : "مسوّى"}
                         </span>
-                        <span className={`text-sm number-fmt-primary ${dispBal > 0 ? "text-rose-600" : dispBal < 0 ? "text-emerald-600" : "text-slate-400"}`}>{Math.abs(dispBal).toFixed(2)}</span>
+                        <span className={`text-sm number-fmt-primary ${dispBal > 0 ? "text-rose-600" : dispBal < 0 ? "text-emerald-600" : "text-text-muted"}`}>{Math.abs(dispBal).toFixed(2)}</span>
                       </div>
                       {hasLines && balChange !== 0 && (
                         <div className="flex items-center justify-between rounded-sm bg-indigo-50 border border-indigo-200 px-3 py-1.5">
@@ -1744,7 +1744,7 @@ export default function PurchaseFormPage() {
             ) : (
               <div className="px-4 py-5 text-center">
                 <Building2 className="h-7 w-7 mx-auto text-slate-200 mb-1.5" />
-                <p className="text-[11px] font-medium text-slate-400">
+                <p className="text-[11px] font-medium text-text-muted">
                   {(paymentMode === "credit" || paymentMode === "future_due")
                     ? "الرجاء اختيار مورد"
                     : "اختياري للدفع النقدي"}
@@ -1754,9 +1754,9 @@ export default function PurchaseFormPage() {
           </div>
 
           {/* Notes section */}
-          <div className="rounded-md border border-slate-300 bg-white shadow-sm overflow-hidden shrink-0">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+          <div className="rounded-md border border-border-strong bg-bg-surface shadow-sm overflow-hidden shrink-0">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-bg-overlay border-b border-border-subtle">
+              <h3 className="text-[11px] font-black text-text-secondary uppercase tracking-widest flex items-center gap-1.5">
                 <FileText className="h-3 w-3" /> ملاحظات
               </h3>
               {Boolean(purchaseNotes && purchaseNotes.trim()) && <span className="h-2 w-2 rounded-full bg-amber-400" title="توجد ملاحظة" />}
@@ -1770,29 +1770,29 @@ export default function PurchaseFormPage() {
                 rows={3}
                 disabled={isLocked}
                 style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
-                className="w-full resize-none border border-slate-300 rounded-sm py-2 px-3 text-2sm font-medium outline-none focus:border-[var(--primary)] leading-relaxed placeholder:text-slate-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full resize-none border border-border-strong rounded-sm py-2 px-3 text-2sm font-medium outline-none focus:border-[var(--primary)] leading-relaxed placeholder:text-text-muted disabled:opacity-60 disabled:cursor-not-allowed"
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); itemInputRef.current?.focus(); } }}
               />
             </div>
           </div>
 
           {/* Invoice Summary */}
-          <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100">ملخص الفاتورة</h3>
+          <div className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+            <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest border-b pb-2 border-border-subtle">ملخص الفاتورة</h3>
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-2sm font-bold text-slate-500">إجمالي الأصناف</span>
-                <span className="text-2sm font-black text-slate-800">{lines.length}</span>
+                <span className="text-2sm font-bold text-text-secondary">إجمالي الأصناف</span>
+                <span className="text-2sm font-black text-text-primary">{lines.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-2sm font-bold text-slate-500">مجموع الكميات</span>
-                <span className="text-2sm font-black text-slate-800">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
+                <span className="text-2sm font-bold text-text-secondary">مجموع الكميات</span>
+                <span className="text-2sm font-black text-text-primary">{lines.reduce((acc, l) => acc + Number(l.quantity), 0)}</span>
               </div>
-              <div className="h-px bg-slate-100" />
+              <div className="h-px bg-bg-overlay" />
               {/* Subtotal */}
               <div className="flex items-center justify-between">
-                <span className="text-2sm font-bold text-slate-500">الإجمالي الفرعي</span>
-                <span className="text-sm number-fmt-primary text-slate-800">{formatNumber(totals.sub)}</span>
+                <span className="text-2sm font-bold text-text-secondary">الإجمالي الفرعي</span>
+                <span className="text-sm number-fmt-primary text-text-primary">{formatNumber(totals.sub)}</span>
               </div>
               {/* Discount */}
               <div className="flex items-center justify-between">
@@ -1804,7 +1804,7 @@ export default function PurchaseFormPage() {
                 <span className="text-[11px] font-bold text-blue-600">إضافة / رسوم</span>
                 <span className="text-2sm number-fmt text-blue-600">{increase > 0 ? `+${increase.toFixed(2)}` : "0"}</span>
               </div>
-              <div className="h-px bg-slate-100" />
+              <div className="h-px bg-bg-overlay" />
               <div className="mt-3 rounded-sm bg-[var(--primary-700)] p-4 text-center text-white">
                 <div className="text-[11px] font-bold opacity-60 uppercase tracking-widest">إجمالي المستحق</div>
                 <div className="text-[26px] number-fmt-primary tracking-tighter">
@@ -1817,8 +1817,8 @@ export default function PurchaseFormPage() {
 
           {/* Discounts & Additions Section */}
           {!isLocked && (
-            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b pb-2 border-slate-100">خصومات و إضافات</h3>
+            <div className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest border-b pb-2 border-border-subtle">خصومات و إضافات</h3>
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
@@ -1842,7 +1842,7 @@ export default function PurchaseFormPage() {
                     <button type="button"
                       onClick={() => setInvoiceDiscountMode((m) => m === "pct" ? "flat" : "pct")}
                       title={invoiceDiscountMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
-                      className={`h-[38px] px-3 rounded-sm text-2sm font-black border transition-all shrink-0 ${invoiceDiscountMode === "pct" ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}>
+                      className={`h-[38px] px-3 rounded-sm text-2sm font-black border transition-all shrink-0 ${invoiceDiscountMode === "pct" ? "bg-rose-100 border-rose-300 text-rose-700 shadow-sm" : "bg-bg-overlay border-border-normal text-text-secondary hover:bg-bg-overlay"}`}>
                       {invoiceDiscountMode === "pct" ? "%" : "ج"}
                     </button>
                   </div>
@@ -1872,7 +1872,7 @@ export default function PurchaseFormPage() {
                     <button type="button"
                       onClick={() => setInvoiceIncreaseMode((m) => m === "pct" ? "flat" : "pct")}
                       title={invoiceIncreaseMode === "pct" ? "تغيير إلى قيمة ثابتة" : "تغيير إلى نسبة مئوية"}
-                      className={`h-[38px] px-3 rounded-sm text-2sm font-black border transition-all shrink-0 ${invoiceIncreaseMode === "pct" ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm" : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"}`}>
+                      className={`h-[38px] px-3 rounded-sm text-2sm font-black border transition-all shrink-0 ${invoiceIncreaseMode === "pct" ? "bg-blue-100 border-blue-300 text-blue-700 shadow-sm" : "bg-bg-overlay border-border-normal text-text-secondary hover:bg-bg-overlay"}`}>
                       {invoiceIncreaseMode === "pct" ? "%" : "ج"}
                     </button>
                   </div>
@@ -1883,12 +1883,12 @@ export default function PurchaseFormPage() {
 
           {/* Payment Method */}
           {isLocked ? (
-            <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
+            <div className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest">طريقة الدفع</h3>
               {paymentMode === "cash" && (
-                <div className="flex items-center gap-3 rounded-sm border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center gap-3 rounded-sm border border-border-normal bg-bg-overlay p-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary text-white"><Banknote className="h-4 w-4" /></div>
-                  <span className="text-2sm font-black text-slate-700">نقدي</span>
+                  <span className="text-2sm font-black text-text-primary">نقدي</span>
                 </div>
               )}
               {paymentMode === "multi" && (
@@ -1898,9 +1898,9 @@ export default function PurchaseFormPage() {
                     <span className="text-2sm font-black text-[var(--primary-600)]">متعدد</span>
                   </div>
                   {paymentMethods.filter(m => Number(multiAmounts[m.id] || 0) > 0).map(m => (
-                    <div key={m.id} className="flex items-center justify-between rounded-sm border border-slate-200 bg-slate-50 px-3 py-2">
-                      <span className="text-2sm font-bold text-slate-600">{m.name}</span>
-                      <span className="number-fmt-primary text-2sm text-slate-800">{formatMoney(Number(multiAmounts[m.id] || 0))}</span>
+                    <div key={m.id} className="flex items-center justify-between rounded-sm border border-border-normal bg-bg-overlay px-3 py-2">
+                      <span className="text-2sm font-bold text-text-secondary">{m.name}</span>
+                      <span className="number-fmt-primary text-2sm text-text-primary">{formatMoney(Number(multiAmounts[m.id] || 0))}</span>
                     </div>
                   ))}
                 </div>
@@ -1921,32 +1921,32 @@ export default function PurchaseFormPage() {
                     <span className="number-fmt-primary text-amber-700">+{formatMoney(creditEffect)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
-                    <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
+                    <span className="font-bold text-text-secondary">الرصيد بعد الفاتورة</span>
                     <span className="number-fmt-primary text-amber-600">{formatMoney(supplierBalanceAfter)}</span>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div data-help="payment-section" className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</h3>
+            <div data-help="payment-section" className="rounded-md border border-border-strong bg-bg-surface p-4 shadow-sm">
+              <h3 className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-widest">طريقة الدفع</h3>
 
             <button onClick={() => handleSelectPayment("cash")}
-              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "cash" ? "border-slate-800 bg-slate-50 shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "cash" ? "bg-slate-800" : "bg-slate-200"}`}><Banknote className="h-4 w-4" /></div>
+              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "cash" ? "border-slate-800 bg-bg-overlay shadow-sm" : "border-border-normal hover:bg-bg-overlay"}`}>
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "cash" ? "bg-slate-900" : "bg-border-normal"}`}><Banknote className="h-4 w-4" /></div>
               <div className="flex-1 flex flex-col text-right">
-                <span className={`text-2sm font-black ${paymentMode === "cash" ? "text-slate-800" : "text-slate-700"}`}>نقدي</span>
-                <span className="text-[11px] text-slate-400">سداد فوري — خصم من الخزينة</span>
+                <span className={`text-2sm font-black ${paymentMode === "cash" ? "text-text-primary" : "text-text-primary"}`}>نقدي</span>
+                <span className="text-[11px] text-text-muted">سداد فوري — خصم من الخزينة</span>
               </div>
-              {paymentMode === "cash" && <div className="h-2 w-2 rounded-full bg-slate-800 shrink-0" />}
+              {paymentMode === "cash" && <div className="h-2 w-2 rounded-full bg-slate-900 shrink-0" />}
             </button>
 
             <button onClick={() => handleSelectPayment("multi")}
-              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "multi" ? "border-[var(--primary)] bg-[var(--primary-50)] shadow-sm" : "border-slate-200 hover:bg-slate-50"}`}>
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "multi" ? "bg-[var(--primary)]" : "bg-slate-200"}`}><Layers className="h-4 w-4" /></div>
+              className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 ${paymentMode === "multi" ? "border-[var(--primary)] bg-[var(--primary-50)] shadow-sm" : "border-border-normal hover:bg-bg-overlay"}`}>
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${paymentMode === "multi" ? "bg-[var(--primary)]" : "bg-border-normal"}`}><Layers className="h-4 w-4" /></div>
               <div className="flex-1 flex flex-col text-right">
-                <span className={`text-2sm font-black ${paymentMode === "multi" ? "text-[var(--primary-600)]" : "text-slate-700"}`}>متعدد (100% مطلوب)</span>
-                <span className="text-[11px] text-slate-400">توزيع على عدة وسائل دفع</span>
+                <span className={`text-2sm font-black ${paymentMode === "multi" ? "text-[var(--primary-600)]" : "text-text-primary"}`}>متعدد (100% مطلوب)</span>
+                <span className="text-[11px] text-text-muted">توزيع على عدة وسائل دفع</span>
               </div>
               {paymentMode === "multi" && <div className="h-2 w-2 rounded-full bg-[var(--primary)] shrink-0" />}
             </button>
@@ -1960,12 +1960,12 @@ export default function PurchaseFormPage() {
                 <button key={m.id} onClick={() => handleSelectPayment(m.id)} disabled={isDisabled}
                   title={isDisabled ? "يجب اختيار مورد أولاً" : undefined}
                   className={`flex w-full items-center gap-3 rounded-sm border p-3 text-right transition-all mb-2 last:mb-0 ${
-                    isSelected ? `${colors.border} ${colors.light} shadow-sm` : isDisabled ? "border-slate-200 opacity-40 cursor-not-allowed" : "border-slate-200 hover:bg-slate-50"
+                    isSelected ? `${colors.border} ${colors.light} shadow-sm` : isDisabled ? "border-border-normal opacity-40 cursor-not-allowed" : "border-border-normal hover:bg-bg-overlay"
                   }`}>
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${isSelected ? colors.bg : "bg-slate-200"}`}><Icon className="h-4 w-4" /></div>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-white ${isSelected ? colors.bg : "bg-border-normal"}`}><Icon className="h-4 w-4" /></div>
                   <div className="flex-1 flex flex-col text-right">
-                    <span className={`text-2sm font-black ${isSelected ? colors.text : "text-slate-700"}`}>{m.label}</span>
-                    <span className={`text-[11px] ${isSelected ? colors.text : "text-slate-400"} opacity-80`}>{m.sub}</span>
+                    <span className={`text-2sm font-black ${isSelected ? colors.text : "text-text-primary"}`}>{m.label}</span>
+                    <span className={`text-[11px] ${isSelected ? colors.text : "text-text-muted"} opacity-80`}>{m.sub}</span>
                   </div>
                   {isSelected && <div className={`h-2 w-2 rounded-full ${colors.bg} shrink-0`} />}
                 </button>
@@ -1975,27 +1975,27 @@ export default function PurchaseFormPage() {
             {paymentMode === "multi" && (
               <div className="mt-3 flex flex-col gap-2">
                 <div className="rounded-sm bg-slate-950 px-3 py-2 text-center">
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">المطلوب توزيعه</p>
+                  <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest mb-0.5">المطلوب توزيعه</p>
                   <p className="number-fmt-primary text-[16px] text-white">{formatNumber(totals.total)}</p>
                 </div>
                 {paymentMethods.map(m => {
                   const amount = multiAmounts[m.id] || "";
                   const isCreditMethod = m.type === "credit" || m.category === "credit";
                   return (
-                    <div key={m.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-slate-50 text-slate-500 shrink-0">
+                    <div key={m.id} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-0">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-bg-overlay text-text-secondary shrink-0">
                         {m.type === "cash" ? <Banknote className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
                       </div>
-                      <span className="flex-1 min-w-0 text-2sm font-bold text-slate-700 leading-snug break-words">{m.name}</span>
+                      <span className="flex-1 min-w-0 text-2sm font-bold text-text-primary leading-snug break-words">{m.name}</span>
                       <input type="number" value={amount} placeholder="0.00" min="0" step="0.01" disabled={isLocked || (isCreditMethod && !supplier)}
                         onChange={(e) => setMultiAmounts(prev => ({ ...prev, [m.id]: e.target.value }))}
-                        className="w-28 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left number-fmt-primary text-2sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:cursor-not-allowed transition-all" />
+                        className="w-28 shrink-0 rounded-lg border border-border-normal bg-bg-surface px-3 py-1.5 text-left number-fmt-primary text-2sm text-text-primary outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-bg-overlay disabled:cursor-not-allowed transition-all" />
                     </div>
                   );
                 })}
                 {paymentMethods.length === 0 && (
-                  <p className="text-[11px] font-bold text-slate-400 text-center py-2">
-                    لا توجد وسائل دفع — <Link to="/operations/payment-methods" className="text-slate-600 underline">أضف وسائل دفع</Link>
+                  <p className="text-[11px] font-bold text-text-muted text-center py-2">
+                    لا توجد وسائل دفع — <Link to="/operations/payment-methods" className="text-text-secondary underline">أضف وسائل دفع</Link>
                   </p>
                 )}
                 <div className={`flex items-center justify-between rounded-sm px-3 py-2 text-2sm font-black ${multiBalanced ? "bg-[var(--primary-50)] text-[var(--primary-600)] border border-[var(--primary-100)]" : "bg-rose-50 text-rose-600 border border-rose-200"}`}>
@@ -2021,7 +2021,7 @@ export default function PurchaseFormPage() {
                   <span className="number-fmt-primary text-amber-700">+{formatMoney(creditEffect)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] border-t border-amber-200/70 pt-1.5">
-                  <span className="font-bold text-slate-600">الرصيد بعد الفاتورة</span>
+                  <span className="font-bold text-text-secondary">الرصيد بعد الفاتورة</span>
                   <span className={`number-fmt-primary ${supplierBalanceAfter > 0.005 ? "text-rose-600" : "text-[var(--primary)]"}`}>
                     {formatMoney(supplierBalanceAfter)}
                   </span>
@@ -2033,29 +2033,29 @@ export default function PurchaseFormPage() {
 
           {/* Bottom Action Buttons */}
           {!isLocked && (
-            <div data-help="purchases-save-area" className="rounded-md border border-slate-300 bg-white p-3 shadow-sm flex flex-col gap-2">
+            <div data-help="purchases-save-area" className="rounded-md border border-border-strong bg-bg-surface p-3 shadow-sm flex flex-col gap-2">
               <PermissionGate page="purchases" action={isEditMode || isAmendMode ? "edit" : "add"}>
                 <button onClick={() => { if (validateBeforeSave()) { if (priceChangedLines.length > 0) setPriceReportOpen(true); else setSaveConfirmOpen(true); } }} disabled={isSaving || !lines.length || (isEditMode && !isAmendMode && !isEditDirty)}
                   className="w-full flex items-center justify-center gap-2 rounded-sm bg-[var(--primary)] px-3 py-3 text-sm font-black text-white hover:bg-[var(--primary-600)] transition-all disabled:opacity-40 shadow-sm active:scale-[0.98]">
                   {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : isAmendMode ? <><Save className="h-4 w-4" /> إصدار تعديل</> : isEditMode ? <><Save className="h-4 w-4" /> حفظ التعديلات</> : <><Save className="h-4 w-4" /> حفظ الفاتورة</>}
-                  {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-white/20 px-1 text-[9px] font-mono text-white" />}
+                  {!isSaving && <ShortcutKbd id="form.save" className="ms-1 rounded bg-bg-surface/20 px-1 text-[9px] font-mono text-white" />}
                 </button>
               </PermissionGate>
               <div className="grid grid-cols-3 gap-2">
                 <PermissionGate page="purchases" action="print">
                   <button onClick={() => setPrintPreview(true)} disabled={!lines.length}
-                    className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-[var(--primary-100)] hover:bg-slate-50 transition-all disabled:opacity-40">
+                    className="flex items-center justify-center gap-1.5 rounded-sm border border-border-normal bg-bg-surface px-2 py-2 text-[11px] font-bold text-text-secondary hover:border-[var(--primary-100)] hover:bg-bg-overlay transition-all disabled:opacity-40">
                     <Printer className="h-3.5 w-3.5" /> طباعة
                   </button>
                 </PermissionGate>
                 <PermissionGate page="purchases" action="delete">
                   <button onClick={() => setDeleteConfirmOpen(true)}
-                    className="flex items-center justify-center gap-1.5 rounded-sm border border-rose-200 bg-white px-2 py-2 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-all">
+                    className="flex items-center justify-center gap-1.5 rounded-sm border border-rose-200 bg-bg-surface px-2 py-2 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-all">
                     <Trash2 className="h-3.5 w-3.5" /> {isEditMode ? "حذف" : "مسح"}
                   </button>
                 </PermissionGate>
                 <button onClick={() => setNewInvoiceModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-sm border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-slate-600 hover:border-[var(--primary-100)] hover:bg-[var(--primary-50)] transition-all">
+                  className="flex items-center justify-center gap-1.5 rounded-sm border border-border-normal bg-bg-surface px-2 py-2 text-[11px] font-bold text-text-secondary hover:border-[var(--primary-100)] hover:bg-[var(--primary-50)] transition-all">
                   <FilePlus className="h-3.5 w-3.5" /> جديدة
                 </button>
               </div>
@@ -2123,11 +2123,11 @@ export default function PurchaseFormPage() {
 
       {/* Image Preview Modal */}
       <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="معاينة صورة الصنف" showDetach={false}>
-        <div className="flex flex-col items-center justify-center p-4 bg-slate-50/50 rounded-lg border border-slate-100">
+        <div className="flex flex-col items-center justify-center p-4 bg-bg-overlay/50 rounded-lg border border-border-subtle">
           {imagePreviewUrl ? (
-            <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[60vh] object-contain rounded-md shadow-sm border border-slate-200 bg-white" />
+            <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[60vh] object-contain rounded-md shadow-sm border border-border-normal bg-bg-surface" />
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-12 text-text-muted">
               <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
               <p className="font-bold">الصورة غير متوفرة</p>
             </div>
@@ -2146,38 +2146,38 @@ export default function PurchaseFormPage() {
           </div>
           {/* Badge legend */}
           <div className="flex items-center gap-4 px-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide">دلالة الألوان:</span>
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-wide">دلالة الألوان:</span>
             <span className="flex items-center gap-1.5">
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">يحدّث</span>
-              <span className="text-[10px] text-slate-500">السعر الجديد هيتغير لكل الفواتير الجاية</span>
+              <span className="text-[10px] text-text-secondary">السعر الجديد هيتغير لكل الفواتير الجاية</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">فاتورة بس</span>
-              <span className="text-[10px] text-slate-500">للفاتورة دي بس، السعر الأساسي ما يتغيرش</span>
+              <span className="text-[10px] text-text-secondary">للفاتورة دي بس، السعر الأساسي ما يتغيرش</span>
             </span>
           </div>
-          <div className="rounded-md border border-slate-200 overflow-x-auto">
+          <div className="rounded-md border border-border-normal overflow-x-auto">
             <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-bg-overlay border-b border-border-normal">
                 <tr>
-                  <th className="px-3 py-2 text-right font-black text-slate-500 min-w-[180px]">الصنف</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">التكلفة (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">التكلفة (بعد)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">سعر البيع (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">سعر البيع (بعد)</th>
+                  <th className="px-3 py-2 text-right font-black text-text-secondary min-w-[180px]">الصنف</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">التكلفة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">التكلفة (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">سعر البيع (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">سعر البيع (بعد)</th>
                   {priceReportWholesaleUsed && (
                     <>
-                      <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">جملة (قبل)</th>
-                      <th className="px-3 py-2 text-center font-black text-slate-500 whitespace-nowrap">جملة (بعد)</th>
+                      <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">جملة (قبل)</th>
+                      <th className="px-3 py-2 text-center font-black text-text-secondary whitespace-nowrap">جملة (بعد)</th>
                     </>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {priceChangedLines.map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 align-top">
-                    <td className="px-3 py-2 font-bold text-slate-800 whitespace-normal break-words">{l.name}</td>
-                    <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
+                  <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay align-top">
+                    <td className="px-3 py-2 font-bold text-text-primary whitespace-normal break-words">{l.name}</td>
+                    <td className="px-3 py-2 text-center number-fmt text-text-muted whitespace-nowrap">{Number(l.original_unit_cost) > 0 ? Number(l.original_unit_cost).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_unit_cost) ? (
                         <div className="flex flex-col items-center gap-0.5">
@@ -2191,9 +2191,9 @@ export default function PurchaseFormPage() {
                             {l.update_master_purchase_price !== false ? "يحدّث" : "فاتورة بس"}
                           </span>
                         </div>
-                      ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
+                      ) : <span className="text-text-muted">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt text-text-muted whitespace-nowrap">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
                         <div className="flex flex-col items-center gap-0.5">
@@ -2207,11 +2207,11 @@ export default function PurchaseFormPage() {
                             {l.update_master_sale_price !== false ? "يحدّث" : "فاتورة بس"}
                           </span>
                         </div>
-                      ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
+                      ) : <span className="text-text-muted">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
                     </td>
                     {priceReportWholesaleUsed && (
                       <>
-                        <td className="px-3 py-2 text-center number-fmt text-slate-400 whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                        <td className="px-3 py-2 text-center number-fmt text-text-muted whitespace-nowrap">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
                         <td className="px-3 py-2 text-center number-fmt whitespace-nowrap">
                           {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
                             <div className="flex flex-col items-center gap-0.5">
@@ -2225,7 +2225,7 @@ export default function PurchaseFormPage() {
                                 {l.update_master_wholesale_price !== false ? "يحدّث" : "فاتورة بس"}
                               </span>
                             </div>
-                          ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
+                          ) : <span className="text-text-muted">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
                         </td>
                       </>
                     )}
@@ -2234,8 +2234,8 @@ export default function PurchaseFormPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
+            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay transition-all active:scale-[0.98]">تراجع</button>
             <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "تأكيد وحفظ"}
             </button>
@@ -2247,22 +2247,22 @@ export default function PurchaseFormPage() {
       <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل الفاتورة" : "تأكيد حفظ الفاتورة"} showDetach={false}>
         <div className="p-4 space-y-4 animate-modal-enter">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-bg-overlay text-text-secondary">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">
+              <h3 className="text-sm font-black text-text-primary mb-1">
                 {isEditMode ? "هل تريد حفظ التعديلات؟" : "هل تريد حفظ هذه الفاتورة؟"}
               </h3>
-              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
+              <p className="text-2sm font-bold text-text-secondary leading-relaxed">
                 {isEditMode
                   ? "سيتم تحديث المخزون والأرصدة المالية بالفرق فقط."
                   : `${lines.length} صنف — إجمالي ${formatNumber(totals.total)} ج.م`}
               </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
+            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay transition-all active:scale-[0.98]">تراجع</button>
             <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : "نعم، احفظ"}
             </button>
@@ -2278,14 +2278,14 @@ export default function PurchaseFormPage() {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">تعديل فاتورة محفوظة</h3>
-              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
+              <h3 className="text-sm font-black text-text-primary mb-1">تعديل فاتورة محفوظة</h3>
+              <p className="text-2sm font-bold text-text-secondary leading-relaxed">
                 أي تغيير ستقوم بحفظه سيؤثر على المخزون والأرصدة المالية. هل تريد المتابعة؟
               </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setEditWarnOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">تراجع</button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
+            <button onClick={() => setEditWarnOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay">تراجع</button>
             <button onClick={() => { setLocked(false); setEditWarnOpen(false); }} className="rounded-sm bg-indigo-600 px-5 py-2 text-sm font-black text-white hover:bg-indigo-700">
               نعم، فتح للتعديل
             </button>
@@ -2301,18 +2301,18 @@ export default function PurchaseFormPage() {
               <Trash2 className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">
+              <h3 className="text-sm font-black text-text-primary mb-1">
                 {isEditMode ? "هل تريد حذف هذه الفاتورة؟" : "هل تريد مسح الفاتورة الحالية؟"}
               </h3>
-              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
+              <p className="text-2sm font-bold text-text-secondary leading-relaxed">
                 {isEditMode
                   ? "سيتم عكس جميع تأثيرات المخزون والأرصدة. لا يمكن التراجع عن هذا."
                   : "سيتم مسح جميع الأصناف المدرجة والانتقال للقائمة."}
               </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setDeleteConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">تراجع</button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
+            <button onClick={() => setDeleteConfirmOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay">تراجع</button>
             <button onClick={doDelete} className="rounded-sm btn-danger px-5 py-2 text-sm font-black">
               {isEditMode ? "نعم، احذف الفاتورة" : "نعم، امسح"}
             </button>
@@ -2325,65 +2325,94 @@ export default function PurchaseFormPage() {
         <div className="flex flex-col gap-4 mt-2 animate-modal-enter">
           {lines.length > 0 ? (
             <>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50/50 border border-amber-100/80">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
                 <div>
-                  <p className="text-sm font-black text-amber-800">يوجد أصناف في الفاتورة الحالية</p>
-                  <p className="text-2sm font-bold text-amber-700 mt-1">اختر كيف تريد المتابعة:</p>
+                  <p className="text-sm font-black text-text-primary">يوجد أصناف في الفاتورة الحالية</p>
+                  <p className="text-2sm font-bold text-amber-700 mt-0.5">اختر كيف تريد المتابعة لتجنب فقدان البيانات:</p>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
+              
+              {isSaving ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                  <p className="text-2sm font-black text-text-secondary animate-pulse">جاري الحفظ...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewInvoiceModalOpen(false);
+                      doSave();
+                    }}
+                    className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-emerald-50/50 bg-emerald-50/20 hover:bg-emerald-50/60 hover:border-emerald-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/10 group-hover:scale-105 transition-transform shrink-0">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-black text-text-primary">حفظ الحالية</span>
+                      <span className="text-[9px] font-bold text-text-muted leading-tight">وإنشاء فاتورة جديدة</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewInvoiceModalOpen(false);
+                      clearForm();
+                    }}
+                    className="flex flex-col items-center justify-between gap-3 p-4 rounded-2xl border-2 border-rose-50/50 bg-rose-50/20 hover:bg-rose-50/60 hover:border-rose-300 hover:shadow-md transition-all active:scale-[0.97] group text-center cursor-pointer"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md shadow-rose-600/10 group-hover:scale-105 transition-transform shrink-0">
+                      <Trash2 className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-black text-text-primary">تجاهل الحالية</span>
+                      <span className="text-[9px] font-bold text-text-muted leading-tight">وإنشاء فاتورة جديدة</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {!isSaving && (
                 <button
-                  onClick={() => {
-                    setNewInvoiceModalOpen(false);
-                    doSave();
-                  }}
-                  disabled={isSaving}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]"
-                >
-                  {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</> : <><Sparkles className="h-4 w-4" /> حفظ الحالية وإنشاء جديدة</>}
-                </button>
-                <button
-                  onClick={() => {
-                    setNewInvoiceModalOpen(false);
-                    clearForm();
-                  }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 hover:bg-rose-100 transition-all active:scale-[0.98]"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  تجاهل وإنشاء جديدة
-                </button>
-                <button
+                  type="button"
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-bg-surface text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer mt-2"
                 >
                   إلغاء
                 </button>
-              </div>
+              )}
             </>
           ) : (
             <>
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                <FilePlus className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/80">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <FilePlus className="h-5 w-5" />
+                </div>
                 <div>
-                  <p className="text-sm font-black text-emerald-800">إنشاء فاتورة جديدة</p>
-                  <p className="text-2sm font-bold text-emerald-700 mt-1">الفاتورة الحالية فارغة</p>
+                  <p className="text-sm font-black text-text-primary">إنشاء فاتورة جديدة</p>
+                  <p className="text-2sm font-bold text-emerald-700 mt-0.5">الفاتورة الحالية فارغة بالفعل</p>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 mt-2">
                 <button
                   onClick={() => {
                     setNewInvoiceModalOpen(false);
                     clearForm();
                   }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700 transition-all active:scale-[0.98]"
                 >
                   <FilePlus className="h-4 w-4" />
-                  إنشاء فاتورة جديدة
+                  تأكيد وإنشاء فاتورة جديدة
                 </button>
                 <button
                   onClick={() => setNewInvoiceModalOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-2sm font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--border-normal)] bg-bg-surface text-2sm font-bold text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors cursor-pointer mt-2"
                 >
                   إلغاء
                 </button>

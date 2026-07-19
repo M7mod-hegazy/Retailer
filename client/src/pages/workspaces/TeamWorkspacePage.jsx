@@ -5,6 +5,7 @@ import PageWrapper from "../../components/ui/PageWrapper";
 import { Tabs } from "../../components/ui/Tabs";
 import UsersPage from "../definitions/UsersPage";
 import EmployeesPage from "../definitions/EmployeesPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const tabs = [
   { value: "users", label: "المستخدمون والصلاحيات", icon: ShieldCheck },
@@ -12,6 +13,7 @@ const tabs = [
 ];
 
 export default function TeamWorkspacePage() {
+  usePageTour('team_workspace');
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabs.some((tab) => tab.value === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -24,14 +26,14 @@ export default function TeamWorkspacePage() {
   return (
     <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4" data-help-root="team_workspace">
       <section className="space-y-5">
-        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div className="rounded-[28px] border border-border-normal bg-bg-surface px-5 py-5 shadow-sm">
           <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">الفريق والصلاحيات</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-black text-text-primary">الفريق والصلاحيات</h1>
+              <p className="mt-1 text-sm text-text-secondary">
                 إدارة هيكل الفريق وحسابات الدخول من مركز واحد، مع فصل واضح بين الموظفين والمستخدمين.
               </p>
             </div>

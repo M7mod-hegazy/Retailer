@@ -8,6 +8,7 @@ const { auditMutation } = require("../middleware/audit");
 const NotificationModel = require("../models/notification.model");
 const { nowSql } = require("../utils/datetime");
 const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
+const { describePermissionDiff, describePermissionSet } = require("../utils/permissionLabels");
 
 const router = express.Router();
 
@@ -51,10 +52,20 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
     // Store password as plaintext (local desktop app — admin needs to view/manage)
     const can_view_updates = payload.can_view_updates ? 1 : 0;
 
+    // Permissions may be supplied inline at creation. Persisting them here (in
+    // the same request) keeps the owner alert to ONE message that lists the
+    // account AND everything it can do — creating the user and granting its
+    // privileges in two separate calls produced two disconnected alerts.
+    const inlinePermissions = payload.permissions && typeof payload.permissions === "object"
+      && !Array.isArray(payload.permissions)
+      ? payload.permissions
+      : null;
+
     const db = getDb();
     const info = db.prepare(
-      "INSERT INTO users (full_name, username, password_hash, role, can_view_updates) VALUES (?, ?, ?, ?, ?)"
-    ).run(full_name, username, password, role, can_view_updates);
+      "INSERT INTO users (full_name, username, password_hash, role, can_view_updates, page_permissions) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(full_name, username, password, role, can_view_updates,
+      inlinePermissions ? JSON.stringify(inlinePermissions) : null);
 
     const newUser = db.prepare("SELECT id, full_name, username, role, is_active, can_view_updates, password_hash AS password FROM users WHERE id = ?").get(info.lastInsertRowid);
     req.audit("create", "user", { id: newUser.id, username: newUser.username }, `👤 تم إنشاء مستخدم: ${username}`);
@@ -67,11 +78,25 @@ router.post("/", requirePagePermission("users", "add"), requireRole("admin"), (r
       });
     } catch (_) {}
     try {
-      notifyOwner(TG.PERMISSION_CHANGED, {
-        targetUser: full_name || username,
-        action: "إنشاء مستخدم جديد",
-        details: `اسم الدخول: ${username} — الدور: ${role}`,
-        adminUser: req.user?.full_name || req.user?.username,
+      // Spell out exactly what the new account can do. "الصلاحيات الافتراضية"
+      // told the owner nothing about whether the account can delete invoices
+      // or backdate records.
+      let permissionsSummary;
+      if (inlinePermissions) {
+        const { text, sensitive } = describePermissionSet(inlinePermissions);
+        const warning = sensitive.length ? `\n⚠️ صلاحيات حساسة: ${sensitive.join("، ")}` : "";
+        permissionsSummary = `\n${text}${warning}`;
+      } else {
+        permissionsSummary = "الصلاحيات الافتراضية للنظام";
+      }
+      if (can_view_updates) permissionsSummary += "\n• مع صلاحية رؤية التحديثات";
+
+      notifyOwner(TG.USER_CREATED, {
+        createdUser: full_name || username,
+        loginName: username,
+        role,
+        permissionsSummary,
+        createdBy: req.user?.full_name || req.user?.username,
         createdAt: new Date().toISOString(),
       });
     } catch (_) {}
@@ -156,11 +181,22 @@ router.put("/:id", requirePagePermission("users", "edit"), requireRole("admin"),
           createdAt: nowSql(),
         });
       }
-      if (role !== existing.role) {
+      // Every account change that widens access or hides who did what is
+      // reported, not just the role: enabling a disabled account and renaming
+      // a login are both ways to quietly gain or mask access.
+      const changes = [];
+      if (role !== existing.role) changes.push(`تغيير الدور من "${existing.role}" إلى "${role}"`);
+      if (is_active !== existing.is_active) changes.push(is_active ? "تفعيل الحساب" : "تعطيل الحساب");
+      if (username !== existing.username) changes.push(`تغيير اسم الدخول من "${existing.username}" إلى "${username}"`);
+      if (can_view_updates !== (existing.can_view_updates || 0)) {
+        changes.push(can_view_updates ? "منح صلاحية رؤية التحديثات" : "سحب صلاحية رؤية التحديثات");
+      }
+      if (changes.length) {
         notifyOwner(TG.PERMISSION_CHANGED, {
           targetUser: updatedUser.full_name || updatedUser.username,
           adminUser: req.user?.full_name || req.user?.username,
-          changes: `تغيير الدور من "${existing.role}" إلى "${role}"`,
+          action: "تعديل حساب مستخدم",
+          changes: changes.join(" | "),
           createdAt: nowSql(),
         });
       }
@@ -307,6 +343,18 @@ router.delete("/:id", requirePagePermission("users", "delete"), requireRole("adm
     detachUserLogs(db, id);
     db.prepare("DELETE FROM users WHERE id = ?").run(id);
     req.audit("delete", "user", { id: Number(id), username: existing.username }, `👤 تم حذف مستخدم: ${existing.username}`);
+
+    // Telegram notification — account removal is a security-relevant action.
+    try {
+      const adminRow = req.user?.id ? db.prepare("SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?").get(req.user.id) : null;
+      notifyOwner(TG.USER_DELETED, {
+        deletedUser: existing.username,
+        role: existing.role || "—",
+        deletedBy: adminRow?.name || null,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
+
     res.json({ success: true, data: { deleted: true } });
   } catch (error) {
     next(error);
@@ -329,16 +377,9 @@ router.get("/:id/permissions", (req, res, next) => {
       throw err;
     }
 
-    // Admin/dev users have full access — no stored permissions needed
-    if (user.role === "admin" || user.role === "dev") {
-      return res.json({ success: true, data: null });
-    }
-
-    let permissions;
+    let permissions = {};
     if (user.page_permissions) {
-      permissions = JSON.parse(user.page_permissions);
-    } else {
-      permissions = {};
+      try { permissions = JSON.parse(user.page_permissions); } catch {}
     }
 
     res.json({ success: true, data: permissions });
@@ -398,12 +439,18 @@ router.put("/:id/permissions", (req, res, next) => {
     try {
       if (changedCount > 0) {
         const targetRow = db.prepare("SELECT full_name, username FROM users WHERE id = ?").get(req.params.id);
-        const pages = Object.keys(diff).slice(0, 5).join("، ");
-        const suffix = changedCount > 5 ? ` وغيرها (${changedCount} صفحة)` : "";
+        // Spell out exactly which privileges were granted/revoked per page.
+        // A bare page count hid the only detail that matters — e.g. someone
+        // being granted "حذف" on invoices or "التسجيل بتاريخ سابق".
+        const { text, sensitive } = describePermissionDiff(diff);
+        const warning = sensitive.length
+          ? `\n⚠️ صلاحيات حساسة مُنحت: ${sensitive.join("، ")}`
+          : "";
         notifyOwner(TG.PERMISSION_CHANGED, {
           targetUser: targetRow?.full_name || targetRow?.username || `#${req.params.id}`,
           adminUser: req.user?.full_name || req.user?.username,
-          changes: `تعديل صلاحيات ${changedCount} صفحة: ${pages}${suffix}`,
+          action: `تعديل صلاحيات ${changedCount} صفحة`,
+          changes: `${text}${warning}`,
           createdAt: nowSql(),
         });
       }

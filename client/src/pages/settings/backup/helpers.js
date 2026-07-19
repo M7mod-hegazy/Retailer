@@ -74,7 +74,7 @@ export function monthLabel(mm) {
 }
 
 export const TRIGGER_META = {
-  manual: { label: "يدوي", className: "bg-slate-100 text-slate-700" },
+  manual: { label: "يدوي", className: "bg-bg-overlay text-text-primary" },
   auto: { label: "تلقائي", className: "bg-sky-100 text-sky-700" },
   "pre-restore": { label: "أمان قبل استعادة", className: "bg-amber-100 text-amber-700" },
   "pre-empty": { label: "أمان قبل تفريغ", className: "bg-amber-100 text-amber-700" },

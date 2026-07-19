@@ -46,20 +46,20 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
     <Modal open={open} onClose={onClose} title="تحليل ربح الفاتورة الحالية" maxWidth="max-w-3xl" showDetach={false}>
       <div className="flex flex-col gap-4" dir="rtl">
         {!analysis ? (
-          <div className="py-10 text-center text-sm font-bold text-slate-400">
+          <div className="py-10 text-center text-sm font-bold text-text-muted">
             الفاتورة فارغة — أضف أصنافاً لعرض تحليل الربح
           </div>
         ) : (
           <>
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي البيع</span>
-                <span className="text-[15px] font-black font-mono text-slate-800">{formatMoney(analysis.totalRevenue)}</span>
+              <div className="flex flex-col gap-1 rounded-xl border border-border-normal bg-bg-overlay p-3">
+                <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">إجمالي البيع</span>
+                <span className="text-[15px] font-black font-mono text-text-primary">{formatMoney(analysis.totalRevenue)}</span>
               </div>
-              <div className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">إجمالي التكلفة</span>
-                <span className="text-[15px] font-black font-mono text-slate-600">{formatMoney(analysis.totalCost)}</span>
+              <div className="flex flex-col gap-1 rounded-xl border border-border-normal bg-bg-overlay p-3">
+                <span className="text-[11px] font-black text-text-muted uppercase tracking-widest">إجمالي التكلفة</span>
+                <span className="text-[15px] font-black font-mono text-text-secondary">{formatMoney(analysis.totalCost)}</span>
               </div>
               <div className={`flex flex-col gap-1 rounded-xl border p-3 ${analysis.netProfit >= 0 ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
                 <span className={`text-[11px] font-black uppercase tracking-widest ${analysis.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>صافي الربح</span>
@@ -68,19 +68,19 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
                 </span>
               </div>
               <div className={`flex flex-col gap-1 rounded-xl border p-3 ${
-                analysis.netMargin === null ? "border-slate-200 bg-slate-50"
+                analysis.netMargin === null ? "border-border-normal bg-bg-overlay"
                 : analysis.netMargin >= 20 ? "border-emerald-200 bg-emerald-50"
                 : analysis.netMargin >= 10 ? "border-amber-200 bg-amber-50"
                 : "border-rose-200 bg-rose-50"
               }`}>
                 <span className={`text-[11px] font-black uppercase tracking-widest ${
-                  analysis.netMargin === null ? "text-slate-400"
+                  analysis.netMargin === null ? "text-text-muted"
                   : analysis.netMargin >= 20 ? "text-emerald-600"
                   : analysis.netMargin >= 10 ? "text-amber-600"
                   : "text-rose-600"
                 }`}>هامش الربح %</span>
                 <span className={`text-[15px] font-black font-mono ${
-                  analysis.netMargin === null ? "text-slate-500"
+                  analysis.netMargin === null ? "text-text-secondary"
                   : analysis.netMargin >= 20 ? "text-emerald-700"
                   : analysis.netMargin >= 10 ? "text-amber-700"
                   : "text-rose-700"
@@ -91,7 +91,7 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
             </div>
 
             {/* Per-line breakdown */}
-            <div className="overflow-auto rounded-lg border border-slate-200" style={{ maxHeight: 340 }}>
+            <div className="overflow-auto rounded-lg border border-border-normal" style={{ maxHeight: 340 }}>
               <table className="w-full text-2sm" dir="rtl">
                 <thead className="sticky top-0 bg-primary text-white">
                   <tr>
@@ -107,14 +107,14 @@ export default function InvoiceProfitModal({ open, onClose, lines, items }) {
                 <tbody>
                   {analysis.lineDetails.map(({ line, qty, unitPrice, purchase, revenue, profit, margin }, idx) => {
                     const Icon = profit > 0 ? TrendingUp : profit < 0 ? TrendingDown : Minus;
-                    const color = profit > 0 ? "text-emerald-600" : profit < 0 ? "text-rose-600" : "text-slate-400";
+                    const color = profit > 0 ? "text-emerald-600" : profit < 0 ? "text-rose-600" : "text-text-muted";
                     return (
-                      <tr key={`${line.item_id}-${idx}`} className="border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2.5 font-black text-slate-800 max-w-[160px] truncate">{line.item_name || line.name}</td>
-                        <td className="px-3 py-2 font-mono text-slate-600 text-center">{qty}</td>
-                        <td className="px-3 py-2 font-mono text-slate-600">{formatMoney(unitPrice)}</td>
-                        <td className="px-3 py-2 font-mono text-slate-500">{formatMoney(purchase)}</td>
-                        <td className="px-3 py-2 font-mono font-black text-slate-700">{formatMoney(revenue)}</td>
+                      <tr key={`${line.item_id}-${idx}`} className="border-b border-border-subtle bg-bg-surface hover:bg-bg-overlay transition-colors">
+                        <td className="px-3 py-2.5 font-black text-text-primary max-w-[160px] truncate">{line.item_name || line.name}</td>
+                        <td className="px-3 py-2 font-mono text-text-secondary text-center">{qty}</td>
+                        <td className="px-3 py-2 font-mono text-text-secondary">{formatMoney(unitPrice)}</td>
+                        <td className="px-3 py-2 font-mono text-text-secondary">{formatMoney(purchase)}</td>
+                        <td className="px-3 py-2 font-mono font-black text-text-primary">{formatMoney(revenue)}</td>
                         <td className={`px-3 py-2 font-mono font-black ${color}`}>
                           <div className="flex items-center gap-1">
                             <Icon className="h-3 w-3 shrink-0" />

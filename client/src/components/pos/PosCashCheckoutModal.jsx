@@ -85,7 +85,7 @@ export default function PosCashCheckoutModal({ open, total = 0, onConfirm, onClo
               value={tendered}
               onChange={(e) => setTendered(e.target.value)}
               placeholder="0"
-              className="w-full rounded-xl border-2 px-4 py-3 text-2xl font-black text-center tabular-nums outline-none transition-colors bg-white"
+              className="w-full rounded-xl border-2 px-4 py-3 text-2xl font-black text-center tabular-nums outline-none transition-colors bg-bg-surface"
               style={{ backgroundColor: "var(--bg-input)", borderColor: "var(--border-normal)", color: "var(--text-primary)" }}
               onFocus={(e) => { e.target.style.borderColor = "var(--primary)"; }}
               onBlur={(e) => { e.target.style.borderColor = "var(--border-normal)"; }}

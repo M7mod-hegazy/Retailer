@@ -197,11 +197,11 @@ export default function LoginPage() {
           >
             {/* Shop's own branding (white-label) — separate from the الحجازي vendor identity below */}
             {(customerBranding.logo_url || customerBranding.company_name) && (
-              <div className="flex items-center gap-3 w-max bg-white/[0.06] border border-white/10 px-4 py-2 rounded-full backdrop-blur-xl">
+              <div className="flex items-center gap-3 w-max bg-bg-surface/[0.06] border border-border-normal/10 px-4 py-2 rounded-full backdrop-blur-xl">
                 {customerBranding.logo_url ? (
-                  <img src={customerBranding.logo_url} alt="" className="w-7 h-7 rounded-full object-contain border border-white/20 bg-white/90" />
+                  <img src={customerBranding.logo_url} alt="" className="w-7 h-7 rounded-full object-contain border border-border-normal/20 bg-bg-surface/90" />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center border border-white/15" />
+                  <div className="w-7 h-7 rounded-full bg-bg-surface/10 flex items-center justify-center border border-border-normal/15" />
                 )}
                 <div className="flex flex-col leading-tight">
                   <span className="text-[11px] font-black tracking-widest text-white/85 uppercase">{customerBranding.company_name}</span>
@@ -217,7 +217,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <ElHegaziMark size={56} glow />
-                <span dir="ltr" className="text-[11px] font-black tracking-wide text-white border border-white/30 rounded-full px-2.5 py-0.5" style={{ background: "rgba(255, 255, 255, 0.12)", fontVariantNumeric: "tabular-nums" }}>
+                <span dir="ltr" className="text-[11px] font-black tracking-wide text-white border border-border-normal/30 rounded-full px-2.5 py-0.5" style={{ background: "rgba(255, 255, 255, 0.12)", fontVariantNumeric: "tabular-nums" }}>
                   01032440775
                 </span>
               </div>
@@ -243,7 +243,7 @@ export default function LoginPage() {
             {/* Feature readout — quiet dark rows, not glass cards */}
             <div className="space-y-1 pt-2">
               {highlights.map((item, idx) => (
-                <div key={idx} className="group flex items-center gap-4 py-3.5 border-t border-white/[0.08] first:border-t-0">
+                <div key={idx} className="group flex items-center gap-4 py-3.5 border-t border-border-normal/[0.08] first:border-t-0">
                   <div className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 border border-emerald-400/15 group-hover:bg-emerald-400/15 transition-colors">
                     <item.icon className="w-[18px] h-[18px]" strokeWidth={2} />
                   </div>
@@ -336,7 +336,7 @@ export default function LoginPage() {
                     <span className="relative z-10 flex items-center gap-3">
                       {submitting ? (
                         <>
-                          <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-[3px] border-border-normal/30 border-t-white rounded-full animate-spin" />
                           جاري التحقق...
                         </>
                       ) : (
@@ -386,15 +386,15 @@ export default function LoginPage() {
             {showPerf && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowPerf(false)}>
                 <div
-                  className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 shadow-2xl p-6"
+                  className="relative w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-bg-surface border border-border-normal shadow-2xl p-6"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-black text-slate-900">إعدادات الرسوميات والأداء</h2>
+                    <h2 className="text-lg font-black text-text-primary">إعدادات الرسوميات والأداء</h2>
                     <button
                       type="button"
                       onClick={() => setShowPerf(false)}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-700"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-bg-overlay transition-colors text-text-muted hover:text-text-primary"
                     >
                       <X className="h-4 w-4" />
                     </button>

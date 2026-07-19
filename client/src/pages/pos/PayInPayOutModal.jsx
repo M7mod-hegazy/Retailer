@@ -47,7 +47,7 @@ export default function PayInPayOutModal({ open, type, onClose }) {
         </div>
         <Input
           ref={amountRef}
-          className="bg-white"
+          className="bg-bg-surface"
           label="المبلغ"
           type="number"
           step="0.01"
@@ -59,7 +59,7 @@ export default function PayInPayOutModal({ open, type, onClose }) {
         />
         <Input
           ref={reasonRef}
-          className="bg-white"
+          className="bg-bg-surface"
           label="السبب / التفاصيل"
           type="text"
           required

@@ -141,19 +141,19 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[11px] font-black text-slate-400">إجمالي الأقساط</div>
-          <div className="mt-1 text-[20px] number-fmt-primary text-slate-900">{fmt(stats.total)}</div>
+        <div className="rounded-xl border border-border-normal bg-bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-black text-text-muted">إجمالي الأقساط</div>
+          <div className="mt-1 text-[20px] number-fmt-primary text-text-primary">{fmt(stats.total)}</div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[11px] font-black text-slate-400">المسدد</div>
+        <div className="rounded-xl border border-border-normal bg-bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-black text-text-muted">المسدد</div>
           <div className="mt-1 text-[20px] number-fmt-primary text-emerald-700">{fmt(stats.paid)}</div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-[11px] font-black text-slate-400">المتبقي</div>
+        <div className="rounded-xl border border-border-normal bg-bg-surface p-4 shadow-sm">
+          <div className="text-[11px] font-black text-text-muted">المتبقي</div>
           <div className="mt-1 text-[20px] number-fmt-primary text-amber-700">{fmt(stats.remaining)}</div>
         </div>
-        <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-rose-200 bg-bg-surface p-4 shadow-sm">
           <div className="text-[11px] font-black text-rose-400">متأخر</div>
           <div className="mt-1 text-[20px] number-fmt-primary text-rose-700">{stats.overdue}</div>
         </div>
@@ -162,12 +162,12 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative max-w-xs flex-1">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input ref={searchRef} onKeyDown={e => handleKeyDown(e, { nextRef: payMethodRef })} value={search} onChange={e => setSearch(e.target.value)}
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 text-2sm font-bold outline-none focus:border-slate-400"
+            className="h-10 w-full rounded-xl border border-border-normal bg-bg-surface pr-9 pl-3 text-2sm font-bold outline-none focus:border-slate-400"
             placeholder="بحث برقم الفاتورة..." />
         </div>
-        <button onClick={loadSchedules} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+        <button onClick={loadSchedules} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-normal bg-bg-surface text-text-secondary hover:bg-bg-overlay">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -175,20 +175,20 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
       {/* Main grid */}
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         {/* Schedule list */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-sm">
           {loading ? (
-            <div className="flex h-40 items-center justify-center text-sm font-black text-slate-400">جاري التحميل...</div>
+            <div className="flex h-40 items-center justify-center text-sm font-black text-text-muted">جاري التحميل...</div>
           ) : filtered.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center gap-2">
               <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               <span className="text-sm font-black text-emerald-600">{search ? "لا توجد نتائج" : "لا توجد أقساط مسجلة"}</span>
-              <span className="text-2sm font-bold text-slate-400">{search ? "حاول بحثاً آخر" : "لم يتم إنشاء جدول أقساط بعد"}</span>
+              <span className="text-2sm font-bold text-text-muted">{search ? "حاول بحثاً آخر" : "لم يتم إنشاء جدول أقساط بعد"}</span>
             </div>
           ) : (
             <table className="w-full text-2sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-bg-overlay">
                 <tr>{["الفاتورة", "القسط", "تاريخ الاستحقاق", "المبلغ", "الحالة", ""].map(h => (
-                  <th key={h} className="px-4 py-3 text-right text-[11px] font-black text-slate-500">{h}</th>
+                  <th key={h} className="px-4 py-3 text-right text-[11px] font-black text-text-secondary">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -199,11 +199,11 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                   const rowCls = s.status === "paid" ? "" : isOverdue ? "bg-rose-50/50" : "";
                   return (
                     <tr key={s.id} onClick={() => handleSelect(s)}
-                      className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${rowCls} ${selected?.id === s.id ? "bg-slate-100" : ""}`}>
-                      <td className="px-4 py-3 font-mono text-[11px] text-slate-600">{s.invoice_no || `AJAL-${s.debt_id}`}</td>
+                      className={`cursor-pointer border-t border-border-subtle hover:bg-bg-overlay ${rowCls} ${selected?.id === s.id ? "bg-bg-overlay" : ""}`}>
+                      <td className="px-4 py-3 font-mono text-[11px] text-text-secondary">{s.invoice_no || `AJAL-${s.debt_id}`}</td>
                       <td className="px-4 py-3 font-black">{s.installment_no}</td>
-                      <td className="px-4 py-3 text-slate-500">{fmtDate(s.due_date)}</td>
-                      <td className="px-4 py-3 number-fmt-primary text-slate-800">{fmt(s.amount)}</td>
+                      <td className="px-4 py-3 text-text-secondary">{fmtDate(s.due_date)}</td>
+                      <td className="px-4 py-3 number-fmt-primary text-text-primary">{fmt(s.amount)}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${statusCls}`}>{statusLabel}</span>
                       </td>
@@ -223,9 +223,9 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
         </div>
 
         {/* Detail panel */}
-        <div className="min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="min-h-[420px] overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-sm">
           {!selected ? (
-            <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-2 p-8 text-center text-slate-300">
+            <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-2 p-8 text-center text-text-muted">
               <AlertCircle className="h-10 w-10" />
               <span className="text-sm font-black">اختر قسطاً للعرض</span>
             </div>
@@ -234,50 +234,50 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
               {/* Header */}
               <div className={`flex items-center justify-between border-b ${theme.border} ${theme.soft} px-4 py-3`}>
                 <div>
-                  <div className="text-sm font-black text-slate-900">{selected.invoice_no || `AJAL-${selected.debt_id}`}</div>
-                  <div className="text-[11px] font-bold text-slate-500">القسط {selected.installment_no}</div>
+                  <div className="text-sm font-black text-text-primary">{selected.invoice_no || `AJAL-${selected.debt_id}`}</div>
+                  <div className="text-[11px] font-bold text-text-secondary">القسط {selected.installment_no}</div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPrintType("statement")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary-600">
                     <Printer className="h-4 w-4" />
                   </button>
                   <button onClick={() => { setEditMode(!editMode); if (!editMode) setEditForm({ due_date: selected.due_date || "", amount: String(selected.amount || "") }); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg-overlay text-text-secondary hover:bg-border-normal">
                     <Edit3 className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setSelected(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/70 hover:text-slate-700">
+                  <button onClick={() => setSelected(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-bg-surface/70 hover:text-text-primary">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
               {/* Info */}
-              <div className="border-b border-slate-100 bg-white p-3 space-y-2">
+              <div className="border-b border-border-subtle bg-bg-surface p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-slate-50 p-2 text-center">
-                    <div className="text-[11px] font-black text-slate-400">مبلغ القسط</div>
-                    <div className="text-[15px] number-fmt-primary text-slate-800">{fmt(selected.amount)}</div>
+                  <div className="rounded-xl bg-bg-overlay p-2 text-center">
+                    <div className="text-[11px] font-black text-text-muted">مبلغ القسط</div>
+                    <div className="text-[15px] number-fmt-primary text-text-primary">{fmt(selected.amount)}</div>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-2 text-center">
-                    <div className="text-[11px] font-black text-slate-400">تاريخ الاستحقاق</div>
-                    <div className="text-[15px] number-fmt text-slate-800">{fmtDate(selected.due_date)}</div>
+                  <div className="rounded-xl bg-bg-overlay p-2 text-center">
+                    <div className="text-[11px] font-black text-text-muted">تاريخ الاستحقاق</div>
+                    <div className="text-[15px] number-fmt text-text-primary">{fmtDate(selected.due_date)}</div>
                   </div>
                 </div>
 
                 {/* Invoice preview */}
                 {selected.invoice_no && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-2">
-                    <div className="text-[11px] font-black text-slate-400 mb-1">الفاتورة</div>
+                  <div className="rounded-xl border border-border-normal bg-bg-surface p-2">
+                    <div className="text-[11px] font-black text-text-muted mb-1">الفاتورة</div>
                     <div className="flex items-center justify-between">
-                      <span className="text-2sm font-black text-slate-900">{selected.invoice_no}</span>
-                      <span className="text-2sm number-fmt-primary text-slate-700">
+                      <span className="text-2sm font-black text-text-primary">{selected.invoice_no}</span>
+                      <span className="text-2sm number-fmt-primary text-text-primary">
                         {fmt(selected.invoice_total)} ج.م
                       </span>
                     </div>
                     {selected.payment_splits && (
-                      <div className="text-[9px] text-slate-400 mt-0.5">{selected.payment_splits.replace(/\|\|\|/g, " | ")}</div>
+                      <div className="text-[9px] text-text-muted mt-0.5">{selected.payment_splits.replace(/\|\|\|/g, " | ")}</div>
                     )}
-                    <div className="text-[11px] text-slate-400 mt-0.5">{fmtDate(selected.invoice_date)}</div>
+                    <div className="text-[11px] text-text-muted mt-0.5">{fmtDate(selected.invoice_date)}</div>
                   </div>
                 )}
               </div>
@@ -286,9 +286,9 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 {/* Pay section */}
                 {selected.status !== "paid" && (
                   <div className="space-y-2">
-                    <div className="text-[11px] font-black text-slate-400">تسديد القسط</div>
+                    <div className="text-[11px] font-black text-text-muted">تسديد القسط</div>
                     <select ref={payMethodRef} onKeyDown={e => handleKeyDown(e, { nextRef: payBtnRef, prevRef: searchRef })} value={payMethod} onChange={e => setPayMethod(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-slate-300 bg-white px-4 text-2sm font-bold outline-none focus:border-slate-500">
+                      className="h-10 w-full rounded-xl border border-border-strong bg-bg-surface px-4 text-2sm font-bold outline-none focus:border-border-subtle0">
                       {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                     <button ref={payBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: payMethodRef })} onClick={handlePay} disabled={paying}
@@ -300,12 +300,12 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
 
                 {/* Edit section */}
                 {editMode && (
-                  <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <div className="text-[11px] font-black text-slate-400">تعديل القسط</div>
+                  <div className="space-y-2 border-t border-border-subtle pt-3">
+                    <div className="text-[11px] font-black text-text-muted">تعديل القسط</div>
                     <input ref={dueDateRef} onKeyDown={e => handleKeyDown(e, { nextRef: amountRef })} type="date" value={editForm.due_date} onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
-                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-2sm outline-none focus:border-slate-500" />
+                      className="h-10 w-full rounded-xl border border-border-strong px-4 text-2sm outline-none focus:border-border-subtle0" />
                     <input ref={amountRef} onKeyDown={e => handleKeyDown(e, { nextRef: saveBtnRef, prevRef: dueDateRef })} type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
-                      className="h-10 w-full rounded-xl border border-slate-300 px-4 text-sm font-black outline-none focus:border-slate-500" />
+                      className="h-10 w-full rounded-xl border border-border-strong px-4 text-sm font-black outline-none focus:border-border-subtle0" />
                     <button ref={saveBtnRef} onKeyDown={e => handleKeyDown(e, { prevRef: amountRef })} onClick={handleEdit} disabled={saving}
                       className="w-full rounded-xl bg-primary py-2.5 text-2sm font-black text-white hover:bg-primary-600 disabled:opacity-40">
                       {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
@@ -314,8 +314,8 @@ export default function InstallmentsTab({ party, partyType = "customer", accent 
                 )}
 
                 {/* Debt info */}
-                <div className="border-t border-slate-100 pt-3 text-[11px] text-slate-500 space-y-1">
-                  <div className="flex justify-between"><span>الأصل:</span><span className="number-fmt-primary text-slate-700">{fmt(selected.original_amount)}</span></div>
+                <div className="border-t border-border-subtle pt-3 text-[11px] text-text-secondary space-y-1">
+                  <div className="flex justify-between"><span>الأصل:</span><span className="number-fmt-primary text-text-primary">{fmt(selected.original_amount)}</span></div>
                   <div className="flex justify-between"><span>المدفوع:</span><span className="number-fmt-primary text-emerald-700">{fmt(selected.paid_amount)}</span></div>
                   <div className="flex justify-between"><span>المتبقي:</span><span className="number-fmt-primary text-rose-700">{fmt(selected.original_amount - selected.paid_amount)}</span></div>
                 </div>

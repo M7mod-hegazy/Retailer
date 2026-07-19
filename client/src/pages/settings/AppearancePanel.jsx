@@ -35,11 +35,19 @@ export default function AppearancePanel({ settings, onChange }) {
           backgroundColor: "var(--bg-surface)",
         }}
       >
-        <div>
-          <p className="text-sm font-black" style={{ color: "var(--text-primary)" }}>تحكم في مظهر النظام</p>
-          <p className="text-[12px] font-bold mt-0.5" style={{ color: "var(--text-muted)" }}>
-            اختر الخط ونظام الألوان الذي يناسب نشاطك التجاري
-          </p>
+        <div className="flex items-center gap-3.5">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
+            style={{ background: "linear-gradient(135deg, var(--text-accent), var(--primary))" }}
+          >
+            <Edit3 className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className="text-sm font-black" style={{ color: "var(--text-primary)" }}>شكل النظام والألوان</p>
+            <p className="text-[12px] font-bold mt-0.5" style={{ color: "var(--text-muted)" }}>
+              ظبط ألوان وخطوط البرنامج عشان تناسب ذوقك وتريح عينك.
+            </p>
+          </div>
         </div>
         <div className="flex gap-1">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--primary)" }} title="الخطوط" />
@@ -70,7 +78,7 @@ export default function AppearancePanel({ settings, onChange }) {
         <div className="flex items-center gap-2 mb-3">
           <Monitor className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} />
           <h3 className="text-sm font-black uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
-            معاينة حية
+            معاينة للشكل
           </h3>
           <span
             className="rounded-sm px-2 py-0.5 text-[11px] font-black tracking-wider"
@@ -117,10 +125,10 @@ function UnifiedPreview({ settings }) {
       {/* Body text */}
       <div>
         <p className="text-[0.9375em] font-bold" style={{ color: "var(--text-primary)" }}>
-          مرحباً بكم في نظام الهجازي
+          أهلاً بيك في نظام الهجازي
         </p>
         <p className="text-[0.8125em] font-medium" style={{ color: "var(--text-secondary)" }}>
-          مزيج النص العربي والأرقام في السياقات المختلفة.
+          ده شكل الخط والأرقام اللي هيظهر بيهم البرنامج بتاعك.
         </p>
       </div>
 

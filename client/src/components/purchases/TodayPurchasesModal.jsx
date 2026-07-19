@@ -10,6 +10,7 @@ import SearchDropdown from "../ui/SearchDropdown";
 import toast from "react-hot-toast";
 import { formatNumber } from "../../utils/currency";
 import { scoredFilterRows } from "../../utils/search";
+import { parseSplits, resolvePaymentStyle, calculatePaymentBreakdown } from "../../utils/paymentMethodDisplay";
 
 function formatMoney(v) {
   return formatNumber(v, { decimals: 3 });
@@ -25,14 +26,6 @@ function formatArabicDateTime(date) {
 function toDateInput(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
-
-const PAYMENT_METHOD_STYLES = {
-  cash: { label: "نقدي", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  bank_transfer: { label: "حوالة بنكية", cls: "bg-sky-50 text-sky-700 border-sky-200" },
-  credit: { label: "آجل", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  future_due: { label: "استحقاق لاحق", cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  multi: { label: "متعدد", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-};
 
 export function PurchasePreviewModal({ purchase, onClose, onNavigate: propNavigate }) {
   const navigate = useNavigate();
@@ -61,42 +54,42 @@ export function PurchasePreviewModal({ purchase, onClose, onNavigate: propNaviga
   return (
     <div className="flex flex-col gap-4">
       {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+        <div className="flex items-center justify-center h-32 text-text-muted font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
           <div className="rounded-sm bg-emerald-50 border border-emerald-200 px-4 py-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
             <span className="font-black text-emerald-800">فاتورة #{detail?.doc_no || purchase.doc_no}</span>
-            <span className="text-slate-600">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
-            <span className="text-slate-500">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
+            <span className="text-text-secondary">المورد: <strong>{(detail || purchase).supplier_name || "—"}</strong></span>
+            <span className="text-text-secondary">{(detail || purchase).created_at ? formatArabicDateTime(new Date((detail || purchase).created_at)) : "—"}</span>
             {(detail || purchase).created_by_username && (
-              <span className="text-slate-500">بواسطة: <strong>{(detail || purchase).created_by_username}</strong></span>
+              <span className="text-text-secondary">بواسطة: <strong>{(detail || purchase).created_by_username}</strong></span>
             )}
             <span className="font-bold text-emerald-700">الإجمالي: {formatMoney((detail || purchase).total)} ج.م</span>
           </div>
-          <div className="max-h-[260px] overflow-auto rounded-sm border border-slate-200">
+          <div className="max-h-[260px] overflow-auto rounded-sm border border-border-normal">
             <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+              <thead className="bg-bg-overlay border-b border-border-normal sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكود</th>
-                  <th className="px-4 py-2.5 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الكمية</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">التكلفة</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">الإجمالي</th>
-                  <th className="px-3 py-2.5 text-center font-black text-slate-500">مُرتجع</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكود</th>
+                  <th className="px-4 py-2.5 text-right font-black text-text-secondary">الصنف</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الكمية</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">التكلفة</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">الإجمالي</th>
+                  <th className="px-3 py-2.5 text-center font-black text-text-secondary">مُرتجع</th>
                 </tr>
               </thead>
               <tbody>
                 {((detail || purchase).lines || []).map((l, i) => {
                   const returned = Number(l.returned_quantity || 0);
                   return (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-slate-500">{l.item_code || l.code || l.barcode || "—"}</td>
-                      <td className="px-4 py-2.5 font-bold text-slate-800">{l.item_name_ar || l.item_name || l.name}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600">{l.quantity}</td>
-                      <td className="px-3 py-2.5 text-center text-slate-600">{formatMoney(l.unit_cost)}</td>
+                    <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay">
+                      <td className="px-3 py-2.5 text-center font-mono text-[11px] font-black text-text-secondary">{l.item_code || l.code || l.barcode || "—"}</td>
+                      <td className="px-4 py-2.5 font-bold text-text-primary">{l.item_name_ar || l.item_name || l.name}</td>
+                      <td className="px-3 py-2.5 text-center text-text-secondary">{l.quantity}</td>
+                      <td className="px-3 py-2.5 text-center text-text-secondary">{formatMoney(l.unit_cost)}</td>
                       <td className="px-3 py-2.5 text-center number-fmt-primary text-emerald-700">{formatMoney(l.line_total || (l.quantity * l.unit_cost))}</td>
                       <td className="px-3 py-2.5 text-center">
-                        {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-slate-300">—</span>}
+                        {returned > 0 ? <span className="text-amber-600 font-black">{returned}</span> : <span className="text-text-muted">—</span>}
                       </td>
                     </tr>
                   );
@@ -105,33 +98,33 @@ export function PurchasePreviewModal({ purchase, onClose, onNavigate: propNaviga
             </table>
           </div>
           <div className="flex gap-3 flex-wrap">
-            <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
+            <div className="flex-1 min-w-[160px] rounded-sm border border-border-normal bg-bg-overlay px-4 py-3 space-y-1.5 text-2sm">
               {Number((detail || purchase).discount) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">خصم</span>
+                  <span className="text-text-secondary">خصم</span>
                   <span className="number-fmt-primary text-rose-600">- {formatMoney((detail || purchase).discount)}</span>
                 </div>
               )}
               {Number((detail || purchase).increase) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">إضافة</span>
+                  <span className="text-text-secondary">إضافة</span>
                   <span className="number-fmt-primary text-emerald-600">+ {formatMoney((detail || purchase).increase)}</span>
                 </div>
               )}
-              <div className="flex justify-between border-t border-slate-200 pt-1.5">
-                <span className="font-black text-slate-800">الإجمالي</span>
-                <span className="number-fmt-primary text-slate-900">{formatMoney((detail || purchase).total)} ج.م</span>
+              <div className="flex justify-between border-t border-border-normal pt-1.5">
+                <span className="font-black text-text-primary">الإجمالي</span>
+                <span className="number-fmt-primary text-text-primary">{formatMoney((detail || purchase).total)} ج.م</span>
               </div>
             </div>
             {detail?.payments?.length > 0 && (
-              <div className="flex-1 min-w-[160px] rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-2sm">
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">تفاصيل الدفع</p>
+              <div className="flex-1 min-w-[160px] rounded-sm border border-border-normal bg-bg-overlay px-4 py-3 space-y-1.5 text-2sm">
+                <p className="text-[11px] font-black text-text-muted uppercase tracking-widest mb-2">تفاصيل الدفع</p>
                 {detail.payments.map((p, i) => {
                   const PSTYLE = { cash: "text-emerald-700", bank_transfer: "text-sky-700", credit: "text-amber-700", future_due: "text-orange-700" };
                   return (
                     <div key={i} className="flex justify-between items-center">
-                      <span className="text-slate-600">{p.method_name || p.method_type || "—"}</span>
-                      <span className={`number-fmt-primary ${PSTYLE[p.method_type] || "text-slate-800"}`}>{formatMoney(p.amount)}</span>
+                      <span className="text-text-secondary">{p.method_name || p.method_type || "—"}</span>
+                      <span className={`number-fmt-primary ${PSTYLE[p.method_type] || "text-text-primary"}`}>{formatMoney(p.amount)}</span>
                     </div>
                   );
                 })}
@@ -139,16 +132,16 @@ export function PurchasePreviewModal({ purchase, onClose, onNavigate: propNaviga
             )}
           </div>
           {(detail || purchase).notes && (
-            <div className="rounded-sm border border-slate-200 bg-amber-50/40 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500 mb-1">ملاحظات</p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{(detail || purchase).notes}</p>
+            <div className="rounded-sm border border-border-normal bg-amber-50/40 px-4 py-3">
+              <p className="text-[11px] font-bold text-text-secondary mb-1">ملاحظات</p>
+              <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">{(detail || purchase).notes}</p>
             </div>
           )}
         </>
       )}
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+      <div className="flex items-center justify-between border-t border-border-normal pt-4">
         <button onClick={onClose}
-          className="rounded-sm border border-slate-200 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100">
+          className="rounded-sm border border-border-normal px-5 py-2 text-sm font-bold text-text-secondary hover:bg-bg-overlay">
           رجوع
         </button>
         <button onClick={() => gotoTarget(`/purchases/${purchase.purchase_id || purchase.id}`)}
@@ -229,6 +222,7 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
   const [previewOpen, setPreviewOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   const filteredItems = useMemo(() => {
     const q = itemSearch.trim();
@@ -308,6 +302,9 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
     if (!suppliers.length) {
       api.get("/api/suppliers").then(r => setSuppliers(r.data.data || [])).catch(() => {});
     }
+    if (!paymentMethods.length) {
+      api.get("/api/payment-methods").then(r => setPaymentMethods(r.data.data || [])).catch(() => {});
+    }
   }, [open]);
 
   useEffect(() => {
@@ -336,61 +333,64 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
   }
 
   const docColumns = [
-    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 font-mono text-2sm font-black text-slate-700", render: (inv) => inv.doc_no },
-    { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-2sm font-bold text-slate-800", render: (inv) => inv.supplier_name || "—" },
-    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-center text-2sm font-bold text-slate-600", render: (inv) => inv.items_count },
-    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (inv) => formatMoney(inv.total) },
-    { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3", render: (inv) => {
+    { id: "doc_no", header: "رقم المستند", width: 140, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center font-mono text-[13px] font-black text-text-primary", render: (inv) => inv.doc_no },
+    { id: "supplier_name", header: "المورد", width: 160, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center text-[13px] font-bold text-text-secondary", render: (inv) => inv.supplier_name || "—" },
+    { id: "items_count", header: "الأصناف", width: 80, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center text-[13px] font-bold text-text-secondary", render: (inv) => inv.items_count },
+    { id: "total", header: "الإجمالي", width: 120, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center font-mono font-bold text-[14px] text-text-primary", render: (inv) => formatMoney(inv.total) },
+    { id: "payment_method", header: "الدفع", width: 150, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3", render: (inv) => {
       if (inv.payment_splits) {
-        const splits = inv.payment_splits.split("|||").filter(Boolean).map(s => { const [m, a] = s.split(":"); return { method: (m || "").trim(), amount: Number(a || 0) }; }).filter(s => s.amount > 0);
+        const splits = parseSplits(inv.payment_splits);
         if (splits.length) return (
-          <div className="flex flex-col gap-0.5">
-            {splits.map((s, i) => { const info = PAYMENT_METHOD_STYLES[s.method] || { label: s.method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" }; return (
-              <div key={i} className="flex items-center gap-1">
-                <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-                <span className="text-[11px] number-fmt text-slate-500">{formatMoney(s.amount)}</span>
-              </div>
-            ); })}
+          <div className="flex flex-col gap-0.5 items-center">
+            {splits.map((s, i) => { 
+              const info = resolvePaymentStyle(s.method, paymentMethods);
+              return (
+                <div key={i} className="flex items-center gap-1">
+                  <span className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+                  <span className="text-[11px] font-mono font-bold text-text-secondary">{formatMoney(s.amount)}</span>
+                </div>
+              ); 
+            })}
           </div>
         );
       }
-      const info = PAYMENT_METHOD_STYLES[inv.payment_method] || { label: inv.payment_method || "—", cls: "bg-slate-50 text-slate-600 border-slate-200" };
+      const info = resolvePaymentStyle(inv.payment_method, paymentMethods);
       return (
-        <div className="flex flex-col gap-0.5">
-          <span className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
-          <span className="text-[11px] number-fmt text-slate-500">{formatMoney(inv.total)}</span>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-black ${info.cls}`}>{info.label}</span>
+          <span className="text-[11px] font-mono font-bold text-text-secondary">{formatMoney(inv.total)}</span>
         </div>
       );
     }},
-    { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-600 whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
-    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-right px-3 font-black uppercase tracking-widest text-slate-500", cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
+    { id: "created_by", header: "المستخدم", width: 110, sortable: false, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center text-[11px] font-bold text-text-secondary whitespace-nowrap", render: (inv) => inv.created_by_username || "—" },
+    { id: "created_at", header: "الوقت", width: 150, sortable: true, headerClass: "text-center px-3 font-black uppercase tracking-widest text-text-muted", cellClass: "px-3 text-center text-[11px] text-text-secondary font-mono whitespace-nowrap", render: (inv) => formatArabicDateTime(new Date(inv.created_at)) },
     { id: "actions", header: "", width: 90, headerClass: "px-3", cellClass: "px-3", render: (inv) => (
       <div className="flex gap-1">
-        <button onClick={() => gotoTarget(`/purchases/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
+        <button onClick={() => gotoTarget(`/purchases/${inv.id}`)} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={() => handleVoid(inv)} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-rose-50 hover:text-rose-600" title="إلغاء"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
     )},
   ];
 
   const itemColumns = [
-    { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-slate-600", render: (r) => r.item_code || "—" },
-    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-slate-800", render: (r) => r.item_name || "—" },
-    { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-slate-700", render: (r) => r.doc_no || "—" },
-    { id: "supplier_name", header: "المورد", width: 130, cellClass: "px-3 text-[11px] font-bold text-slate-600", render: (r) => r.supplier_name || "—" },
-    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-slate-600", render: (r) => Number(r.quantity) },
-    { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 number-fmt text-2sm text-slate-700", render: (r) => formatMoney(r.unit_cost) },
+    { id: "item_code", header: "كود الصنف", width: 110, cellClass: "px-3 font-mono text-[11px] font-bold text-text-secondary", render: (r) => r.item_code || "—" },
+    { id: "item_name", header: "اسم الصنف", width: 180, cellClass: "px-3 text-2sm font-bold text-text-primary", render: (r) => r.item_name || "—" },
+    { id: "doc_no", header: "المستند", width: 130, cellClass: "px-3 font-mono text-[11px] font-black text-text-primary", render: (r) => r.doc_no || "—" },
+    { id: "supplier_name", header: "المورد", width: 130, cellClass: "px-3 text-[11px] font-bold text-text-secondary", render: (r) => r.supplier_name || "—" },
+    { id: "quantity", header: "الكمية", width: 80, cellClass: "px-3 text-center number-fmt text-2sm text-text-secondary", render: (r) => Number(r.quantity) },
+    { id: "unit_cost", header: "التكلفة", width: 100, cellClass: "px-3 number-fmt text-2sm text-text-primary", render: (r) => formatMoney(r.unit_cost) },
     { id: "line_total", header: "الإجمالي", width: 110, cellClass: "px-3 number-fmt-primary text-sm text-emerald-700", render: (r) => formatMoney(r.line_total || r.total || (Number(r.unit_cost) * Number(r.quantity))) },
-    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-slate-500 font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
+    { id: "created_at", header: "التاريخ", width: 140, cellClass: "px-3 text-[11px] font-bold text-text-secondary font-mono whitespace-nowrap", render: (r) => r.created_at ? formatArabicDateTime(new Date(r.created_at)) : "—" },
     { id: "actions", header: "", width: 60, cellClass: "px-3", render: (r) => (
       <div className="flex gap-1">
-        <button onClick={(e) => { e.stopPropagation(); gotoTarget(`/purchases/${r.purchase_id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.stopPropagation(); gotoTarget(`/purchases/${r.purchase_id}`); }} className="flex h-6 w-6 items-center justify-center rounded text-text-muted hover:bg-blue-50 hover:text-blue-600" title="فتح الفاتورة"><Pencil className="h-3.5 w-3.5" /></button>
       </div>
     )},
   ];
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="مشتريات اليوم" maxWidth="max-w-5xl" onDetach={handleDetach} showDetach={true} modalType="purchases-today">
+      <Modal open={open} onClose={onClose} title="مشتريات اليوم" maxWidth="max-w-7xl" onDetach={handleDetach} showDetach={true} modalType="purchases-today">
         <div className="flex flex-col gap-4">
           {/* Search bars row */}
           <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-sm border border-emerald-200">
@@ -399,7 +399,7 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
               value={docSearch}
               onChange={e => setDocSearch(e.target.value)}
               placeholder="PUR-0001..."
-              className="flex-1 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              className="flex-1 rounded-sm border border-emerald-200 bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
             />
             <span className="text-[11px] font-black text-emerald-700 shrink-0">بحث صنف:</span>
             <div className="relative flex-1">
@@ -415,7 +415,7 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
                   else if (e.key === "Escape") { setItemLookupOpen(false); }
                 }}
                 placeholder="اسم الصنف أو الكود..."
-                className="w-full rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="w-full rounded-sm border border-emerald-200 bg-bg-surface px-3 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
               />
               {itemLookupOpen && (
                 <SearchDropdown items={filteredItems} onPick={(item) => { setItemSearch(item.code || item.barcode || item.name); setItemLookupOpen(false); }}
@@ -431,24 +431,24 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">من</label>
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="rounded-sm border border-emerald-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">إلى</label>
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                className="rounded-sm border border-emerald-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
             </div>
             <div className="flex items-center gap-1.5">
               <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">ترتيب</label>
               <select value={sort} onChange={(e) => setSort(e.target.value)}
-                className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
+                className="rounded-sm border border-emerald-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500">
                 <option value="created_at">الوقت</option>
                 <option value="total">الإجمالي</option>
                 <option value="doc_no">رقم المستند</option>
                 <option value="payment_method">طريقة الدفع</option>
               </select>
               <button onClick={() => setDir((d) => d === "asc" ? "desc" : "asc")}
-                className="flex h-8 w-8 items-center justify-center rounded-sm border border-emerald-200 bg-white hover:bg-emerald-100 transition-colors">
+                className="flex h-8 w-8 items-center justify-center rounded-sm border border-emerald-200 bg-bg-surface hover:bg-emerald-100 transition-colors">
                 <ArrowUpDown className="h-3.5 w-3.5 text-emerald-600" />
               </button>
             </div>
@@ -456,7 +456,7 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
               <div className="flex items-center gap-1.5">
                 <label className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">المستخدم</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)}
-                  className="rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500">
+                  className="rounded-sm border border-emerald-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500">
                   <option value="">الكل</option>
                   {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
@@ -486,10 +486,10 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
                   if (e.key === "Escape") { setSupplierLookupOpen(false); }
                 }}
                 placeholder="كل الموردين..."
-                className="w-[140px] rounded-sm border border-emerald-200 bg-white px-2 py-1.5 text-2sm font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="w-[140px] rounded-sm border border-emerald-200 bg-bg-surface px-2 py-1.5 text-2sm font-bold text-text-primary outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
               />
               {supplierQuery && (
-                <button onClick={() => { setSupplierQuery(""); setSupplierId(""); }} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => { setSupplierQuery(""); setSupplierId(""); }} className="text-text-muted hover:text-text-secondary">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -504,26 +504,36 @@ export default function TodayPurchasesModal({ open, onClose, onNavigate: propNav
               )}
             </div>
             <button onClick={loadData}
-              className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-white px-3 py-1.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
+              className="flex items-center gap-1.5 rounded-sm border border-emerald-200 bg-bg-surface px-3 py-1.5 text-2sm font-black text-emerald-700 hover:bg-emerald-100 transition-colors">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> تحديث
             </button>
           </div>
 
           {/* Summary strip */}
-          <div className="flex items-center gap-4 rounded-sm bg-emerald-800 px-4 py-3">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">عدد الفواتير</span>
-              <span className="number-fmt-primary text-[20px] text-white leading-none">{summary.count}</span>
+          <div className="flex items-center gap-0 w-full overflow-x-auto rounded-[8px] bg-bg-overlay border border-border-normal shadow-sm mb-4 flex-nowrap hide-scrollbar">
+            <div className="flex flex-col items-center justify-center px-6 py-3 bg-primary/5 shrink-0">
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">عدد الفواتير</span>
+              <span className="font-mono text-[22px] font-black text-text-primary leading-none">{summary.count || 0}</span>
             </div>
-            <div className="h-8 w-px bg-emerald-700" />
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">إجمالي المشتريات</span>
-              <span className="number-fmt-primary text-[20px] text-emerald-300 leading-none">{formatMoney(summary.total)}</span>
+            
+            <div className="flex flex-col items-center justify-center px-6 py-3 shrink-0 border-r border-border-subtle">
+              <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">الإجمالي</span>
+              <span className="font-mono text-[22px] font-black text-text-primary leading-none">{formatMoney(summary.total || 0)}</span>
             </div>
+
+            {Object.entries(calculatePaymentBreakdown(itemSearch.trim() ? rawItems : purchases, 'payment_method', paymentMethods)).map(([method, amount]) => {
+               const info = resolvePaymentStyle(method, paymentMethods);
+               return (
+                 <div key={method} className="flex flex-col items-center justify-center px-6 py-3 shrink-0 border-r border-border-subtle bg-bg-base">
+                   <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">{info.label}</span>
+                   <span className="font-mono text-[16px] font-black text-text-secondary leading-none">{formatMoney(amount)}</span>
+                 </div>
+               );
+            })}
           </div>
 
           {/* Table */}
-          <div className="max-h-[420px] overflow-auto rounded-sm border border-emerald-200">
+          <div className="max-h-[420px] overflow-auto rounded-sm border border-border-normal">
             <DataGrid
               data={loading ? [] : (itemSearch.trim() ? rawItems : purchases)}
               rowKey={itemSearch.trim() ? (r, i) => `${r.id || r.item_id}-${i}` : "id"}

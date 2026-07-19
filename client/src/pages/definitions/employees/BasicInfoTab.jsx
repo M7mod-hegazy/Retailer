@@ -109,34 +109,34 @@ export default function BasicInfoTab({ employee, onUpdate }) {
       {/* عرض البيانات الأساسية */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الموظف</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">الموظف</label>
           {canEdit ? (
             <input
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
-              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
             />
           ) : (
-            <p className="text-sm font-bold text-slate-800 pt-1">{employee.name}</p>
+            <p className="text-sm font-bold text-text-primary pt-1">{employee.name}</p>
           )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">العنوان</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">العنوان</label>
           {canEdit ? (
             <input
               value={form.address}
               onChange={e => setForm({ ...form, address: e.target.value })}
-              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
               placeholder="العنوان (اختياري)"
             />
           ) : (
-            <p className="text-sm font-bold text-slate-800 pt-1">{employee.address || "-"}</p>
+            <p className="text-sm font-bold text-text-primary pt-1">{employee.address || "-"}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">أرقام الهاتف</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">أرقام الهاتف</label>
           {canEdit ? (
             <>
               {(form.phones || []).map((ph, idx) => (
@@ -148,7 +148,7 @@ export default function BasicInfoTab({ employee, onUpdate }) {
                       updated[idx] = e.target.value;
                       setForm({ ...form, phones: updated });
                     }}
-                    className="flex-1 h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                    className="flex-1 h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                     placeholder={`رقم ${idx + 1}`}
                   />
                   {form.phones.length > 1 && (
@@ -175,23 +175,23 @@ export default function BasicInfoTab({ employee, onUpdate }) {
               {(() => {
                 const displayPhones = employee.phones ? JSON.parse(employee.phones) : (employee.phone ? [employee.phone] : []);
                 return displayPhones.length > 0
-                  ? displayPhones.map((p, i) => <p key={i} className="text-sm font-bold text-slate-800 pt-1">{p}</p>)
-                  : <p className="text-sm font-bold text-slate-400 pt-1">-</p>;
+                  ? displayPhones.map((p, i) => <p key={i} className="text-sm font-bold text-text-primary pt-1">{p}</p>)
+                  : <p className="text-sm font-bold text-text-muted pt-1">-</p>;
               })()}
             </div>
           )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">المسمى الوظيفي</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">المسمى الوظيفي</label>
           {canEdit ? (
             <input
-              value={form.role}
-              onChange={e => setForm({ ...form, role: e.target.value })}
-              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+              value={form.job_title || form.role || ""}
+              onChange={e => setForm({ ...form, job_title: e.target.value, role: e.target.value })}
+              className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
             />
           ) : (
-            <p className="text-sm font-bold text-slate-800 pt-1">{employee.role || "-"}</p>
+            <p className="text-sm font-bold text-text-primary pt-1">{employee.job_title || employee.role || "-"}</p>
           )}
         </div>
 
@@ -199,13 +199,13 @@ export default function BasicInfoTab({ employee, onUpdate }) {
         {canViewSalary && (
           <>
             <div className="space-y-1">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الراتب الأساسي</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">الراتب الأساسي</label>
               {canEditSalary ? (
                 <input
                   type="number"
                   value={form.salary}
                   onChange={e => setForm({ ...form, salary: e.target.value })}
-                  className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                 />
               ) : (
                 <p className="text-sm font-bold text-emerald-700 pt-1">{Number(employee.salary || 0).toLocaleString()} ج.م</p>
@@ -213,41 +213,41 @@ export default function BasicInfoTab({ employee, onUpdate }) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">فترة الدفع</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">فترة الدفع</label>
               {canEditSalary ? (
                 <select
                   value={form.salary_period}
                   onChange={e => setForm({ ...form, salary_period: e.target.value })}
-                  className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                  className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                 >
                   {PERIOD_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               ) : (
-                <p className="text-sm font-bold text-slate-800 pt-1">{periodLabel}</p>
+                <p className="text-sm font-bold text-text-primary pt-1">{periodLabel}</p>
               )}
             </div>
 
             {form.salary_period === "monthly" && (
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">أيام العمل الشهرية</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">أيام العمل الشهرية</label>
                 {canEditSalary ? (
                   <input
                     type="number" min="1" max="31"
                     value={form.working_days_per_month}
                     onChange={e => setForm({ ...form, working_days_per_month: normalizeMonthlyWorkDays(e.target.value) })}
-                    className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-slate-200 bg-white focus:border-blue-400 transition-all"
+                    className="w-full h-11 rounded-xl px-4 text-sm font-bold outline-none border border-border-normal bg-bg-surface focus:border-blue-400 transition-all"
                   />
                 ) : (
-                  <p className="text-sm font-bold text-slate-800 pt-1">{employee.working_days_per_month || DEFAULT_MONTHLY_WORK_DAYS} يوم</p>
+                  <p className="text-sm font-bold text-text-primary pt-1">{employee.working_days_per_month || DEFAULT_MONTHLY_WORK_DAYS} يوم</p>
                 )}
               </div>
             )}
 
             {dailySalary > 0 && (
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500">الراتب اليومي</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary">الراتب اليومي</label>
                 <p className="text-sm font-bold text-emerald-600 pt-1">
                   {formatMoney(Math.round(dailySalary))} ج.م / يوم
                 </p>
@@ -260,7 +260,7 @@ export default function BasicInfoTab({ employee, onUpdate }) {
 
       {/* زر الحفظ */}
       {canEdit && (
-        <div className="flex justify-end pt-4 border-t border-slate-100">
+        <div className="flex justify-end pt-4 border-t border-border-subtle">
           <motion.button
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.98 }}

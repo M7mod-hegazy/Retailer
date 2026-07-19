@@ -96,7 +96,7 @@ export default function MultiPaymentInput({
             value={line.method_id || ""}
             disabled={disabled}
             onChange={(event) => updateLine(idx, "method_id", event.target.value)}
-            className="flex-1 h-10 rounded-xl border border-slate-300 bg-white px-3 text-2sm font-bold outline-none focus:border-violet-500"
+            className="flex-1 h-10 rounded-xl border border-border-strong bg-bg-surface px-3 text-2sm font-bold outline-none focus:border-violet-500"
           >
             {methods.map((method) => (
               <option key={method.id} value={method.id}>{method.icon || "card"} {method.name}</option>
@@ -109,7 +109,7 @@ export default function MultiPaymentInput({
             value={line.amount}
             disabled={disabled}
             onChange={(event) => updateLine(idx, "amount", event.target.value)}
-            className="w-32 h-10 rounded-xl border border-slate-300 px-3 text-left text-sm number-fmt outline-none focus:border-violet-500 ltr:text-left"
+            className="w-32 h-10 rounded-xl border border-border-strong px-3 text-left text-sm number-fmt outline-none focus:border-violet-500 ltr:text-left"
             dir="ltr"
           />
           {value.length > 1 && (

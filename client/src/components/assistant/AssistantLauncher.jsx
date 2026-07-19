@@ -70,7 +70,7 @@ export default function AssistantLauncher() {
             onClick={handleDismiss}
             onMouseDown={(e) => e.stopPropagation()}
             aria-label={t("assistant.dismiss")}
-            className="absolute -top-1.5 -start-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--text-muted)] shadow-md ring-2 ring-primary transition-colors hover:bg-[var(--danger)] hover:text-white hover:ring-[var(--danger)]"
+            className="absolute -top-1.5 -start-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-bg-surface text-[var(--text-muted)] shadow-md ring-2 ring-primary transition-colors hover:bg-[var(--danger)] hover:text-white hover:ring-[var(--danger)]"
           >
             <X strokeWidth={3} className="h-2.5 w-2.5" />
           </button>

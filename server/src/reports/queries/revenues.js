@@ -71,17 +71,32 @@ function revenuesByPayment(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
   const { payment_type } = opts;
-  return db.prepare(`
-    SELECT r.payment_method,
-      COUNT(*) AS revenue_count,
-      SUM(r.amount) AS total_revenues,
-      ROUND(AVG(r.amount), 2) AS avg_revenue
-    FROM revenues r
-    WHERE 1=1 ${addDateFilter("r.created_at", startDate, endDate, params)}
-      ${payment_type ? " AND r.payment_method = ?" : ""}
-    GROUP BY r.payment_method
-    ORDER BY total_revenues DESC
-  `).all(...params, ...(payment_type ? [payment_type] : []));
+    const rawData = db.prepare(`
+      SELECT r.payment_method,
+        COUNT(*) AS revenue_count,
+        SUM(r.amount) AS total_revenues
+      FROM revenues r
+      WHERE 1=1 ${addDateFilter("r.created_at", startDate, endDate, params)}
+        ${payment_type ? " AND r.payment_method = ?" : ""}
+      GROUP BY r.payment_method
+    `).all(...params, ...(payment_type ? [payment_type] : []));
+
+    const merged = new Map();
+    for (const row of rawData) {
+      let pt = row.payment_method || "cash";
+      if (pt === "نقدي" || pt.includes("نقدي -") || pt.includes("نقدي")) pt = "cash";
+      
+      if (!merged.has(pt)) {
+        merged.set(pt, { payment_method: pt, revenue_count: 0, total_revenues: 0 });
+      }
+      const e = merged.get(pt);
+      e.revenue_count += Number(row.revenue_count || 0);
+      e.total_revenues += Number(row.total_revenues || 0);
+    }
+
+    return Array.from(merged.values())
+      .map(r => ({ ...r, avg_revenue: r.revenue_count ? Number((r.total_revenues / r.revenue_count).toFixed(2)) : 0 }))
+      .sort((a, b) => b.total_revenues - a.total_revenues);
 }
 
 module.exports = { revenueSummary, detailedRevenues, revenuesByCategory, revenuesByPayment };

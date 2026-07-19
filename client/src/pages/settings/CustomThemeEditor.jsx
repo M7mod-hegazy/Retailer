@@ -154,12 +154,12 @@ function ColorInput({ varDef, value, onChange }) {
           type="color"
           value={value}
           onChange={handleColorChange}
-          className="h-9 w-9 cursor-pointer rounded border border-slate-200 p-0.5"
+          className="h-9 w-9 cursor-pointer rounded border border-border-normal p-0.5"
         />
       )}
       {!isHex && (
         <span
-          className="h-9 w-9 shrink-0 rounded border border-slate-200"
+          className="h-9 w-9 shrink-0 rounded border border-border-normal"
           style={{ backgroundColor: value }}
         />
       )}
@@ -167,7 +167,7 @@ function ColorInput({ varDef, value, onChange }) {
         type="text"
         value={value}
         onChange={handleTextChange}
-        className="flex-1 rounded border border-slate-200 px-2.5 py-1.5 text-[12px] font-bold text-slate-700 outline-none transition-all font-mono focus:border-slate-400 focus:shadow-sm"
+        className="flex-1 rounded-md border border-border-normal bg-bg-input px-2.5 py-1.5 text-[12px] font-bold text-text-primary outline-none hover:border-border-strong focus:bg-bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono shadow-sm"
         dir="ltr"
       />
     </div>
@@ -177,20 +177,20 @@ function ColorInput({ varDef, value, onChange }) {
 function VarGroup({ group, vars, onVarChange }) {
   const Icon = group.icon;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-        <Icon className="h-4 w-4 text-slate-500" />
-        <span className="text-[12px] font-black uppercase tracking-widest text-slate-700">
+    <div className="rounded-lg border border-border-normal bg-bg-surface p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2 border-b border-border-subtle pb-2">
+        <Icon className="h-4 w-4 text-text-secondary" />
+        <span className="text-[12px] font-black uppercase tracking-widest text-text-primary">
           {group.label}
         </span>
         {group.id !== "shadows" && (
-          <span className="text-[10px] font-bold text-slate-400">— {group.labelEn}</span>
+          <span className="text-[10px] font-bold text-text-muted">— {group.labelEn}</span>
         )}
       </div>
       <div className="space-y-2.5">
         {group.vars.map((varDef) => (
           <div key={varDef.key} className="flex items-center gap-3">
-            <label className="w-28 shrink-0 text-[11px] font-bold text-slate-500">
+            <label className="w-28 shrink-0 text-[11px] font-bold text-text-secondary">
               {varDef.labelAr}
             </label>
             <div className="flex-1">
@@ -200,7 +200,7 @@ function VarGroup({ group, vars, onVarChange }) {
                 onChange={(newVal) => onVarChange(varDef.key, newVal)}
               />
             </div>
-            <code className="hidden w-36 text-[10px] text-slate-400 font-mono truncate lg:block" dir="ltr">
+            <code className="hidden w-36 text-[10px] text-text-muted font-mono truncate lg:block" dir="ltr">
               {varDef.key}
             </code>
           </div>
@@ -276,7 +276,7 @@ export default function CustomThemeEditor({ settings, onChange }) {
         <button
           type="button"
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded bg-white px-3 py-1.5 text-[11px] font-black text-slate-600 shadow-sm border border-slate-200 transition-all hover:bg-slate-50 active:scale-95"
+          className="flex items-center gap-1.5 rounded bg-bg-surface px-3 py-1.5 text-[11px] font-black text-text-secondary shadow-sm border border-border-normal transition-all hover:bg-bg-overlay active:scale-95"
         >
           <RotateCcw className="h-3 w-3" />
           {isRTL ? "إعادة ضبط" : "Reset"}

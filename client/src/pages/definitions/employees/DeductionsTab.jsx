@@ -23,9 +23,9 @@ const DEDUCTION_TYPES = [
 ];
 
 const STATUS_MAP = {
-  active: { label: "نشط", class: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-400" },
-  completed: { label: "مطبق", class: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  cancelled: { label: "ملغي", class: "bg-slate-50 text-slate-500 border-slate-200", dot: "bg-slate-400" },
+  active: { label: "شغّالة", class: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-400" },
+  completed: { label: "اتطبقت", class: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  cancelled: { label: "اتلغيت", class: "bg-bg-overlay text-text-secondary border-border-normal", dot: "bg-text-muted" },
 };
 
 export default function DeductionsTab({ employee }) {
@@ -64,7 +64,7 @@ export default function DeductionsTab({ employee }) {
     e.preventDefault();
     const amount = getTransactionAmount();
     if (amount <= 0) {
-      toast.error("يجب إدخال مبلغ صحيح");
+      toast.error("ادخل مبلغ صحيح");
       return;
     }
     setSubmitting(true);
@@ -79,13 +79,13 @@ export default function DeductionsTab({ employee }) {
         notes: form.notes,
       });
       if (res.data?.success) {
-        toast.success("تم إضافة الخصم");
+        toast.success("الخصم اتضاف بنجاح");
         setShowForm(false);
         resetForm();
         loadDeductions();
       }
     } catch { 
-      toast.error("فشل إضافة الخصم");
+      toast.error("الخصم ما اتضافش");
       setDeductions(prev => prev.filter(d => d.id !== tempId));
     } finally { setSubmitting(false); }
   }
@@ -96,11 +96,11 @@ export default function DeductionsTab({ employee }) {
     try {
       const res = await api.delete(`/api/employees/${employee.id}/deductions/${id}`);
       if (res.data?.success) {
-        toast.success("تم إلغاء الخصم");
+        toast.success("الخصم اتلغى بنجاح");
         loadDeductions();
       }
     } catch {
-      toast.error("فشل إلغاء الخصم");
+      toast.error("الخصم ما اتلغاش");
       if (removed) {
         setDeductions(prev => [...prev, removed]);
       }
@@ -129,19 +129,19 @@ export default function DeductionsTab({ employee }) {
             <div className="flex-1">
               <p className="text-sm font-black text-rose-800">الخصومات</p>
               <p className="text-xs font-bold text-rose-600 mt-1 leading-relaxed">
-                أضف خصومات للموظف — سواء متكررة (كل فترة راتب) أو لمرة واحدة. يمكنك تحويل أيام الغياب لمبلغ باستخدام "حساب من الأيام". الخصومات المتكررة بتتطبق تلقائياً مع كل صرف راتب.
+                أضف خصومات للموظف — سواء متكررة (كل فترة راتب) أو مرة واحدة. تقدر تحول أيام الغياب لمبلغ باستخدام "حساب من الأيام". الخصومات المتكررة بتتطبق تلقائياً مع كل صرف راتب.
               </p>
             </div>
             <button onClick={() => localStorage.setItem('emp-tab-info-deductions', '1')}
-              className="text-rose-400 hover:text-rose-600 text-xs font-black shrink-0">فهمت</button>
+              className="text-rose-400 hover:text-rose-600 text-xs font-black shrink-0">تمام</button>
           </motion.div>
         );
       })()}
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-black text-slate-800">الخصومات</h3>
-          <p className="text-xs text-slate-500 mt-0.5">خصومات على الراتب (مرة واحدة أو متكررة)</p>
+          <h3 className="text-lg font-black text-text-primary">الخصومات</h3>
+          <p className="text-xs text-text-secondary mt-0.5">خصومات على الراتب (مرة واحدة أو متكررة)</p>
         </div>
         {canManage && (
           <motion.button
@@ -177,7 +177,7 @@ export default function DeductionsTab({ employee }) {
                   <select
                     value={form.deduction_type}
                     onChange={e => setForm({ ...form, deduction_type: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-white focus:border-rose-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-bg-surface focus:border-rose-400"
                   >
                     {DEDUCTION_TYPES.map(t => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -189,7 +189,7 @@ export default function DeductionsTab({ employee }) {
                   <select
                     value={form.amount_mode}
                     onChange={e => setForm({ ...form, amount_mode: e.target.value, amount: "", days: "" })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-white focus:border-rose-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-bg-surface focus:border-rose-400"
                   >
                     <option value="amount">مبلغ ثابت</option>
                     <option value="days" disabled={!canUseDayAmount}>عدد أيام</option>
@@ -206,7 +206,7 @@ export default function DeductionsTab({ employee }) {
                     step={form.amount_mode === "days" ? "0.25" : "1"}
                     value={form.amount_mode === "days" ? form.days : form.amount}
                     onChange={e => setForm(form.amount_mode === "days" ? { ...form, days: e.target.value } : { ...form, amount: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-white focus:border-rose-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-bg-surface focus:border-rose-400"
                   />
                 </div>
                 <div className="space-y-1">
@@ -214,15 +214,15 @@ export default function DeductionsTab({ employee }) {
                   <input
                     value={form.notes}
                     onChange={e => setForm({ ...form, notes: e.target.value })}
-                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-white focus:border-rose-400"
+                    className="w-full h-10 rounded-xl px-4 text-sm font-bold outline-none border border-rose-200 bg-bg-surface focus:border-rose-400"
                   />
                 </div>
               </div>
 
               {canUseDayAmount && effectiveAmount > 0 && (() => {
                 const label = effectiveDays < 1
-                  ? "أقل من يوم عمل"
-                  : ["يعادل", formatSalaryDays(effectiveDays), "يوم عمل"].join(" ");
+                  ? "أقل من يوم شغل"
+                  : ["يعادل", formatSalaryDays(effectiveDays), "يوم شغل"].join(" ");
                 return (
                   <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-1">
@@ -230,7 +230,7 @@ export default function DeductionsTab({ employee }) {
                         الراتب اليومي: <span className="font-mono">{formatMoney(Math.round(dailySalary))} ج.م</span>
                       </span>
                       <span className="text-[11px] font-bold text-rose-600">
-                        {label} ? {getDailySalaryBasis(employee)}
+                        {label} ؟ {getDailySalaryBasis(employee)}
                       </span>
                     </div>
                     <span className="text-xs font-black text-rose-700 font-mono">
@@ -255,7 +255,7 @@ export default function DeductionsTab({ employee }) {
                   disabled={submitting}
                   className="h-10 px-6 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  {submitting && <span className="block h-4 w-4 animate-spin rounded-full border-2 border-border-normal/30 border-t-white" />}
                   تأكيد الإضافة
                 </button>
               </div>
@@ -269,24 +269,24 @@ export default function DeductionsTab({ employee }) {
           const st = STATUS_MAP[d.status] || STATUS_MAP.active;
           const typeLabel = DEDUCTION_TYPES.find(t => t.value === d.deduction_type)?.label || d.deduction_type;
           return (
-            <div key={d.id} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+            <div key={d.id} className="bg-bg-surface border border-border-normal rounded-xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`text-[11px] font-black px-2 py-0.5 rounded-full border ${st.class}`}>{st.label}</span>
                   <span className="text-sm font-bold text-rose-600 font-mono">{Number(d.amount).toLocaleString()} ج.م</span>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{typeLabel}</span>
+                  <span className="text-xs font-bold text-text-secondary bg-bg-overlay px-2 py-0.5 rounded">{typeLabel}</span>
                   {d.is_recurring ? (
                     <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1">
                       <Percent className="h-3 w-3" /> متكرر
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-400">مرة واحدة</span>
+                    <span className="text-[10px] font-bold text-text-muted">مرة واحدة</span>
                   )}
                 </div>
                 {d.status === 'active' && canManage && (
                   <button
                     onClick={() => setDeleteTarget(d)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all"
+                    className="h-7 w-7 flex items-center justify-center rounded-lg text-text-muted hover:bg-rose-50 hover:text-rose-500 transition-all"
                     title="إلغاء الخصم"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -294,31 +294,31 @@ export default function DeductionsTab({ employee }) {
                 )}
               </div>
 
-              {d.notes && <p className="text-xs text-slate-400">{d.notes}</p>}
+              {d.notes && <p className="text-xs text-text-muted">{d.notes}</p>}
 
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-border-subtle pt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">التسلسل الزمني</h4>
+                  <h4 className="text-[10px] font-black text-text-muted uppercase tracking-wider">التفصيل</h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-[11px] text-slate-600 font-bold">تم الإنشاء</span>
-                    <span className="text-[10px] text-slate-400">{formatDateTime(d.created_at)}</span>
+                    <span className="text-[11px] text-text-secondary font-bold">اتضاف</span>
+                    <span className="text-[10px] text-text-muted">{formatDateTime(d.created_at)}</span>
                   </div>
                   {d.status === 'completed' && (
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                      <span className="text-[11px] text-slate-600 font-bold">تم التطبيق</span>
-                      <span className="text-[10px] text-slate-400">{formatDateTime(d.completed_at || d.created_at)}</span>
+                      <span className="text-[11px] text-text-secondary font-bold">اتطبق</span>
+                      <span className="text-[10px] text-text-muted">{formatDateTime(d.completed_at || d.created_at)}</span>
                     </div>
                   )}
                   {d.status === 'cancelled' && (
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                      <span className="text-[11px] text-slate-600 font-bold">تم الإلغاء</span>
-                      <span className="text-[10px] text-slate-400">{formatDateTime(d.cancelled_at || d.created_at)}</span>
+                      <div className="w-2 h-2 rounded-full bg-text-muted shrink-0" />
+                      <span className="text-[11px] text-text-secondary font-bold">اتلغى</span>
+                      <span className="text-[10px] text-text-muted">{formatDateTime(d.cancelled_at || d.created_at)}</span>
                     </div>
                   )}
                 </div>
@@ -328,8 +328,8 @@ export default function DeductionsTab({ employee }) {
         })}
         {!loading && deductions.length === 0 && (
           <div className="text-center py-12">
-            <Percent className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-400">لا توجد خصومات</p>
+            <Percent className="h-10 w-10 text-text-muted mx-auto mb-3" />
+            <p className="text-sm font-bold text-text-muted">لسه ما فيه خصومات</p>
           </div>
         )}
       </div>
@@ -337,7 +337,7 @@ export default function DeductionsTab({ employee }) {
       <ConfirmDialog
         open={!!deleteTarget}
         title="إلغاء الخصم"
-        message={`هل تريد إلغاء خصم "${DEDUCTION_TYPES.find(t => t.value === deleteTarget?.deduction_type)?.label || deleteTarget?.deduction_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
+        message={`هل انت متأكد إنك عايز تلغي الخصم "${DEDUCTION_TYPES.find(t => t.value === deleteTarget?.deduction_type)?.label || deleteTarget?.deduction_type}" بقيمة ${Number(deleteTarget?.amount || 0).toLocaleString()} ج.م؟`}
         onConfirm={() => { handleCancel(deleteTarget.id); setDeleteTarget(null); }}
         onCancel={() => setDeleteTarget(null)}
       />

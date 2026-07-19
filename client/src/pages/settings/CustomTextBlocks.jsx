@@ -141,7 +141,7 @@ function BlockCard({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDo
               rows={3}
               placeholder={"مثال:\nشركة إلهيجازي للتجزئة\nالسجل التجاري: 1234567"}
               style={{ fontFamily: "monospace" }}
-              className="w-full resize-y rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2 text-2sm text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] shadow-sm transition-all placeholder:text-[var(--text-muted)] leading-relaxed"
+              className="w-full resize-y rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2 text-2sm text-[var(--text-primary)] outline-none hover:border-[var(--border-strong)] focus:bg-[var(--bg-surface)] focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm transition-all placeholder:text-[var(--text-muted)] leading-relaxed"
             />
             <div className="mt-1 text-[9px] font-bold text-[var(--text-muted)] text-left ltr">
               {block.text.length} حرف • {block.text.split("\n").length} سطر

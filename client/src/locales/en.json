@@ -1423,6 +1423,7 @@
   "telegram.presetDetailed": "Detailed",
   "telegram.presetBrief": "Brief",
   "telegram.previewMessage": "Preview message",
+  "telegram.choosePreset": "Choose notification format",
   "telegram.categoryEventsCount": "{{enabled}}/{{total}} enabled",
   "telegram.expandCategory": "Show events",
   "telegram.collapseCategory": "Hide events",

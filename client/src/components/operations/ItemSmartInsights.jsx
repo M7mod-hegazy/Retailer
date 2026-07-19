@@ -17,7 +17,7 @@ const INSIGHT_CONFIG = {
     label: "مبيع قوي", glow: "shadow-[0_0_20px_rgba(16,185,129,0.15)]",
   },
   no_sales: {
-    icon: HelpCircle, color: "text-slate-500", bg: "bg-slate-50", border: "border-slate-200",
+    icon: HelpCircle, color: "text-text-secondary", bg: "bg-bg-overlay", border: "border-border-normal",
     label: "بدون مبيعات", glow: "",
   },
   overstocked: {
@@ -41,7 +41,7 @@ const INSIGHT_CONFIG = {
     label: "أسعار متقلبة", glow: "shadow-[0_0_20px_rgba(139,92,246,0.1)]",
   },
   normal: {
-    icon: BarChart3, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200",
+    icon: BarChart3, color: "text-text-secondary", bg: "bg-bg-overlay", border: "border-border-normal",
     label: "منتظم", glow: "",
   },
 };
@@ -125,10 +125,10 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="rounded-2xl border border-slate-100 bg-white p-4 animate-pulse">
-            <div className="h-4 w-20 bg-slate-200 rounded mb-3" />
-            <div className="h-6 w-28 bg-slate-200 rounded mb-2" />
-            <div className="h-3 w-32 bg-slate-100 rounded" />
+          <div key={i} className="rounded-2xl border border-border-subtle bg-bg-surface p-4 animate-pulse">
+            <div className="h-4 w-20 bg-border-normal rounded mb-3" />
+            <div className="h-6 w-28 bg-border-normal rounded mb-2" />
+            <div className="h-3 w-32 bg-bg-overlay rounded" />
           </div>
         ))}
       </div>
@@ -148,21 +148,21 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
       <InsightCard
         title="أداء المبيعات"
         icon={TrendingUp}
-        colorClass={sales.avg_daily >= 1 ? "text-emerald-600" : sales.avg_daily >= 0.3 ? "text-amber-600" : "text-slate-500"}
-        bgClass={sales.avg_daily >= 1 ? "bg-emerald-50/60" : sales.avg_daily >= 0.3 ? "bg-amber-50/60" : "bg-slate-50/60"}
-        borderClass={sales.avg_daily >= 1 ? "border-emerald-200/70" : sales.avg_daily >= 0.3 ? "border-amber-200/70" : "border-slate-200/70"}
+        colorClass={sales.avg_daily >= 1 ? "text-emerald-600" : sales.avg_daily >= 0.3 ? "text-amber-600" : "text-text-secondary"}
+        bgClass={sales.avg_daily >= 1 ? "bg-emerald-50/60" : sales.avg_daily >= 0.3 ? "bg-amber-50/60" : "bg-bg-overlay/60"}
+        borderClass={sales.avg_daily >= 1 ? "border-emerald-200/70" : sales.avg_daily >= 0.3 ? "border-amber-200/70" : "border-border-normal/70"}
         glowClass={sales.avg_daily >= 1 ? "shadow-[0_0_20px_rgba(16,185,129,0.08)]" : ""}
       >
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-2xl font-black ${sales.avg_daily >= 1 ? "text-emerald-700" : "text-slate-700"}`}>
+          <span className={`text-2xl font-black ${sales.avg_daily >= 1 ? "text-emerald-700" : "text-text-primary"}`}>
             {money(sales.current_qty)}
           </span>
-          <span className="text-[10px] font-bold text-slate-400">وحدة</span>
+          <span className="text-[10px] font-bold text-text-muted">وحدة</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 mt-1">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary mt-1">
           <ShoppingCart size={11} className="opacity-50" />
           <span>{sales.avg_daily.toFixed(1)} وحدة/يوم</span>
-          <span className="text-slate-300">·</span>
+          <span className="text-text-muted">·</span>
           <span>{sales.current_count} فاتورة</span>
         </div>
         {rank && (
@@ -192,11 +192,11 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
               <span className={`text-2xl font-black ${trendUp ? "text-emerald-700" : "text-rose-700"}`}>
                 {trendUp ? "↑" : "↓"} {Math.abs(sales.qty_change_pct)}%
               </span>
-              <span className="text-[10px] font-bold text-slate-400">عن الفترة السابقة</span>
+              <span className="text-[10px] font-bold text-text-muted">عن الفترة السابقة</span>
             </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 mt-1">
+            <div className="flex items-center gap-3 text-[10px] font-bold text-text-secondary mt-1">
               <span>السابقة: {money(sales.prev_qty)} وحدة</span>
-              <span className="text-slate-300">|</span>
+              <span className="text-text-muted">|</span>
               <span>الحالية: {money(sales.current_qty)} وحدة</span>
             </div>
             {Math.abs(sales.qty_change_pct) >= 50 && (
@@ -209,7 +209,7 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
             )}
           </>
         ) : (
-          <div className="text-[12px] font-bold text-slate-400 mt-2">
+          <div className="text-[12px] font-bold text-text-muted mt-2">
             لا توجد بيانات كافية للمقارنة
           </div>
         )}
@@ -219,24 +219,24 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
       <InsightCard
         title="صحة المخزون"
         icon={stock.days_until_stockout !== null && stock.days_until_stockout < 30 ? AlertTriangle : Package}
-        colorClass={stock.days_until_stockout !== null && stock.days_until_stockout < 7 ? "text-rose-600" : stock.days_until_stockout !== null && stock.days_until_stockout < 30 ? "text-amber-600" : stock.current > 50 ? "text-blue-600" : "text-slate-600"}
+        colorClass={stock.days_until_stockout !== null && stock.days_until_stockout < 7 ? "text-rose-600" : stock.days_until_stockout !== null && stock.days_until_stockout < 30 ? "text-amber-600" : stock.current > 50 ? "text-blue-600" : "text-text-secondary"}
         bgClass={stock.days_until_stockout !== null && stock.days_until_stockout < 7 ? "bg-rose-50/60" : stock.days_until_stockout !== null && stock.days_until_stockout < 30 ? "bg-amber-50/60" : "bg-blue-50/60"}
         borderClass={stock.days_until_stockout !== null && stock.days_until_stockout < 7 ? "border-rose-200/70" : stock.days_until_stockout !== null && stock.days_until_stockout < 30 ? "border-amber-200/70" : "border-blue-200/70"}
         glowClass=""
       >
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-2xl font-black ${stock.current <= 0 ? "text-rose-700" : stock.current < 10 ? "text-amber-700" : "text-slate-800"}`}>
+          <span className={`text-2xl font-black ${stock.current <= 0 ? "text-rose-700" : stock.current < 10 ? "text-amber-700" : "text-text-primary"}`}>
             {money(stock.current)}
           </span>
-          <span className="text-[10px] font-bold text-slate-400">وحدة</span>
+          <span className="text-[10px] font-bold text-text-muted">وحدة</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 mt-1 flex-wrap">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary mt-1 flex-wrap">
           {stock.days_until_stockout !== null ? (
             <>
-              <span className={stock.days_until_stockout < 7 ? "text-rose-600" : stock.days_until_stockout < 30 ? "text-amber-600" : "text-slate-500"}>
+              <span className={stock.days_until_stockout < 7 ? "text-rose-600" : stock.days_until_stockout < 30 ? "text-amber-600" : "text-text-secondary"}>
                 يكفي {stock.days_until_stockout} يوم
               </span>
-              <span className="text-slate-300">·</span>
+              <span className="text-text-muted">·</span>
             </>
           ) : null}
           <span>دوران {stock.turnover_ratio}x</span>
@@ -270,10 +270,10 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
               <span className="text-xl font-black text-violet-700">
                 {fields.reduce((sum, f) => sum + prices[f].change_count, 0)}
               </span>
-              <span className="text-[10px] font-bold text-slate-400">تغيير</span>
+              <span className="text-[10px] font-bold text-text-muted">تغيير</span>
             </>
           ) : (
-            <span className="text-[12px] font-bold text-slate-400">لم يسجل تغيير</span>
+            <span className="text-[12px] font-bold text-text-muted">لم يسجل تغيير</span>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5 mt-1">
@@ -291,12 +291,12 @@ export default function ItemSmartInsights({ itemId, period, customRange, selecte
           })}
         </div>
         {recommendation && (
-          <div className={`mt-2 rounded-xl border ${recConfig?.border || "border-slate-200"} ${recConfig?.bg || "bg-slate-50"} p-2`}>
-            <div className={`flex items-center gap-1.5 text-[10px] font-black ${recConfig?.color || "text-slate-600"}`}>
+          <div className={`mt-2 rounded-xl border ${recConfig?.border || "border-border-normal"} ${recConfig?.bg || "bg-bg-overlay"} p-2`}>
+            <div className={`flex items-center gap-1.5 text-[10px] font-black ${recConfig?.color || "text-text-secondary"}`}>
               {recConfig?.icon && React.createElement(recConfig.icon, { size: 12 })}
               <span>{recommendation.label}</span>
             </div>
-            <p className="text-[9px] font-bold text-slate-500 mt-0.5 leading-relaxed">{recommendation.detail}</p>
+            <p className="text-[9px] font-bold text-text-secondary mt-0.5 leading-relaxed">{recommendation.detail}</p>
           </div>
         )}
       </InsightCard>

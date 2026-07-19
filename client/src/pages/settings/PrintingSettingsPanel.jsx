@@ -91,7 +91,7 @@ function SectionLabel({ icon: Icon, title, hint }) {
 
 function StyledSelect({ value, onChange, options }) {
   return (
-    <select value={value ?? ""} onChange={onChange} className="w-full rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] shadow-sm transition-all appearance-none cursor-pointer">
+    <select value={value ?? ""} onChange={onChange} className="w-full rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] py-2 px-3 text-2sm font-bold text-[var(--text-primary)] outline-none hover:border-[var(--border-strong)] focus:bg-[var(--bg-surface)] focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm transition-all appearance-none cursor-pointer">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -148,7 +148,7 @@ function mergeRendererSettings(appSettings, docSettings, scope, family) {
   return { ...appSettings, ...stripLayout(doc) };
 }
 
-export default function PrintingSettingsPanel({ settings, onChange }) {
+export default function PrintingSettingsPanel({ settings, onChange, onDirty }) {
   const restaurantEnabled = useFeatureEnabled("feature_restaurant");
   const canEdit = usePermission("print_settings", "edit");
   const canStudio = usePermission("print_settings", "studio");
@@ -167,6 +167,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [fullPreview, setFullPreview] = useState({ open: false, scope: null, size: "A4", label: "" });
   const [setupWizardOpen, setSetupWizardOpen] = useState(false);
+  const [globalBlockStamp, setGlobalBlockStamp] = useState(false);
   const importFileRef = useRef(null);
 
   const visibleDocTypes = useMemo(
@@ -192,6 +193,11 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
     listPrinters().then(setPrinters);
   }, []);
 
+  useEffect(() => {
+    const g = docSettings._global || {};
+    setGlobalBlockStamp(g.reprint_stamp === false);
+  }, [docSettings]);
+
   function updateDoc(docType, patch) {
     setDocSettings((prev) => {
       const next = { ...prev, [docType]: { ...(prev[docType] || {}), ...patch } };
@@ -206,6 +212,15 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
   function closeStudio() {
     setStudio((prev) => ({ ...prev, open: false }));
     loadDocSettings(); // the Studio saves rows itself — re-sync the hub
+  }
+
+  function toggleGlobalBlockStamp() {
+    const next = !globalBlockStamp;
+    setGlobalBlockStamp(next);
+    api.put("/api/print-settings-per-doc/_global", { reprint_stamp: !next })
+      .then(() => loadDocSettings())
+      .catch(() => toast.error("خطأ في حفظ إعدادات الختم"));
+    onDirty?.();
   }
 
   // Preview what a doc prints at a specific (or effective default) size.
@@ -281,9 +296,9 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             <Paintbrush className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-sm font-black text-[var(--text-primary)]">استوديو الطباعة</div>
+            <div className="text-sm font-black text-[var(--text-primary)]">استوديو الطباعة (تصميم الفواتير)</div>
             <div className="mt-0.5 text-[11px] font-bold leading-relaxed text-[var(--text-muted)]">
-              كل تصميم المستندات في مكان واحد: التصميم العام المشترك، تخصيص كل مستند، القوالب الجاهزة (+20 لكل مقاس)، الأعمدة، الخطوط، والطباعة التجريبية.
+              المكان اللي بتصمم فيه شكل الفواتير والتقارير. فيه قوالب جاهزة كتير وتعديل على الخطوط والأعمدة براحتك.
             </div>
           </div>
         </div>
@@ -296,7 +311,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
       {/* ── Printer assignment per paper size ── */}
       <section>
         <div className="flex items-center justify-between mb-1">
-          <SectionLabel icon={PrinterIcon} title="الطباعة الفورية — اختر طابعة لكل حجم" hint="اختر طابعة ← عند الضغط على طباعة يُرسل المستند مباشرة للطابعة بدون أي نوافذ أو خطوات إضافية" />
+          <SectionLabel icon={PrinterIcon} title="الطباعة السريعة — اربط طابعة بكل مقاس" hint="اختار طابعة هنا عشان لما تدوس طباعة، الورقة تطلع على طول من غير ما يسألك." />
           {canEdit && <button type="button" onClick={() => setSetupWizardOpen(true)}
             className="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[11px] font-black text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]">
             <Zap size={13} /> تأسيس سريع
@@ -305,17 +320,17 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         {!isElectronPrint() ? (
           <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--warning-border)] bg-[var(--warning-bg)] px-3 py-2 text-[11px] font-bold text-[var(--warning-text)]">
             <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
-            هذه الميزة تعمل فقط داخل تطبيق سطح المكتب (.exe) — قائمة الطابعات المتصلة بجهازك ستظهر هنا عند فتح التطبيق
+            الميزة دي شغالة بس لو فاتح البرنامج من الأيقونة بتاعته (.exe)، مش من المتصفح. الطابعات هتظهر هناك.
           </div>
         ) : printers.length === 0 ? (
           <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--border-normal)] bg-[var(--bg-input)] px-3 py-2 text-[11px] font-bold text-[var(--text-secondary)]">
             <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
-            جارٍ تحميل الطابعات المتصلة بجهازك...
+            بنحاول نشوف الطابعات المتوصلة بالجهاز...
           </div>
         ) : (
           <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--success-border)] bg-[var(--success-bg)] px-3 py-2 text-[11px] font-bold text-[var(--success-text)]">
             <PrinterIcon className="h-3.5 w-3.5 shrink-0" />
-            تم اكتشاف {printers.length} طابعة متصلة — اختر طابعة لكل حجم لتفعيل الطباعة الفورية
+            لقينا {printers.length} طابعة واصلة بجهازك — اختار واحدة لكل مقاس عشان تشتغل معاك طلقة.
           </div>
         )}
         <div className="grid grid-cols-2 gap-4" key={calVersion}>
@@ -332,7 +347,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
             return (
               <div key={size} className="rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] p-3 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
+                  <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[11px] font-black text-white">{label}</span>
                   <span className="text-[11px] font-bold text-[var(--text-secondary)]">{sub}</span>
                 </div>
                 <StyledSelect
@@ -383,7 +398,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
       {/* ── Per-document print behavior + Studio entry ── */}
       <section>
         <div className="flex items-center justify-between mb-2">
-          <SectionLabel icon={FileText} title="إعدادات طباعة المستندات" hint="اضغط على أي مستند لعرض المقاسات واختيار القوالب والمعاينة" />
+          <SectionLabel icon={FileText} title="إعدادات الورق والفواتير" hint="دوس على أي نوع فاتورة عشان تختار مقاس الورق والقالب بتاعها." />
           <button
             type="button"
             onClick={() => setGalleryOpen(true)}
@@ -413,6 +428,34 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
           </ul>
         </div>
 
+        {/* Global reprint stamp toggle */}
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-[var(--border-normal)] bg-[var(--bg-input)] px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Copy size={13} className="text-[var(--text-muted)]" />
+            {globalBlockStamp ? (
+              <>
+                <span className="text-[11px] font-bold text-[var(--text-primary)]">ختم "نسخة" معطّل</span>
+                <span className="text-[9px] font-bold text-[var(--text-muted)]">(لن يظهر ختم عند إعادة الطباعة)</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] font-bold text-[var(--text-primary)]">ختم "نسخة" مفعّل</span>
+                <span className="text-[9px] font-bold text-[var(--text-muted)]">(يظهر ختم عند إعادة طباعة مستند مطبوع سابقاً)</span>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={globalBlockStamp}
+            onClick={() => canEdit && toggleGlobalBlockStamp()}
+            disabled={!canEdit}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${globalBlockStamp ? "bg-primary" : "bg-[var(--border-normal)]"}`}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-bg-surface shadow-sm transition-transform duration-200 ${globalBlockStamp ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-[3px] rtl:-translate-x-[3px]"}`} />
+          </button>
+        </div>
+
         <div className="overflow-hidden rounded-xl border border-[var(--border-normal)]">
           <table className="w-full text-[11px]">
             <thead className="bg-[var(--bg-input)]">
@@ -420,6 +463,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                 <th className="px-3 py-2 text-right">المستند</th>
                 <th className="px-3 py-2 text-right">الحجم النشط حالياً</th>
                 <th className="px-3 py-2 text-right">سلوك الطباعة</th>
+                <th className="px-3 py-2 text-center">النسخ</th>
                 <th className="px-3 py-2 text-center w-8"></th>
               </tr>
             </thead>
@@ -432,7 +476,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                     lastCat = category;
                     rows.push(
                       <tr key={`cat-${category}`} className="bg-[var(--bg-surface)] border-t-2 border-[var(--border-normal)]">
-                        <td colSpan={4} className="px-3 py-2">
+                        <td colSpan={5} className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <div className="flex h-5 w-5 items-center justify-center rounded text-white text-[9px] font-black shrink-0" style={{ backgroundColor: catColor }}>
                               {category.charAt(0)}
@@ -505,12 +549,33 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                       <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={doc.print_mode || "preview"}
-                          onChange={(e) => canEdit && updateDoc(key, { print_mode: e.target.value })}
+                          onChange={(e) => {
+                            if (!canEdit) return;
+                            updateDoc(key, { print_mode: e.target.value });
+                            onDirty?.();
+                          }}
                           disabled={!canEdit}
-                          className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-accent)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] outline-none hover:border-[var(--border-strong)] focus:bg-[var(--bg-surface)] focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           {PRINT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                         </select>
+                      </td>
+                      <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={10}
+                          value={doc.print_copies || 1}
+                          onChange={(e) => {
+                            if (!canEdit) return;
+                            const v = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+                            updateDoc(key, { print_copies: v });
+                            onDirty?.();
+                          }}
+                          disabled={!canEdit}
+                          className="w-14 rounded-md border border-[var(--border-normal)] bg-[var(--bg-input)] px-2 py-1 text-[11px] font-bold text-[var(--text-primary)] text-center outline-none hover:border-[var(--border-strong)] focus:bg-[var(--bg-surface)] focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          title="عدد النسخ المطبوعة عند الطباعة الفورية"
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <span className="text-[10px] font-black text-[var(--text-muted)] bg-[var(--bg-input)] rounded px-1.5 py-0.5">
@@ -522,7 +587,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
                     {/* ── Expanded: one card per available size ── */}
                     {isExpanded && (
                       <tr className="border-t border-[var(--border-subtle)] bg-[var(--bg-base)]">
-                        <td colSpan={4} className="px-4 py-4">
+                        <td colSpan={5} className="px-4 py-4">
                           <div className="flex flex-wrap gap-3">
                             {cfg.sizes.map((sz) => {
                               const isEffective = effSize === sz;
@@ -656,7 +721,7 @@ export default function PrintingSettingsPanel({ settings, onChange }) {
         </div>
         <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-[var(--text-muted)]">
           <Copy size={11} />
-          "طباعة فورية" تُرسل المستند مباشرة للطابعة المعيَّنة أعلاه بدون نافذة معاينة. التغييرات تُحفظ تلقائياً.
+          "طباعة فورية" تُرسل المستند مباشرة للطابعة المعيَّنة أعلاه بدون نافذة معاينة. "النسخ" تحدد عدد النسخ المطبوعة (1-10). التغييرات تُحفظ تلقائياً.
         </div>
       </section>
 

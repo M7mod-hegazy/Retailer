@@ -24,7 +24,7 @@ const COLOR_MAP = {
   bank_transfer: { bg: "bg-blue-50",       text: "text-blue-600",       border: "border-blue-200",       activeBg: "bg-blue-600" },
   credit:        { bg: "bg-amber-50",      text: "text-amber-600",      border: "border-amber-200",      activeBg: "bg-amber-600" },
   installments:  { bg: "bg-violet-50",     text: "text-violet-600",     border: "border-violet-200",     activeBg: "bg-violet-600" },
-  multi:         { bg: "bg-slate-50",      text: "text-slate-600",      border: "border-slate-200",      activeBg: "bg-slate-700" },
+  multi:         { bg: "bg-bg-overlay",      text: "text-text-secondary",      border: "border-border-normal",      activeBg: "bg-slate-700" },
 };
 
 export default function PosStickyTotalBar({
@@ -140,7 +140,7 @@ export default function PosStickyTotalBar({
         <div className="flex items-center gap-2 px-3 py-1.5">
           {/* Customer search */}
           <div ref={searchRef} className="relative shrink-0">
-            <div ref={inputWrapRef} className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div ref={inputWrapRef} className="flex items-center gap-0.5 rounded-lg bg-bg-surface border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -253,7 +253,7 @@ export default function PosStickyTotalBar({
 
           {/* ─── Customer search (moved up) ─── */}
           <div ref={searchRef} className="relative shrink-0">
-            <div ref={inputWrapRef2} className="flex items-center gap-0.5 rounded-lg bg-white border border-zinc-200 px-1.5 py-0.5 shadow-sm">
+            <div ref={inputWrapRef2} className="flex items-center gap-0.5 rounded-lg bg-bg-surface border border-zinc-200 px-1.5 py-0.5 shadow-sm">
               <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -354,7 +354,7 @@ export default function PosStickyTotalBar({
                   }
                 }}
                 placeholder="0"
-                className="min-w-[30px] rounded border border-amber-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
+                className="min-w-[30px] rounded border border-amber-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-amber-400 transition-colors" />
               <span className="text-[10px] font-bold text-amber-600 whitespace-nowrap">خصم</span>
               {onDiscountModeChange && (
                 <button type="button" onClick={() => onDiscountModeChange(discountMode === "pct" ? "flat" : "pct")}
@@ -385,7 +385,7 @@ export default function PosStickyTotalBar({
                   }
                 }}
                 placeholder="0"
-                className="min-w-[30px] rounded border border-blue-200 bg-white px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
+                className="min-w-[30px] rounded border border-blue-200 bg-bg-surface px-1 py-0.5 text-center text-2sm font-black text-zinc-700 outline-none focus:border-blue-400 transition-colors" />
               <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">إضافة</span>
               {onIncreaseModeChange && (
                 <button type="button" onClick={() => onIncreaseModeChange(increaseMode === "pct" ? "flat" : "pct")}
@@ -425,8 +425,8 @@ export default function PosStickyTotalBar({
                     ${isActive
                       ? `${c.activeBg} text-white border-transparent shadow-sm`
                       : isDisabled
-                        ? "opacity-35 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400"
-                        : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-white`
+                        ? "opacity-35 cursor-not-allowed bg-bg-overlay border-border-subtle text-text-muted"
+                        : `${c.bg} ${c.text} ${c.border} hover:shadow-sm bg-bg-surface`
                     }`}>
                   <span className="whitespace-nowrap">{label}</span>
                 </button>
@@ -437,7 +437,7 @@ export default function PosStickyTotalBar({
           <span className="h-4 w-px bg-zinc-200 shrink-0" />
 
           {paymentType === "cash" && onAmountReceivedChange && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-bg-surface rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <span className="text-[11px] font-bold text-zinc-700">المبلغ:</span>
               <ShortcutKbd id="pos.cashCheckout" className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono" />
               <input type="number" min="0" value={amountReceived || ""}
@@ -460,7 +460,7 @@ export default function PosStickyTotalBar({
           )}
 
           {paymentType === "installments" && (
-            <div className="flex items-center gap-1.5 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
+            <div className="flex items-center gap-1.5 bg-bg-surface rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <span className="text-[11px] font-bold text-zinc-700">الدفعة:</span>
               <input type="number" min="0" value={amountPaid || ""}
                 onChange={(e) => onAmountPaidChange?.(e.target.value)} placeholder="0"
@@ -484,7 +484,7 @@ export default function PosStickyTotalBar({
           )}
 
           {paymentType === "multi" && (
-            <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 bg-white rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 bg-bg-surface rounded-lg border border-zinc-200 px-2 py-1 shadow-sm">
               <span className="text-2sm font-bold text-emerald-800 shrink-0">نقدي:</span>
               <input type="number" min="0" value={multiCash || ""}
                 onChange={(e) => onMultiCashChange?.(e.target.value)} placeholder="0"
@@ -541,7 +541,7 @@ export default function PosStickyTotalBar({
           )}
 
           {!["cash","bank_transfer","installments","credit","multi"].includes(paymentType) && (
-            <div className="flex items-center gap-1 bg-white rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
+            <div className="flex items-center gap-1 bg-bg-surface rounded-lg border border-zinc-200 px-1.5 py-0.5 shadow-sm shrink-0">
               <span className="text-[11px] font-bold text-zinc-700">المبلغ:</span>
               <input type="number" min="0" value={amountReceived || ""}
                 onChange={(e) => onAmountReceivedChange?.(e.target.value)} placeholder="0"
@@ -564,9 +564,9 @@ export default function PosStickyTotalBar({
 
           {hasCustomer && (
             <div className="mr-auto flex items-center gap-1.5 shrink-0">
-              <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1">
-                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">الرصيد الحالي</span>
-                <span className={`text-sm font-black font-mono ${bal > 0 ? "text-rose-600" : "text-slate-800"}`}>{formatBalance(bal)}</span>
+              <div className="flex items-center gap-2 rounded-lg bg-bg-overlay border border-border-subtle px-2 py-1">
+                <span className="text-[10px] font-bold text-text-secondary whitespace-nowrap">الرصيد الحالي</span>
+                <span className={`text-sm font-black font-mono ${bal > 0 ? "text-rose-600" : "text-text-primary"}`}>{formatBalance(bal)}</span>
               </div>
               {creditEffect > 0 && (
                 <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1">
@@ -613,7 +613,7 @@ export default function PosStickyTotalBar({
 
           {onHold && (
             <button type="button" onClick={onHold} disabled={!canHold} title="تعليق"
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-400 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all disabled:opacity-30 active:scale-[0.95] shadow-sm">
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 bg-bg-surface text-zinc-400 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all disabled:opacity-30 active:scale-[0.95] shadow-sm">
               <PauseCircle className="h-3 w-3" />
             </button>
           )}
@@ -622,7 +622,7 @@ export default function PosStickyTotalBar({
 
           {onSaveOnly && (
             <button type="button" onClick={onSaveOnly} disabled={!canDoPayment}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-zinc-200 bg-bg-surface px-2 text-2sm font-black text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all disabled:opacity-40 active:scale-[0.95] shadow-sm">
               {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
               حفظ <ShortcutKbd id="pos.save" className="rounded bg-zinc-100 px-1 text-[9px] text-zinc-400 font-mono" />
             </button>
@@ -639,7 +639,7 @@ export default function PosStickyTotalBar({
                 : <Printer className="h-3 w-3" />
             }
             {primaryLabel}
-            <ShortcutKbd id="pos.savePrint" className="rounded bg-white/20 px-1 text-[9px] font-mono" />
+            <ShortcutKbd id="pos.savePrint" className="rounded bg-bg-surface/20 px-1 text-[9px] font-mono" />
             {hasErrors && errorCount > 0 && (
               <span className="rounded-full bg-rose-400/90 px-1.5 py-[2px] text-[8px] font-black">{errorCount}</span>
             )}

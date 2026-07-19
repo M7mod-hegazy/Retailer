@@ -7,13 +7,13 @@ export default function NotFoundPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] p-6" dir="rtl">
       <div className="relative w-full max-w-lg mx-auto">
         <div className="absolute top-[-20%] left-[50%] w-[500px] h-[500px] bg-amber-200/30 rounded-full blur-[120px] pointer-events-none" />
-        <div className="relative bg-white/95 backdrop-blur-3xl border border-slate-200/60 rounded-[2.5rem] p-12 md:p-16 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.08)] text-center">
+        <div className="relative bg-bg-surface/95 backdrop-blur-3xl border border-border-normal/60 rounded-[2.5rem] p-12 md:p-16 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.08)] text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-amber-50 text-amber-600 ring-1 ring-amber-500/20 shadow-[0_8px_30px_-6px_rgba(245,158,11,0.15)] mb-8">
             <AlertTriangle className="h-12 w-12" strokeWidth={1.5} />
           </div>
-          <h1 className="text-[100px] font-black leading-none text-slate-900 tracking-tight">404</h1>
-          <h2 className="mt-4 text-2xl font-black text-slate-800">الصفحة غير موجودة</h2>
-          <p className="mt-3 text-[15px] font-medium text-slate-500 leading-relaxed">
+          <h1 className="text-[100px] font-black leading-none text-text-primary tracking-tight">404</h1>
+          <h2 className="mt-4 text-2xl font-black text-text-primary">الصفحة غير موجودة</h2>
+          <p className="mt-3 text-[15px] font-medium text-text-secondary leading-relaxed">
             عذراً، الصفحة التي تبحث عنها غير متوفرة أو تم نقلها.
             <br />
             تحقق من الرابط أو عد إلى لوحة التحكم.

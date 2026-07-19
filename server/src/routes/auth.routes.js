@@ -184,6 +184,25 @@ router.post("/login", (req, res, next) => {
   return res.json({ success: true, data: { token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role, page_permissions: user.page_permissions, can_view_updates: Boolean(user.can_view_updates) } } });
 });
 
+router.post("/logout", authRequired, async (req, res) => {
+  try {
+    const userRow = getDb().prepare(
+      "SELECT COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = ?"
+    ).get(req.user.id);
+    await Promise.race([
+      notifyOwner(TG.USER_LOGOUT, {
+        userName: userRow?.name || req.user?.username || `#${req.user?.id}`,
+        reason: req.body?.reason || "تسجيل خروج",
+        createdAt: new Date().toISOString(),
+      }),
+      new Promise((r) => setTimeout(r, 5000)),
+    ]);
+  } catch (err) {
+    console.error("Telegram USER_LOGOUT notification failed:", err?.message || err);
+  }
+  return res.json({ success: true });
+});
+
 router.post("/change-password", authRequired, (req, res, next) => {
   if (req.user?.is_system_account) {
     const err = new Error("Ù„Ø§ ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„ ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø­Ø³Ø§Ø¨ Ø§Ù„Ù†Ø¸Ø§Ù…");

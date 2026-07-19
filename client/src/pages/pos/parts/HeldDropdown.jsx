@@ -33,18 +33,18 @@ export default function HeldDropdown({ heldInvoices, onResume, onDiscard, onClos
           ) : (
             <div className="space-y-2">
               {heldInvoices.map((h) => (
-                <div key={h.id} className="flex items-center gap-3 rounded-xl border border-slate-100 px-4 py-3 hover:bg-amber-50 transition-colors">
+                <div key={h.id} className="flex items-center gap-3 rounded-xl border border-border-subtle px-4 py-3 hover:bg-amber-50 transition-colors">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                     <PauseCircle className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-slate-800 truncate">{h.customer?.name || "عميل نقدي"}</span>
+                      <span className="text-sm font-black text-text-primary truncate">{h.customer?.name || "عميل نقدي"}</span>
                       <span className="number-fmt-primary text-sm text-amber-700 shrink-0">{formatMoney(h.heldTotal)} ج.م</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">{h.linesCount} أصناف</span>
-                      <span className="text-[11px] text-slate-400 font-mono">{formatArabicDateTime(new Date(h.heldAt))}</span>
+                      <span className="inline-flex items-center rounded-md bg-bg-overlay px-2 py-0.5 text-[11px] font-black text-text-secondary">{h.linesCount} أصناف</span>
+                      <span className="text-[11px] text-text-muted font-mono">{formatArabicDateTime(new Date(h.heldAt))}</span>
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">

@@ -21,6 +21,7 @@ import { formatNumber } from "../../utils/currency";
 import { invoiceCustomerText } from "../../components/pos/WalkInCustomer";
 import WhatsAppSendModal from "../../components/whatsapp/WhatsAppSendModal";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
+import { usePageTour } from '../../hooks/usePageTour';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAYMENT_LABELS = {
@@ -210,7 +211,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
           {/* Customer card */}
-          <div className="border border-zinc-100 rounded-3xl p-5 bg-white">
+          <div className="border border-zinc-100 rounded-3xl p-5 bg-bg-surface">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
                 <User className="w-4 h-4 text-zinc-500" />
@@ -257,7 +258,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
           </div>
 
           {/* Financial card */}
-          <div className="border border-zinc-100 rounded-3xl p-5 bg-white flex flex-col gap-4">
+          <div className="border border-zinc-100 rounded-3xl p-5 bg-bg-surface flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
                 <CreditCard className="w-4 h-4 text-zinc-500" />
@@ -337,7 +338,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
 
         {/* Payment allocations table (if multi/installments/detail) */}
         {(d.payments || []).length > 1 && (
-          <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-white">
+          <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-bg-surface">
             <div className="px-5 py-4 bg-zinc-50 border-b border-zinc-100">
               <span className="text-xs font-black text-zinc-800">تفاصيل الدفعات المسجلة</span>
             </div>
@@ -361,7 +362,7 @@ function PreviewDrawer({ invoiceId, onClose }) {
         )}
 
         {/* Items table */}
-        <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-white">
+        <div className="border border-zinc-100 rounded-3xl overflow-hidden bg-bg-surface">
           <div className="px-5 py-4 bg-zinc-50 border-b border-zinc-100">
             <span className="text-xs font-black text-zinc-800">أصناف الفاتورة ({(d.lines || []).length})</span>
           </div>
@@ -440,13 +441,13 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
   return (
     <motion.div
       variants={FADE_UP}
-      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/20 transition-colors duration-300 overflow-hidden cursor-pointer"
+      className="group relative flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 px-6 py-5 bg-bg-surface border-b border-zinc-100 hover:bg-blue-50/20 transition-colors duration-300 overflow-hidden cursor-pointer"
       onClick={() => onPreviewRequest(row)}
     >
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
 
       <div className="flex items-center gap-5 flex-1 min-w-0 z-10">
-        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-sm transition-all duration-300">
+        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-bg-surface group-hover:shadow-sm transition-all duration-300">
           <ShoppingBag className="w-5 h-5 text-blue-500" />
         </div>
         <div className="flex flex-col gap-1 min-w-0">
@@ -478,16 +479,16 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
 
       <div className="flex items-center justify-between md:justify-end gap-4 flex-shrink-0 z-10">
         {/* Financial summary: الإجمالي | payment method chips | المتبقي */}
-        <div className="flex items-stretch gap-0 bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden">
+        <div className="flex items-stretch gap-0 bg-bg-overlay border border-border-normal/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3.5 py-1.5 min-w-[80px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">الإجمالي</span>
-            <div className="text-sm font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
-              <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
+            <span className="text-[8px] font-black text-text-muted uppercase tracking-wider mb-0.5">الإجمالي</span>
+            <div className="text-sm font-black text-text-primary number-fmt leading-none flex items-baseline gap-0.5">
+              <span>{fmt(total)}</span><span className="text-[8px] font-bold text-text-muted mr-0.5">ج.م</span>
             </div>
           </div>
           {rowChips.map((chip, i) => (
             <React.Fragment key={i}>
-              <div className="w-px self-stretch bg-slate-200/80" />
+              <div className="w-px self-stretch bg-border-normal/80" />
               <div className={`flex flex-col items-end justify-center px-3 py-1.5 min-w-[70px] ${
                 chip.method === "credit" ? "bg-amber-50/60" : "bg-blue-50/40"
               }`}>
@@ -507,7 +508,7 @@ function InvoiceRow({ row, navigate, onPreviewRequest, onWhatsAppRequest, onPrin
           ))}
           {debt > 0.005 && rowChips.length === 0 && (
             <>
-              <div className="w-px self-stretch bg-slate-200/80" />
+              <div className="w-px self-stretch bg-border-normal/80" />
               <div className="flex flex-col items-end justify-center px-3.5 py-1.5 bg-amber-50/50 min-w-[80px]">
                 <span className="text-[8px] font-black text-amber-500 tracking-wider mb-0.5 flex items-center gap-1">
                   <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" /> المتبقي
@@ -580,7 +581,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <div className="bg-bg-surface rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[16px] font-black text-zinc-800">{title}</h3>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg bg-zinc-50 text-zinc-400 hover:text-zinc-700"><X className="h-4 w-4" /></button>
@@ -591,7 +592,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
             <button
               key={p}
               onClick={() => setReason(p)}
-              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "bg-white border-zinc-200 text-zinc-600 hover:border-rose-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "bg-bg-surface border-zinc-200 text-zinc-600 hover:border-rose-300"}`}
             >
               {p}
             </button>
@@ -622,6 +623,7 @@ function CancelReasonModal({ title, onConfirm, onClose }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SalesHubPage() {
+  usePageTour('sales_hub');
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("invoices");
@@ -805,7 +807,7 @@ export default function SalesHubPage() {
         <motion.header data-help="sales-header" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm">
                 <Layers className="w-5 h-5 text-blue-500" />
               </div>
               <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">فواتير المبيعات</span>
@@ -828,13 +830,13 @@ export default function SalesHubPage() {
           <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
             <button
               onClick={() => { setActiveTab("invoices"); setItemQuery(""); setSelectedItemFilter(null); setItemResults([]); }}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "invoices" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "invoices" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
             >
               سجل الفواتير
             </button>
             <button
               onClick={() => { setActiveTab("items"); setSearchTerm(""); }}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "items" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "items" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
             >
               البحث التفصيلي بالأصناف
             </button>
@@ -856,7 +858,7 @@ export default function SalesHubPage() {
         </motion.div>
 
         {/* Search & Filters bar */}
-        <motion.div data-help="search-bar" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
+        <motion.div data-help="search-bar" initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-bg-surface border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
           <div className="flex flex-col md:flex-row items-start gap-4">
 
             {/* Left search — changes per tab */}
@@ -1013,7 +1015,7 @@ export default function SalesHubPage() {
           data-help="main-table"
           initial="hidden" animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-          className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
+          className="flex flex-col bg-bg-surface rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
         >
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">
@@ -1045,12 +1047,12 @@ export default function SalesHubPage() {
                 {totalInvoicePages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="h-4 w-4" /> السابق
                     </button>
                     <span className="text-[11px] font-black text-zinc-400">{page} / {totalInvoicePages}</span>
                     <button onClick={() => setPage(p => Math.min(totalInvoicePages, p + 1))} disabled={page >= totalInvoicePages}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       التالي <ChevronLeft className="h-4 w-4" />
                     </button>
                   </div>
@@ -1127,12 +1129,12 @@ export default function SalesHubPage() {
               {totalItemPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                   <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     <ChevronRight className="h-4 w-4" /> السابق
                   </button>
                   <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
                   <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     التالي <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
@@ -1156,7 +1158,7 @@ export default function SalesHubPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl p-7"
+              className="relative w-full max-w-3xl bg-bg-surface rounded-[2rem] shadow-2xl p-7"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4 mb-5">

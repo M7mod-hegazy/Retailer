@@ -1,7 +1,9 @@
 import React from "react";
 import SimpleCrudPage from "../../components/crud/SimpleCrudPage";
+import { usePageTour } from '../../hooks/usePageTour';
 
 export default function ExpenseCategoriesPage() {
+  usePageTour('expense_categories');
   return (
     <SimpleCrudPage
       pageKey="financial_categories"

@@ -74,7 +74,7 @@ function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
           <motion.div initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            className="relative w-full max-w-md bg-bg-surface rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
             <div className="p-7">
               <div className="flex items-start gap-4 mb-5">
@@ -91,12 +91,12 @@ function DeleteWarningModal({ row, onConfirm, onClose, deleting }) {
               <div className="flex flex-wrap gap-2 mb-3">
                 {PRESETS.map(p => (
                   <button key={p} onClick={() => setReason(p)}
-                    className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-slate-200 text-slate-600 hover:border-rose-300"}`}
+                    className={`px-3 py-1.5 rounded-lg text-2sm font-bold border transition-colors ${reason === p ? "bg-rose-600 text-white border-rose-600" : "border-border-normal text-text-secondary hover:border-rose-300"}`}
                   >{p}</button>
                 ))}
               </div>
               <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="أو اكتب سبب الإلغاء..."
-                className="w-full border border-slate-200 rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300 mb-4" />
+                className="w-full border border-border-normal rounded-xl p-3 text-2sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-rose-300 mb-4" />
               <div className="flex gap-3">
                 <button onClick={() => reason.trim() && onConfirm(reason)} disabled={deleting || !reason.trim()}
                   className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-sm font-black hover:bg-rose-700 disabled:opacity-50 transition-all">
@@ -134,7 +134,7 @@ function PreviewModal({ returnId, onClose }) {
           onClick={onClose}>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl p-7 max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-2xl bg-bg-surface rounded-[2rem] shadow-2xl p-7 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-zinc-100 pb-4 mb-5">
               <h2 className="text-[17px] font-black text-zinc-900">تفاصيل المرتجع {data ? `— ${data.doc_no || `#${data.id}`}` : ""}</h2>
@@ -170,7 +170,7 @@ function PreviewModal({ returnId, onClose }) {
                       <span className="text-[11px] font-black text-blue-600 tracking-wider uppercase">صافي المرتجع</span>
                       <span className="number-fmt text-xl font-black text-blue-700">{fmt(total)} ج.م</span>
                       {(Number(data.discount) > 0 || Number(data.increase) > 0) && (
-                        <span className="text-[11px] font-bold text-slate-500">
+                        <span className="text-[11px] font-bold text-text-secondary">
                           {fmt(Number(data.total) + Number(data.discount || 0) - Number(data.increase || 0))} أصناف
                           {Number(data.discount) > 0 && <span className="text-rose-500"> · خصم −{fmt(data.discount)}</span>}
                           {Number(data.increase) > 0 && <span className="text-emerald-600"> · زيادة +{fmt(data.increase)}</span>}
@@ -196,14 +196,14 @@ function PreviewModal({ returnId, onClose }) {
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border border-zinc-100 rounded-2xl p-4 bg-white flex flex-col gap-2.5">
+                    <div className="border border-zinc-100 rounded-2xl p-4 bg-bg-surface flex flex-col gap-2.5">
                       <span className="text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1">بيانات المورد والمرتجع</span>
                       <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">المورد</span><span className="font-black text-zinc-800">{data.supplier_name || "—"}</span></div>
                       <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">بواسطة</span><span className="font-black text-zinc-700">{data.created_by_username || "—"}</span></div>
                       {data.reason && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">سبب الإرجاع</span><span className="font-black text-zinc-700">{REASON_MAP[data.reason] || data.reason}</span></div>}
                       {data.notes && <div className="flex justify-between text-sm"><span className="font-bold text-zinc-400">ملاحظات</span><span className="font-black text-zinc-500 text-right max-w-[55%]">{data.notes}</span></div>}
                     </div>
-                    <div className="border border-zinc-100 rounded-2xl p-4 bg-white flex flex-col gap-2.5">
+                    <div className="border border-zinc-100 rounded-2xl p-4 bg-bg-surface flex flex-col gap-2.5">
                       <span className="text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1">الموقف المالي</span>
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-2 text-center">
@@ -247,7 +247,7 @@ function PreviewModal({ returnId, onClose }) {
                     </div>
                   </div>
 
-                  <div className="border border-zinc-100 rounded-2xl overflow-hidden bg-white">
+                  <div className="border border-zinc-100 rounded-2xl overflow-hidden bg-bg-surface">
                     <div className="px-5 py-3.5 bg-zinc-50 border-b border-zinc-100">
                       <span className="text-xs font-black text-zinc-800">أصناف المرتجع ({(data.lines || []).length})</span>
                     </div>
@@ -306,10 +306,10 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest, onPrintRe
   return (
     <motion.div variants={FADE_UP}
       onClick={() => onPreviewRequest(row)}
-      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-white border-b border-zinc-100 hover:bg-blue-50/30 transition-colors duration-300 overflow-hidden cursor-pointer">
+      className="group relative flex items-center justify-between gap-6 px-6 py-5 bg-bg-surface border-b border-zinc-100 hover:bg-blue-50/30 transition-colors duration-300 overflow-hidden cursor-pointer">
       <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 scale-y-0 group-hover:scale-y-100 origin-center transition-transform duration-300 ease-out z-10" />
       <div className="flex items-center gap-5 flex-1 min-w-0 z-10">
-        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-white group-hover:shadow-sm transition-all duration-300">
+        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-50 border border-zinc-100 group-hover:bg-bg-surface group-hover:shadow-sm transition-all duration-300">
           <ArrowUpRight className="w-5 h-5 text-blue-500" />
         </div>
         <div className="flex flex-col gap-1 min-w-0">
@@ -348,26 +348,26 @@ function ReturnRow({ row, navigate, onDeleteRequest, onPreviewRequest, onPrintRe
         )}
       </div>
       <div className="flex items-center gap-4 flex-shrink-0 z-10">
-        <div className="flex items-stretch gap-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl overflow-hidden">
+        <div className="flex items-stretch gap-0 bg-bg-overlay/80 border border-border-normal/80 rounded-2xl overflow-hidden">
           <div className="flex flex-col items-end justify-center px-3 py-2 min-w-[90px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">صافي المرتجع</span>
-            <div className="text-[15px] font-black text-slate-800 number-fmt leading-none flex items-baseline gap-0.5">
-              <span>{fmt(total)}</span><span className="text-[8px] font-bold text-slate-400 mr-0.5">ج.م</span>
+            <span className="text-[8px] font-black text-text-muted uppercase tracking-wider mb-0.5">صافي المرتجع</span>
+            <div className="text-[15px] font-black text-text-primary number-fmt leading-none flex items-baseline gap-0.5">
+              <span>{fmt(total)}</span><span className="text-[8px] font-bold text-text-muted mr-0.5">ج.م</span>
             </div>
             {Number(row.discount) > 0 && <span className="text-[8px] font-black text-rose-500 mt-0.5">خصم −{fmt(row.discount)}</span>}
             {Number(row.increase) > 0 && <span className="text-[8px] font-black text-emerald-600 mt-0.5">زيادة +{fmt(row.increase)}</span>}
           </div>
           {cashAmt > 0.005 && (
-            <><div className="w-px self-stretch bg-slate-200/80" />
+            <><div className="w-px self-stretch bg-border-normal/80" />
             <div className="flex flex-col items-end justify-center px-3 py-2 bg-emerald-50/80 min-w-[90px]">
-              <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> نقداً للمورد</span>
+              <span className="text-[8px] font-black text-text-muted tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> نقداً للمورد</span>
               <div className="text-sm font-black text-emerald-700 number-fmt leading-none"><span>{fmt(cashAmt)}</span></div>
             </div></>
           )}
           {creditAmt > 0.005 && (
-            <><div className="w-px self-stretch bg-slate-200/80" />
+            <><div className="w-px self-stretch bg-border-normal/80" />
             <div className="flex flex-col items-end justify-center px-3 py-2 bg-amber-50/80 min-w-[90px]">
-              <span className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> حساب المورد</span>
+              <span className="text-[8px] font-black text-text-muted tracking-wider mb-0.5 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> حساب المورد</span>
               <div className="text-sm font-black text-amber-700 number-fmt leading-none"><span>{fmt(creditAmt)}</span></div>
             </div></>
           )}
@@ -566,7 +566,7 @@ export default function PurchaseReturnsListPage() {
         <motion.header initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm">
                 <RotateCcw className="w-5 h-5 text-blue-500" />
               </div>
               <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">المشتريات</span>
@@ -595,11 +595,11 @@ export default function PurchaseReturnsListPage() {
           <div className="bg-zinc-100/80 border border-zinc-200/40 p-1.5 rounded-2xl flex gap-1.5 self-start">
             <button
               onClick={() => { setActiveTab("returns"); setItemQuery(""); setSelectedItem(null); setItemResults([]); }}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "returns" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "returns" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
             >سجل المرتجعات</button>
             <button
               onClick={() => { setActiveTab("items"); setSearchTerm(""); }}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "items" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === "items" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
             >البحث التفصيلي بالأصناف</button>
           </div>
           <AnimatePresence mode="wait">
@@ -611,7 +611,7 @@ export default function PurchaseReturnsListPage() {
         </motion.div>
 
         {/* Search bar */}
-        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-white border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
+        <motion.div initial="hidden" animate="visible" variants={FADE_UP} className="flex flex-col bg-bg-surface border border-zinc-200/60 rounded-[2rem] shadow-sm p-4 gap-4">
           <div className="flex flex-col md:flex-row items-start gap-4">
             <div data-help="search-bar" className="relative flex-1 w-full">
               {activeTab === "returns" ? (
@@ -715,7 +715,7 @@ export default function PurchaseReturnsListPage() {
 
         {/* Results */}
         <motion.div data-help="main-table" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-          className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[400px]">
+          className="flex flex-col bg-bg-surface rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[400px]">
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-20 gap-4 opacity-50">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -734,12 +734,12 @@ export default function PurchaseReturnsListPage() {
                 {totalReturnsPages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="h-4 w-4" /> السابق
                     </button>
                     <span className="text-[11px] font-black text-zinc-400">{page} / {totalReturnsPages}</span>
                     <button onClick={() => setPage(p => Math.min(totalReturnsPages, p + 1))} disabled={page >= totalReturnsPages}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       التالي <ChevronLeft className="h-4 w-4" />
                     </button>
                   </div>
@@ -799,12 +799,12 @@ export default function PurchaseReturnsListPage() {
             {totalItemPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                 <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
-                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                   <ChevronRight className="h-4 w-4" /> السابق
                 </button>
                 <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
                 <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
-                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                   التالي <ChevronLeft className="h-4 w-4" />
                 </button>
               </div>

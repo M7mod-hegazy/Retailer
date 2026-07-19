@@ -97,30 +97,30 @@ export default function ExpiryReportPage() {
   function SortTh({ label, sortKey }) {
     const active = sortConfig.key === sortKey;
     return (
-      <th className="px-3 py-3 text-right text-[11px] font-black text-slate-500 cursor-pointer select-none hover:text-slate-800 transition-colors whitespace-nowrap" onClick={() => toggleSort(sortKey)}>
+      <th className="px-3 py-3 text-right text-[11px] font-black text-text-secondary cursor-pointer select-none hover:text-text-primary transition-colors whitespace-nowrap" onClick={() => toggleSort(sortKey)}>
         <div className="flex items-center gap-1">
           <span>{label}</span>
-          <ArrowUpDown className={`w-3 h-3 ${active ? "text-indigo-600" : "text-slate-300"}`} />
+          <ArrowUpDown className={`w-3 h-3 ${active ? "text-indigo-600" : "text-text-muted"}`} />
         </div>
       </th>
     );
   }
 
   const detailColumns = useMemo(() => [
-    { id: "batch_no", header: "رقم الدفعة", width: 110, render: (r) => <span className="font-mono text-[11px] font-bold text-slate-500">{r.batch_no || "—"}</span> },
-    { id: "item_code", header: "الكود", width: 100, render: (r) => <span className="font-mono text-[11px] text-slate-400">{r.item_code || "—"}</span> },
-    { id: "item_name", header: "اسم الصنف", width: 200, render: (r) => <Link to={`/items?search=${encodeURIComponent(r.item_name)}`} className="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors">{r.item_name}</Link> },
-    { id: "quantity", header: "الكمية", width: 80, render: (r) => <span className="font-bold text-slate-700">{r.quantity}</span> },
+    { id: "batch_no", header: "رقم الدفعة", width: 110, render: (r) => <span className="font-mono text-[11px] font-bold text-text-secondary">{r.batch_no || "—"}</span> },
+    { id: "item_code", header: "الكود", width: 100, render: (r) => <span className="font-mono text-[11px] text-text-muted">{r.item_code || "—"}</span> },
+    { id: "item_name", header: "اسم الصنف", width: 200, render: (r) => <Link to={`/items?search=${encodeURIComponent(r.item_name)}`} className="font-bold text-text-primary text-sm hover:text-indigo-600 transition-colors">{r.item_name}</Link> },
+    { id: "quantity", header: "الكمية", width: 80, render: (r) => <span className="font-bold text-text-primary">{r.quantity}</span> },
     { id: "expiry_date", header: "تاريخ الانتهاء", width: 120, render: (r) => <span className="font-mono text-[11px] font-bold">{r.expiry_date}</span> },
     { id: "days_until_expiry", header: "الأيام المتبقية", width: 110, render: (r) => {
       const d = Number(r.days_until_expiry);
       const cls = d < 0 ? "text-red-600 bg-red-50" : d <= 7 ? "text-orange-600 bg-orange-50" : d <= 14 ? "text-amber-600 bg-amber-50" : "text-emerald-600 bg-emerald-50";
       return <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-black ${cls}`}>{d < 0 ? `منذ ${Math.abs(d)} يوم` : `${d} يوم`}</span>;
     }},
-    { id: "cost_price", header: "سعر التكلفة", width: 100, align: "left", render: (r) => <span className="font-mono font-bold text-slate-600">{Number(r.cost_price || 0).toFixed(2)}</span> },
+    { id: "cost_price", header: "سعر التكلفة", width: 100, align: "left", render: (r) => <span className="font-mono font-bold text-text-secondary">{Number(r.cost_price || 0).toFixed(2)}</span> },
     { id: "expiry_status", header: "الحالة", width: 120, render: (r) => {
       const m = { "منتهي": "bg-red-100 text-red-700", "ينتهي قريباً": "bg-amber-100 text-amber-700", "ساري": "bg-emerald-100 text-emerald-700" };
-      return <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-black ${m[r.expiry_status] || "bg-slate-100 text-slate-600"}`}>{r.expiry_status}</span>;
+      return <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-black ${m[r.expiry_status] || "bg-bg-overlay text-text-secondary"}`}>{r.expiry_status}</span>;
     }},
   ], []);
 
@@ -133,21 +133,21 @@ export default function ExpiryReportPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link to="/reports/center" className="w-10 h-10 rounded-[14px] bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all shadow-sm">
+            <Link to="/reports/center" className="w-10 h-10 rounded-[14px] bg-bg-surface border border-border-normal flex items-center justify-center text-text-muted hover:text-text-secondary hover:border-border-strong transition-all shadow-sm">
               <X className="w-4 h-4" />
             </Link>
             <div className="w-12 h-12 rounded-[20px] bg-amber-100 text-amber-600 flex items-center justify-center border border-amber-200 shadow-sm">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">تقرير انتهاء الصلاحية</h1>
-              <p className="text-sm font-bold text-slate-500 mt-0.5">
+              <h1 className="text-2xl font-black text-text-primary tracking-tight">تقرير انتهاء الصلاحية</h1>
+              <p className="text-sm font-bold text-text-secondary mt-0.5">
                 رصد شامل لصلاحية الأصناف — منتهية، حرجة، وتحذيرية مع تحليل كامل للدفعات
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPrintOpen(true)} className="flex items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 py-2 text-[12px] font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+            <button onClick={() => setPrintOpen(true)} className="flex items-center gap-2 rounded-[14px] border border-border-normal bg-bg-surface px-4 py-2 text-[12px] font-black text-text-secondary hover:bg-bg-overlay transition-all shadow-sm">
               <Printer className="w-4 h-4" /> طباعة
             </button>
           </div>
@@ -192,38 +192,38 @@ export default function ExpiryReportPage() {
         )}
 
         {/* Filters */}
-        <div className="rounded-[20px] bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm p-4 flex flex-wrap items-center gap-3">
-          <div className="flex p-0.5 bg-slate-100 rounded-[12px] gap-0.5">
+        <div className="rounded-[20px] bg-bg-surface/70 backdrop-blur-xl border border-border-normal/60 shadow-sm p-4 flex flex-wrap items-center gap-3">
+          <div className="flex p-0.5 bg-bg-overlay rounded-[12px] gap-0.5">
             {STATUS_TABS.map(tab => (
               <button key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
                 className={`px-3 py-1.5 rounded-[10px] text-[11px] font-black transition-all whitespace-nowrap ${
-                  statusFilter === tab.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  statusFilter === tab.key ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
                 }`}>
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <div className="w-px h-6 bg-slate-200" />
+          <div className="w-px h-6 bg-border-normal" />
 
           <select ref={warehouseRef} value={warehouseId}
             onChange={e => setWarehouseId(e.target.value)}
             onKeyDown={e => handleKeyDown(e, { nextRef: searchRef })}
-            className="text-[11px] font-bold bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 outline-none text-slate-600 cursor-pointer">
+            className="text-[11px] font-bold bg-bg-surface border border-border-normal rounded-[10px] px-3 py-1.5 outline-none text-text-secondary cursor-pointer">
             <option value="">كل المخازن</option>
             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
 
           <div className="flex-1 min-w-[180px] relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
             <input ref={searchRef} type="text" value={search}
               onChange={e => setSearch(e.target.value)}
               onKeyDown={e => handleKeyDown(e, { prevRef: warehouseRef })}
               placeholder="بحث بالاسم أو الكود أو الدفعة..."
-              className="w-full text-[12px] bg-white border border-slate-200 rounded-[10px] pr-8 pl-3 py-1.5 outline-none text-slate-700 placeholder:text-slate-300 font-bold" />
+              className="w-full text-[12px] bg-bg-surface border border-border-normal rounded-[10px] pr-8 pl-3 py-1.5 outline-none text-text-primary placeholder:text-text-muted font-bold" />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+              <button onClick={() => setSearch("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -235,25 +235,25 @@ export default function ExpiryReportPage() {
         </div>
 
         {/* Overview List */}
-        <div className="rounded-[20px] bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm p-5">
+        <div className="rounded-[20px] bg-bg-surface/70 backdrop-blur-xl border border-border-normal/60 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[16px] font-black text-slate-900 tracking-tight">
+            <h2 className="text-[16px] font-black text-text-primary tracking-tight">
               نظرة عامة
-              {!loading && <span className="mr-2 text-[12px] font-bold text-slate-400">({data.length} دفعة)</span>}
+              {!loading && <span className="mr-2 text-[12px] font-bold text-text-muted">({data.length} دفعة)</span>}
             </h2>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-300">
+            <div className="flex items-center justify-center py-16 text-text-muted">
               <Activity className="w-6 h-6 animate-spin" />
             </div>
           ) : data.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 rounded-[16px] border border-dashed border-slate-200 bg-slate-50/30">
-              <Package className="w-10 h-10 text-slate-300 mb-3" />
-              <span className="text-sm font-black text-slate-500">
+            <div className="flex flex-col items-center justify-center py-16 rounded-[16px] border border-dashed border-border-normal bg-bg-overlay/30">
+              <Package className="w-10 h-10 text-text-muted mb-3" />
+              <span className="text-sm font-black text-text-secondary">
                 {statusFilter !== "all" ? "لا توجد دفعات في هذا التصنيف" : "لا توجد دفعات مسجلة"}
               </span>
-              <span className="text-[12px] font-bold text-slate-400 mt-1">
+              <span className="text-[12px] font-bold text-text-muted mt-1">
                 {statusFilter !== "all" ? "حاول تغيير الفلتر أو المخزن" : "فعّل تتبع الانتهاء على أصناف التاريخ الحساسة ثم سجّل مشترياتها مع تاريخ الانتهاء"}
               </span>
             </div>
@@ -281,18 +281,18 @@ export default function ExpiryReportPage() {
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <Link to={`/items?search=${encodeURIComponent(b.item_name)}`}
-                            className="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors truncate">
+                            className="font-bold text-text-primary text-sm hover:text-indigo-600 transition-colors truncate">
                             {b.item_name}
                           </Link>
                           {b.batch_no && (
-                            <span className="font-mono text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{b.batch_no}</span>
+                            <span className="font-mono text-[10px] font-bold text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">{b.batch_no}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          {b.item_code && <span className="font-mono text-[10px] text-slate-400">{b.item_code}</span>}
-                          {b.warehouse_name && <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{b.warehouse_name}</span>}
-                          <span className="text-[10px] font-bold text-slate-500">{b.quantity} وحدة</span>
-                          <span className="text-[10px] font-bold text-slate-400">{b.expiry_date}</span>
+                          {b.item_code && <span className="font-mono text-[10px] text-text-muted">{b.item_code}</span>}
+                          {b.warehouse_name && <span className="text-[10px] font-bold text-text-muted bg-bg-overlay px-1.5 py-0.5 rounded">{b.warehouse_name}</span>}
+                          <span className="text-[10px] font-bold text-text-secondary">{b.quantity} وحدة</span>
+                          <span className="text-[10px] font-bold text-text-muted">{b.expiry_date}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -301,7 +301,7 @@ export default function ExpiryReportPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-200/60 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-border-normal/60 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -311,31 +311,31 @@ export default function ExpiryReportPage() {
           )}
 
           {stats && data.length > 0 && (
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400">
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-border-subtle">
+              <span className="text-[11px] font-bold text-text-muted">
                 إجمالي {stats.total_batches} دفعة — {stats.total_quantity} وحدة
               </span>
-              <span className="text-[11px] font-bold text-slate-300">{data.length} معروض</span>
+              <span className="text-[11px] font-bold text-text-muted">{data.length} معروض</span>
             </div>
           )}
         </div>
 
         {/* Detailed Data Grid */}
-        <div className="rounded-[20px] bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm p-5">
+        <div className="rounded-[20px] bg-bg-surface/70 backdrop-blur-xl border border-border-normal/60 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[16px] font-black text-slate-900 tracking-tight">
+            <h2 className="text-[16px] font-black text-text-primary tracking-tight">
               بيانات تفصيلية
-              {!detailLoading && <span className="mr-2 text-[12px] font-bold text-slate-400">({detailData.length} سجل)</span>}
+              {!detailLoading && <span className="mr-2 text-[12px] font-bold text-text-muted">({detailData.length} سجل)</span>}
             </h2>
           </div>
           {detailLoading ? (
-            <div className="flex items-center justify-center py-16 text-slate-300">
+            <div className="flex items-center justify-center py-16 text-text-muted">
               <Activity className="w-6 h-6 animate-spin" />
             </div>
           ) : detailData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 rounded-[16px] border border-dashed border-slate-200 bg-slate-50/30">
-              <FileSpreadsheet className="w-10 h-10 text-slate-300 mb-3" />
-              <span className="text-sm font-black text-slate-500">لا توجد بيانات تفصيلية</span>
+            <div className="flex flex-col items-center justify-center py-16 rounded-[16px] border border-dashed border-border-normal bg-bg-overlay/30">
+              <FileSpreadsheet className="w-10 h-10 text-text-muted mb-3" />
+              <span className="text-sm font-black text-text-secondary">لا توجد بيانات تفصيلية</span>
             </div>
           ) : (
             <DataGrid

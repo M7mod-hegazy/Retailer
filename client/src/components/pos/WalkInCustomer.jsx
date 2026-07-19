@@ -21,9 +21,9 @@ export function InvoiceCustomer({ invoice }) {
         🚶 عميل نقدي
       </span>
       {phone && (
-        <span className="font-bold text-slate-700">
+        <span className="font-bold text-text-primary">
           {invoice.walk_in_name ? `${invoice.walk_in_name} — ` : ""}
-          <span className="font-mono text-slate-500" dir="ltr">{phone}</span>
+          <span className="font-mono text-text-secondary" dir="ltr">{phone}</span>
         </span>
       )}
     </span>

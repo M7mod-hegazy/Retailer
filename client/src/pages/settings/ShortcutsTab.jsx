@@ -13,7 +13,7 @@ import {
 
 // Settings tab: rebind every keyboard shortcut to a key of the user's choice, with
 // no-overlap enforcement, per-row reset and reset-all. Reads/writes the shortcut store.
-export default function ShortcutsTab() {
+export default function ShortcutsTab({ onChange }) {
   const overrides = useShortcutStore((s) => s.overrides);
   const keysFor = useShortcutStore((s) => s.keysFor);
   const rebind = useShortcutStore((s) => s.rebind);
@@ -56,6 +56,7 @@ export default function ShortcutsTab() {
       }
       toast.success(`تم تعيين ${formatKeys(keys)}`);
       setCapturingId(null);
+      if (onChange) onChange("shortcuts_dirty", Date.now());
     }
     window.addEventListener("keydown", onKey, true); // capture phase
     return () => window.removeEventListener("keydown", onKey, true);
@@ -65,34 +66,39 @@ export default function ShortcutsTab() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-slate-700">
-          <Keyboard className="h-5 w-5" />
-          <h3 className="text-base font-black">اختصارات لوحة المفاتيح</h3>
+      <div className="flex items-center justify-between gap-3 flex-wrap rounded-lg border border-border-normal bg-bg-overlay/30 p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+            <Keyboard className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">زراير الكيبورد والاختصارات</h3>
+            <p className="text-[11px] font-bold text-text-muted">{overrideCount > 0 ? `فيه ${overrideCount} اختصار متعدل عن الافتراضي` : "كل الزراير على الوضع الافتراضي بتاعها"}</p>
+          </div>
         </div>
         <button
           type="button"
-          onClick={() => { resetAll(); toast.success("تمت إعادة كل الاختصارات للوضع الافتراضي"); }}
+          onClick={() => { resetAll(); if (onChange) onChange("shortcuts_dirty", Date.now()); toast.success("تمت إعادة كل الاختصارات للوضع الافتراضي"); }}
           disabled={overrideCount === 0}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border-normal bg-bg-surface px-3 py-1.5 text-xs font-black text-text-secondary hover:bg-bg-overlay disabled:opacity-40"
         >
           <RotateCcw className="h-3.5 w-3.5" /> إعادة الكل للافتراضي
         </button>
       </div>
 
-      <div className="flex items-start gap-2 rounded-xl bg-sky-50 border border-sky-100 p-3 text-[12px] text-sky-700">
+      <div className="flex items-start gap-2 rounded-lg bg-sky-50 border border-sky-100 p-3 text-[12px] text-sky-700">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />
         <div>
-          <p>اضغط «تغيير» ثم اضغط الاختصار الجديد على لوحة المفاتيح. لا يمكن استخدام نفس الاختصار لأمرين في نفس الشاشة. اضغط Esc للإلغاء.</p>
-          <p className="mt-1 font-bold">التغييرات تنعكس فوراً على جميع الأزرار والشاشات المتأثرة بالاختصار.</p>
+          <p>دوس «تغيير» وبعدين دوس على الزرار أو الزراير اللي إنت عايزها من الكيبورد. مينفعش تستخدم نفس الزرار لحاجتين في نفس الشاشة. لو عايز تلغي دوس Esc.</p>
+          <p className="mt-1 font-bold">أي تعديل بتعمله بيسمّع في البرنامج كله على طول.</p>
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {groups.map(([group, items]) => (
-          <div key={group} className="rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="bg-slate-50 px-4 py-2.5 text-xs font-black text-slate-500">{group}</div>
-            <div className="divide-y divide-slate-100">
+          <div key={group} className="rounded-lg border border-border-normal overflow-hidden">
+            <div className="bg-bg-overlay px-4 py-2.5 text-xs font-black uppercase tracking-widest text-text-secondary border-b border-border-normal/70">{group}</div>
+            <div className="divide-y divide-border-subtle">
               {items.map((s) => {
                 const editable = s.editable !== false;
                 const isCapturing = capturingId === s.id;
@@ -102,7 +108,7 @@ export default function ShortcutsTab() {
                   <div key={s.id} className={`flex items-center justify-between gap-3 px-4 py-3 ${overridden ? 'bg-amber-50/40' : ''}`}>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-slate-700 truncate">{s.label}</span>
+                        <span className="text-sm font-bold text-text-primary truncate">{s.label}</span>
                         {overridden && (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-black text-amber-600">
                             <Pencil className="h-3 w-3" /> غير ثابت
@@ -115,18 +121,18 @@ export default function ShortcutsTab() {
                         )}
                       </div>
                       {SHORTCUT_DESC[s.id] && (
-                        <p className="text-[11px] font-medium text-slate-400 mt-0.5 leading-relaxed">{SHORTCUT_DESC[s.id]}</p>
+                        <p className="text-[11px] font-medium text-text-muted mt-0.5 leading-relaxed">{SHORTCUT_DESC[s.id]}</p>
                       )}
                       {s.pages?.length > 0 && (
                         <div className="mt-1 flex items-center flex-wrap gap-1">
-                          <Monitor className="h-3 w-3 text-slate-300" />
-                          <span className="text-[9px] font-bold text-slate-400 ml-0.5">تظهر على:</span>
+                          <Monitor className="h-3 w-3 text-text-muted" />
+                          <span className="text-[9px] font-bold text-text-muted ml-0.5">تظهر على:</span>
                           {s.pages.map((p) => (
-                            <span key={p} className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">{p}</span>
+                            <span key={p} className="rounded bg-bg-overlay px-1.5 py-0.5 text-[9px] font-bold text-text-secondary">{p}</span>
                           ))}
                         </div>
                       )}
-                      {!editable && <div className="text-[10px] text-slate-400 mt-0.5">للعرض فقط — يُدار داخل الشاشة</div>}
+                      {!editable && <div className="text-[10px] text-text-muted mt-0.5">للعرض فقط — يُدار داخل الشاشة</div>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {isCapturing ? (
@@ -137,7 +143,7 @@ export default function ShortcutsTab() {
                         <kbd className={`inline-flex items-center justify-center min-w-[44px] rounded-md border px-2 py-1 text-[11px] font-black font-mono ${
                           overridden
                             ? 'border-amber-300 bg-amber-100 text-amber-800'
-                            : 'border-slate-300 bg-slate-100 text-slate-700'
+                            : 'border-border-strong bg-bg-overlay text-text-primary'
                         }`}>
                           {formatKeys(keysFor(s.id))}
                         </kbd>
@@ -146,18 +152,18 @@ export default function ShortcutsTab() {
                         <>
                           {isCapturing ? (
                             <button type="button" onClick={() => setCapturingId(null)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-500 hover:bg-slate-50">
+                              className="inline-flex items-center gap-1 rounded-lg border border-border-normal bg-bg-surface px-2 py-1 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                               <X className="h-3.5 w-3.5" /> إلغاء
                             </button>
                           ) : (
                             <button type="button" onClick={() => setCapturingId(s.id)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-600 hover:bg-slate-50">
+                              className="inline-flex items-center gap-1 rounded-lg border border-border-normal bg-bg-surface px-2 py-1 text-xs font-black text-text-secondary hover:bg-bg-overlay">
                               <Pencil className="h-3.5 w-3.5" /> تغيير
                             </button>
                           )}
-                          <button type="button" onClick={() => resetOne(s.id)} disabled={!overridden}
+                          <button type="button" onClick={() => { resetOne(s.id); if (onChange) onChange("shortcuts_dirty", Date.now()); }} disabled={!overridden}
                             title="إعادة للافتراضي"
-                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 disabled:opacity-30">
+                            className="inline-flex items-center justify-center rounded-lg border border-border-normal bg-bg-surface p-1.5 text-text-muted hover:bg-bg-overlay hover:text-text-secondary disabled:opacity-30">
                             <RotateCcw className="h-3.5 w-3.5" />
                           </button>
                         </>

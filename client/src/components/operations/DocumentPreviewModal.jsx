@@ -265,7 +265,7 @@ const TONE_CLASSES = {
   emerald: "border-emerald-100 bg-emerald-50/40 text-emerald-800",
   indigo: "border-indigo-100 bg-indigo-50/40 text-indigo-800",
   rose: "border-rose-100 bg-rose-50/40 text-rose-700",
-  slate: "border-slate-200 bg-slate-50/40 text-slate-800",
+  slate: "border-border-normal bg-bg-overlay/40 text-text-primary",
   amber: "border-amber-100 bg-amber-50/40 text-amber-800",
 };
 
@@ -348,28 +348,28 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="w-full max-w-5xl max-h-[88vh] flex flex-col rounded-[2.5rem] bg-white border border-white/60 shadow-2xl overflow-hidden z-[200] font-sans"
+          className="w-full max-w-5xl max-h-[88vh] flex flex-col rounded-[2.5rem] bg-bg-surface border border-border-normal/60 shadow-2xl overflow-hidden z-[200] font-sans"
           dir="rtl"
           onClick={(event) => event.stopPropagation()}
         >
           {/* Modal Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 p-6 bg-slate-50/50 sticky top-0 z-10">
+          <div className="flex items-center justify-between border-b border-border-subtle p-6 bg-bg-overlay/50 sticky top-0 z-10">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-[11px] font-black text-white uppercase tracking-wider shadow-[0_2px_8px_rgba(15,23,42,0.15)]">
-                  <FileText size={11} className="text-slate-300" /> {docTitle}
+                  <FileText size={11} className="text-text-muted" /> {docTitle}
                 </span>
                 <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-black ${statusInfo.cls}`}>
                   {statusInfo.label}
                 </span>
               </div>
               <div className="flex items-center gap-2.5 mt-1.5">
-                <h2 className="font-mono text-xl font-black text-slate-800 tracking-tight leading-none" dir="ltr">
+                <h2 className="font-mono text-xl font-black text-text-primary tracking-tight leading-none" dir="ltr">
                   {docNo}
                 </h2>
                 <button
                   onClick={handleCopy}
-                  className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200/60 hover:border-indigo-100 rounded-lg transition-all active:scale-90 flex items-center gap-1 text-[9px] font-bold"
+                  className="p-1.5 text-text-muted hover:text-indigo-600 bg-bg-surface hover:bg-indigo-50 border border-border-normal/60 hover:border-indigo-100 rounded-lg transition-all active:scale-90 flex items-center gap-1 text-[9px] font-bold"
                   title="نسخ رقم المستند"
                 >
                   {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
@@ -381,24 +381,24 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
             <button
               type="button"
               onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+              className="flex h-7 w-7 items-center justify-center rounded-sm text-text-muted transition-colors hover:bg-border-normal hover:text-text-primary"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           {loading ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-20 text-slate-400">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-20 text-text-muted">
               <Loader2 className="animate-spin text-indigo-500" size={36} />
               <span className="text-xs font-black">جاري تحميل مستندات الأرشيف...</span>
             </div>
           ) : !doc ? (
-            <div className="p-20 text-center text-xs font-black text-slate-400">
+            <div className="p-20 text-center text-xs font-black text-text-muted">
               تعذر تحميل وثيقة المستند المحددة
             </div>
           ) : (
             /* Split Panel Workspace Layout */
-            <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6 flex-1 overflow-auto p-6 bg-slate-50/20 scrollbar-thin">
+            <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6 flex-1 overflow-auto p-6 bg-bg-overlay/20 scrollbar-thin">
               
               {/* Column 1: Thermal Receipt Card Mockup with CSS Jagged Torn Edges (Right Column in RTL) */}
               <div className="lg:col-span-1 flex flex-col justify-start">
@@ -422,12 +422,12 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       </div>
 
                       <div className="text-center pb-4 border-b border-dashed border-[#dfd6be] relative z-10">
-                        <h3 className="text-xs font-black text-slate-800 tracking-wide">شركة الحجاز لتجارة التجزئة</h3>
-                        <p className="text-[9px] font-bold text-slate-400 mt-1">وثيقة تشغيلية رسمية معتمدة</p>
+                        <h3 className="text-xs font-black text-text-primary tracking-wide">شركة الحجاز لتجارة التجزئة</h3>
+                        <p className="text-[9px] font-bold text-text-muted mt-1">وثيقة تشغيلية رسمية معتمدة</p>
                       </div>
 
                       <div className="flex-1 py-4 space-y-3 relative z-10">
-                        <div className="flex items-center justify-between text-[11px] font-black text-slate-400 tracking-wider pb-1.5 border-b border-[#ece2c9] px-1">
+                        <div className="flex items-center justify-between text-[11px] font-black text-text-muted tracking-wider pb-1.5 border-b border-[#ece2c9] px-1">
                           <span>الصنف والبيان</span>
                           <div className="flex gap-7">
                             <span>الكمية</span>
@@ -440,16 +440,16 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                           {lines.map((line) => (
                             <motion.div variants={staggerItem} key={line.id} className={`flex items-center justify-between py-2.5 text-xs ${line.highlighted ? "bg-emerald-50/50 px-2 rounded-xl border border-emerald-200/20" : "px-1"}`}>
                               <div className="flex flex-col gap-0.5 max-w-[170px]">
-                                <span className="font-black text-slate-700 block truncate">
+                                <span className="font-black text-text-primary block truncate">
                                   {line.highlighted && <Star size={11} className="text-emerald-500 fill-emerald-500 inline-block mr-1 shrink-0 animate-pulse" />}
                                   {line.name}
                                 </span>
-                                <span className="font-mono text-[9px] text-slate-400 block" dir="ltr">{line.code}</span>
+                                <span className="font-mono text-[9px] text-text-muted block" dir="ltr">{line.code}</span>
                               </div>
-                              <div className="flex items-center gap-7 font-mono text-slate-600 font-bold">
+                              <div className="flex items-center gap-7 font-mono text-text-secondary font-bold">
                                 <span className="w-10 text-left">{money(line.quantity)}</span>
                                 <span className="w-12 text-left">{money(line.unit)}</span>
-                                <span className="w-14 text-left font-black text-slate-800">{money(line.total)}</span>
+                                <span className="w-14 text-left font-black text-text-primary">{money(line.total)}</span>
                               </div>
                             </motion.div>
                           ))}
@@ -458,13 +458,13 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                       <div className="pt-4 border-t border-dashed border-[#dfd6be] space-y-2 relative z-10 px-1">
                         {breakdown.map((row, idx) => (
-                          <div key={idx} className="flex justify-between text-xs font-bold text-slate-500">
+                          <div key={idx} className="flex justify-between text-xs font-bold text-text-secondary">
                             <span>{row.label}</span>
-                            <span className="font-mono text-slate-700">{row.value} ج.م</span>
+                            <span className="font-mono text-text-primary">{row.value} ج.م</span>
                           </div>
                         ))}
                         <div className="flex justify-between items-baseline pt-2 border-t border-[#efe8d5]">
-                          <span className="text-xs font-black text-slate-800">صافي المدفوع</span>
+                          <span className="text-xs font-black text-text-primary">صافي المدفوع</span>
                           <div className="flex items-baseline gap-0.5">
                             <span className="font-mono text-2xl font-black text-emerald-600">{money(total)}</span>
                             <span className="text-[11px] font-sans font-bold text-emerald-550">ج.م</span>
@@ -484,7 +484,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                           <rect x="92" y="0" width="2" height="30" fill="black" />
                           <rect x="96" y="0" width="3" height="30" fill="black" />
                         </svg>
-                        <span className="text-[8px] font-mono font-bold text-slate-400 mt-2 uppercase tracking-widest">*{docNo}*</span>
+                        <span className="text-[8px] font-mono font-bold text-text-muted mt-2 uppercase tracking-widest">*{docNo}*</span>
                       </div>
                     </div>
                   </div>
@@ -505,26 +505,26 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
-                        <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-3.5 flex justify-between items-center text-xs font-bold text-slate-600">
+                        <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-3.5 flex justify-between items-center text-xs font-bold text-text-secondary">
                           <span>المورد الحالي: <strong className="text-blue-800 font-sans">{doc.supplier_name || "مورد نقدي"}</strong></span>
-                          <span>رقم الحساب: <strong className="font-mono text-slate-700">#SUP-{doc.supplier_id || docId}</strong></span>
+                          <span>رقم الحساب: <strong className="font-mono text-text-primary">#SUP-{doc.supplier_id || docId}</strong></span>
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-blue-50 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted border-b border-blue-50 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-20 text-left">الكمية</span>
                             <span className="w-24 text-left">الإجمالي</span>
                           </div>
 
                           {lines.map((line) => (
-                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-slate-50 ${line.highlighted ? "bg-blue-50/50 px-2 rounded-xl border border-blue-200/30" : "px-1"}`}>
+                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-border-subtle ${line.highlighted ? "bg-blue-50/50 px-2 rounded-xl border border-blue-200/30" : "px-1"}`}>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-black text-slate-700">{line.name}</span>
-                                <span className="font-mono text-[9px] text-slate-400" dir="ltr">{line.code}</span>
+                                <span className="font-black text-text-primary">{line.name}</span>
+                                <span className="font-mono text-[9px] text-text-muted" dir="ltr">{line.code}</span>
                               </div>
-                              <span className="w-20 text-left font-mono font-bold text-slate-600">{money(line.quantity)} وحدة</span>
-                              <span className="w-24 text-left font-mono font-black text-slate-800">{money(line.total)} ج.م</span>
+                              <span className="w-20 text-left font-mono font-bold text-text-secondary">{money(line.quantity)} وحدة</span>
+                              <span className="w-24 text-left font-mono font-black text-text-primary">{money(line.total)} ج.م</span>
                             </div>
                           ))}
                         </div>
@@ -538,7 +538,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[11px] text-slate-400 block font-sans font-bold">إجمالي المشتريات</span>
+                          <span className="text-[11px] text-text-muted block font-sans font-bold">إجمالي المشتريات</span>
                           <div className="flex items-baseline justify-end gap-0.5">
                             <span className="text-xl font-black text-blue-700">{money(total)}</span>
                             <span className="text-[9px] font-sans font-bold text-blue-500">ج.م</span>
@@ -558,7 +558,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                     }}
                   >
                     {/* Amber warning checkout header bar with diagonal warning stripes */}
-                    <div className="bg-amber-500 text-slate-900 text-center py-3 font-black text-xs relative select-none uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5">
+                    <div className="bg-amber-500 text-text-primary text-center py-3 font-black text-xs relative select-none uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5">
                       <div className="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,var(--text-primary),var(--text-primary)_10px,var(--bg-surface)_10px,var(--bg-surface)_20px)] pointer-events-none" />
                       <AlertCircle size={13} className="animate-spin-slow relative z-10" /> <span className="relative z-10">سند تسوية مرتجع المبيعات</span>
                     </div>
@@ -577,7 +577,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         )}
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-[#ece2c9] pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted border-b border-[#ece2c9] pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <div className="flex gap-7">
                               <span>الكمية</span>
@@ -586,14 +586,14 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                           </div>
 
                           {lines.map((line) => (
-                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-slate-50 ${line.highlighted ? "bg-amber-50/50 px-2 rounded-xl border border-amber-200/20" : "px-1"}`}>
+                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-border-subtle ${line.highlighted ? "bg-amber-50/50 px-2 rounded-xl border border-amber-200/20" : "px-1"}`}>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-black text-slate-700">{line.name}</span>
-                                <span className="font-mono text-[9px] text-slate-400" dir="ltr">{line.code}</span>
+                                <span className="font-black text-text-primary">{line.name}</span>
+                                <span className="font-mono text-[9px] text-text-muted" dir="ltr">{line.code}</span>
                               </div>
-                              <div className="flex items-center gap-7 font-mono text-slate-600 font-bold">
+                              <div className="flex items-center gap-7 font-mono text-text-secondary font-bold">
                                 <span className="w-10 text-left">{money(line.quantity)}</span>
-                                <span className="w-14 text-left text-slate-800">{money(line.total)}</span>
+                                <span className="w-14 text-left text-text-primary">{money(line.total)}</span>
                               </div>
                             </div>
                           ))}
@@ -602,7 +602,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                       <div className="pt-4 border-t border-dashed border-[#dfd6be] space-y-2 relative z-10 px-1 mt-6">
                         <div className="flex justify-between items-baseline pt-2">
-                          <span className="text-xs font-black text-slate-800">إجمالي القيمة المستردة</span>
+                          <span className="text-xs font-black text-text-primary">إجمالي القيمة المستردة</span>
                           <div className="flex items-baseline gap-0.5">
                             <span className="font-mono text-2xl font-black text-amber-700">{money(total)}</span>
                             <span className="text-[11px] font-sans font-bold text-amber-500">ج.م</span>
@@ -637,20 +637,20 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         )}
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-rose-50 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted border-b border-rose-50 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-20 text-left">الكمية</span>
                             <span className="w-24 text-left">الإجمالي</span>
                           </div>
 
                           {lines.map((line) => (
-                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-slate-50 ${line.highlighted ? "bg-rose-50/50 px-2 rounded-xl border border-rose-200/30" : "px-1"}`}>
+                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-border-subtle ${line.highlighted ? "bg-rose-50/50 px-2 rounded-xl border border-rose-200/30" : "px-1"}`}>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-black text-slate-700">{line.name}</span>
-                                <span className="font-mono text-[9px] text-slate-400" dir="ltr">{line.code}</span>
+                                <span className="font-black text-text-primary">{line.name}</span>
+                                <span className="font-mono text-[9px] text-text-muted" dir="ltr">{line.code}</span>
                               </div>
-                              <span className="w-20 text-left font-mono font-bold text-slate-600">{money(line.quantity)} وحدة</span>
-                              <span className="w-24 text-left font-mono font-black text-slate-800">{money(line.total)} ج.م</span>
+                              <span className="w-20 text-left font-mono font-bold text-text-secondary">{money(line.quantity)} وحدة</span>
+                              <span className="w-24 text-left font-mono font-black text-text-primary">{money(line.total)} ج.م</span>
                             </div>
                           ))}
                         </div>
@@ -663,7 +663,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[11px] text-slate-400 block font-sans font-bold">قيمة الخصم المستحق</span>
+                          <span className="text-[11px] text-text-muted block font-sans font-bold">قيمة الخصم المستحق</span>
                           <div className="flex items-baseline justify-end gap-0.5">
                             <span className="text-xl font-black text-rose-700">{money(total)}</span>
                             <span className="text-[9px] font-sans font-bold text-rose-500">ج.م</span>
@@ -690,12 +690,12 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                       <div className="flex-1 py-2 space-y-4 relative z-10">
                         {/* Origin and destination warehouse map */}
-                        <div className="bg-white border border-indigo-100/60 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner relative overflow-hidden">
+                        <div className="bg-bg-surface border border-indigo-100/60 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-inner relative overflow-hidden">
                           <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(var(--info-text)_1.5px,transparent_1.5px)] [background-size:12px_12px] pointer-events-none" />
                           
                           <div className="flex flex-col text-right z-10">
-                            <span className="text-[8px] text-slate-400 font-bold block mb-0.5">من مخزن</span>
-                            <span className="text-xs font-black text-slate-700 flex items-center gap-1">
+                            <span className="text-[8px] text-text-muted font-bold block mb-0.5">من مخزن</span>
+                            <span className="text-xs font-black text-text-primary flex items-center gap-1">
                               <Database size={11} className="text-indigo-500" />
                               {doc.from_warehouse_name || "الفرع الرئيسي"}
                             </span>
@@ -703,15 +703,15 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                           <div className="flex-1 flex items-center justify-center relative px-2 z-10">
                             <div className="h-0.5 bg-dashed bg-indigo-200 w-full relative flex items-center justify-center">
-                              <span className="absolute bg-white px-2.5 py-0.5 text-[8px] font-black text-indigo-700 border border-indigo-200 rounded-lg shadow-sm">
+                              <span className="absolute bg-bg-surface px-2.5 py-0.5 text-[8px] font-black text-indigo-700 border border-indigo-200 rounded-lg shadow-sm">
                                 شحنة محولة
                               </span>
                             </div>
                           </div>
 
                           <div className="flex flex-col text-left z-10">
-                            <span className="text-[8px] text-slate-400 font-bold block mb-0.5">إلى مخزن</span>
-                            <span className="text-xs font-black text-slate-700 flex items-center gap-1">
+                            <span className="text-[8px] text-text-muted font-bold block mb-0.5">إلى مخزن</span>
+                            <span className="text-xs font-black text-text-primary flex items-center gap-1">
                               <Database size={11} className="text-indigo-500" />
                               {doc.to_warehouse_name || doc.partner_branch || "الفرع المقابل"}
                             </span>
@@ -719,16 +719,16 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-indigo-200 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted border-b border-indigo-200 pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-24 text-left">الكمية المحولة</span>
                           </div>
 
                           {lines.map((line) => (
-                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-slate-50 ${line.highlighted ? "bg-indigo-50/50 px-2 rounded-xl border border-indigo-200/30" : "px-1"}`}>
+                            <div key={line.id} className={`flex items-center justify-between py-2.5 text-xs border-b border-border-subtle ${line.highlighted ? "bg-indigo-50/50 px-2 rounded-xl border border-indigo-200/30" : "px-1"}`}>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-black text-slate-700">{line.name}</span>
-                                <span className="font-mono text-[9px] text-slate-400" dir="ltr">{line.code}</span>
+                                <span className="font-black text-text-primary">{line.name}</span>
+                                <span className="font-mono text-[9px] text-text-muted" dir="ltr">{line.code}</span>
                               </div>
                               <span className="w-24 text-left font-mono font-black text-indigo-700">{money(line.quantity)} وحدة</span>
                             </div>
@@ -740,8 +740,8 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                         <div className="border border-indigo-200 bg-indigo-50/50 rounded-xl p-2.5 text-right w-full">
                           <span className="text-[8px] font-black text-indigo-700 block uppercase tracking-wider mb-1">مسؤولية النقل والاستلام</span>
                           <div className="flex justify-between items-end mt-4">
-                            <span className="text-[11px] font-bold text-slate-400">توقيع أمين المستودع: _____________________</span>
-                            <span className="text-[11px] font-bold text-slate-400">تاريخ الاستلام الفعلي: _____________________</span>
+                            <span className="text-[11px] font-bold text-text-muted">توقيع أمين المستودع: _____________________</span>
+                            <span className="text-[11px] font-bold text-text-muted">تاريخ الاستلام الفعلي: _____________________</span>
                           </div>
                         </div>
                       </div>
@@ -751,7 +751,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* 6. INITIAL BALANCE DOCUMENT SHEET (opening_balance) */}
                 {docType === "opening_balance" && (
-                  <div className="bg-[var(--bg-surface)] border border-slate-300 rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
+                  <div className="bg-[var(--bg-surface)] border border-border-strong rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative flex flex-col min-h-[460px] overflow-hidden p-0">
                     {/* Slate setup balance header bar */}
                     <div className="bg-slate-700 text-white py-3 px-5 font-black text-xs flex justify-between items-center select-none uppercase tracking-wider shadow-sm">
                       <span className="flex items-center gap-1.5"><Database size={13} /> سند اعتماد رصيد افتتاحي تأسيسي</span>
@@ -759,45 +759,45 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                     </div>
 
                     <div className="p-6 flex flex-col flex-1">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-slate-500/[0.02] border-4 border-dashed border-slate-500/10 rounded-full flex items-center justify-center pointer-events-none select-none">
-                        <span className="text-slate-500/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">رصيد تأسيسي</span>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-bg-overlay0/[0.02] border-4 border-dashed border-border-subtle0/10 rounded-full flex items-center justify-center pointer-events-none select-none">
+                        <span className="text-text-secondary/10 text-[11px] font-black uppercase tracking-widest rotate-[-25deg]">رصيد تأسيسي</span>
                       </div>
 
                       <div className="flex-1 py-2 space-y-3 relative z-10">
-                        <div className="bg-slate-100/50 border border-slate-200 rounded-xl p-3 flex justify-between items-center text-xs font-bold text-slate-600">
+                        <div className="bg-bg-overlay/50 border border-border-normal rounded-xl p-3 flex justify-between items-center text-xs font-bold text-text-secondary">
                           <span>أول رصيد للصنف لما اتسجل في النظام</span>
-                          <span className="font-mono text-slate-500 font-black">جرد ابتدائي</span>
+                          <span className="font-mono text-text-secondary font-black">جرد ابتدائي</span>
                         </div>
 
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-between text-[11px] font-black text-slate-400 border-b border-slate-200 pb-1.5 px-1 uppercase tracking-wider">
+                          <div className="flex items-center justify-between text-[11px] font-black text-text-muted border-b border-border-normal pb-1.5 px-1 uppercase tracking-wider">
                             <span>الصنف والبيان</span>
                             <span className="w-24 text-left">الكمية المسجلة</span>
                           </div>
 
                           {lines.map((line) => (
-                            <div key={line.id} className="flex items-center justify-between py-2.5 text-xs border-b border-slate-50 px-1">
+                            <div key={line.id} className="flex items-center justify-between py-2.5 text-xs border-b border-border-subtle px-1">
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-black text-slate-700">{line.name}</span>
-                                <span className="font-mono text-[9px] text-slate-400" dir="ltr">{line.code}</span>
+                                <span className="font-black text-text-primary">{line.name}</span>
+                                <span className="font-mono text-[9px] text-text-muted" dir="ltr">{line.code}</span>
                               </div>
-                              <span className="w-24 text-left font-mono font-black text-slate-800">{money(line.quantity)} وحدة</span>
+                              <span className="w-24 text-left font-mono font-black text-text-primary">{money(line.quantity)} وحدة</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-slate-200 flex items-center justify-between relative z-10 mt-6">
+                      <div className="pt-4 border-t border-border-normal flex items-center justify-between relative z-10 mt-6">
                         <div className="text-right">
-                          <span className="text-[8px] font-black text-slate-500 block uppercase tracking-wider mb-1">الموافقة والاعتماد</span>
-                          <p className="text-[9px] font-bold text-slate-400 leading-normal">تم إقرار الكميات المدخلة كرصيد افتتاحي لبداية السجل.</p>
+                          <span className="text-[8px] font-black text-text-secondary block uppercase tracking-wider mb-1">الموافقة والاعتماد</span>
+                          <p className="text-[9px] font-bold text-text-muted leading-normal">تم إقرار الكميات المدخلة كرصيد افتتاحي لبداية السجل.</p>
                         </div>
 
                         <div className="text-left font-mono">
-                          <span className="text-[11px] text-slate-400 block font-sans font-bold">القيمة التقديرية</span>
+                          <span className="text-[11px] text-text-muted block font-sans font-bold">القيمة التقديرية</span>
                           <div className="flex items-baseline justify-end gap-0.5">
-                            <span className="text-xl font-black text-slate-800">{money(total)}</span>
-                            <span className="text-[9px] font-sans font-bold text-slate-500">ج.م</span>
+                            <span className="text-xl font-black text-text-primary">{money(total)}</span>
+                            <span className="text-[9px] font-sans font-bold text-text-secondary">ج.م</span>
                           </div>
                         </div>
                       </div>
@@ -813,7 +813,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                 {/* Massive Total Pricing Bento Box */}
                 {config.totalKey && (
                   <div className="rounded-[1.8rem] bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 text-white shadow-[0_12px_24px_-10px_rgba(99,102,241,0.35)] relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-36 h-36 bg-white/5 rounded-full blur-2xl translate-x-8 -translate-y-8 pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-36 h-36 bg-bg-surface/5 rounded-full blur-2xl translate-x-8 -translate-y-8 pointer-events-none" />
                     <span className="text-[11px] font-black text-indigo-200 block mb-1 uppercase tracking-wider">الإجمالي المالي المعتمد</span>
                     <div className="flex items-baseline gap-1">
                       <span className="font-mono text-3xl font-black tracking-tight" dir="ltr">
@@ -832,14 +832,14 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       return (
                         <div 
                           key={index} 
-                          className="rounded-2xl border border-slate-200/60 bg-white p-4 flex items-center gap-3.5 hover:border-slate-300 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)]"
+                          className="rounded-2xl border border-border-normal/60 bg-bg-surface p-4 flex items-center gap-3.5 hover:border-border-strong transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)]"
                         >
-                          <div className="p-3 bg-slate-50 text-slate-500 rounded-xl border border-slate-100">
+                          <div className="p-3 bg-bg-overlay text-text-secondary rounded-xl border border-border-subtle">
                             <Icon size={16} className="stroke-[1.8]" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <span className="text-[9px] font-bold text-slate-400 block mb-0.5">{field.label}</span>
-                            <span className="text-xs font-black text-slate-700 block truncate">{field.value}</span>
+                            <span className="text-[9px] font-bold text-text-muted block mb-0.5">{field.label}</span>
+                            <span className="text-xs font-black text-text-primary block truncate">{field.value}</span>
                           </div>
                         </div>
                       );
@@ -873,13 +873,13 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                       </div>
                     )}
                     {Number(doc?.amount_received || doc?.amount_paid || 0) > 0 && (
-                      <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 flex items-center gap-3">
-                        <div className="p-2 bg-slate-50 text-slate-500 rounded-lg border border-slate-100">
+                      <div className="rounded-2xl border border-border-normal/80 bg-bg-surface p-3.5 flex items-center gap-3">
+                        <div className="p-2 bg-bg-overlay text-text-secondary rounded-lg border border-border-subtle">
                           <DollarSign size={16} />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[9px] font-bold text-slate-400 block">المبلغ المدفوع</span>
-                          <span className="font-mono text-xs font-black text-slate-800 block truncate" dir="ltr">
+                          <span className="text-[9px] font-bold text-text-muted block">المبلغ المدفوع</span>
+                          <span className="font-mono text-xs font-black text-text-primary block truncate" dir="ltr">
                             {money(doc.amount_received || doc.amount_paid)}
                           </span>
                         </div>
@@ -893,7 +893,7 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
                   <div className="space-y-2.5">
                     {notes.map((note, index) => (
                       <div key={index} className={`rounded-2xl border p-4 flex items-start gap-3.5 transition-colors ${TONE_CLASSES[note.tone] || TONE_CLASSES.slate}`}>
-                        <div className="p-1.5 bg-white/80 rounded-lg border border-slate-200/10 text-slate-500 mt-0.5">
+                        <div className="p-1.5 bg-bg-surface/80 rounded-lg border border-border-normal/10 text-text-secondary mt-0.5">
                           <AlertCircle size={14} />
                         </div>
                         <div className="flex-1">
@@ -907,8 +907,8 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
 
                 {/* Payment Breakdown Details Grid */}
                 {payments.length > 0 && (
-                  <div className="rounded-2xl border border-slate-200/60 bg-white p-4">
-                    <div className="mb-3 text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                  <div className="rounded-2xl border border-border-normal/60 bg-bg-surface p-4">
+                    <div className="mb-3 text-[11px] font-black text-text-muted uppercase tracking-wider">
                       {docType === "sales_return" || docType === "purchase_return" ? "تفاصيل رد المبالغ" : "تفاصيل استحقاقات الدفع"}
                     </div>
                     <div className="grid gap-2.5 grid-cols-2">
@@ -928,19 +928,19 @@ export default function DocumentPreviewModal({ open, docType, docId, highlightIt
           )}
 
           {/* Modal Footer Actions */}
-          <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 bg-slate-50/50 p-4 sticky bottom-0 z-10">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border-subtle bg-bg-overlay/50 p-4 sticky bottom-0 z-10">
             <motion.div whileTap={{ scale: 0.96 }}>
               <Link to={config.edit(docId)} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4.5 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-100 transition-colors">
                 <Pencil size={13} /> تعديل المستند
               </Link>
             </motion.div>
             <motion.div whileTap={{ scale: 0.96 }}>
-              <Link to={config.full(docId)} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+              <Link to={config.full(docId)} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4.5 py-2.5 text-xs font-black text-text-primary hover:bg-bg-overlay transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
                 <ExternalLink size={13} /> فتح كاملاً
               </Link>
             </motion.div>
             <motion.div whileTap={{ scale: 0.96 }}>
-              <button onClick={handlePrint} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4.5 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+              <button onClick={handlePrint} className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-4.5 py-2.5 text-xs font-black text-text-primary hover:bg-bg-overlay transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
                 <Printer size={13} /> طباعة
               </button>
             </motion.div>

@@ -48,7 +48,7 @@ export default function ImagePreviewModal({ product, open, onClose, onSelectImag
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-modal border border-gray-200 w-full max-w-4xl max-h-[90vh] mx-4 flex flex-col overflow-hidden animate-slide-up"
+        className="bg-bg-surface rounded-2xl shadow-modal border border-gray-200 w-full max-w-4xl max-h-[90vh] mx-4 flex flex-col overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -101,7 +101,7 @@ export default function ImagePreviewModal({ product, open, onClose, onSelectImag
                       key={i}
                       onClick={() => setCurrentIndex(i)}
                       className={`w-2 h-2 rounded-full transition ${
-                        i === currentIndex ? "bg-white scale-125" : "bg-white/40 hover:bg-white/70"
+                        i === currentIndex ? "bg-bg-surface scale-125" : "bg-bg-surface/40 hover:bg-bg-surface/70"
                       }`}
                     />
                   ))}

@@ -7,6 +7,7 @@ import {
 import api from "../../services/api";
 import { formatNumber } from "../../utils/currency";
 import { useFeatureEnabled } from "../../hooks/useFeature";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const fmt = (n) => formatNumber(n);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("ar-EG-u-nu-latn") : "—";
@@ -22,6 +23,7 @@ const BASE_TABS = [
 const CHEQUES_TAB = { id: "cheques", label: "الشيكات" };
 
 export default function CustomerProfilePage() {
+  usePageTour('customer_profile');
   const { id } = useParams();
   const chequesEnabled = useFeatureEnabled("feature_cheques");
   const TABS = chequesEnabled ? [...BASE_TABS, CHEQUES_TAB] : BASE_TABS;
@@ -132,7 +134,7 @@ export default function CustomerProfilePage() {
               </thead>
               <tbody>
                 {tabData.map(inv => (
-                  <tr key={inv.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
+                  <tr key={inv.id} className="border-b border-border-subtle hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-black font-mono text-blue-700">{inv.invoice_no || inv.doc_no || `#${inv.id}`}</td>
                     <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{fmtDate(inv.created_at)}</td>
                     <td className="px-4 py-3 number-fmt-primary">{fmt(inv.total)} ج.م</td>
@@ -148,7 +150,7 @@ export default function CustomerProfilePage() {
               </thead>
               <tbody>
                 {tabData.map(d => (
-                  <tr key={d.id} className={`border-b border-slate-50 hover:bg-[var(--bg-overlay)] ${d.status === "overdue" ? "bg-rose-50/30" : ""}`}>
+                  <tr key={d.id} className={`border-b border-border-subtle hover:bg-[var(--bg-overlay)] ${d.status === "overdue" ? "bg-rose-50/30" : ""}`}>
                     <td className="px-4 py-3 font-mono text-[11px]">{d.invoice_no || "—"}</td>
                     <td className="px-4 py-3 number-fmt-primary">{fmt(d.original_amount)}</td>
                     <td className="px-4 py-3 number-fmt text-emerald-700">{fmt(d.paid_amount)}</td>
@@ -170,7 +172,7 @@ export default function CustomerProfilePage() {
               </thead>
               <tbody>
                 {tabData.map(p => (
-                  <tr key={p.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
+                  <tr key={p.id} className="border-b border-border-subtle hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-mono text-[11px]">{p.doc_no || `PAY-${p.id}`}</td>
                     <td className="px-4 py-3 number-fmt-primary text-emerald-700">{fmt(p.amount)} ج.م</td>
                     <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.method_name || p.method}</td>
@@ -186,7 +188,7 @@ export default function CustomerProfilePage() {
               </thead>
               <tbody>
                 {tabData.map(c => (
-                  <tr key={c.id} className="border-b border-slate-50 hover:bg-[var(--bg-overlay)]">
+                  <tr key={c.id} className="border-b border-border-subtle hover:bg-[var(--bg-overlay)]">
                     <td className="px-4 py-3 font-mono text-[11px]">{c.cheque_no}</td>
                     <td className="px-4 py-3 number-fmt-primary">{fmt(c.amount)} ج.م</td>
                     <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{c.bank_name || "—"}</td>

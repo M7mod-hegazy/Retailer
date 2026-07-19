@@ -4,12 +4,19 @@ const { authRequired, requireRole } = require("../middleware/auth");
 const { requirePagePermission } = require("../middleware/permission");
 const { auditMutation } = require("../middleware/audit");
 const { nowSql } = require("../utils/datetime");
+const { notifyOwner, EVENT_TYPES: TG } = require("../services/telegramService");
 
 const router = express.Router();
 router.use(auditMutation);
 
 function getSettings() {
   return getDb().prepare("SELECT * FROM settings WHERE id = 1").get();
+}
+
+// Settings booleans arrive as 1/0 from SQLite and true/false/"true" from the
+// client, so compare through one coercion instead of raw truthiness.
+function truthy(v) {
+  return v === true || v === 1 || v === "1" || v === "true";
 }
 
 // Ensure print-setting columns exist in the settings table.
@@ -189,6 +196,25 @@ router.put("/", authRequired, requirePagePermission("settings", "edit"), require
     const blocked = guardFeatureChanges(req, current, updates);
     if (blocked) return res.status(blocked.status).json({ success: false, message: blocked.message });
 
+    // Fire the "alerts are being turned off" warning BEFORE the write, while
+    // Telegram is still enabled — afterwards notifyOwner would be a no-op and
+    // the owner would never learn their alarm was switched off.
+    const disablingTelegram = updates.telegram_enabled !== undefined
+      && !truthy(updates.telegram_enabled) && truthy(current.telegram_enabled);
+    const disablingChip = updates.telegram_status_chip_enabled !== undefined
+      && !truthy(updates.telegram_status_chip_enabled) && truthy(current.telegram_status_chip_enabled);
+    if (disablingTelegram || disablingChip) {
+      try {
+        notifyOwner(TG.NOTIFICATIONS_DISABLED, {
+          changeLabel: disablingTelegram
+            ? "تم إيقاف إشعارات تيليجرام بالكامل"
+            : "تم إخفاء مؤشر حالة تيليجرام",
+          userName: req.user?.full_name || req.user?.username,
+          createdAt: new Date().toISOString(),
+        }, getDb());
+      } catch (_) { /* non-critical */ }
+    }
+
     const { sql, params } = buildUpdate(current, updates);
     getDb().prepare(sql).run(...params);
     req.audit("edit", "settings", { keys_updated: Object.keys(updates).length }, `⚙️ تم تحديث الإعدادات`);
@@ -258,6 +284,20 @@ router.post("/bulk", authRequired, requirePagePermission("settings", "add"), req
     : `⚙️ تم حفظ الإعدادات (بدون تغيير)`;
 
   req.audit("bulk_edit", "settings", changes, desc);
+
+  // Telegram notification for bulk settings changes
+  if (changedCount > 0) {
+    try {
+      notifyOwner(TG.SETTINGS_CHANGED, {
+        changesCount: changedCount,
+        changesSummary: changedKeys,
+        changes,
+        userName: req.user?.full_name || req.user?.username,
+        createdAt: new Date().toISOString(),
+      }, db);
+    } catch (_) { /* non-critical */ }
+  }
+
   res.json({ success: true, data: getSettings() });
 });
 
@@ -302,12 +342,45 @@ router.put("/default-user-permissions", authRequired, (req, res, next) => {
       throw err;
     }
 
+    const db = getDb();
+    // Snapshot the previous defaults so the owner alert can show what changed.
+    let before = {};
+    try {
+      const prevRow = db.prepare("SELECT value FROM settings_kv WHERE key = 'default_user_permissions'").get();
+      before = prevRow?.value ? JSON.parse(prevRow.value) : {};
+    } catch (_) { before = {}; }
+
     const permissionsJson = JSON.stringify(permissions);
-    getDb()
-      .prepare("INSERT INTO settings_kv (key, value) VALUES ('default_user_permissions', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    db.prepare("INSERT INTO settings_kv (key, value) VALUES ('default_user_permissions', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .run(permissionsJson);
 
     req.audit("edit", "default_user_permissions", {}, `⚙️ تم تحديث الصلاحيات الافتراضية للمستخدمين`);
+
+    // Telegram: this changes the privileges every FUTURE user is created with,
+    // so it is a broader grant than editing one account.
+    try {
+      const allKeys = new Set([...Object.keys(before), ...Object.keys(permissions)]);
+      const diff = {};
+      for (const k of allKeys) {
+        const b = (before[k] || []).slice().sort().join(",");
+        const a = (permissions[k] || []).slice().sort().join(",");
+        if (b !== a) diff[k] = { before: before[k] || [], after: permissions[k] || [] };
+      }
+      const changedCount = Object.keys(diff).length;
+      if (changedCount > 0) {
+        const { describePermissionDiff } = require("../utils/permissionLabels");
+        const { text, sensitive } = describePermissionDiff(diff);
+        const warning = sensitive.length ? `\n⚠️ صلاحيات حساسة مُنحت: ${sensitive.join("، ")}` : "";
+        notifyOwner(TG.PERMISSION_CHANGED, {
+          targetUser: "الصلاحيات الافتراضية (كل مستخدم جديد)",
+          adminUser: req.user?.full_name || req.user?.username,
+          action: `تعديل الصلاحيات الافتراضية — ${changedCount} صفحة`,
+          changes: `${text}${warning}`,
+          createdAt: new Date().toISOString(),
+        }, db);
+      }
+    } catch (_) { /* non-critical */ }
+
     res.json({ success: true, data: permissions });
   } catch (error) {
     next(error);

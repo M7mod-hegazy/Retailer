@@ -35,10 +35,10 @@ function timeAgo(dateStr) {
 function StatusBadge({ status }) {
   const map = {
     in_progress: { label: "جارٍ", cls: "bg-indigo-600 text-white" },
-    completed: { label: "مكتمل", cls: "bg-emerald-500 text-slate-900" },
-    cancelled: { label: "ملغى", cls: "bg-slate-200 text-slate-500" },
+    completed: { label: "مكتمل", cls: "bg-emerald-500 text-text-primary" },
+    cancelled: { label: "ملغى", cls: "bg-border-normal text-text-secondary" },
   };
-  const { label, cls } = map[status] || { label: status, cls: "bg-slate-200 text-slate-600" };
+  const { label, cls } = map[status] || { label: status, cls: "bg-border-normal text-text-secondary" };
   return <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest ${cls}`}>{label}</span>;
 }
 
@@ -268,7 +268,7 @@ export default function PhysicalCountPage() {
   // ─── RENDER DASHBOARD ──────────────────────────────────────────
   if (view === "dashboard") {
     return (
-      <main className="min-h-[100dvh] bg-[var(--bg-base)] text-slate-900 w-full overflow-x-hidden font-sans" dir="rtl">
+      <main className="min-h-[100dvh] bg-[var(--bg-base)] text-text-primary w-full overflow-x-hidden font-sans" dir="rtl">
         <div className="max-w-[1400px] mx-auto px-6 py-12 md:py-24 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24">
           
           {/* Left/Right sticky header */}
@@ -278,7 +278,7 @@ export default function PhysicalCountPage() {
                 <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[1] text-slate-950 mb-8 w-full max-w-[20ch]">
                   الجرد<br/>المادي.
                 </h1>
-                <p className="text-lg text-slate-500 leading-relaxed max-w-[400px] mb-12 font-medium">
+                <p className="text-lg text-text-secondary leading-relaxed max-w-[400px] mb-12 font-medium">
                   تسويات المخزون، مراجعات الأرصدة، وإدارة الكميات الفعلية عبر نظام عمليات عالي الكثافة والأداء.
                 </p>
                 
@@ -306,16 +306,16 @@ export default function PhysicalCountPage() {
                   initial={{ opacity: 0, height: 0, filter: "blur(10px)" }}
                   animate={{ opacity: 1, height: "auto", filter: "blur(0px)" }}
                   exit={{ opacity: 0, height: 0, filter: "blur(10px)" }}
-                  className="bg-white rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-200/50 overflow-hidden"
+                  className="bg-bg-surface rounded-[2.5rem] p-10 md:p-12 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-border-normal/50 overflow-hidden"
                 >
-                  <h2 className="text-3xl font-black text-slate-900 mb-10 tracking-tight">إعداد الجلسة</h2>
+                  <h2 className="text-3xl font-black text-text-primary mb-10 tracking-tight">إعداد الجلسة</h2>
                   
                   <div className="space-y-10">
                      {/* Name */}
                      <div>
-                       <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">اسم الجرد</label>
+                       <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-4">اسم الجرد</label>
                        <input 
-                         className="w-full text-3xl font-black text-slate-900 placeholder:text-slate-200 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent"
+                         className="w-full text-3xl font-black text-text-primary placeholder:text-slate-200 outline-none border-b border-border-normal focus:border-slate-900 pb-4 transition-colors bg-transparent"
                          placeholder="جرد المستودع الرئيسي..."
                          value={formName}
                          onChange={(e) => setFormName(e.target.value)}
@@ -324,14 +324,14 @@ export default function PhysicalCountPage() {
                      
                      {/* Scope Selection */}
                      <div>
-                       <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">النطاق</label>
+                       <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-4">النطاق</label>
                        <div className="flex flex-wrap gap-4">
                          {["warehouse", "category", "custom"].map((opt) => (
                            <button
                              key={opt}
                              onClick={() => setFormScope(opt)}
                              className={`px-8 py-4 rounded-full text-sm font-black uppercase tracking-widest transition-all ${
-                               formScope === opt ? "bg-primary text-white shadow-xl" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                               formScope === opt ? "bg-primary text-white shadow-xl" : "bg-bg-overlay text-text-secondary hover:bg-border-normal"
                              }`}
                            >
                              {opt === "warehouse" ? "مستودع كامل" : opt === "category" ? "فئة محددة" : "أصناف مخصصة"}
@@ -343,8 +343,8 @@ export default function PhysicalCountPage() {
                      {/* Dynamic Selects */}
                       {formScope === "warehouse" && (
                          <div>
-                           <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">المستودع</label>
-                           <select ref={formWarehouseRef} className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formWarehouse} onChange={(e)=>setFormWarehouse(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
+                           <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-4">المستودع</label>
+                           <select ref={formWarehouseRef} className="w-full text-2xl font-bold text-text-primary outline-none border-b border-border-normal focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formWarehouse} onChange={(e)=>setFormWarehouse(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
                             <option value="" disabled>اختر مستودعاً...</option>
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                           </select>
@@ -353,8 +353,8 @@ export default function PhysicalCountPage() {
 
                       {formScope === "category" && (
                          <div>
-                           <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">الفئة</label>
-                           <select ref={formCategoryRef} className="w-full text-2xl font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formCategory} onChange={(e)=>setFormCategory(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
+                           <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-4">الفئة</label>
+                           <select ref={formCategoryRef} className="w-full text-2xl font-bold text-text-primary outline-none border-b border-border-normal focus:border-slate-900 pb-4 transition-colors bg-transparent appearance-none cursor-pointer" value={formCategory} onChange={(e)=>setFormCategory(e.target.value)} onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef })}>
                             <option value="" disabled>اختر فئة...</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
@@ -365,17 +365,17 @@ export default function PhysicalCountPage() {
                         <div className="space-y-6">
                           <div className="flex items-center gap-3">
                             <div className="flex-1 relative">
-                              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 pointer-events-none" />
+                              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none" />
                               <input
                                 ref={formItemSearchRef}
-                                className="w-full text-lg font-bold text-slate-900 outline-none border-b border-slate-200 focus:border-slate-900 pb-4 pr-12 transition-colors bg-transparent placeholder:text-slate-200"
+                                className="w-full text-lg font-bold text-text-primary outline-none border-b border-border-normal focus:border-slate-900 pb-4 pr-12 transition-colors bg-transparent placeholder:text-slate-200"
                                 placeholder="ابحث بالاسم أو الكود..."
                                 value={formItemSearch}
                                 onChange={(e) => setFormItemSearch(e.target.value)}
                                 onKeyDown={e => handleKeyDown(e, { nextRef: formItemCategoryRef })}
                               />
                               {formItemSearch && (
-                                <button type="button" onClick={() => setFormItemSearch("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                                <button type="button" onClick={() => setFormItemSearch("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors">
                                   <X className="w-5 h-5" />
                                 </button>
                               )}
@@ -386,27 +386,27 @@ export default function PhysicalCountPage() {
                                 value={formItemCategory}
                                 onChange={(e) => setFormItemCategory(e.target.value)}
                                 onKeyDown={e => handleKeyDown(e, { nextRef: formSubmitRef, prevRef: formItemSearchRef })}
-                                className="appearance-none bg-slate-100 text-slate-600 font-bold text-[13px] rounded-full px-6 py-3 pr-10 border-0 cursor-pointer hover:bg-slate-200 transition-colors outline-none"
+                                className="appearance-none bg-bg-overlay text-text-secondary font-bold text-[13px] rounded-full px-6 py-3 pr-10 border-0 cursor-pointer hover:bg-border-normal transition-colors outline-none"
                               >
                                 <option value="">كل الفئات</option>
                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                               </select>
-                              <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                              <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                             </div>
                           </div>
 
                          <div>
                            <div className="flex items-center justify-between mb-4">
-                             <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400">الأصناف</label>
-                             <span className="text-xs font-bold text-slate-400">{formSelectedItems.length} مختار</span>
+                             <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted">الأصناف</label>
+                             <span className="text-xs font-bold text-text-muted">{formSelectedItems.length} مختار</span>
                            </div>
 
                            {formItemsLoading ? (
                              <div className="space-y-3">
-                               {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-2xl animate-pulse" />)}
+                               {[1,2,3].map(i => <div key={i} className="h-16 bg-bg-overlay rounded-2xl animate-pulse" />)}
                              </div>
                            ) : formItems.length === 0 ? (
-                             <p className="text-sm text-slate-300 py-8 text-center font-bold">
+                             <p className="text-sm text-text-muted py-8 text-center font-bold">
                                {formItemSearch || formItemCategory ? "لا توجد نتائج" : "ابدأ بالبحث لإضافة أصناف"}
                              </p>
                            ) : (
@@ -425,20 +425,20 @@ export default function PhysicalCountPage() {
                                      className={`w-full flex items-center gap-4 p-4 rounded-2xl text-right transition-all border ${
                                        selected
                                          ? "bg-indigo-50 border-indigo-200 text-indigo-900"
-                                         : "bg-slate-50 border-transparent hover:border-slate-200 text-slate-700"
+                                         : "bg-bg-overlay border-transparent hover:border-border-normal text-text-primary"
                                      }`}
                                    >
                                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${
-                                       selected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300"
+                                       selected ? "bg-indigo-600 border-indigo-600 text-white" : "border-border-strong"
                                      }`}>
                                        {selected && <Check className="w-4 h-4" />}
                                      </div>
                                      <div className="flex-1 min-w-0 text-right">
-                                       <p className="text-sm font-black text-slate-900 truncate">{item.name || "—"}</p>
-                                        <p className="text-[11px] font-mono text-slate-400">{item.item_code || "—"}</p>
+                                       <p className="text-sm font-black text-text-primary truncate">{item.name || "—"}</p>
+                                        <p className="text-[11px] font-mono text-text-muted">{item.item_code || "—"}</p>
                                      </div>
                                      {item.category_name && (
-                                       <span className="text-[10px] font-bold text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-100 shrink-0">
+                                       <span className="text-[10px] font-bold text-text-muted bg-bg-surface px-3 py-1 rounded-full border border-border-subtle shrink-0">
                                          {item.category_name}
                                        </span>
                                      )}
@@ -451,7 +451,7 @@ export default function PhysicalCountPage() {
 
                           {formSelectedItems.length > 0 && (
                             <div>
-                              <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">الأصناف المختارة</label>
+                              <label className="block text-[11px] font-black uppercase tracking-widest text-text-muted mb-3">الأصناف المختارة</label>
                               <div className="flex flex-wrap gap-2">
                                 {formSelectedItems.map(item => (
                                   <span key={item.id} className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-bold border border-indigo-100">
@@ -464,7 +464,7 @@ export default function PhysicalCountPage() {
                                 <button
                                   type="button"
                                   onClick={() => setFormSelectedItems([])}
-                                  className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1"
+                                  className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors px-3 py-1"
                                 >
                                   إزالة الكل
                                 </button>
@@ -487,16 +487,16 @@ export default function PhysicalCountPage() {
 
             {/* Sessions List */}
             <div className="space-y-6 pt-4">
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-8 pl-4 border-l-2 border-slate-200">الجلسات السابقة</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-8 pl-4 border-l-2 border-border-normal">الجلسات السابقة</h3>
               {loadingSessions ? (
                  <div className="animate-pulse space-y-6">
-                   <div className="h-32 bg-slate-200/50 rounded-[2rem]"></div>
-                   <div className="h-32 bg-slate-200/50 rounded-[2rem]"></div>
+                   <div className="h-32 bg-border-normal/50 rounded-[2rem]"></div>
+                   <div className="h-32 bg-border-normal/50 rounded-[2rem]"></div>
                  </div>
               ) : sessions.length === 0 ? (
                  <div className="py-32 text-center opacity-50">
-                    <Package className="w-16 h-16 mx-auto mb-6 text-slate-300" />
-                    <p className="text-slate-400 font-black tracking-widest uppercase text-sm">لا توجد جلسات مسجلة</p>
+                    <Package className="w-16 h-16 mx-auto mb-6 text-text-muted" />
+                    <p className="text-text-muted font-black tracking-widest uppercase text-sm">لا توجد جلسات مسجلة</p>
                  </div>
               ) : (
                 <div data-help="main-table" className="grid gap-6">
@@ -507,28 +507,28 @@ export default function PhysicalCountPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05, type: "spring", stiffness: 100, damping: 20 }}
                       onClick={() => loadSession(s.id, s.status !== "in_progress")}
-                      className="group bg-white p-8 rounded-[2rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] border border-slate-100 hover:border-indigo-100 cursor-pointer transition-all hover:-translate-y-2 hover:shadow-[0_20px_50px_-15px_rgba(79,70,229,0.15)] flex flex-col md:flex-row md:items-center justify-between gap-8"
+                      className="group bg-bg-surface p-8 rounded-[2rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] border border-border-subtle hover:border-indigo-100 cursor-pointer transition-all hover:-translate-y-2 hover:shadow-[0_20px_50px_-15px_rgba(79,70,229,0.15)] flex flex-col md:flex-row md:items-center justify-between gap-8"
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-4 mb-4">
                           <StatusBadge status={s.status} />
-                          <span className="text-2sm font-mono font-bold text-slate-400">{timeAgo(s.updated_at || s.created_at)}</span>
+                          <span className="text-2sm font-mono font-bold text-text-muted">{timeAgo(s.updated_at || s.created_at)}</span>
                         </div>
-                        <h4 className="text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight">{s.name || `جرد #${s.id}`}</h4>
-                        <p className="text-sm font-bold text-slate-500 mt-2 flex items-center gap-2">
+                        <h4 className="text-2xl font-black text-text-primary group-hover:text-indigo-600 transition-colors tracking-tight">{s.name || `جرد #${s.id}`}</h4>
+                        <p className="text-sm font-bold text-text-secondary mt-2 flex items-center gap-2">
                            <Warehouse className="w-4 h-4" /> 
                            <ScopeBadge scope={s.scope} warehouseName={s.warehouse_name} categoryName={s.category_name} />
                         </p>
                       </div>
                       
-                      <div className="flex items-center gap-10 bg-slate-50/50 px-8 py-5 rounded-3xl border border-slate-100 shrink-0">
+                      <div className="flex items-center gap-10 bg-bg-overlay/50 px-8 py-5 rounded-3xl border border-border-subtle shrink-0">
                         <div className="text-center">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">التقدم</p>
-                          <p className="text-2xl number-fmt text-slate-900">{s.counted_lines}<span className="text-slate-300 text-lg">/{s.total_lines}</span></p>
+                          <p className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">التقدم</p>
+                          <p className="text-2xl number-fmt text-text-primary">{s.counted_lines}<span className="text-text-muted text-lg">/{s.total_lines}</span></p>
                         </div>
-                        <div className="w-px h-12 bg-slate-200"></div>
+                        <div className="w-px h-12 bg-border-normal"></div>
                         <div className="text-center">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">الفروقات</p>
+                          <p className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">الفروقات</p>
                           <p className={`text-2xl number-fmt ${s.variance_count > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{s.variance_count}</p>
                         </div>
                       </div>
@@ -545,9 +545,9 @@ export default function PhysicalCountPage() {
 
   // ─── RENDER SESSION ────────────────────────────────────────────
   return (
-    <main className="min-h-[100dvh] bg-white text-slate-900 flex flex-col w-full overflow-hidden font-sans" dir="rtl">
+    <main className="min-h-[100dvh] bg-bg-surface text-text-primary flex flex-col w-full overflow-hidden font-sans" dir="rtl">
       {/* Absolute Progress Line */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-slate-100 z-50">
+      <div className="fixed top-0 left-0 right-0 h-1 bg-bg-overlay z-50">
          <motion.div 
            initial={{ width: 0 }} 
            animate={{ width: `${stats.total_lines > 0 ? (stats.counted_lines / stats.total_lines) * 100 : 0}%` }} 
@@ -556,34 +556,34 @@ export default function PhysicalCountPage() {
       </div>
 
       {/* Header */}
-      <div className="px-8 py-6 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-40">
+      <div className="px-8 py-6 flex items-center justify-between border-b border-border-subtle bg-bg-surface/80 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-6">
-          <button onClick={exitSession} className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+          <button onClick={exitSession} className="w-12 h-12 flex items-center justify-center rounded-full bg-bg-overlay text-text-secondary hover:bg-border-normal transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+            <h1 className="text-2xl font-black text-text-primary tracking-tight flex items-center gap-4">
               {activeSession?.name || `جرد #${activeSession?.id}`}
               {activeSession?.readOnly && (
                 <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-black uppercase tracking-widest">قراءة فقط</span>
               )}
             </h1>
-            <p className="text-sm font-bold text-slate-500 mt-1 flex items-center gap-2">
+            <p className="text-sm font-bold text-text-secondary mt-1 flex items-center gap-2">
               <ScopeBadge scope={activeSession?.scope} warehouseName={activeSession?.warehouse_name} categoryName={activeSession?.category_name} />
-              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+              <span className="w-1 h-1 rounded-full bg-border-strong"></span>
               {stats.counted_lines} من {stats.total_lines}
             </p>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-full border border-slate-200/60">
+        <div className="flex items-center gap-4 bg-bg-overlay p-1.5 rounded-full border border-border-normal/60">
            {["all", "untouched", "variance"].map((f) => (
              <button
                key={f}
                onClick={() => setSessionFilter(f)}
                className={`px-6 py-2.5 rounded-full text-2sm font-black tracking-widest uppercase transition-all ${
-                 sessionFilter === f ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                 sessionFilter === f ? "bg-bg-surface text-indigo-700 shadow-sm" : "text-text-secondary hover:text-text-primary"
                }`}
              >
                {f === "all" ? "الكل" : f === "untouched" ? "لم يُعد" : "فروقات"}
@@ -596,9 +596,9 @@ export default function PhysicalCountPage() {
       <div className="flex-1 overflow-y-auto pb-48">
         <div className="max-w-6xl mx-auto px-6 py-12">
            <div data-help="search-bar" className="relative mb-12">
-             <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300" />
+             <Search className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-text-muted" />
              <input
-               className="w-full text-2xl font-black text-slate-900 outline-none border-b border-slate-200 focus:border-indigo-500 bg-transparent pb-4 pl-6 pr-16 transition-colors placeholder:text-slate-200"
+               className="w-full text-2xl font-black text-text-primary outline-none border-b border-border-normal focus:border-indigo-500 bg-transparent pb-4 pl-6 pr-16 transition-colors placeholder:text-slate-200"
                placeholder="ابحث عن صنف أو باركود..."
                value={sessionSearch}
                onChange={(e) => setSessionSearch(e.target.value)}
@@ -606,9 +606,9 @@ export default function PhysicalCountPage() {
            </div>
 
            {/* Custom Gapless Grid/List */}
-           <div className="flex flex-col border-t border-slate-100">
+           <div className="flex flex-col border-t border-border-subtle">
              {filteredLines.length === 0 && (
-               <div className="py-32 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">
+               <div className="py-32 text-center text-text-muted font-bold uppercase tracking-widest text-sm">
                  لا توجد أصناف مطابقة للبحث
                </div>
              )}
@@ -619,29 +619,29 @@ export default function PhysicalCountPage() {
                const touched = line.touched || localVal !== line.system_quantity;
 
                return (
-                 <div key={key} className="group flex items-center justify-between py-6 border-b border-slate-100 hover:bg-slate-50/50 transition-colors px-4 -mx-4 rounded-3xl">
+                 <div key={key} className="group flex items-center justify-between py-6 border-b border-border-subtle hover:bg-bg-overlay/50 transition-colors px-4 -mx-4 rounded-3xl">
                    <div className="flex-1 min-w-0 pr-4">
-                      <p className="text-[11px] font-mono text-slate-400 mb-1">{line.item_code || "—"}</p>
-                     <h3 className="text-xl font-black text-slate-900 truncate tracking-tight">{line.item_name}</h3>
-                     <p className="text-sm font-bold text-slate-500 mt-1">{line.category_name || "—"}</p>
+                      <p className="text-[11px] font-mono text-text-muted mb-1">{line.item_code || "—"}</p>
+                     <h3 className="text-xl font-black text-text-primary truncate tracking-tight">{line.item_name}</h3>
+                     <p className="text-sm font-bold text-text-secondary mt-1">{line.category_name || "—"}</p>
                    </div>
 
                    <div className="flex items-center gap-12 shrink-0">
                      <div className="text-center w-24">
-                       <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">النظام</p>
-                       <p className="text-xl number-fmt text-slate-300">{line.system_quantity}</p>
+                       <p className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">النظام</p>
+                       <p className="text-xl number-fmt text-text-muted">{line.system_quantity}</p>
                      </div>
 
-                     <div className="w-px h-12 bg-slate-100"></div>
+                     <div className="w-px h-12 bg-bg-overlay"></div>
 
                      <div className="text-center relative">
-                       <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">الفعلي</p>
+                       <p className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">الفعلي</p>
                        <div className="relative">
                          <input
                            type="number"
                            disabled={activeSession?.readOnly}
                           className={`w-28 text-center text-2xl number-fmt py-2 rounded-2xl outline-none transition-all ${
-                            touched ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-900 focus:bg-indigo-50 focus:text-indigo-900"
+                            touched ? "bg-indigo-50 text-indigo-700" : "bg-bg-overlay text-text-primary focus:bg-indigo-50 focus:text-indigo-900"
                           }`}
                            value={localVal}
                            onChange={(e) => {
@@ -659,12 +659,12 @@ export default function PhysicalCountPage() {
                        </div>
                      </div>
 
-                     <div className="w-px h-12 bg-slate-100"></div>
+                     <div className="w-px h-12 bg-bg-overlay"></div>
 
                      <div className="text-center w-24">
-                       <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">الفرق</p>
+                       <p className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">الفرق</p>
                        <p className={`text-xl number-fmt ${
-                         !touched ? "text-slate-200" : variance > 0 ? "text-emerald-500" : variance < 0 ? "text-rose-500" : "text-slate-800"
+                         !touched ? "text-slate-200" : variance > 0 ? "text-emerald-500" : variance < 0 ? "text-rose-500" : "text-text-primary"
                        }`}>
                          {touched ? (variance > 0 ? `+${variance}` : variance) : "—"}
                        </p>
@@ -683,16 +683,16 @@ export default function PhysicalCountPage() {
           data-help="differences-section"
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-slate-950/90 backdrop-blur-xl border border-white/10 rounded-[2rem] p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto"
+          className="bg-slate-950/90 backdrop-blur-xl border border-border-normal/10 rounded-[2rem] p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto"
         >
           <div className="flex items-center gap-6 px-6">
             <div className="flex items-center gap-3">
               <div className={`w-3 h-3 rounded-full ${stats.variance_count > 0 ? "bg-amber-400 animate-pulse shadow-[0_0_15px_rgba(251,191,36,0.5)]" : "bg-emerald-400"}`}></div>
               <span className="text-sm font-black tracking-widest uppercase text-white">{stats.variance_count} فروقات</span>
             </div>
-            <div className="w-px h-6 bg-slate-800"></div>
+            <div className="w-px h-6 bg-slate-900"></div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-black tracking-widest text-slate-400">{stats.total_lines - stats.counted_lines} متبقي</span>
+              <span className="text-sm font-black tracking-widest text-text-muted">{stats.total_lines - stats.counted_lines} متبقي</span>
             </div>
           </div>
 

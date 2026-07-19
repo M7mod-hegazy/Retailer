@@ -44,7 +44,7 @@ export default function PurchaseProfitModal({ lines, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
         dir="rtl"
         onClick={e => e.stopPropagation()}
       >
@@ -54,9 +54,9 @@ export default function PurchaseProfitModal({ lines, onClose }) {
         {/* Body */}
         <div className="flex-1 overflow-auto p-5">
           {loading ? (
-            <div className="py-12 text-center text-slate-400 text-sm">جارٍ الحساب…</div>
+            <div className="py-12 text-center text-text-muted text-sm">جارٍ الحساب…</div>
           ) : !data?.length ? (
-            <div className="py-12 text-center text-slate-400 text-sm">لا توجد أصناف</div>
+            <div className="py-12 text-center text-text-muted text-sm">لا توجد أصناف</div>
           ) : (
             <>
               {/* Summary */}
@@ -71,17 +71,17 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                   <div className="font-black text-xl text-blue-700">{overallMargin !== null ? `${overallMargin}%` : "—"}</div>
                   <div className="text-[11px] text-blue-400 mt-0.5">من التكلفة</div>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
-                  <div className="text-[11px] text-slate-500 font-bold uppercase mb-1">إجمالي التكلفة</div>
-                  <div className="font-black text-xl text-slate-700">{fmt(totalCost)}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">ج.م</div>
+                <div className="bg-bg-overlay rounded-xl p-3 text-center border border-border-normal">
+                  <div className="text-[11px] text-text-secondary font-bold uppercase mb-1">إجمالي التكلفة</div>
+                  <div className="font-black text-xl text-text-primary">{fmt(totalCost)}</div>
+                  <div className="text-[11px] text-text-muted mt-0.5">ج.م</div>
                 </div>
               </div>
 
               {/* Per-item table */}
               <table className="w-full text-sm text-right border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-500 text-[11px] uppercase font-bold">
+                  <tr className="bg-bg-overlay text-text-secondary text-[11px] uppercase font-bold">
                     <th className="px-3 py-2">الصنف</th>
                     <th className="px-3 py-2 text-center">كمية</th>
                     <th className="px-3 py-2">تكلفة</th>
@@ -94,12 +94,12 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                 </thead>
                 <tbody>
                   {data.map((r, i) => (
-                    <tr key={i} className={`border-b border-slate-100 ${r.below_min ? "bg-rose-50" : r.below_target ? "bg-amber-50" : "hover:bg-slate-50"}`}>
-                      <td className="px-3 py-2 font-semibold text-slate-700 max-w-[160px] truncate">{r.item_name}</td>
-                      <td className="px-3 py-2 text-center text-slate-500">{r.qty}</td>
-                      <td className="px-3 py-2 font-mono text-slate-500">{fmt(r.cost)}</td>
-                      <td className="px-3 py-2 font-mono">{r.selling > 0 ? fmt(r.selling) : <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 font-mono font-bold">{r.selling > 0 ? fmt(r.profit) : <span className="text-slate-300">—</span>}</td>
+                    <tr key={i} className={`border-b border-border-subtle ${r.below_min ? "bg-rose-50" : r.below_target ? "bg-amber-50" : "hover:bg-bg-overlay"}`}>
+                      <td className="px-3 py-2 font-semibold text-text-primary max-w-[160px] truncate">{r.item_name}</td>
+                      <td className="px-3 py-2 text-center text-text-secondary">{r.qty}</td>
+                      <td className="px-3 py-2 font-mono text-text-secondary">{fmt(r.cost)}</td>
+                      <td className="px-3 py-2 font-mono">{r.selling > 0 ? fmt(r.selling) : <span className="text-text-muted">—</span>}</td>
+                      <td className="px-3 py-2 font-mono font-bold">{r.selling > 0 ? fmt(r.profit) : <span className="text-text-muted">—</span>}</td>
                       <td className="px-3 py-2 font-bold">
                         {r.margin_pct !== null ? (
                           <span className={r.below_min ? "text-rose-600" : r.below_target ? "text-amber-600" : "text-emerald-600"}>
@@ -107,7 +107,7 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                           </span>
                         ) : "—"}
                       </td>
-                      <td className="px-3 py-2 font-mono font-black text-slate-800">
+                      <td className="px-3 py-2 font-mono font-black text-text-primary">
                         {r.selling > 0 ? fmt(r.total_profit) : "—"}
                       </td>
                       <td className="px-3 py-2">
@@ -132,7 +132,7 @@ export default function PurchaseProfitModal({ lines, onClose }) {
                 </div>
               )}
 
-              <p className="mt-4 text-[11px] text-slate-400 text-center">
+              <p className="mt-4 text-[11px] text-text-muted text-center">
                 * الأرقام تقديرية بناءً على سعر البيع الحالي. الأرباح الفعلية قد تختلف.
               </p>
             </>

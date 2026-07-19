@@ -51,13 +51,13 @@ export default function WalkInCustomerInput({
           onChange={(e) => onPhoneChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && phoneValid) onCommit(); }}
           placeholder="01xxxxxxxxx"
-          className="w-[38%] rounded-lg border border-emerald-200 bg-white/80 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-emerald-600/40"
+          className="w-[38%] rounded-lg border border-emerald-200 bg-bg-surface/80 px-2.5 py-2 text-[12px] font-bold text-text-primary outline-none focus:border-emerald-400 focus:bg-bg-surface transition-colors placeholder:text-emerald-600/40"
         />
         <input type="text" value={name}
           onChange={(e) => onNameChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && phoneValid) onCommit(); }}
           placeholder="الاسم (اختياري)"
-          className="flex-1 min-w-0 rounded-lg border border-emerald-100 bg-white/60 px-2.5 py-2 text-[12px] font-bold text-slate-700 outline-none focus:border-emerald-400 focus:bg-white transition-colors placeholder:text-slate-400"
+          className="flex-1 min-w-0 rounded-lg border border-emerald-100 bg-bg-surface/60 px-2.5 py-2 text-[12px] font-bold text-text-primary outline-none focus:border-emerald-400 focus:bg-bg-surface transition-colors placeholder:text-text-muted"
         />
         <button type="button" onClick={onCommit} disabled={!phoneValid}
           className="shrink-0 rounded-lg bg-emerald-500 px-3 py-2 text-[12px] font-black text-white hover:bg-emerald-600 disabled:opacity-40 transition-colors">

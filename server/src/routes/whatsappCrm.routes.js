@@ -78,11 +78,13 @@ router.get("/stats", canView, (req, res) => {
       ${convWhere}
       ORDER BY wm.id DESC LIMIT 10
     `).all(...bf.params);
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
     const sentByDay = db.prepare(`
       SELECT date(sent_at) AS day, COUNT(*) AS count FROM wa_outbox
       WHERE status='sent' AND sent_at IS NOT NULL
-      GROUP BY date(sent_at) ORDER BY day DESC LIMIT 14
-    `).all();
+        AND sent_at >= date('now', '-' || ? || ' days')
+      GROUP BY date(sent_at) ORDER BY day DESC
+    `).all(days);
 
     // Email stats
     let emailSentToday = 0, emailSentTotal = 0, emailPending = 0;
@@ -601,6 +603,34 @@ const CATEGORY_CHANNEL = {
   telegram_purchase_edited: "telegram", telegram_purchase_return_cancelled: "telegram",
   telegram_branch_transfer_edited: "telegram", telegram_branch_transfer_cancelled: "telegram",
   telegram_withdrawal_edited: "telegram", telegram_withdrawal_deleted: "telegram",
+  // Quit/logout + return sub-events + bulk pricing + entity deletions.
+  // Previously the UI exposed these categories but creating a new variant
+  // failed with "فئة غير صالحة" — include them so "قالب جديد" works.
+  telegram_app_quit: "telegram", telegram_user_logout: "telegram",
+  telegram_below_cost_sale: "telegram",
+  telegram_sales_return_edited: "telegram", telegram_sales_return_cancelled: "telegram",
+  telegram_purchase_return_edited: "telegram",
+  telegram_price_bulk_update: "telegram",
+  telegram_item_deleted: "telegram", telegram_customer_deleted: "telegram",
+  telegram_supplier_deleted: "telegram", telegram_employee_deleted: "telegram",
+  // Payroll partial payout + risky-deletion coverage (migration 215)
+  telegram_salary_partial_paid: "telegram", telegram_salary_settlement_deleted: "telegram",
+  telegram_advance_payment: "telegram", telegram_advance_deleted: "telegram",
+  telegram_deduction_deleted: "telegram", telegram_bonus_deleted: "telegram",
+  telegram_user_deleted: "telegram",
+  // Money-channel + tamper coverage (migration 216)
+  telegram_user_created: "telegram", telegram_treasury_changed: "telegram",
+  telegram_payment_method_changed: "telegram", telegram_promotion_changed: "telegram",
+  telegram_backup_restored: "telegram", telegram_data_wiped: "telegram",
+  telegram_notifications_disabled: "telegram",
+  // Self-watching alert channel (migration 217)
+  telegram_recipient_changed: "telegram",
+  // Employee edit + legacy adjustment (migration 218)
+  telegram_employee_edited: "telegram", telegram_adjustment_created: "telegram",
+  // Backup export + settings change (migration 219)
+  telegram_backup_exported: "telegram", telegram_backup_settings_changed: "telegram",
+  // Bulk settings change (migration 220)
+  telegram_settings_changed: "telegram",
 };
 
 // System kinds are auto-send triggers: body-editable via variants below,

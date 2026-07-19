@@ -1,0 +1,160 @@
+// Sample event payloads for Telegram template previews.
+//
+// Shape matters: each entry mirrors EXACTLY what the real firing site passes
+// to notifyOwner(eventType, data) — raw numbers, ISO datetimes, line arrays —
+// so previews render through the same buildTemplateVars/buildMessage pipeline
+// as production messages. If a preview looks wrong, the real message is wrong
+// too (and vice versa). Never render previews client-side from a second copy
+// of the templates: that is exactly the drift this module exists to kill.
+const SAMPLE_TIME = "2026-07-14T18:30:00";
+
+const SAMPLE_LINES = [
+  { item_code: "BT-HD-001", item_name: "سماعة بلوتوث", quantity: 2, unit_price: 250, line_total: 500 },
+  { item_code: "CHG-WL-003", item_name: "شاحن لاسلكي", quantity: 1, unit_price: 350, line_total: 350 },
+];
+
+const SAMPLE_EVENT_DATA = {
+  test: {},
+  new_invoice: {
+    invoiceNo: "INV-20260714-0001", customerName: "أحمد محمد",
+    total: 850, subtotal: 850, tax: 0, discount: 0, paid: 850, balance: 0,
+    paymentType: "multi",
+    payments: [{ method: "cash", amount: 500 }, { method: "card", amount: 350 }],
+    lines: SAMPLE_LINES, createdAt: SAMPLE_TIME,
+  },
+  daily_close: {
+    date: "2026-07-14", openingBalance: 5000,
+    cashSales: 3200, creditSales: 800, installmentCash: 500, multiCash: 300,
+    bankSales: 1200, totalSales: 6000, invoicesCount: 15,
+    purchasesCash: 1500, purchasesPayable: 800,
+    salesReturnsCash: 200, salesReturnsAccount: 100,
+    purchaseReturnsCash: 0, purchaseReturnsAccount: 0,
+    expensesCash: 400, expensesCount: 3, revenuesCash: 250, revenuesCount: 1,
+    customerPayments: 900, customerPaymentsCount: 2,
+    supplierPayments: 700, supplierPaymentsCount: 1,
+    withdrawals: 300, ajalPayments: 450,
+    cashIn: 5600, cashOut: 2900, nonCashTotal: 2000,
+    expectedCash: 7700, actualCash: 7650, discrepancy: -50,
+    paymentMethods: {
+      cash: { in: 5600, out: 2900, net: 2700 },
+      credit: 800, bank: 1200, opening_balance: 5000, expected_cash: 7700,
+      methods: [{ id: 8, name: "InstaPay", icon: "📲", in: 350, out: 0, net: 350 }],
+    },
+  },
+  shift_close: { shiftId: 12, openingCash: 1000, expectedCash: 4200, closingCash: 4150, discrepancy: -50, invoicesCount: 9 },
+  large_invoice: { invoiceNo: "INV-20260714-0001", customerName: "أحمد محمد", total: 25000 },
+  large_discount: { invoiceNo: "INV-20260714-0001", discountPercent: 25 },
+  below_cost_sale: {
+    invoiceNo: "INV-20260714-0001", customerName: "أحمد محمد",
+    items: [{ name: "سماعة بلوتوث", unitPrice: 150, cost: 200, quantity: 1 }],
+    totalLoss: 50, userName: "أحمد", createdAt: SAMPLE_TIME,
+  },
+  sales_return: {
+    originalInvoiceNo: "INV-20260710-0001", total: 300, customerName: "سعيد علي",
+    refundMethod: "cash_back", reason: "defective", lines: SAMPLE_LINES, userName: "أحمد",
+  },
+  invoice_voided: {
+    invoiceNo: "INV-20260714-0002", customerName: "سعيد علي", total: 980,
+    paymentType: "cash", payments: [{ method: "cash", amount: 980 }],
+    reason: "خطأ في الإدخال", lines: SAMPLE_LINES, userName: "أحمد", createdAt: SAMPLE_TIME,
+  },
+  purchase_created: {
+    kind: "receipt", reference: "PUR-2026-001", supplierName: "شركة النور للتوريدات",
+    total: 25000, paymentMethod: "cash", payments: [], createdAt: SAMPLE_TIME,
+  },
+  customer_payment: { customerName: "سعيد علي", amount: 2000, method: "cash" },
+  return_payment: { customerName: "سعيد علي", amount: 300, method: "cash_back", reason: "defective", createdAt: SAMPLE_TIME },
+  customer_created: { customerName: "خالد عبدالله", phone: "01234567890", city: "القاهرة", openingBalance: 0 },
+  supplier_created: { supplierName: "شركة النور للتوريدات", phone: "0221234567", openingBalance: 0 },
+  expense_created: {
+    docNo: "EXP-2026-043", category: "إيجار", amount: 10000, date: "2026-07-01",
+    description: "إيجار شهر يوليو", notes: "إيجار شهر يوليو",
+    paymentMethod: "cash", userName: "أحمد", createdAt: SAMPLE_TIME,
+  },
+  low_stock: { productName: "[BT-HD-001] سماعة بلوتوث", currentQuantity: 3, minQuantity: 10 },
+  backup_result: { success: true, reason: "نسخة تلقائية", filePath: "D:/Backups/retailer-2026-07-14.db", error: null },
+  failed_login: { username: "admin", time: SAMPLE_TIME, ip: "192.168.1.55" },
+  stock_transferred: { fromWarehouse: "المخزن الرئيسي", toWarehouse: "فرع القاهرة", userName: "أحمد", items: SAMPLE_LINES, createdAt: SAMPLE_TIME },
+  inventory_adjusted: { productName: "[BT-HD-001] سماعة بلوتوث", warehouse: "المخزن الرئيسي", oldQuantity: 50, newQuantity: 48, difference: -2, reason: "تلف", userName: "أحمد", createdAt: SAMPLE_TIME },
+  new_product: { productName: "شاحن لاسلكي", sku: "CHG-WL-003", price: 350, warehouse: "المخزن الرئيسي", userName: "أحمد", createdAt: SAMPLE_TIME },
+  price_changed: { productName: "[BT-HD-001] سماعة بلوتوث", oldPrice: 300, newPrice: 250, changePercent: "-16.7%", userName: "أحمد", createdAt: SAMPLE_TIME },
+  batch_expiry_warning: { productName: "دواء تجريبي", batchNo: "B-2026-08", expiryDate: "2026-08-01", remainingQuantity: 14, warehouse: "المخزن الرئيسي" },
+  physical_count_confirmed: { warehouse: "المخزن الرئيسي", userName: "أحمد", totalItems: 155, matchedCount: 150, mismatchedCount: 5, createdAt: SAMPLE_TIME },
+  supplier_payment: { supplierName: "شركة النور للتوريدات", amount: 10000, method: "cheque", reference: "CHK-001", userName: "أحمد", createdAt: SAMPLE_TIME },
+  debt_payment_received: { customerName: "سعيد علي", amount: 2000, method: "cash", remainingDebt: 3000, userName: "أحمد", createdAt: SAMPLE_TIME },
+  installment_paid: { customerName: "سعيد علي", amount: 500, installmentNo: 2, totalInstallments: 6, remaining: 1500, method: "cash", userName: "أحمد", createdAt: SAMPLE_TIME },
+  purchase_voided: { referenceNo: "PUR-2026-001", supplierName: "شركة النور للتوريدات", total: 25000, reason: "خطأ في الكمية", items: SAMPLE_LINES, userName: "أحمد", createdAt: SAMPLE_TIME },
+  purchase_return: { referenceNo: "PRT-2026-001", supplierName: "شركة النور للتوريدات", items: SAMPLE_LINES, total: 5000, userName: "أحمد", createdAt: SAMPLE_TIME },
+  branch_transfer: { referenceNo: "BT-S-2026-001", fromBranch: "الفرع الأول", toBranch: "الفرع الثاني", userName: "أحمد", transferType: "send", notes: "تحويل دوري", items: SAMPLE_LINES, createdAt: SAMPLE_TIME },
+  password_changed: { userName: "محمد أحمد", createdAt: SAMPLE_TIME, ipAddress: "192.168.1.100" },
+  permission_changed: { targetUser: "محمد أحمد", action: "تم تغيير الصلاحيات", changes: "إضافة صلاحية إدارة المخزون", adminUser: "المدير", createdAt: SAMPLE_TIME },
+  supervisor_override: { userName: "محمد أحمد", action: "إلغاء فاتورة", details: "فاتورة بقيمة 5,000 ج", supervisor: "المدير العام", createdAt: SAMPLE_TIME },
+  repair_order_created: { orderNo: "RPR-001", customerName: "فاطمة حسن", deviceType: "لابتوب", problem: "الشاشة لا تعمل", estimatedCost: 300, userName: "أحمد", createdAt: SAMPLE_TIME },
+  repair_order_ready: { orderNo: "RPR-001", customerName: "فاطمة حسن", deviceType: "لابتوب", finalCost: 350, createdAt: SAMPLE_TIME },
+  repair_order_delivered: { orderNo: "RPR-001", customerName: "فاطمة حسن", deviceType: "لابتوب", amountPaid: 350, userName: "أحمد", createdAt: SAMPLE_TIME },
+  revenue_created: { docNo: "REV-001", amount: 5000, category: "إيراد مبيعات", description: "مبيعات يوم الجمعة", paymentMethod: "cash", userName: "أحمد", createdAt: SAMPLE_TIME },
+  withdrawal_created: { docNo: "WD-001", amount: 2000, category: "مصروفات تشغيل", note: "دفع فاتورة كهرباء", paymentMethod: "cash", userName: "أحمد", createdAt: SAMPLE_TIME },
+  employee_created: { employeeName: "محمد علي", jobTitle: "محاسب", salary: 8000, phone: "01012345678", userName: "المدير", createdAt: SAMPLE_TIME },
+  salary_settled: { employeeName: "محمد علي", period: "2026-06-01 → 2026-06-30", baseSalary: 8000, bonuses: 500, deductions: 200, advanceDeductions: 300, netSalary: 8000, paidAmount: 8000, userName: "المحاسب", createdAt: SAMPLE_TIME },
+  advance_created: { employeeName: "محمد علي", amount: 3000, installmentCount: 3, installmentAmount: 1000, notes: "سلفة شخصية", userName: "المدير", createdAt: SAMPLE_TIME },
+  deduction_created: { employeeName: "محمد علي", amount: 200, deductionType: "تأخير", isRecurring: false, notes: "تأخير عن العمل", userName: "المدير", createdAt: SAMPLE_TIME },
+  bonus_created: { employeeName: "محمد علي", amount: 500, bonusType: "أداء", isRecurring: false, notes: "أداء ممتاز", userName: "المدير", createdAt: SAMPLE_TIME },
+  expense_edited: { expenseId: 42, docNo: "EXP-2026-042", category: "إيجار", oldAmount: 10000, newAmount: 11500, oldDescription: "إيجار يونيو", newDescription: "إيجار يوليو", paymentMethod: "cash", userName: "أحمد", createdAt: SAMPLE_TIME },
+  expense_deleted: { expenseId: 41, docNo: "EXP-2026-041", category: "كهرباء", amount: 2500, description: "فاتورة كهرباء يونيو", paymentMethod: "cash", date: "2026-06-30", userName: "أحمد", deletedAt: SAMPLE_TIME },
+  revenue_edited: { revenueId: 15, docNo: "REV-2026-015", category: "مبيعات", oldAmount: 5000, newAmount: 5500, oldDescription: "مبيعات الجمعة", newDescription: "مبيعات الجمعة والسبت", paymentMethod: "cash", userName: "أحمد", createdAt: SAMPLE_TIME },
+  revenue_deleted: { revenueId: 14, docNo: "REV-2026-014", category: "مبيعات", amount: 3200, description: "مبيعات الخميس", paymentMethod: "cash", date: "2026-07-10", userName: "أحمد", deletedAt: SAMPLE_TIME },
+  sales_return_edited: { docNo: "SRT-2026-011", customerName: "أحمد محمد", oldTotal: 300, newTotal: 450, oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "أحمد", createdAt: SAMPLE_TIME },
+  sales_return_cancelled: { docNo: "SRT-2026-010", customerName: "سعيد علي", total: 300, reason: "خطأ في الإدخال", lines: SAMPLE_LINES, userName: "أحمد", cancelledAt: SAMPLE_TIME },
+  purchase_return_edited: { referenceNo: "PRT-2026-002", supplierName: "شركة النور للتوريدات", oldTotal: 5000, newTotal: 4200, oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "محمد", createdAt: SAMPLE_TIME },
+  price_bulk_update: { operationLabel: "تحديث أسعار جماعي", itemsCount: 24, fieldLabel: "سعر البيع", adjustmentLabel: "زيادة 10%", reason: "تحديث موسمي", changesTable: "• سماعة بلوتوث: 250 ← 275\n• شاحن لاسلكي: 350 ← 385", userName: "أحمد", createdAt: SAMPLE_TIME },
+  item_deleted: { productName: "سماعة بلوتوث", sku: "BT-HD-001", price: 250, quantity: 3, userName: "أحمد", createdAt: SAMPLE_TIME },
+  customer_deleted: { customerName: "خالد عبدالله", phone: "01234567890", balance: 0, userName: "المدير", createdAt: SAMPLE_TIME },
+  supplier_deleted: { supplierName: "شركة النور للتوريدات", phone: "0221234567", balance: 0, userName: "المدير", createdAt: SAMPLE_TIME },
+  employee_deleted: { employeeName: "محمد علي", jobTitle: "محاسب", userName: "المدير", createdAt: SAMPLE_TIME },
+  invoice_edited: {
+    invoiceNo: "INV-2026-1201", oldCustomerName: "أحمد محمد", newCustomerName: "أحمد محمد (تعديل)",
+    oldTotal: 1250, newTotal: 1400, oldPaymentType: "cash", newPaymentType: "multi",
+    oldPayments: [{ method: "cash", amount: 1250 }],
+    newPayments: [{ method: "cash", amount: 900 }, { method: "card", amount: 500 }],
+    oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "أحمد", createdAt: SAMPLE_TIME,
+  },
+  invoice_amended: { oldInvoiceNo: "INV-2026-1200", invoiceNo: "INV-2026-1201", oldCustomerName: "سعيد علي", newCustomerName: "سعيد علي", oldTotal: 980, newTotal: 1100, oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "أحمد", createdAt: SAMPLE_TIME },
+  purchase_edited: { referenceNo: "PUR-2026-014", oldSupplierName: "شركة النور", newSupplierName: "شركة النور", oldTotal: 20000, newTotal: 21500, oldPaymentMethod: "cash", newPaymentMethod: "credit", oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "محمد", createdAt: SAMPLE_TIME },
+  purchase_return_cancelled: { referenceNo: "PRET-2026-022", supplierName: "شركة التوريد", total: 3600, reason: "خطأ في الإدخال", lines: SAMPLE_LINES, userName: "محمد", createdAt: SAMPLE_TIME },
+  branch_transfer_edited: { referenceNo: "BTR-2026-041", transferType: "send", oldPartnerBranch: "فرع المعادي", newPartnerBranch: "فرع مدينة نصر", oldLines: SAMPLE_LINES, newLines: SAMPLE_LINES, userName: "محمد", createdAt: SAMPLE_TIME },
+  branch_transfer_cancelled: { referenceNo: "BTR-2026-040", transferType: "receive", partnerBranch: "فرع السيدة زينب", reason: "خطأ في الكمية", lines: SAMPLE_LINES, userName: "أحمد", cancelledAt: SAMPLE_TIME },
+  withdrawal_edited: { docNo: "WD-2026-019", oldAmount: 500, newAmount: 750, category: "صيانة", note: "صيانة تكييف", paymentMethod: "نقداً", userName: "أحمد", createdAt: SAMPLE_TIME },
+  withdrawal_deleted: { docNo: "WD-2026-018", amount: 1200, category: "كهرباء", note: "فاتورة كهرباء", paymentMethod: "نقداً", date: "2026-07-08", userName: "أحمد", deletedAt: SAMPLE_TIME },
+  app_quit: { userName: "أحمد", reason: "إغلاق التطبيق", createdAt: SAMPLE_TIME },
+  user_logout: { userName: "أحمد", reason: "تسجيل خروج", createdAt: SAMPLE_TIME },
+  salary_partial_paid: { kindLabel: "صرف جزئي للراتب", employeeName: "محمد علي", period: "2026-06-01 → 2026-06-30", netSalary: 8000, paidAmount: 5000, remaining: 3000, carryForward: true, paymentMethod: "cash", userName: "المحاسب", createdAt: SAMPLE_TIME },
+  salary_settlement_deleted: { employeeName: "محمد علي", period: "2026-06-01 → 2026-06-30", paidAmount: 8000, netSalary: 8000, expenseDeleted: true, reversedAdvances: 1, userName: "المدير", createdAt: SAMPLE_TIME },
+  advance_payment: { employeeName: "محمد علي", amount: 1000, remaining: 2000, notes: "قسط شهر يوليو", userName: "المحاسب", createdAt: SAMPLE_TIME },
+  advance_deleted: { employeeName: "محمد علي", amount: 3000, remaining: 2000, hardDeleted: true, expenseDeleted: false, userName: "المدير", createdAt: SAMPLE_TIME },
+  deduction_deleted: { employeeName: "محمد علي", amount: 200, deductionType: "تأخير", userName: "المدير", createdAt: SAMPLE_TIME },
+  bonus_deleted: { employeeName: "محمد علي", amount: 500, bonusType: "أداء", userName: "المدير", createdAt: SAMPLE_TIME },
+  user_deleted: { deletedUser: "كاشير 2", role: "cashier", deletedBy: "المدير", createdAt: SAMPLE_TIME },
+  user_created: {
+    createdUser: "كاشير 3", loginName: "cashier3", role: "user",
+    permissionsSummary: "\n• نقطة البيع: عرض، إضافة\n• الأصناف: عرض\n• مرتجعات المبيعات: عرض، إضافة، حذف\n⚠️ صلاحيات حساسة: مرتجعات المبيعات: حذف",
+    createdBy: "المدير", createdAt: SAMPLE_TIME,
+  },
+  treasury_changed: { actionLabel: "تعديل خزينة", treasuryName: "الخزينة الرئيسية", oldBalance: 5000, newBalance: 4200, details: "⚠️ تعديل يدوي للرصيد بمقدار -800", userName: "المدير", createdAt: SAMPLE_TIME },
+  payment_method_changed: { actionLabel: "تعديل وسيلة دفع", methodName: "InstaPay", details: "⚠️ أصبحت لا تدخل الخزينة", userName: "المدير", createdAt: SAMPLE_TIME },
+  promotion_changed: { actionLabel: "تفعيل عرض", promotionName: "خصم الصيف", details: "خصم 15%", userName: "المدير", createdAt: SAMPLE_TIME },
+  backup_restored: { source: "D:/Backups/retailer-2026-07-10.db", userName: "المدير", createdAt: SAMPLE_TIME },
+  data_wiped: { scope: "الفواتير، المدفوعات", userName: "المدير", createdAt: SAMPLE_TIME },
+  notifications_disabled: { changeLabel: "تم إيقاف إشعارات تيليجرام بالكامل", userName: "المدير", createdAt: SAMPLE_TIME },
+  // Self-watching alert channel (migration 217)
+  telegram_recipient_changed: { actionLabel: "إضافة مستلم إشعارات جديد", recipientName: "مستلم Telegram", chatId: "123456789", changesSummary: "تمت إضافة مستلم جديد لاستقبال الإشعارات", userName: "المدير", createdAt: SAMPLE_TIME },
+  // Employee edit + legacy adjustment (migration 218)
+  employee_edited: { employeeName: "محمد علي", oldSalary: 8000, newSalary: 9000, oldJobTitle: "محاسب", newJobTitle: "محاسب أول", phone: "01012345678", userName: "المدير", createdAt: SAMPLE_TIME },
+  adjustment_created: { employeeName: "محمد علي", adjustmentType: "incentive", amount: 500, reason: "أداء ممتاز", userName: "المدير", createdAt: SAMPLE_TIME },
+  // Backup export + settings change (migration 219)
+  backup_exported: { filePath: "D:/Backups/retailer-checkpoint-2026-07-19.zip", fileSize: "2.5 MB", userName: "المدير", createdAt: SAMPLE_TIME },
+  backup_settings_changed: { settingName: "النسخ الاحتياطي التلقائي", oldValue: "مفعل", newValue: "معطّل", userName: "المدير", createdAt: SAMPLE_TIME },
+  // Bulk settings change (migration 220)
+  settings_changed: { changesCount: 3, changesSummary: "tax_rate, discount_cap, store_name", userName: "المدير", createdAt: SAMPLE_TIME },
+};
+
+module.exports = { SAMPLE_EVENT_DATA, SAMPLE_LINES, SAMPLE_TIME };

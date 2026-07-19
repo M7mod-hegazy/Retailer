@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize, XCircle, MessageSquare } from "lucide-react";
+import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize, XCircle, MessageSquare, ChevronDown, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../../stores/authStore";
-import { buildWhatsAppReceiptMessage, normalizeEgyptPhone } from "../../utils/whatsappReceiptMessage";
+import { buildWhatsAppReceiptMessage } from "../../utils/whatsappReceiptMessage";
+import { rawE164ToLocal, localPhoneToE164, COUNTRIES, COUNTRY_MAP, DEFAULT_COUNTRY } from "../../utils/countryCodes";
 import { useWhatsAppStatus } from "../../hooks/useWhatsAppStatus";
 import { usePrintSettingsForDoc } from "../../hooks/usePrintSettingsForDoc";
 import { PrintThermalDoc, PrintA4Doc } from "../print/PrintDoc";
@@ -39,6 +40,160 @@ function PhoneValidationIndicator({ checking, exists }) {
   }
   return null;
 }
+
+/** Compact searchable country-dial-code picker */
+function CountryPicker({ value, onChange, compactMode = false }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef(null);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return COUNTRIES;
+    const q = query.toLowerCase();
+    return COUNTRIES.filter(
+      (c) => c.name.includes(q) || c.dial.includes(q) || c.code.toLowerCase().includes(q)
+    );
+  }, [query]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(""); } };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => { setOpen((o) => !o); setQuery(""); }}
+        className="flex items-center gap-1 rounded-lg rounded-e-none border border-e-0 border-border-normal bg-bg-input px-2.5 py-2.5 text-xs font-bold transition-colors hover:bg-bg-surface focus:border-primary outline-none h-full"
+        dir="ltr"
+        title={`${value.flag} +${value.dial}`}
+      >
+        <span className="text-base leading-none">{value.flag}</span>
+        {!compactMode && <span className="text-text-secondary">+{value.dial}</span>}
+        <ChevronDown className={`h-3 w-3 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+
+      {open && (
+        <div className="absolute top-full start-0 z-50 mt-1 w-64 rounded-xl border border-border-normal bg-bg-surface shadow-modal overflow-hidden" dir="rtl">
+          {/* Search */}
+          <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="ابحث عن دولة..."
+              className="flex-1 bg-transparent text-xs font-bold text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </div>
+          {/* List */}
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-[11px] font-bold text-text-muted text-center">لا توجد نتائج</li>
+            )}
+            {filtered.map((c) => (
+              <li key={c.code}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs font-bold transition-colors hover:bg-bg-overlay ${
+                    c.code === value.code ? "bg-primary/10 text-primary" : "text-text-primary"
+                  }`}
+                >
+                  <span className="text-base leading-none">{c.flag}</span>
+                  <span className="flex-1 text-right">{c.name}</span>
+                  <span className="font-mono text-text-muted">+{c.dial}</span>
+                  {c.code === value.code && <Check className="h-3 w-3 text-primary" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Phone input: CountryPicker | +dial static badge | local number input
+ * The user types only the local number (e.g. 01032440775 for Egypt).
+ * Country picker changes the country without touching the number.
+ */
+function PhoneInputField({ country, value, onChange, onCountryChange }) {
+  // Build placeholder: hasLeadingZero → "01XXXXXXXXX", else → "XXXXXXXXX"
+  const placeholder = country.hasLeadingZero
+    ? "0" + "X".repeat(country.localLen)
+    : "X".repeat(country.localLen);
+
+  return (
+    <div className="flex" dir="ltr">
+      {/* Country picker — flag + chevron only, no dial code shown here */}
+      <CountryPicker value={country} onChange={onCountryChange} compactMode />
+      {/* Static +dial badge */}
+      <span className="flex items-center px-2 border border-x-0 border-border-normal bg-bg-input text-xs font-bold font-mono text-text-muted select-none whitespace-nowrap">
+        +{country.dial}
+      </span>
+      {/* Local number input */}
+      <input
+        dir="ltr"
+        type="tel"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => {
+          // Only allow digits and leading zeros — strip non-digits except we preserve what's typed
+          const raw = e.target.value.replace(/[^\d]/g, "");
+          onChange(raw);
+        }}
+        placeholder={placeholder}
+        maxLength={country.localLen + (country.hasLeadingZero ? 1 : 0) + 1} // +1 tolerance
+        className="flex-1 min-w-0 rounded-lg rounded-s-none border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold font-mono outline-none focus:border-primary focus:bg-bg-surface transition-colors placeholder:text-text-muted"
+      />
+    </div>
+  );
+}
+
+/**
+ * Shows digit-count progress (e.g. "8 / 10 أرقام") and WhatsApp existence status.
+ * Replaces PhoneValidationIndicator with richer context.
+ */
+function PhoneProgressRow({ localPhone, country, checking, exists, showExists }) {
+  const { t } = useTranslation();
+  // Count actual local digits typed (strip leading zero for counting if hasLeadingZero)
+  const digits = localPhone ? localPhone.replace(/\D/g, "") : "";
+  const localDigits = (country.hasLeadingZero && digits.startsWith("0")) ? digits.slice(1).length : digits.length;
+  const expected = country.localLen; // without leading zero
+  const isComplete = localDigits >= expected;
+
+  if (!localPhone) return null;
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      {/* Digit progress pill */}
+      {!isComplete && (
+        <span className="flex items-center gap-1 text-[11px] font-bold text-text-muted">
+          <span className="inline-flex items-center justify-center rounded-full bg-bg-overlay px-1.5 py-0.5 font-mono text-[10px] font-black text-text-secondary">
+            {localDigits}/{expected}
+          </span>
+          {`${expected - localDigits} رقم متبقي`}
+        </span>
+      )}
+      {/* WhatsApp existence check */}
+      {isComplete && showExists && <PhoneValidationIndicator checking={checking} exists={exists} />}
+      {/* Complete + no WA check */}
+      {isComplete && !showExists && (
+        <span className="flex items-center gap-1 text-[11px] font-bold text-success-text">
+          <Check className="h-3 w-3" /> {t("whatsapp.validNumber") || "رقم صحيح"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 
 const ZOOM_STEP = 0.08;
 const ZOOM_MIN = 0.15;
@@ -111,7 +266,10 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [savingFirst, setSavingFirst] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [localPhone, setLocalPhone] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
+  // fullPhone: E.164 digits derived from localPhone + selectedCountry (used for all API calls / sending)
+  const fullPhone = useMemo(() => localPhoneToE164(localPhone, selectedCountry), [localPhone, selectedCountry]);
   const [shopName, setShopName] = useState("");
   const [sendMode, setSendMode] = useState("text");
   const [waExists, setWaExists] = useState(null); // null = unknown, true = exists, false = not found
@@ -150,7 +308,8 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
 
   useEffect(() => {
     if (open) {
-      setPhone(normalizeEgyptPhone(rawPhone));
+      // Show local display format (e.g. "01032440775" for Egypt) in the input
+      setLocalPhone(rawE164ToLocal(rawPhone, selectedCountry));
       setSendMode("text");
       setActivePaperSize(printTemplate || "80mm");
       setWaExists(null);
@@ -158,7 +317,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       setSendChannel("whatsapp");
       if (existsTimerRef.current) clearTimeout(existsTimerRef.current);
     }
-  }, [open, rawPhone, printTemplate]);
+  }, [open, rawPhone, printTemplate]); // intentionally exclude selectedCountry
 
   // Force text mode when SMS channel is selected (SMS does not support images)
   useEffect(() => {
@@ -168,8 +327,10 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   // Debounced WhatsApp existence check (skip for SMS channel)
   useEffect(() => {
     if (!open || sendChannel === "sms" || !wa.isConnected) { setWaExists(null); setWaChecking(false); return; }
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 12) { setWaExists(null); return; }
+    const digits = fullPhone;
+    // Need full E.164 length to check
+    const expectedLen = selectedCountry.dial.length + selectedCountry.localLen;
+    if (digits.length < expectedLen) { setWaExists(null); return; }
     if (existsCacheRef.current.has(digits)) {
       setWaExists(existsCacheRef.current.get(digits));
       setWaChecking(false);
@@ -189,7 +350,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       } finally { setWaChecking(false); }
     }, 800);
     return () => { if (existsTimerRef.current) clearTimeout(existsTimerRef.current); };
-  }, [phone, open, wa.isConnected, sendChannel]);
+  }, [fullPhone, open, wa.isConnected, sendChannel, selectedCountry]);
 
   useEffect(() => {
     if (!open) return;
@@ -208,6 +369,16 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       setVariants(allVariants.filter(v => v.category === kind));
 
       setShopName(settingsRes.data?.data?.company_name || "");
+      // Load default country from settings, then re-normalize rawPhone with the correct local format
+      const defaultCountryCode = settingsRes.data?.data?.whatsapp_default_country;
+      const resolvedCountry = (defaultCountryCode && COUNTRY_MAP[defaultCountryCode])
+        ? COUNTRY_MAP[defaultCountryCode]
+        : DEFAULT_COUNTRY;
+      setSelectedCountry(resolvedCountry);
+      // Re-derive local display now that we have the true default country
+      if (rawPhone) {
+        setLocalPhone(rawE164ToLocal(rawPhone, resolvedCountry));
+      }
       setSmsEnabled(Boolean(smsStatusRes.data?.data?.enabled));
     }).catch(() => {
       setTemplate("");
@@ -250,9 +421,9 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const printInvoice = useMemo(() => normalizeInvoice(invoice, kind), [invoice, kind]);
 
   const waMeUrl = useMemo(() => {
-    if (!phone || !message) return "";
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  }, [phone, message]);
+    if (!fullPhone || !message) return "";
+    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
+  }, [fullPhone, message]);
 
   const paperDims = useMemo(() => getPaperDimsMm(activePaperSize), [activePaperSize]);
 
@@ -356,9 +527,10 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   }, [fitScale]);
 
   async function handleSend() {
-    if (!phone) { toast.error(t("whatsapp.noPhone")); return; }
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 11) { toast.error(t("whatsapp.invalidPhone") || "رقم الهاتف غير صالح"); return; }
+    if (!localPhone) { toast.error(t("whatsapp.noPhone")); return; }
+    const digits = fullPhone;
+    const minLen = selectedCountry.dial.length + selectedCountry.localLen - 1; // -1 for tolerance
+    if (digits.length < minLen) { toast.error(t("whatsapp.invalidPhone") || "رقم الهاتف غير صالح"); return; }
 
     if (sendChannel === "whatsapp") {
       if (!wa.isConnected) { toast.error(t("whatsapp.notConnected") || "واتساب غير متصل — تأكد من الاتصال أولاً"); return; }
@@ -374,7 +546,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     try {
       if (sendChannel === "sms") {
         if (sendMode === "image") { toast.error(t("whatsapp.smsNoImage") || "لا يمكن إرسال صورة عبر SMS"); return; }
-        await api.post("/api/whatsapp/send-sms-direct", { recipient_phone: phone, text: message });
+        await api.post("/api/whatsapp/send-sms-direct", { recipient_phone: fullPhone, text: message });
         toast.success(t("whatsapp.sentSuccessfully") || "تم الإرسال بنجاح");
         onClose?.();
         return;
@@ -382,7 +554,20 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
 
       let payload;
       if (sendMode === "image") {
-        const canvas = await html2canvas(captureRef.current, { useCORS: true, scale: 2, backgroundColor: "#ffffff" });
+        const el = captureRef.current;
+        const canvas = await html2canvas(el, {
+          useCORS: true,
+          scale: 2,
+          backgroundColor: "#ffffff",
+          // Prevent scroll-position clipping when the capture element is
+          // positioned off-screen at left: -9999px
+          scrollX: 0,
+          scrollY: 0,
+          x: 0,
+          y: 0,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+        });
         payload = { image: canvas.toDataURL("image/png").split(",")[1], caption: imageCaption };
       } else {
         payload = { text: message };
@@ -390,14 +575,14 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
 
       // Try direct send first (returns only after message is actually delivered)
       try {
-        await api.post("/api/whatsapp/send-direct", { recipient_phone: phone, customer_id: invoice?.customer_id || null, kind, payload });
+        await api.post("/api/whatsapp/send-direct", { recipient_phone: fullPhone, customer_id: invoice?.customer_id || null, kind, payload });
         toast.success(t("whatsapp.sentSuccessfully") || "تم الإرسال بنجاح");
         onClose?.();
         return;
       } catch (directErr) {
         // Fallback: enqueue if direct send fails (e.g. engine busy, timeout)
         if (directErr?.response?.status === 503 || directErr?.code === "ECONNABORTED" || directErr?.message?.includes("timeout")) {
-          await api.post("/api/whatsapp/enqueue", { recipient_phone: phone, customer_id: invoice?.customer_id || null, kind, payload });
+          await api.post("/api/whatsapp/enqueue", { recipient_phone: fullPhone, customer_id: invoice?.customer_id || null, kind, payload });
           toast.success(t("whatsapp.sentQueued") || "تمت الإضافة للقائمة — سيتم الإرسال تلقائياً");
           onClose?.();
           return;
@@ -411,7 +596,18 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
 
   function handleDownloadImage() {
     if (!captureRef.current) return;
-    html2canvas(captureRef.current, { useCORS: true, scale: 2, backgroundColor: "#ffffff" }).then((canvas) => {
+    const el = captureRef.current;
+    html2canvas(el, {
+      useCORS: true,
+      scale: 2,
+      backgroundColor: "#ffffff",
+      scrollX: 0,
+      scrollY: 0,
+      x: 0,
+      y: 0,
+      width: el.scrollWidth,
+      height: el.scrollHeight,
+    }).then((canvas) => {
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
       a.download = `${invoice?.invoice_no || invoice?.doc_no || invoice?.id || "invoice"}.png`;
@@ -562,10 +758,19 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                   {/* Phone input — above preview so always visible */}
                   <div>
                     <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.recipient")}</label>
-                    <input dir="ltr" type="tel" value={phone} onChange={(e) => setPhone(normalizeEgyptPhone(e.target.value))}
-                      placeholder="2010xxxxxxxx"
-                      className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold font-mono outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-                    {sendChannel === "whatsapp" && <PhoneValidationIndicator checking={waChecking} exists={waExists} />}
+                    <PhoneInputField
+                      country={selectedCountry}
+                      value={localPhone}
+                      onChange={setLocalPhone}
+                      onCountryChange={(c) => { setSelectedCountry(c); setLocalPhone(""); setWaExists(null); }}
+                    />
+                    <PhoneProgressRow
+                      localPhone={localPhone}
+                      country={selectedCountry}
+                      checking={waChecking}
+                      exists={waExists}
+                      showExists={sendChannel === "whatsapp"}
+                    />
                   </div>
 
                   {/* Zoom + page controls row */}
@@ -614,11 +819,15 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                         position: "absolute",
                         top: "50%",
                         left: "50%",
-                        transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${effectiveZoom})`,
+                        // Correct order: center first, then pan, then scale.
+                        // Combining translate(-50%,-50%) with pan in one calc() causes
+                        // the centering offset to scale with zoom — keeping them separate
+                        // prevents content drifting off-center when zoomed.
+                        transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${effectiveZoom})`,
                         transformOrigin: "center center",
                         userSelect: "none",
                       }}>
-                        <div style={{ width: SHEET_W[activePaperSize], background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.15)" }}>
+                        <div style={{ width: SHEET_W[activePaperSize] || `${parseFloat(activePaperSize) || 80}mm`, background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.15)", boxSizing: "border-box" }}>
                           {isPageDoc ? (
                             <PageView
                               invoice={printInvoice}
@@ -652,7 +861,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
                   {/* Hidden capture target — must be `absolute` not `fixed` so
                       html2canvas doesn't capture other fixed-position UI elements
                       (modal backdrop, sticky header, etc.) in the same layer */}
-                  <div style={{ position: "absolute", left: "-9999px", top: 0, zIndex: -2, width: SHEET_W[activePaperSize], background: "#ffffff", overflow: "visible" }}>
+                  <div style={{ position: "absolute", left: "-9999px", top: 0, zIndex: -2, width: SHEET_W[activePaperSize] || `${parseFloat(activePaperSize) || 80}mm`, background: "#ffffff", overflow: "visible", boxSizing: "border-box" }}>
                     <div ref={captureRef}>
                       {isPageDoc ? (
                         <PrintA4Doc invoice={printInvoice} settings={effectiveSettings} size={activePaperSize} scope={docType} />
@@ -668,10 +877,19 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
             {sendMode !== "image" && (
               <div>
                 <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.recipient")}</label>
-                <input dir="ltr" type="tel" value={phone} onChange={(e) => setPhone(normalizeEgyptPhone(e.target.value))}
-                  placeholder="2010xxxxxxxx"
-                  className="w-full rounded-lg border border-border-normal bg-bg-input px-3 py-2.5 text-xs font-bold font-mono outline-none focus:border-primary focus:bg-bg-surface transition-colors" />
-                {sendChannel === "whatsapp" && <PhoneValidationIndicator checking={waChecking} exists={waExists} />}
+                <PhoneInputField
+                  country={selectedCountry}
+                  value={localPhone}
+                  onChange={setLocalPhone}
+                  onCountryChange={(c) => { setSelectedCountry(c); setLocalPhone(""); setWaExists(null); }}
+                />
+                <PhoneProgressRow
+                  localPhone={localPhone}
+                  country={selectedCountry}
+                  checking={waChecking}
+                  exists={waExists}
+                  showExists={sendChannel === "whatsapp"}
+                />
               </div>
             )}
             {sendMode === "text" && variants.length > 1 && (
@@ -700,7 +918,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
             <div className={`grid gap-2 pt-1 ${sendMode === "image" ? "grid-cols-2" : "grid-cols-3"}`}>
               <button onClick={handleSend}
                 disabled={(() => {
-                  if (savingFirst || sending || !phone) return true;
+                  if (savingFirst || sending || !localPhone) return true;
                   if (sendMode === "text" ? !message : printSettingsLoading) return true;
                   if (sendChannel === "sms") return sendMode === "image";
                   return !wa.isConnected || waExists === false || waChecking;
@@ -733,7 +951,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
               )}
             </div>
 
-            {!phone && (
+            {!localPhone && (
               <p className="flex items-center gap-1.5 text-[11px] font-bold text-warning-text">
                 <AlertCircle className="h-3.5 w-3.5" /> {t("whatsapp.noPhone")}
               </p>

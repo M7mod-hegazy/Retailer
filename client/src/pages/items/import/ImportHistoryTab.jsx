@@ -80,19 +80,19 @@ export default function ImportHistoryTab() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center gap-2 py-12 text-2sm font-bold text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل...</div>;
+    return <div className="flex items-center justify-center gap-2 py-12 text-2sm font-bold text-text-secondary"><Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل...</div>;
   }
 
   if (!batches.length) {
-    return <div className="py-12 text-center text-2sm font-bold text-slate-400">لا توجد عمليات استيراد سابقة.</div>;
+    return <div className="py-12 text-center text-2sm font-bold text-text-muted">لا توجد عمليات استيراد سابقة.</div>;
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-card duration-300">
+    <div className="overflow-hidden rounded-2xl border border-border-normal bg-bg-surface shadow-sm transition hover:shadow-card duration-300">
       <div className="overflow-x-auto">
         <table className="w-full text-right text-sm border-collapse">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-black text-slate-450">
+            <tr className="border-b border-border-subtle bg-bg-overlay/50 text-xs font-black text-slate-450">
               <th className="px-6 py-4.5">الملف</th>
               <th className="px-6 py-4.5">المستخدم</th>
               <th className="px-6 py-4.5">التاريخ</th>
@@ -102,19 +102,19 @@ export default function ImportHistoryTab() {
               <th className="px-6 py-4.5 text-left">إجراءات</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border-subtle">
             {batches.map((b) => {
               const undoable = b.status === "active" && hoursSince(b.created_at) <= 24;
               return (
-                <tr key={b.id} className="transition-colors hover:bg-slate-50/40 text-slate-700 font-semibold">
-                  <td className="px-6 py-4 font-black text-slate-900 truncate max-w-[240px]" title={b.file_name || `#${b.id}`}>{b.file_name || `#${b.id}`}</td>
-                  <td className="px-6 py-4 text-slate-500 font-medium">{b.user_name || "—"}</td>
-                  <td className="px-6 py-4 text-slate-500 font-mono text-xs">{String(b.created_at || "").slice(0, 16)}</td>
+                <tr key={b.id} className="transition-colors hover:bg-bg-overlay/40 text-text-primary font-semibold">
+                  <td className="px-6 py-4 font-black text-text-primary truncate max-w-[240px]" title={b.file_name || `#${b.id}`}>{b.file_name || `#${b.id}`}</td>
+                  <td className="px-6 py-4 text-text-secondary font-medium">{b.user_name || "—"}</td>
+                  <td className="px-6 py-4 text-text-secondary font-mono text-xs">{String(b.created_at || "").slice(0, 16)}</td>
                   <td className="px-6 py-4 text-center font-mono font-black text-emerald-600">{b.inserted}</td>
                   <td className="px-6 py-4 text-center font-mono font-black text-sky-600">{b.updated}</td>
                   <td className="px-6 py-4">
                     {b.status === "undone" ? (
-                      <span className="inline-flex items-center rounded-lg bg-slate-150 border border-slate-200 px-2.5 py-1 text-2xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100/50">
+                      <span className="inline-flex items-center rounded-lg bg-slate-150 border border-border-normal px-2.5 py-1 text-2xs font-black text-text-secondary shadow-sm ring-1 ring-slate-100/50">
                         تم التراجع
                       </span>
                     ) : undoable ? (
@@ -132,7 +132,7 @@ export default function ImportHistoryTab() {
                       <button 
                         type="button" 
                         onClick={() => download(b)} 
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98]" 
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-border-normal bg-bg-surface px-3.5 py-2 text-xs font-black text-text-secondary shadow-sm transition hover:bg-bg-overlay hover:border-border-strong active:scale-[0.98]" 
                         title="إعادة تنزيل الملف"
                       >
                         <Download className="h-3.5 w-3.5" /> تنزيل

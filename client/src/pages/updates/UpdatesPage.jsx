@@ -73,7 +73,7 @@ function MagneticButton({ children, onClick, className, disabled }) {
       whileTap={{ scale: 0.95 }}
     >
       <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
-      <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0" />
+      <div className="absolute inset-0 bg-bg-surface/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0" />
     </motion.button>
   );
 }
@@ -176,7 +176,7 @@ function InstallProgressOverlay({ phase, error, version, onRetry, onDismiss }) {
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-md bg-white/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border border-white/50 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.3)] relative overflow-hidden"
+        className="w-full max-w-md bg-bg-surface/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border border-border-normal/50 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.3)] relative overflow-hidden"
       >
         {/* Ambient glow */}
         <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] pointer-events-none transition-colors duration-700 ${isError ? "bg-red-500/10" : "bg-emerald-500/10"}`} />
@@ -279,7 +279,7 @@ function InstallProgressOverlay({ phase, error, version, onRetry, onDismiss }) {
               <div className="flex items-center gap-3 mt-4">
                 <button
                   onClick={onDismiss}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-black border border-zinc-200 bg-bg-surface text-zinc-700 hover:bg-zinc-50 transition-colors"
                 >
                   إغلاق
                 </button>
@@ -521,7 +521,7 @@ export default function UpdatesPage() {
           <motion.div
             data-help="version-section"
             variants={FADE_UP}
-            className="md:col-span-8 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)] relative overflow-hidden group"
+            className="md:col-span-8 bg-bg-surface/70 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-border-normal/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)] relative overflow-hidden group"
           >
             {/* Interactive Ambient Light */}
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 to-emerald-100/0 group-hover:from-emerald-50/60 group-hover:to-transparent transition-colors duration-1000 pointer-events-none" />
@@ -641,7 +641,7 @@ export default function UpdatesPage() {
                       </div>
                       <button
                         onClick={handleCancelManual}
-                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-bg-surface hover:bg-zinc-50 transition-colors"
                       >
                         <X className="h-4 w-4" /> إيقاف التحميل
                       </button>
@@ -653,7 +653,7 @@ export default function UpdatesPage() {
                 {available && !mReady && (
                   <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-zinc-100 text-zinc-500">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-surface border border-zinc-100 text-zinc-500">
                         <Database className="h-4 w-4" />
                       </div>
                       <p className="text-sm font-bold text-zinc-600 leading-relaxed">
@@ -668,7 +668,7 @@ export default function UpdatesPage() {
                       <button
                         onClick={handleBackup}
                         disabled={backupState === "running"}
-                        className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-60"
+                        className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black border border-zinc-200 bg-bg-surface text-zinc-700 hover:bg-zinc-50 transition-colors disabled:opacity-60"
                       >
                         {backupState === "running" ? (
                           <><Loader2 className="h-4 w-4 animate-spin" /> جاري الإنشاء...</>
@@ -739,7 +739,7 @@ export default function UpdatesPage() {
                     </p>
                     <button
                       onClick={handleManualDownload}
-                      className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-red-700 border border-red-200 bg-white hover:bg-red-50 transition-colors"
+                      className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-red-700 border border-red-200 bg-bg-surface hover:bg-red-50 transition-colors"
                     >
                       <RefreshCw className="h-3.5 w-3.5" /> إعادة المحاولة
                     </button>
@@ -781,7 +781,7 @@ export default function UpdatesPage() {
                   <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">
                     قناة التحديث
                   </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-surface/5 border border-border-normal/10">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <span className="text-xs font-bold text-zinc-300">Stable (الرئيسية)</span>
                   </div>
@@ -804,7 +804,7 @@ export default function UpdatesPage() {
               </div>
             </div>
 
-            <div className="relative z-10 mt-12 pt-6 border-t border-white/10 flex items-center justify-between">
+            <div className="relative z-10 mt-12 pt-6 border-t border-border-normal/10 flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-500">حالة النظام</span>
               <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">ممتازة</span>
             </div>
@@ -814,7 +814,7 @@ export default function UpdatesPage() {
           <motion.div
             data-help="release-notes"
             variants={FADE_UP}
-            className="md:col-span-12 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-10 lg:p-14 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
+            className="md:col-span-12 bg-bg-surface/70 backdrop-blur-2xl rounded-[2.5rem] p-10 lg:p-14 border border-border-normal/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
           >
             <div className="flex items-center gap-4 mb-10 pb-8 border-b border-zinc-100">
               <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center">
@@ -857,7 +857,7 @@ export default function UpdatesPage() {
           {/* Version rollback / install a specific release (Col-span-12) */}
           <motion.div
             variants={FADE_UP}
-            className="md:col-span-12 bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-8 lg:p-10 border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
+            className="md:col-span-12 bg-bg-surface/70 backdrop-blur-2xl rounded-[2.5rem] p-8 lg:p-10 border border-border-normal/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,1)]"
           >
             <button
               onClick={toggleRollback}
@@ -886,7 +886,7 @@ export default function UpdatesPage() {
                   <div className="pt-8">
                     {/* Calm data-safety note */}
                     <div className="flex items-start gap-3 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 mb-6">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white border border-zinc-100 text-zinc-500">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-surface border border-zinc-100 text-zinc-500">
                         <Database className="h-4 w-4" />
                       </div>
                       <p className="text-sm font-bold text-zinc-600 leading-relaxed">
@@ -896,7 +896,7 @@ export default function UpdatesPage() {
 
                     {/* Active rollback in progress */}
                     {rbVersion ? (
-                      <div className="p-5 rounded-2xl border border-zinc-200 bg-white">
+                      <div className="p-5 rounded-2xl border border-zinc-200 bg-bg-surface">
                         <p className="text-sm font-black text-zinc-800 mb-4">
                           {rbStage === "backup"
                             ? `جاري إنشاء نسخة احتياطية قبل تثبيت الإصدار ${rbVersion}...`
@@ -930,7 +930,7 @@ export default function UpdatesPage() {
                             )}
                             <button
                               onClick={handleCancelRollback}
-                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black text-zinc-600 border border-zinc-200 bg-bg-surface hover:bg-zinc-50 transition-colors"
                             >
                               <X className="h-4 w-4" /> إيقاف
                             </button>
@@ -984,7 +984,7 @@ export default function UpdatesPage() {
                               <button
                                 onClick={() => handleInstallVersion(r.version)}
                                 disabled={isCurrent}
-                                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-bg-surface text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <Download className="h-4 w-4" /> {isCurrent ? "مُثبّت" : "تثبيت"}
                               </button>
@@ -995,7 +995,7 @@ export default function UpdatesPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <p className="font-bold text-zinc-500">تعذّر جلب قائمة الإصدارات.</p>
-                        <button onClick={loadReleases} className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <button onClick={loadReleases} className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black border border-zinc-200 bg-bg-surface text-zinc-700 hover:bg-zinc-50 transition-colors">
                           <RefreshCw className="h-4 w-4" /> إعادة المحاولة
                         </button>
                       </div>

@@ -75,8 +75,8 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
         className={`group relative flex items-center justify-center overflow-hidden rounded-xl border-2 transition-colors
           ${sizeCls}
           ${resolved
-            ? "border-slate-200 hover:border-emerald-400"
-            : "border-dashed border-slate-300 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50"}`}
+            ? "border-border-normal hover:border-emerald-400"
+            : "border-dashed border-border-strong bg-bg-overlay hover:border-emerald-400 hover:bg-emerald-50"}`}
       >
         {uploading ? (
           <Loader2 className={`animate-spin text-emerald-500 ${iconCls}`} />
@@ -88,7 +88,7 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center gap-1 text-slate-400 group-hover:text-emerald-500">
+          <div className="flex flex-col items-center gap-1 text-text-muted group-hover:text-emerald-500">
             <Image className={iconCls} />
             {size !== "sm" && <span className="text-[11px] font-bold">صورة</span>}
           </div>
@@ -100,7 +100,7 @@ export default function ImageUpload({ url, onUpload, onRemove, size = "md", clas
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
           title="إزالة الصورة"
-          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-white bg-rose-500 text-white shadow hover:bg-rose-600"
+          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border-normal bg-rose-500 text-white shadow hover:bg-rose-600"
         >
           <Trash2 className="h-2.5 w-2.5" />
         </button>

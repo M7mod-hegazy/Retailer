@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Lock, Building2 } from "lucide-react";
-import api from "../../services/api";
+import api, { notifyServerLogout } from "../../services/api";
 import { useAuthStore } from "../../stores/authStore";
 
 const LOCK_STATE_KEY = "retailer.screen_lock_state.v1";
@@ -198,12 +198,12 @@ export default function ScreenLock() {
   if (!token || !isLocked) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-slate-50/70 px-4 text-slate-800 backdrop-blur-[32px] transition-all duration-700">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-bg-overlay/70 px-4 text-text-primary backdrop-blur-[32px] transition-all duration-700">
       
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-emerald-400/20 rounded-full blur-[140px] pointer-events-none opacity-80" />
       <div className="absolute top-1/2 left-1/2 translate-x-[-10%] translate-y-[-60%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none opacity-60" />
 
-      <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-white/70 p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-white/50">
+      <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-bg-surface/70 p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-border-normal/50">
         
         <div className="mx-auto flex h-24 w-24 relative items-center justify-center rounded-[32px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 shadow-[0_8px_30px_-6px_var(--primary-glow)]">
           <div className="absolute inset-0 rounded-[32px] bg-emerald-400/20 blur-xl mix-blend-multiply" />
@@ -217,8 +217,8 @@ export default function ScreenLock() {
           </div>
         )}
 
-        <h2 className="mt-6 text-[32px] font-black tracking-tight text-slate-900 drop-shadow-sm">النظام مقفل</h2>
-        <p className="mt-3 text-sm font-medium leading-relaxed text-slate-500">
+        <h2 className="mt-6 text-[32px] font-black tracking-tight text-text-primary drop-shadow-sm">النظام مقفل</h2>
+        <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">
           حماية الجلسة نشطة. أدخل كلمة المرور<br />للمتابعة من حيث توقفت.
         </p>
 
@@ -233,7 +233,7 @@ export default function ScreenLock() {
                 setError(false);
               }}
               placeholder="••••••"
-              className={`w-full rounded-[24px] border-0 bg-white/60 px-6 py-6 text-center text-4xl tracking-[0.4em] font-light text-slate-900 outline-none ring-1 ring-inset backdrop-blur-md transition-all duration-300 placeholder:text-slate-300 focus:bg-white focus:ring-2 ${
+              className={`w-full rounded-[24px] border-0 bg-bg-surface/60 px-6 py-6 text-center text-4xl tracking-[0.4em] font-light text-text-primary outline-none ring-1 ring-inset backdrop-blur-md transition-all duration-300 placeholder:text-text-muted focus:bg-bg-surface focus:ring-2 ${
                 error 
                   ? "ring-rose-500/50 focus:ring-rose-500 shadow-[0_0_30px_-5px_rgba(244,63,94,0.15)]" 
                   : "ring-slate-900/10 focus:ring-emerald-500/50 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.03)]"
@@ -256,7 +256,7 @@ export default function ScreenLock() {
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-normal/30 border-t-white" />
             ) : (
               <span>فتح النظام</span>
             )}
@@ -268,9 +268,10 @@ export default function ScreenLock() {
             type="button"
             onClick={() => {
               writeLockState({ locked: false, lastActivity: Date.now() });
+              notifyServerLogout("تبديل مستخدم من شاشة القفل");
               logout();
             }}
-            className="mt-6 text-sm font-bold text-slate-400 decoration-slate-300 decoration-wavy underline-offset-[6px] hover:text-slate-700 hover:underline transition-colors"
+            className="mt-6 text-sm font-bold text-text-muted decoration-slate-300 decoration-wavy underline-offset-[6px] hover:text-text-primary hover:underline transition-colors"
           >
             التبديل لمستخدم آخر (تسجيل خروج)
           </button>

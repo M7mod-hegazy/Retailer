@@ -13,26 +13,26 @@ function fmt(v) {
 const FilterSelect = React.forwardRef(({ value, onChange, children, icon: Icon, onKeyDown }, ref) => {
   return (
     <div className="relative">
-      {Icon && <Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />}
+      {Icon && <Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />}
       <select
         ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        className={`appearance-none h-10 rounded-xl border border-slate-200/80 bg-white ${Icon ? "pr-9" : "pr-3"} pl-8 text-2sm font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 cursor-pointer shadow-sm transition-all`}
+        className={`appearance-none h-10 rounded-xl border border-border-normal/80 bg-bg-surface ${Icon ? "pr-9" : "pr-3"} pl-8 text-2sm font-bold text-text-primary outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 cursor-pointer shadow-sm transition-all`}
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+      <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
     </div>
   );
 });
 
 function RangeInput({ label, min, max, onMinChange, onMaxChange, minRef, maxRef, onMinKeyDown, onMaxKeyDown }) {
   return (
-    <div className="flex items-center rounded-xl border border-slate-200/80 bg-white h-10 overflow-hidden shadow-sm focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all">
-      <div className="px-3 bg-slate-50/80 border-l border-slate-200/80 h-full flex items-center justify-center">
-        <span className="text-[11px] font-black text-slate-500">{label}</span>
+    <div className="flex items-center rounded-xl border border-border-normal/80 bg-bg-surface h-10 overflow-hidden shadow-sm focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all">
+      <div className="px-3 bg-bg-overlay/80 border-l border-border-normal/80 h-full flex items-center justify-center">
+        <span className="text-[11px] font-black text-text-secondary">{label}</span>
       </div>
       <input
         ref={minRef}
@@ -42,9 +42,9 @@ function RangeInput({ label, min, max, onMinChange, onMaxChange, minRef, maxRef,
         onChange={(e) => onMinChange(e.target.value)}
         onKeyDown={onMinKeyDown}
         placeholder="من"
-        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
+        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-text-primary text-center outline-none"
       />
-      <div className="w-px h-4 bg-slate-200" />
+      <div className="w-px h-4 bg-border-normal" />
       <input
         ref={maxRef}
         type="number"
@@ -53,7 +53,7 @@ function RangeInput({ label, min, max, onMinChange, onMaxChange, minRef, maxRef,
         onChange={(e) => onMaxChange(e.target.value)}
         onKeyDown={onMaxKeyDown}
         placeholder="إلى"
-        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-slate-700 text-center outline-none"
+        className="w-[60px] h-full bg-transparent px-2 text-2sm font-bold text-text-primary text-center outline-none"
       />
     </div>
   );
@@ -181,13 +181,13 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
       <div className="flex flex-col gap-3" dir="rtl">
 
         {/* Search & Filters Cockpit */}
-        <div className="flex flex-col gap-3 p-4 bg-slate-50/50 border border-slate-200/60 rounded-2xl shadow-sm mb-2 relative overflow-hidden">
+        <div className="flex flex-col gap-3 p-4 bg-bg-overlay/50 border border-border-normal/60 rounded-2xl shadow-sm mb-2 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1 h-full bg-indigo-500/80" />
           
           {/* Top Row: Search */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
+              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted pointer-events-none" />
               <input
                 ref={searchRef}
                 value={search}
@@ -195,10 +195,10 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
                 onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
                 placeholder="ابحث بالاسم، الكود، الباركود..."
                 autoFocus
-                className="w-full h-12 rounded-xl border border-slate-200/80 bg-white pr-11 pl-10 text-sm font-bold text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 shadow-sm transition-all placeholder:font-normal placeholder:text-slate-400"
+                className="w-full h-12 rounded-xl border border-border-normal/80 bg-bg-surface pr-11 pl-10 text-sm font-bold text-text-primary outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50/50 shadow-sm transition-all placeholder:font-normal placeholder:text-text-muted"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                <button onClick={() => setSearch("")} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary bg-bg-overlay hover:bg-border-normal rounded-full p-1 transition-colors">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -216,7 +216,7 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
             )}
           </div>
 
-          <div className="w-full h-px bg-slate-200/60" />
+          <div className="w-full h-px bg-border-normal/60" />
 
           {/* Bottom Row: Filters */}
           <div className="flex flex-wrap items-center gap-3">
@@ -232,7 +232,7 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
               {warehouses.map((w) => <option key={w} value={w}>{w}</option>)}
             </FilterSelect>
 
-            <div className="h-6 w-px bg-slate-200/80 mx-1 hidden md:block"></div>
+            <div className="h-6 w-px bg-border-normal/80 mx-1 hidden md:block"></div>
 
             <RangeInput label="السعر" min={priceMin} max={priceMax} onMinChange={setPriceMin} onMaxChange={setPriceMax}
               minRef={priceMinRef} maxRef={priceMaxRef}
@@ -245,16 +245,16 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
 
             <div className="flex-1"></div>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none h-10 px-3.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 transition-colors shadow-sm">
+            <label className="flex items-center gap-2 cursor-pointer select-none h-10 px-3.5 rounded-xl border border-border-normal/80 bg-bg-surface hover:bg-bg-overlay transition-colors shadow-sm">
               <input
                 ref={hideZeroRef}
                 type="checkbox"
                 checked={hideZero}
                 onChange={(e) => setHideZero(e.target.checked)}
                 onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: qtyMaxRef })}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                className="w-4 h-4 rounded border-border-strong text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
               />
-              <span className="text-2sm font-bold text-slate-700">إخفاء نفاد المخزون</span>
+              <span className="text-2sm font-bold text-text-primary">إخفاء نفاد المخزون</span>
             </label>
           </div>
         </div>
@@ -262,20 +262,20 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
         {/* Stats bar */}
         {!loading && !error && (
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2 text-2sm font-bold text-slate-500">
+            <div className="flex items-center gap-2 text-2sm font-bold text-text-secondary">
               <Filter className="h-3.5 w-3.5" />
               <span>{filtered.length} صنف</span>
               {rows.length !== filtered.length && (
-                <span className="text-slate-400">من أصل {rows.length}</span>
+                <span className="text-text-muted">من أصل {rows.length}</span>
               )}
             </div>
           </div>
         )}
 
         {/* Table */}
-        <div className="overflow-auto rounded-xl border border-slate-200 shadow-sm" style={{ maxHeight: 440 }}>
+        <div className="overflow-auto rounded-xl border border-border-normal shadow-sm" style={{ maxHeight: 440 }}>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+            <div className="flex flex-col items-center justify-center py-20 text-text-muted gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
               <span className="text-sm font-bold">جاري تحميل بيانات المخزون...</span>
             </div>
@@ -285,8 +285,8 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
               <span className="text-sm font-bold">تعذر تحميل البيانات</span>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-              <Package className="h-10 w-10 text-slate-300" />
+            <div className="flex flex-col items-center justify-center py-20 text-text-muted gap-3">
+              <Package className="h-10 w-10 text-text-muted" />
               <span className="text-sm font-bold">لا توجد نتائج مطابقة</span>
               {hasFilters && (
                 <button onClick={reset} className="text-2sm font-bold text-indigo-500 hover:text-indigo-700 underline">
@@ -309,7 +309,7 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
                   <th className="px-4 py-3 text-right font-black text-[11px] tracking-wide">المخزن</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border-subtle">
                 {filtered.map((row, idx) => {
                   const qty = Number(row.quantity);
                   const isZero = qty <= 0;
@@ -318,17 +318,17 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
                     <tr
                       key={`${row.item_id}-${row.warehouse_id}-${idx}`}
                       className={`transition-colors ${
-                        isZero ? "bg-rose-50/60 hover:bg-rose-50" : isLow ? "bg-amber-50/60 hover:bg-amber-50" : "bg-white hover:bg-indigo-50/40"
+                        isZero ? "bg-rose-50/60 hover:bg-rose-50" : isLow ? "bg-amber-50/60 hover:bg-amber-50" : "bg-bg-surface hover:bg-indigo-50/40"
                       }`}
                     >
-                      <td className="px-4 py-2.5 number-fmt text-[11px] text-slate-400">{idx + 1}</td>
-                      <td className="px-4 py-2.5 font-black text-slate-800 max-w-[200px]">
+                      <td className="px-4 py-2.5 number-fmt text-[11px] text-text-muted">{idx + 1}</td>
+                      <td className="px-4 py-2.5 font-black text-text-primary max-w-[200px]">
                         <span className="block truncate">{row.item_name}</span>
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-slate-500">{row.code || "—"}</td>
-                      <td className="px-4 py-2.5 font-mono text-slate-400 text-[11px]">{row.barcode || "—"}</td>
-                      <td className="px-4 py-2.5 text-slate-500">{row.category_name || "—"}</td>
-                      <td className="px-4 py-2.5 text-slate-500">{row.unit_name || "—"}</td>
+                      <td className="px-4 py-2.5 font-mono text-text-secondary">{row.code || "—"}</td>
+                      <td className="px-4 py-2.5 font-mono text-text-muted text-[11px]">{row.barcode || "—"}</td>
+                      <td className="px-4 py-2.5 text-text-secondary">{row.category_name || "—"}</td>
+                      <td className="px-4 py-2.5 text-text-secondary">{row.unit_name || "—"}</td>
                       <td className="px-4 py-2.5 number-fmt text-emerald-700">{fmt(row.sale_price)}</td>
                       <td className="px-4 py-2.5 tabular-nums">
                         <span className={`inline-flex items-center justify-center min-w-[40px] rounded-full px-2 py-0.5 text-[11px] font-black ${
@@ -337,7 +337,7 @@ export default function AdvancedSearchModal({ open, onClose, initialFilters }) {
                           {qty}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-600 font-bold">{row.warehouse_name || "—"}</td>
+                      <td className="px-4 py-2.5 text-text-secondary font-bold">{row.warehouse_name || "—"}</td>
                     </tr>
                   );
                 })}

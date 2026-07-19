@@ -84,7 +84,7 @@ export default function RepairOrderForm() {
       <h2 className="text-xl font-black">{isEdit ? "تعديل طلب صيانة" : "طلب صيانة جديد"}</h2>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">بيانات العميل والجهاز</h3>
+        <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">بيانات العميل والجهاز</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <Select label="العميل" value={form.customer_id} onChange={e => set("customer_id", e.target.value)}>
             <option value="">بدون عميل</option>
@@ -98,7 +98,7 @@ export default function RepairOrderForm() {
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">تفاصيل العطل</h3>
+        <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">تفاصيل العطل</h3>
         <Textarea label="وصف العطل *" value={form.reported_issue} onChange={e => set("reported_issue", e.target.value)} rows={3} required />
         <div className="grid gap-4 md:grid-cols-2">
           <Select label="الأولوية" value={form.priority} onChange={e => set("priority", e.target.value)}>
@@ -109,7 +109,7 @@ export default function RepairOrderForm() {
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">التكلفة والدفعة الأولى</h3>
+        <h3 className="text-sm font-black text-text-secondary uppercase tracking-widest">التكلفة والدفعة الأولى</h3>
         <div className="grid gap-4 md:grid-cols-3">
           <Input label="التكلفة التقديرية" type="number" step="0.01" value={form.estimated_cost} onChange={e => set("estimated_cost", e.target.value)} />
           <Input label="الدفعة الأولى (إيداع)" type="number" step="0.01" value={form.deposit_amount} onChange={e => set("deposit_amount", e.target.value)} />

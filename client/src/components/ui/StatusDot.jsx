@@ -3,7 +3,7 @@ import React from "react";
 export default function StatusDot({ status }) {
   const colors = {
     active: "bg-primary",
-    inactive: "bg-white/20",
+    inactive: "bg-bg-surface/20",
     warning: "bg-warning-DEFAULT",
     error: "bg-danger-DEFAULT",
   };

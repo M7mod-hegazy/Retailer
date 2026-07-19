@@ -58,10 +58,10 @@ function InfoTip({ text }) {
   if (!text) return null;
   return (
     <span className="group relative cursor-help shrink-0">
-      <Info className="h-3 w-3 text-slate-300 hover:text-slate-500 transition-colors" />
-      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-800 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
+      <Info className="h-3 w-3 text-text-muted hover:text-text-secondary transition-colors" />
+      <div className="absolute bottom-full right-0 mb-2 z-20 hidden w-56 rounded-lg bg-slate-900 p-3 text-[11px] font-bold text-white shadow-xl leading-relaxed group-hover:block">
         {text}
-        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-800" />
+        <div className="absolute top-full right-3 -mt-1 h-2 w-2 rotate-45 bg-slate-900" />
       </div>
     </span>
   );
@@ -76,7 +76,7 @@ function DenseInput({ label, required, metaKey, lang = 'ar', ...props }) {
     (meta.defaultValue !== undefined && meta.defaultValue !== null && meta.defaultValue !== "" && props.value === meta.defaultValue)
   );
   return (
-    <label className="block space-y-1 focus-within:text-slate-900 text-slate-500 transition-colors">
+    <label className="block space-y-1 focus-within:text-text-primary text-text-secondary transition-colors">
       <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest">
         {label}
         {required && <span className="text-rose-500">*</span>}
@@ -91,10 +91,10 @@ function DenseInput({ label, required, metaKey, lang = 'ar', ...props }) {
         {...props}
         data-field-key={metaKey}
         placeholder={props.placeholder || placeholder}
-        className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-normal ${
+        className={`w-full rounded-md border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all placeholder:text-text-muted placeholder:font-normal ${
           isCriticalEmpty
-            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-            : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+            ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600 focus:ring-2 focus:ring-amber-400/20"
+            : "border-border-normal bg-bg-input text-text-primary hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
         }`}
       />
     </label>
@@ -156,17 +156,17 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
     <div className="space-y-8">
 
       {/* ═══ BRANDING ═══ */}
-      <section>
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-emerald-600 text-white">
-            <Building2 className="h-3.5 w-3.5" />
+      <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+        <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+            <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
-              {lang === 'ar' ? 'العلامة التجارية' : 'Branding'}
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
+              {lang === 'ar' ? 'بيانات المحل الأساسية' : 'Branding'}
             </h3>
-            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-              {lang === 'ar' ? 'الشعار واسم التطبيق اللذان يظهران في الشريط العلوي وشاشة الدخول' : 'Logo and app name displayed in the top bar and login screen'}
+            <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+              {lang === 'ar' ? 'اسم محلك واللوجو اللي بيظهر في البرنامج وفوق في الفواتير.' : 'Logo and app name displayed in the top bar and login screen'}
             </p>
           </div>
         </div>
@@ -174,29 +174,29 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
         {/* Upload & Preview */}
         <div className="grid gap-6 md:grid-cols-[1fr_200px] mb-6">
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-text-secondary">
               {lang === 'ar' ? 'شعار التطبيق' : 'App Logo'}
             </label>
             <div
               onClick={() => !uploading && fileRef.current?.click()}
-              className={`group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed transition-all ${
+              className={`group relative flex h-[120px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-all ${
                 uploading
                   ? 'border-emerald-300 bg-emerald-50'
-                  : 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100/50'
+                  : 'border-border-normal bg-bg-surface hover:border-emerald-400 hover:bg-emerald-50/40'
               }`}
             >
               {uploading ? (
                 <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
               ) : (
                 <>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-105 transition-transform">
-                    <Upload className="h-4 w-4 text-slate-500 group-hover:text-slate-800" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bg-overlay shadow-sm motion-safe:group-hover:scale-105 transition-transform group-hover:bg-emerald-100">
+                    <Upload className="h-4 w-4 text-text-secondary group-hover:text-emerald-600" />
                   </div>
                   <div className="text-center">
-                    <p className="text-2sm font-bold text-slate-600">
-                      {lang === 'ar' ? 'اضغط هنا لرفع الشعار' : 'Click to Upload Logo'}
+                    <p className="text-2sm font-bold text-text-secondary">
+                      {lang === 'ar' ? 'دوس هنا عشان ترفع اللوجو' : 'Click to Upload Logo'}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                    <p className="mt-0.5 text-[11px] font-bold text-text-muted uppercase tracking-widest">
                       PNG, JPG, SVG &bull; ضغط تلقائي ذكي
                     </p>
                   </div>
@@ -207,10 +207,14 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-text-secondary">
               {lang === 'ar' ? 'معاينة حية' : 'Live Preview'}
             </label>
-            <div className="relative flex h-[120px] w-full items-center justify-center rounded-sm border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={`relative flex h-[120px] w-full items-center justify-center rounded-lg border border-border-normal p-4 shadow-sm ${
+              logoPreview && !previewError
+                ? "bg-bg-surface bg-[linear-gradient(45deg,var(--bg-overlay)_25%,transparent_25%),linear-gradient(-45deg,var(--bg-overlay)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--bg-overlay)_75%),linear-gradient(-45deg,transparent_75%,var(--bg-overlay)_75%)] bg-[length:16px_16px] bg-[position:0_0,0_8px,8px_-8px,-8px_0px]"
+                : "bg-bg-surface"
+            }`}>
               {logoPreview && !previewError ? (
                 <img src={logoPreview} alt="Logo preview" className="max-h-full max-w-full object-contain" onError={() => setPreviewError(true)} />
               ) : logoPreview && previewError ? (
@@ -221,7 +225,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                   </span>
                 </div>
               ) : (
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-[11px] font-bold text-text-muted">
                   {lang === 'ar' ? 'لا يوجد شعار' : 'No Logo Preview'}
                 </span>
               )}
@@ -241,13 +245,13 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
 
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'اسم التطبيق (رئيسي)' : 'App Name'}
+            label={lang === 'ar' ? 'اسم المحل أو الشركة' : 'App Name'}
             metaKey="app_name"
             value={settings.app_name || ''}
             onChange={(e) => onChange?.('app_name', e.target.value)}
           />
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'الاسم الفرعي (يظهر تحته)' : 'Sub-title'}
+            label={lang === 'ar' ? 'جملة بتوصف نشاطك (تظهر تحت الاسم)' : 'Sub-title'}
             metaKey="app_subtitle"
             value={settings.app_subtitle || ''}
             onChange={(e) => onChange?.('app_subtitle', e.target.value)}
@@ -260,55 +264,55 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
             role="switch"
             aria-checked={settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0}
             onClick={() => onChange?.('logo_on_sidebar', settings.logo_on_sidebar === false || settings.logo_on_sidebar === 0 ? 1 : 0)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? 'bg-emerald-500' : 'bg-border-strong'}`}
           >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? '-translate-x-6' : '-translate-x-1'}`} />
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-bg-surface shadow transition-transform ${settings.logo_on_sidebar !== false && settings.logo_on_sidebar !== 0 ? '-translate-x-6' : '-translate-x-1'}`} />
           </button>
-          <span className="text-2sm font-bold text-slate-600">
-            {lang === 'ar' ? 'إظهار الشعار في القائمة الجانبية' : 'Show logo in sidebar'}
+          <span className="text-2sm font-bold text-text-secondary">
+            {lang === 'ar' ? 'اعرض اللوجو فوق في القائمة الجانبية' : 'Show logo in sidebar'}
           </span>
         </div>
       </section>
 
       {/* ═══ BRANCH INFO ═══ */}
-      <section>
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
-            <FileText className="h-3.5 w-3.5" />
+      <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+        <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white shadow-sm">
+            <FileText className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
-              {lang === 'ar' ? 'بيانات الفرع' : 'Branch Info'}
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
+              {lang === 'ar' ? 'بيانات الفروع' : 'Branch Info'}
             </h3>
-            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-              {lang === 'ar' ? 'تظهر هذه البيانات في رأس الفواتير والتقارير الرسمية' : 'Displayed in the header of invoices and official reports'}
+            <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+              {lang === 'ar' ? 'البيانات دي هتطبع على الفواتير وأي تقرير رسمي.' : 'Displayed in the header of invoices and official reports'}
             </p>
           </div>
         </div>
 
         <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'اسم الشركة (عربي)' : 'Company Name (Arabic)'}
+            label={lang === 'ar' ? 'اسم الشركة الرسمي (عربي)' : 'Company Name (Arabic)'}
             metaKey="company_name"
             required
             value={settings.company_name || ''}
             onChange={(e) => onChange('company_name', e.target.value)}
           />
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'اسم الشركة (إنجليزي)' : 'Company Name (English)'}
+            label={lang === 'ar' ? 'اسم الشركة الرسمي (إنجليزي)' : 'Company Name (English)'}
             metaKey="company_name_en"
             value={settings.company_name_en || ''}
             onChange={(e) => onChange('company_name_en', e.target.value)}
           />
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'اسم الفرع' : 'Branch Name'}
+            label={lang === 'ar' ? 'اسم الفرع (مثال: فرع الدقي)' : 'Branch Name'}
             metaKey="branch_name"
             required
             value={settings.branch_name || ''}
             onChange={(e) => onChange('branch_name', e.target.value)}
           />
           <DenseInput lang={lang}
-            label={lang === 'ar' ? 'كود الفرع' : 'Branch Code'}
+            label={lang === 'ar' ? 'كود الفرع (اختياري)' : 'Branch Code'}
             metaKey="branch_code"
             value={settings.branch_code || ''}
             onChange={(e) => onChange('branch_code', e.target.value)}
@@ -317,17 +321,17 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
       </section>
 
       {/* ═══ OFFICIAL DOCUMENTS ═══ */}
-      <section>
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-amber-600 text-white">
-            <FileText className="h-3.5 w-3.5" />
+      <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+        <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white shadow-sm">
+            <FileText className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
-              {lang === 'ar' ? 'المستندات الرسمية' : 'Official Documents'}
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
+              {lang === 'ar' ? 'ورق المحل الرسمي' : 'Official Documents'}
             </h3>
-            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-              {lang === 'ar' ? 'أرقام السجل التجاري والضريبي للامتثال — تظهر في أسفل الفواتير' : 'CR and VAT numbers for compliance — shown at the bottom of invoices'}
+            <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+              {lang === 'ar' ? 'السجل التجاري والبطاقة الضريبية عشان تبقى في السليم، وبتظهر تحت في الفاتورة.' : 'CR and VAT numbers for compliance — shown at the bottom of invoices'}
             </p>
           </div>
         </div>
@@ -349,17 +353,17 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
       </section>
 
       {/* ═══ ADDRESSES & PHONES ═══ */}
-      <section>
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-blue-600 text-white">
-            <MapPin className="h-3.5 w-3.5" />
+      <section className="rounded-lg border border-border-normal bg-bg-overlay/30 p-5 md:p-6">
+        <div className="flex items-center gap-2.5 border-b border-border-normal/70 pb-3 mb-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+            <MapPin className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">
-              {lang === 'ar' ? 'العناوين والهواتف' : 'Addresses & Phones'}
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">
+              {lang === 'ar' ? 'العناوين والتليفونات' : 'Addresses & Phones'}
             </h3>
-            <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
-              {lang === 'ar' ? 'عنوان الفرع الرئيسي وفروعه الإضافية للتواصل — تظهر في الفواتير' : 'Main branch address and additional branches for contact — shown on invoices'}
+            <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+              {lang === 'ar' ? 'عناوين وأرقام فروعك عشان تظهر للزبون في الفاتورة ويقدر يكلمك بسهولة.' : 'Main branch address and additional branches for contact — shown on invoices'}
             </p>
           </div>
         </div>
@@ -381,7 +385,7 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
               <div key={i} className="flex gap-3 items-start">
                 <div className="flex-1">
                   {i === 0 && (
-                    <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                    <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-text-secondary">
                       {lang === 'ar' ? 'العنوان الرئيسي' : 'Main Address'}
                       {isAddrCritical && (
                         <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
@@ -404,17 +408,17 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                     }}
                     placeholder={`${lang === 'ar' ? 'عنوان الفرع' : 'Branch Address'} ${i + 1}`}
                     rows={2}
-                    className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all resize-none ${
+                    className={`w-full rounded-md border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all resize-none ${
                       isAddrEmpty
-                        ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-                        : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+                        ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600 focus:ring-2 focus:ring-amber-400/20"
+                        : "border-border-normal bg-bg-input text-text-primary hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
                     }`}
                   />
                 </div>
                 <div className="flex-1 flex gap-2 items-center">
                   <div className="w-full">
                     {i === 0 && (
-                      <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+                      <span className="flex items-center gap-1.5 mb-1.5 text-[11px] font-black uppercase tracking-widest text-text-secondary">
                         {lang === 'ar' ? 'الهاتف الرئيسي' : 'Main Phone'}
                         {isPhoneCritical && (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 border border-amber-300">
@@ -437,10 +441,10 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
                         }
                       }}
                       placeholder={`${lang === 'ar' ? 'هاتف الفرع' : 'Branch Phone'} ${i + 1}`}
-                      className={`w-full rounded-sm border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all ${
+                      className={`w-full rounded-md border py-2.5 px-3 text-sm font-bold outline-none shadow-sm transition-all ${
                         isPhoneEmpty
-                          ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600"
-                          : "border-slate-200 bg-white text-slate-800 focus:border-slate-800"
+                          ? "border-amber-400 bg-amber-50 text-amber-900 focus:border-amber-600 focus:ring-2 focus:ring-amber-400/20"
+                          : "border-border-normal bg-bg-input text-text-primary hover:border-border-strong focus:border-primary focus:bg-bg-surface focus:ring-2 focus:ring-primary/20"
                       }`}
                     />
                   </div>
@@ -468,9 +472,9 @@ export function AppIdentityTab({ settings = {}, onChange, lang = 'ar' }) {
               onChange("additional_addresses", JSON.stringify([...addrs, ""]));
               onChange("additional_phones", JSON.stringify([...phones, ""]));
             }}
-            className="flex items-center gap-2 text-2sm font-black text-emerald-600 hover:text-emerald-700 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-normal bg-bg-surface py-2.5 text-2sm font-black text-emerald-600 transition-all hover:border-emerald-300 hover:bg-emerald-50/40"
           >
-            <Plus className="h-4 w-4" /> {lang === 'ar' ? 'إضافة فرع' : 'Add Branch'}
+            <Plus className="h-4 w-4" /> {lang === 'ar' ? 'ضيف فرع أو رقم جديد' : 'Add Branch'}
           </button>
         </div>
       </section>

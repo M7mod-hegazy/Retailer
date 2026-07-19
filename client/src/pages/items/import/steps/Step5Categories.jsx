@@ -42,11 +42,11 @@ export default function Step5Categories({ wizard }) {
   return (
     <div className="space-y-5" dir="rtl">
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-xl font-black text-slate-900 font-display">الفئات والأكواد</h3>
-              <p className="mt-1.5 text-sm font-medium text-slate-500 font-title">
+              <h3 className="text-xl font-black text-text-primary font-display">الفئات والأكواد</h3>
+              <p className="mt-1.5 text-sm font-medium text-text-secondary font-title">
                 راجع بادئة كل كود. إذا كان اسم الفئة موجودا من الملف فليس مطلوبا تغييره، وسيتم إنشاء الفئة بهذا الاسم وقت المعاينة والتنفيذ.
               </p>
             </div>
@@ -78,26 +78,26 @@ export default function Step5Categories({ wizard }) {
               ["صفوف بلا كود", wizard.codelessRows.length, "text-sky-700", "bg-sky-50"],
             ].map(([label, value, color, bg]) => (
               <div key={label} className={`rounded-xl border border-slate-150 ${bg}/60 p-4`}>
-                <div className="text-[10px] font-black text-slate-400 font-mono">{label}</div>
-                <div className={`mt-1 text-2xl font-black ${value > 0 ? color : "text-slate-400"}`}>{value}</div>
+                <div className="text-[10px] font-black text-text-muted font-mono">{label}</div>
+                <div className={`mt-1 text-2xl font-black ${value > 0 ? color : "text-text-muted"}`}>{value}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 shadow-inner">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-900 font-title">
-            <Wand2 className="h-4.5 w-4.5 text-slate-500" />
+        <div className="rounded-2xl border border-border-normal bg-bg-overlay/60 p-5 shadow-inner">
+          <div className="flex items-center gap-2 text-sm font-black text-text-primary font-title">
+            <Wand2 className="h-4.5 w-4.5 text-text-secondary" />
             ماذا سيحدث؟
           </div>
-          <div className="mt-4 space-y-3 text-xs font-bold leading-relaxed text-slate-600">
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="mt-4 space-y-3 text-xs font-bold leading-relaxed text-text-secondary">
+            <div className="rounded-xl border border-border-normal bg-bg-surface px-4 py-3 shadow-sm">
               1. كل فئة لها اسم ستُنشأ تلقائيا في النظام بالاسم الذي كتبته.
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="rounded-xl border border-border-normal bg-bg-surface px-4 py-3 shadow-sm">
               2. الصفوف بدون كود تحتاج اختيار بادئة لتوليد أكواد آمنة تلقائيا.
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="rounded-xl border border-border-normal bg-bg-surface px-4 py-3 shadow-sm">
               3. عند النقر على "التالي" أو "معاينة" سيتم حفظ كل الأسماء التي أدخلتها.
             </div>
           </div>
@@ -114,8 +114,8 @@ export default function Step5Categories({ wizard }) {
               <div key={entry.prefix} className={`rounded-2xl border p-5 shadow-sm transition-all duration-300 ${ready ? "border-emerald-200 bg-emerald-50/35" : "border-amber-200 bg-amber-50/50"} ${justSaved ? "ring-2 ring-emerald-300 scale-[1.01]" : ""}`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-base font-black text-slate-900 font-display">فئة الكود #{entry.prefix}</div>
-                    <div className="mt-0.5 text-xs font-bold text-slate-500 font-mono">{entry.rows.length} صف</div>
+                    <div className="text-base font-black text-text-primary font-display">فئة الكود #{entry.prefix}</div>
+                    <div className="mt-0.5 text-xs font-bold text-text-secondary font-mono">{entry.rows.length} صف</div>
                   </div>
                   <div className="flex items-center gap-2">
                     {justSaved ? (
@@ -131,7 +131,7 @@ export default function Step5Categories({ wizard }) {
                 </div>
 
                 <div className="mt-4">
-                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-black text-slate-600 font-title">
+                  <label className="mb-1.5 flex items-center gap-1.5 text-xs font-black text-text-secondary font-title">
                     <PencilLine className="h-3.5 w-3.5" />
                     اسم الفئة التي ستنشأ
                   </label>
@@ -142,7 +142,7 @@ export default function Step5Categories({ wizard }) {
                       onBlur={() => commitName(entry.prefix)}
                       onKeyDown={(e) => { if (e.key === "Enter") commitName(entry.prefix); }}
                       placeholder="اكتب اسم الفئة الجديدة..."
-                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-300 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                      className="flex-1 rounded-xl border border-border-normal bg-bg-surface px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-border-strong focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                     />
                     <button
                       type="button"
@@ -157,7 +157,7 @@ export default function Step5Categories({ wizard }) {
                 </div>
 
                 {entry.names.length ? (
-                  <div className="mt-3 rounded-xl border border-white/70 bg-white/80 px-3.5 py-2 text-xs font-bold leading-normal text-slate-600">
+                  <div className="mt-3 rounded-xl border border-border-normal/70 bg-bg-surface/80 px-3.5 py-2 text-xs font-bold leading-normal text-text-secondary">
                     أسماء مقترحة من الملف: {entry.names.join("، ")}
                   </div>
                 ) : null}
@@ -187,7 +187,7 @@ export default function Step5Categories({ wizard }) {
             <select
               onChange={(event) => wizard.autoAssignCodes(event.target.value)}
               defaultValue=""
-              className="w-full rounded-xl border border-sky-200 bg-white px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-sky-350 focus:border-sky-700 focus:ring-4 focus:ring-sky-100"
+              className="w-full rounded-xl border border-sky-200 bg-bg-surface px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-sky-350 focus:border-sky-700 focus:ring-4 focus:ring-sky-100"
             >
               <option value="">اختر بادئة للتعيين التلقائي</option>
               {wizard.systemCategories.filter((category) => category.sku_prefix).map((category) => (

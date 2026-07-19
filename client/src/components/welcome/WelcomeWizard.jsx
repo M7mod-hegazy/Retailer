@@ -34,7 +34,7 @@ export default function WelcomeWizard({ onClose }) {
       dir="rtl"
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
     >
-      <div className="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg rounded-3xl bg-bg-surface shadow-2xl overflow-hidden">
 
         {/* Close */}
         <button

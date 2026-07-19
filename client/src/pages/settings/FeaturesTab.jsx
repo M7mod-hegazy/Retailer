@@ -19,7 +19,7 @@ const FEATURES = [
     icon: Package,
     colorRole: "info",
     name: "وحدات القياس المتعددة",
-    desc: "بيع الصنف بوحدات مختلفة — كرتونة، دستة، قطعة — لكل منها سعر بيع وباركود مستقل. المخزون يُحسب دائماً بالوحدة الأساسية فقط.",
+    desc: "تبيع الصنف بكذا وحدة — كرتونة، دستة، قطعة — وكل وحدة ليها سعر وباركود لوحدها. المخزون بيتخصم بالقطعة عشان مفيش حاجة تتلخبط.",
     recommendedFor: ["سوبر ماركت", "بقالة", "جملة ونصف جملة"],
     affectedPages: [
       "قاعدة الأصناف ← قسم «وحدات إضافية» في نافذة الصنف (اسم الوحدة، المعامل، سعر وباركود لكل وحدة)",
@@ -34,8 +34,8 @@ const FEATURES = [
     key: "feature_variants",
     icon: Shirt,
     colorRole: "primary",
-    name: "المتغيرات (مقاسات وألوان)",
-    desc: "إنشاء مصفوفة مقاسات × ألوان لكل صنف أب، مع مخزون وسعر وباركود مستقل لكل متغير فرعي.",
+    name: "المقاسات والألوان",
+    desc: "تعمل صنف أساسي وتحته ألوان ومقاسات كتير، وكل واحد فيهم ليه سعر ومخزون وباركود خاص بيه.",
     recommendedFor: ["ملابس", "أحذية", "إكسسوارات"],
     affectedPages: [
       "قاعدة الأصناف ← تبويب «المتغيرات» + مولّد مصفوفة (مقاس × لون) بسعر ومخزون وصورة لكل متغير",
@@ -52,7 +52,7 @@ const FEATURES = [
     icon: Smartphone,
     colorRole: "danger",
     name: "تتبع السيريال / IMEI",
-    desc: "ربط رقم سيريال أو IMEI بكل قطعة مباعة ومشتراة، مع سجل كامل للحركة وحالة الضمان لكل رقم.",
+    desc: "تربط كل قطعة بسيريال أو IMEI، عشان تتابع حركة كل جهاز من ساعة ما تشتريه لحد ما تبيعه وتعرف حالة الضمان بتاعته.",
     recommendedFor: ["محلات موبايل", "إلكترونيات", "أجهزة"],
     affectedPages: [
       "قاعدة الأصناف ← خانة «تتبع السيريال» وشهور الضمان لكل صنف",
@@ -69,7 +69,7 @@ const FEATURES = [
     icon: Scale,
     colorRole: "warning",
     name: "باركود الميزان",
-    desc: "قراءة باركود EAN-13 الصادر من الميزان الإلكتروني واستخراج الوزن أو السعر تلقائياً عند المسح في نقطة البيع.",
+    desc: "البرنامج هيقرا الباركود اللي بيطلعه ميزان الباركود ويحسب الوزن أو السعر لوحده أول ما تضربه على الكاشير.",
     recommendedFor: ["سوبر ماركت", "جزارة", "خضار وفاكهة", "أجبان"],
     affectedPages: [
       "نقطة البيع ← قراءة باركود الميزان واستخراج الوزن/السعر تلقائياً عند المسح",
@@ -84,7 +84,7 @@ const FEATURES = [
     icon: Wrench,
     colorRole: "warning",
     name: "أوامر الصيانة والإصلاح",
-    desc: "نظام متكامل لإدارة طلبات الصيانة: استلام الجهاز، التشخيص، قطع الغيار، العمالة، الإيداع، وإصدار فاتورة عند التسليم.",
+    desc: "تستلم الأجهزة من الزباين للصيانة، وتسجل الأعطال وقطع الغيار والعمالة والفلوس اللي اتدفعت مقدم، وتطلع فاتورة في الآخر.",
     recommendedFor: ["صيانة موبايل وكمبيوتر", "أجهزة منزلية", "ترزي"],
     affectedPages: [
       "الشريط الجانبي ← صفحة «أوامر الصيانة» (جديدة تظهر فوراً)",
@@ -98,8 +98,8 @@ const FEATURES = [
     key: "feature_restaurant",
     icon: UtensilsCrossed,
     colorRole: "success",
-    name: "وضع المطعم (طاولات + وصفات)",
-    desc: "إدارة الطاولات والطلبات، المعدّلات (إضافات وتخصيصات)، الوصفات واستهلاك المكونات تلقائياً عند البيع، وطباعة تذكرة المطبخ.",
+    name: "نظام المطاعم والكافيهات",
+    desc: "تنظيم الترابيزات، الإضافات على الأكل، ومكونات الوجبات عشان تتخصم من المخزن لوحدها مع كل طلب، وتطبع شيت للمطبخ.",
     recommendedFor: ["كافيه", "مطعم", "عصائر", "كشري"],
     affectedPages: [
       "الشريط الجانبي ← صفحة «طاولات المطعم» (خريطة بصرية — جديدة)",
@@ -115,7 +115,7 @@ const FEATURES = [
     icon: Gem,
     colorRole: "warning",
     name: "تسعير الذهب والمجوهرات",
-    desc: "تسعير أصناف الذهب بالوزن × سعر عيار اليوم مع المصنعية. إدخال يومي للأسعار، وتسعير تلقائي في نقطة البيع.",
+    desc: "البرنامج بيحسب سعر الذهب (الوزن × سعر العيار بتاع النهاردة + المصنعية) لوحده أول ما تبيع.",
     recommendedFor: ["محلات الذهب", "المجوهرات"],
     affectedPages: [
       "الشريط الجانبي ← صفحة «أسعار الذهب اليوم» لإدخال سعر العيار (جديدة)",
@@ -130,8 +130,8 @@ const FEATURES = [
     key: "feature_expiry",
     icon: CalendarClock,
     colorRole: "warning",
-    name: "تتبع تواريخ الانتهاء (FEFO)",
-    desc: "تتبع دفعات الأصناف بتاريخ صلاحية لكل دفعة، مع صرف الأقرب انتهاءً أولاً (FEFO) عند البيع، وتنبيهات بالأصناف المنتهية أو القريبة من الانتهاء.",
+    name: "تواريخ الصلاحية (FEFO)",
+    desc: "تتابع البضاعة بتواريخ صلاحيتها، والبرنامج يخصم من القديم اللي هيخلص الأول، وينبهك لو في حاجة قربت تخلص صلاحيتها.",
     recommendedFor: ["سوبر ماركت", "صيدلية", "أغذية ومشروبات", "ألبان"],
     affectedPages: [
       "قاعدة الأصناف ← خانة «تتبع تواريخ الانتهاء (FEFO)» لكل صنف (يجب تفعيلها على كل صنف منفرداً)",
@@ -148,7 +148,7 @@ const FEATURES = [
     icon: ScrollText,
     colorRole: "info",
     name: "إدارة الشيكات",
-    desc: "نظام متكامل لتسجيل الشيكات الواردة والصادرة، متابعة تواريخ الاستحقاق وحالات التحصيل والارتداد، واستبدال الشيكات المرتدة.",
+    desc: "تسجل الشيكات اللي ليك واللي عليك، وتتابع مواعيدها وإيه اللي اتحصل وإيه اللي رجع.",
     recommendedFor: ["جملة", "شركات", "تجارة بالآجل"],
     affectedPages: [
       "الشريط الجانبي ← صفحة «إدارة الشيكات» (تظهر فور التفعيل)",
@@ -160,8 +160,8 @@ const FEATURES = [
     key: "feature_tax",
     icon: Receipt,
     colorRole: "danger",
-    name: "الضرائب (ضريبة القيمة المضافة)",
-    desc: "تفعيل نظام الضرائب داخل النظام: إضافة ضريبة على الفواتير، تقارير ضريبة القيمة المضافة (ضريبة مبيعات/مشتريات)، وإقرار ضريبي موجز.",
+    name: "ضريبة القيمة المضافة",
+    desc: "تزود ضريبة على الفواتير، وتطلع تقارير وإقرارات ضريبية للمبيعات والمشتريات.",
     recommendedFor: ["شركات", "تجارة إلكترونية", "جملة"],
     affectedPages: [
       "الإعدادات ← تبويب «الضرائب» لإعداد النسبة والنوع (داخل/خارج السعر)",
@@ -349,7 +349,7 @@ function SerialConfigPanel({ settings, onInlineChange }) {
           onKeyDown={(e) => e.key === " " && onInlineChange("serials_strict_mode", settings.serials_strict_mode !== 0 ? 0 : 1)}
           className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer shrink-0 ${settings.serials_strict_mode !== 0 ? "bg-danger-text" : "bg-border-normal"}`}
         >
-          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${settings.serials_strict_mode !== 0 ? "right-0.5" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg-surface shadow transition-all ${settings.serials_strict_mode !== 0 ? "right-0.5" : "left-0.5"}`} />
         </div>
         <span className="text-xs font-bold text-danger-text">الوضع الصارم — يتطلب إدخال سيريال لكل وحدة من الصنف</span>
       </label>
@@ -383,7 +383,7 @@ function FeatureCard({ feature, enabled, settings, onRequestEnable, onInlineChan
         ? `${role.border} bg-bg-surface shadow-card`
         : hasActiveConflict
           ? "border-warning-border bg-warning-bg/30 hover:border-warning-border hover:shadow-sm"
-          : "border-border-subtle bg-bg-surface hover:border-primary hover:bg-white hover:shadow-sm"
+          : "border-border-subtle bg-bg-surface hover:border-primary hover:bg-bg-surface hover:shadow-sm"
     }`}>
       <div className="p-5 space-y-4">
 
@@ -500,35 +500,20 @@ function FeatureCard({ feature, enabled, settings, onRequestEnable, onInlineChan
 }
 
 // ─── Main tab component ───────────────────────────────────────────────────────
-export default function FeaturesTab({ settings, onChange, onSilentSave }) {
+export default function FeaturesTab({ settings, onChange }) {
   const [confirmFeature, setConfirmFeature] = useState(null);
   const [saving, setSaving] = useState(false);
   const handleKeyDown = useFieldNavigation();
 
   const enabledCount = FEATURES.filter((f) => Boolean(settings[f.key])).length;
 
-  async function handleEnable(key) {
-    setSaving(true);
+  function handleEnable(key) {
     onChange(key, 1);
-    try {
-      await onSilentSave({ ...settings, [key]: 1 });
-      toast.success("تم تفعيل الميزة بنجاح");
-      setConfirmFeature(null);
-    } catch {
-      toast.error("تعذر التفعيل — تحقق من الاتصال");
-      onChange(key, 0);
-    } finally {
-      setSaving(false);
-    }
+    setConfirmFeature(null);
   }
 
-  const handleInlineChange = async (key, value) => {
+  const handleInlineChange = (key, value) => {
     onChange(key, value);
-    try {
-      await onSilentSave({ ...settings, [key]: value });
-    } catch {
-      toast.error("تعذر حفظ الإعداد");
-    }
   };
 
   // Conflict data for the confirmation modal
@@ -541,11 +526,11 @@ export default function FeaturesTab({ settings, onChange, onSilentSave }) {
       {/* Header — simple count, no misleading progress bar (fix #5) */}
       <div className="flex items-center justify-between gap-4 rounded-xl border border-border-subtle bg-bg-surface px-5 py-4">
         <div>
-          <p className="text-sm font-black text-text-primary">وحدات النظام القابلة للتفعيل</p>
+          <p className="text-sm font-black text-text-primary">إضافات وميزات النظام</p>
           <p className="text-xs text-text-muted font-bold mt-0.5">
             {enabledCount === 0
-              ? "لم يتم تفعيل أي ميزة بعد — النظام يعمل بوظائفه الأساسية فقط"
-              : `${enabledCount} ميزة مفعّلة من أصل ${FEATURES.length} — كل ميزة تُضيف صفحات وخيارات إضافية`}
+              ? "مفيش أي ميزة شغالة — النظام شغال على قد الأساسيات بس"
+              : `مشغل ${enabledCount} من أصل ${FEATURES.length} ميزة — كل ميزة بتفتحلك صفحات واختيارات جديدة`}
           </p>
         </div>
         {enabledCount > 0 && (

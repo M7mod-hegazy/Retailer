@@ -45,7 +45,7 @@ export default function FlowStepper({ stages = [], className = "" }) {
                 {stage.count != null && (
                   <span
                     className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-black ${
-                      stage.active ? "bg-white/20" : "bg-bg-base text-text-secondary"
+                      stage.active ? "bg-bg-surface/20" : "bg-bg-base text-text-secondary"
                     }`}
                   >
                     {stage.count}

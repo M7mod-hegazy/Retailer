@@ -16,9 +16,9 @@ function parseDetachedState() {
 
 function LoadingSpinner() {
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-slate-50" dir="rtl">
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-bg-overlay" dir="rtl">
       <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-      <p className="text-sm font-bold text-slate-500">جاري تحميل النافذة...</p>
+      <p className="text-sm font-bold text-text-secondary">جاري تحميل النافذة...</p>
     </div>
   );
 }
@@ -87,8 +87,8 @@ export default function DetachedModalHost() {
 
   if (!modalType) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-50" dir="rtl">
-        <p className="text-sm text-slate-400">لا توجد بيانات</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-bg-overlay" dir="rtl">
+        <p className="text-sm text-text-muted">لا توجد بيانات</p>
       </div>
     );
   }
@@ -96,11 +96,11 @@ export default function DetachedModalHost() {
   const reg = getModalRegistration(modalType);
   if (!reg) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-slate-50 p-8" dir="rtl">
-        <p className="text-sm font-medium text-slate-500">
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-bg-overlay p-8" dir="rtl">
+        <p className="text-sm font-medium text-text-secondary">
           نوع النافذة غير معروف: {modalType}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-text-muted">
           هذه النافذة المنبثقة غير مسجلة في سجل النوافذ المنفصلة
         </p>
       </div>
@@ -114,7 +114,7 @@ export default function DetachedModalHost() {
 
   return (
     <DetachedProviders>
-      <div className="h-dvh w-dvw overflow-auto bg-slate-50" dir="rtl">
+      <div className="h-dvh w-dvw overflow-auto bg-bg-overlay" dir="rtl">
         {/* Registered components are React.lazy — loaded on first render. */}
         <Suspense fallback={<LoadingSpinner />}>
           <Component {...props} />

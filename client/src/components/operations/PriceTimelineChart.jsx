@@ -20,17 +20,17 @@ function ChartTooltip({ active, payload, label, visibleLines }) {
   const visible = payload.filter(p => visibleLines[p.dataKey] && p.value != null);
   if (!visible.length) return null;
   return (
-    <div className="rounded-2xl border border-white/40 bg-white/85 backdrop-blur-2xl px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.08)] min-w-[180px]">
-      <div className="text-[11px] font-black text-slate-400 mb-2">{label}</div>
+    <div className="rounded-2xl border border-border-normal/40 bg-bg-surface/85 backdrop-blur-2xl px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.08)] min-w-[180px]">
+      <div className="text-[11px] font-black text-text-muted mb-2">{label}</div>
       {visible.map((entry, i) => {
         const meta = FIELD_META[entry.dataKey];
         return (
-          <div key={i} className="flex items-center justify-between gap-4 py-1 border-b border-slate-100 last:border-0">
-            <span className="flex items-center gap-1.5 text-[12px] font-bold text-slate-600">
+          <div key={i} className="flex items-center justify-between gap-4 py-1 border-b border-border-subtle last:border-0">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold text-text-secondary">
               <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
               {meta?.label || entry.name}
             </span>
-            <span className="text-[14px] font-black text-slate-900" style={{ color: entry.color }}>
+            <span className="text-[14px] font-black text-text-primary" style={{ color: entry.color }}>
               {money(entry.value)} ج.م
             </span>
           </div>
@@ -53,7 +53,7 @@ function CustomLegend({ fields, visibleLines, onToggle }) {
             className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all active:scale-95 ${
               isVisible
                 ? `${meta.lightBg} ${meta.text} ${meta.border} shadow-sm`
-                : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"
+                : "border-border-normal text-text-muted bg-bg-surface hover:bg-bg-overlay"
             }`}
           >
             {isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -123,7 +123,7 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
   ];
 
   return (
-    <div className="bg-white border border-slate-200/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden">
+    <div className="bg-bg-surface border border-border-normal/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-2">
@@ -131,17 +131,17 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
             <TrendingUp size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-800">اتجاه الأسعار</h3>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">تغيرات سعر البيع والشراء عبر الزمن</p>
+            <h3 className="text-sm font-black text-text-primary">اتجاه الأسعار</h3>
+            <p className="text-[10px] font-bold text-text-muted mt-0.5">تغيرات سعر البيع والشراء عبر الزمن</p>
           </div>
         </div>
 
         {/* Chart type toggle */}
-        <div className="flex p-0.5 bg-slate-100 rounded-lg">
+        <div className="flex p-0.5 bg-bg-overlay rounded-lg">
           <button onClick={() => setChartType("line")}
-            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === "line" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}>خطي</button>
+            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === "line" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary"}`}>خطي</button>
           <button onClick={() => setChartType("area")}
-            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === "area" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}>مساحة</button>
+            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === "area" ? "bg-bg-surface text-text-primary shadow-sm" : "text-text-secondary"}`}>مساحة</button>
         </div>
       </div>
 
@@ -155,7 +155,7 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
                   period === "custom"
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                    : "bg-bg-surface text-text-secondary border-border-normal hover:border-border-strong"
                 }`}
               >
                 <CalendarDays size={12} className="inline ml-1" />
@@ -165,11 +165,11 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
                 <div className="flex items-center gap-1">
                   <input type="date" value={customRange.start}
                     onChange={e => setCustomRange(c => ({ ...c, start: e.target.value }))}
-                    className="text-[11px] border border-slate-200 rounded-lg px-2 py-1.5 outline-none w-[130px] font-mono" />
-                  <span className="text-[10px] text-slate-400">—</span>
+                    className="text-[11px] border border-border-normal rounded-lg px-2 py-1.5 outline-none w-[130px] font-mono" />
+                  <span className="text-[10px] text-text-muted">—</span>
                   <input type="date" value={customRange.end}
                     onChange={e => setCustomRange(c => ({ ...c, end: e.target.value }))}
-                    className="text-[11px] border border-slate-200 rounded-lg px-2 py-1.5 outline-none w-[130px] font-mono" />
+                    className="text-[11px] border border-border-normal rounded-lg px-2 py-1.5 outline-none w-[130px] font-mono" />
                 </div>
               )}
             </div>
@@ -178,7 +178,7 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
                 period === opt.key
                   ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  : "bg-bg-surface text-text-secondary border-border-normal hover:border-border-strong"
               }`}
             >{opt.label}</button>
           )
@@ -189,14 +189,14 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
       <div className="h-[300px] min-h-[300px] relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-slate-400">
+            <div className="flex flex-col items-center gap-2 text-text-muted">
               <Activity size={24} className="animate-pulse text-indigo-500" />
               <span className="text-[11px] font-bold">تحميل البيانات...</span>
             </div>
           </div>
         ) : filteredData.length < 2 ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-slate-400">
+            <div className="flex flex-col items-center gap-2 text-text-muted">
               <Activity size={24} className="opacity-40" />
               <span className="text-[11px] font-bold">بيانات غير كافية للرسم البياني</span>
             </div>
@@ -258,34 +258,34 @@ export default function PriceTimelineChart({ itemId, currentPrices }) {
       </div>
 
       {/* Price Stats Strip */}
-      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100">
+      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border-subtle">
         {fields.map(field => {
           const meta = FIELD_META[field];
           const stats = statsByField[field];
           const isVisible = visibleLines[field];
           const trend = stats.change_pct > 0 ? "up" : stats.change_pct < 0 ? "down" : "flat";
-          const trendColor = trend === "up" ? "text-rose-600" : trend === "down" ? "text-emerald-600" : "text-slate-400";
+          const trendColor = trend === "up" ? "text-rose-600" : trend === "down" ? "text-emerald-600" : "text-text-muted";
 
           return (
-            <div key={field} className={`rounded-xl p-3 transition-all ${isVisible ? `${meta.lightBg} border ${meta.border}` : "bg-slate-50 border border-slate-100 opacity-60"}`}>
+            <div key={field} className={`rounded-xl p-3 transition-all ${isVisible ? `${meta.lightBg} border ${meta.border}` : "bg-bg-overlay border border-border-subtle opacity-60"}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-500">{meta.label}</span>
+                <span className="text-[10px] font-bold text-text-secondary">{meta.label}</span>
                 <span className={`text-[10px] font-black ${trendColor}`}>
                   {trend === "up" ? "↑" : trend === "down" ? "↓" : "–"} {Math.abs(stats.change_pct)}%
                 </span>
               </div>
-              <span className="text-lg font-black text-slate-800 block" style={isVisible ? { color: meta.color } : {}}>
+              <span className="text-lg font-black text-text-primary block" style={isVisible ? { color: meta.color } : {}}>
                 {money(stats.last)}
               </span>
-              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 mt-1">
+              <div className="flex items-center justify-between text-[9px] font-bold text-text-muted mt-1">
                 <span>متوسط {money(stats.avg)}</span>
                 <span>أعلى {money(stats.max)}</span>
                 <span>أدنى {money(stats.min)}</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[9px] font-bold text-slate-400">{stats.change_count} تغيير</span>
+                <span className="text-[9px] font-bold text-text-muted">{stats.change_count} تغيير</span>
                 {stats.volatility > 0 && (
-                  <span className={`text-[9px] font-black ${stats.volatility > 0.1 ? "text-amber-600" : "text-slate-400"}`}>
+                  <span className={`text-[9px] font-black ${stats.volatility > 0.1 ? "text-amber-600" : "text-text-muted"}`}>
                     تقلب {Math.round(stats.volatility * 100)}%
                   </span>
                 )}

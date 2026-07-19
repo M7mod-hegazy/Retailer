@@ -67,14 +67,14 @@ function fmtMoney(v) {
 function PriceDeltaIndicator({ value, original }) {
   const v = Number(value) || 0;
   const o = Number(original) || 0;
-  if (!v) return <span className="text-[11px] text-slate-400">—</span>;
+  if (!v) return <span className="text-[11px] text-text-muted">—</span>;
   const changed = o > 0 && Math.abs(v - o) > 0.001;
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-[11px] number-fmt font-bold ${changed ? (v > o ? "text-rose-600" : "text-emerald-600") : "text-slate-700"}`}>{fmtMoney(v)}</span>
+      <span className={`text-[11px] number-fmt font-bold ${changed ? (v > o ? "text-rose-600" : "text-emerald-600") : "text-text-primary"}`}>{fmtMoney(v)}</span>
       {changed && (
         <div className="flex items-center gap-1">
-          <span className="text-[8px] text-slate-400 line-through number-fmt">{fmtMoney(o)}</span>
+          <span className="text-[8px] text-text-muted line-through number-fmt">{fmtMoney(o)}</span>
           <span className={`text-[8px] font-black ${v > o ? "text-rose-500" : "text-emerald-500"}`}>
             {v > o ? "▲" : "▼"} {Math.abs(((v - o) / o) * 100).toFixed(1)}%
           </span>
@@ -130,7 +130,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
   return (
     <div className="space-y-6 p-2">
       {loading ? (
-        <div className="flex items-center justify-center h-32 text-slate-400 font-black animate-pulse">جاري التحميل...</div>
+        <div className="flex items-center justify-center h-32 text-text-muted font-black animate-pulse">جاري التحميل...</div>
       ) : (
         <>
           <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden ${
@@ -142,53 +142,53 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
                 {isReceive ? <><ArrowDownToLine className="h-6 w-6" /> استلام بضاعة</> : <><ArrowUpFromLine className="h-6 w-6" /> تسليم بضاعة</>}
               </span>
             </div>
-            <div className="flex flex-col md:border-r border-white/20 md:pr-8 relative z-10">
+            <div className="flex flex-col md:border-r border-border-normal/20 md:pr-8 relative z-10">
               <span className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-2">المخزن / الفرع</span>
               <span className="text-[18px] font-black truncate">{d.partner_branch || d.warehouse_name || "—"}</span>
             </div>
-            <div className="flex flex-col md:border-r border-white/20 md:pr-8 relative z-10">
+            <div className="flex flex-col md:border-r border-border-normal/20 md:pr-8 relative z-10">
               <span className="text-[11px] font-black uppercase tracking-widest opacity-60 mb-2">تاريخ التنفيذ</span>
               <span className="text-[16px] font-bold">{formatDateTime(d.created_at)}</span>
             </div>
           </div>
 
           {d.notes && (
-            <div className="rounded-[2rem] bg-slate-50 border border-slate-200 p-6">
-              <span className="text-2sm font-black uppercase tracking-widest text-slate-500 block mb-2">ملاحظات</span>
-              <span className="text-[15px] font-bold text-slate-700">{d.notes}</span>
+            <div className="rounded-[2rem] bg-bg-overlay border border-border-normal p-6">
+              <span className="text-2sm font-black uppercase tracking-widest text-text-secondary block mb-2">ملاحظات</span>
+              <span className="text-[15px] font-bold text-text-primary">{d.notes}</span>
             </div>
           )}
 
-          <div className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm flex flex-col max-h-[400px]">
-            <div className={`grid ${gridCols} bg-slate-50 border-b border-slate-200 px-2`}>
+          <div className="rounded-[2rem] border border-border-normal bg-bg-surface overflow-hidden shadow-sm flex flex-col max-h-[400px]">
+            <div className={`grid ${gridCols} bg-bg-overlay border-b border-border-normal px-2`}>
               {headerCols.map((h, i) => (
-                <div key={i} className={`px-4 py-4 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center ${i < headerCols.length - 1 ? "border-l border-slate-200/50" : ""} ${i === headerCols.length - 1 ? "text-slate-900" : ""}`}>
+                <div key={i} className={`px-4 py-4 text-[11px] font-black uppercase text-text-muted tracking-widest text-center ${i < headerCols.length - 1 ? "border-l border-border-normal/50" : ""} ${i === headerCols.length - 1 ? "text-text-primary" : ""}`}>
                   {h}
                 </div>
               ))}
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {lines.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-slate-400 text-sm font-black">القائمة خالية</div>
+                <div className="flex items-center justify-center h-32 text-text-muted text-sm font-black">القائمة خالية</div>
               ) : (
                 lines.map(l => (
-                  <div key={l.id} className={`grid ${gridCols} items-center rounded-xl hover:bg-slate-50 p-3 transition-colors`}>
-                    <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-400 truncate">{l.item_code || l.barcode || "—"}</div>
-                    <div className="px-3 border-l border-slate-100 text-sm font-black text-slate-900 truncate">{l.item_name}</div>
-                    <div className="px-2 text-center border-l border-slate-100 text-2sm font-bold text-slate-500">{l.unit_name || "—"}</div>
-                    <div className="px-2 text-center border-l border-slate-100 number-fmt-primary text-[13px] text-slate-900">{formatQty(l.quantity)}</div>
+                  <div key={l.id} className={`grid ${gridCols} items-center rounded-xl hover:bg-bg-overlay p-3 transition-colors`}>
+                    <div className="px-2 text-center border-l border-border-subtle font-mono text-2sm text-text-muted truncate">{l.item_code || l.barcode || "—"}</div>
+                    <div className="px-3 border-l border-border-subtle text-sm font-black text-text-primary truncate">{l.item_name}</div>
+                    <div className="px-2 text-center border-l border-border-subtle text-2sm font-bold text-text-secondary">{l.unit_name || "—"}</div>
+                    <div className="px-2 text-center border-l border-border-subtle number-fmt-primary text-[13px] text-text-primary">{formatQty(l.quantity)}</div>
                     {isReceive ? (
                       <>
-                        <div className="px-1 text-center border-l border-slate-100">
+                        <div className="px-1 text-center border-l border-border-subtle">
                           <PriceDeltaIndicator value={l.unit_cost} original={l.original_purchase_price} />
                         </div>
-                        <div className="px-1 text-center border-l border-slate-100">
+                        <div className="px-1 text-center border-l border-border-subtle">
                           <PriceDeltaIndicator value={l.selling_price} original={l.original_sale_price} />
                         </div>
-                        <div className="px-1 text-center border-l border-slate-100">
+                        <div className="px-1 text-center border-l border-border-subtle">
                           <PriceDeltaIndicator value={l.wholesale_price} original={l.original_wholesale_price} />
                         </div>
-                        <div className="px-1 text-center border-l border-slate-100 flex flex-col items-center gap-0.5">
+                        <div className="px-1 text-center border-l border-border-subtle flex flex-col items-center gap-0.5">
                           {l.original_purchase_price > 0 && Math.abs(Number(l.unit_cost) - Number(l.original_purchase_price)) > 0.001 && (
                             <PriceUpdateBadge flag={l.update_master_purchase_price} label="تكلفة" />
                           )}
@@ -201,15 +201,15 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
                           {!(l.original_purchase_price > 0 && Math.abs(Number(l.unit_cost) - Number(l.original_purchase_price)) > 0.001) &&
                            !(l.original_sale_price > 0 && Math.abs(Number(l.selling_price) - Number(l.original_sale_price)) > 0.001) &&
                            !(l.original_wholesale_price > 0 && Math.abs(Number(l.wholesale_price) - Number(l.original_wholesale_price)) > 0.001) && (
-                            <span className="text-[8px] text-slate-400">—</span>
+                            <span className="text-[8px] text-text-muted">—</span>
                           )}
                         </div>
-                        <div className="px-2 text-center number-fmt-primary text-sm font-black text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                        <div className="px-2 text-center number-fmt-primary text-sm font-black text-text-primary">{fmtMoney(l.quantity * l.unit_cost)}</div>
                       </>
                     ) : (
                       <>
-                        <div className="px-2 text-center border-l border-slate-100 font-mono text-2sm text-slate-600">{fmtMoney(l.unit_cost)}</div>
-                        <div className="px-2 text-center number-fmt-primary text-sm text-slate-800">{fmtMoney(l.quantity * l.unit_cost)}</div>
+                        <div className="px-2 text-center border-l border-border-subtle font-mono text-2sm text-text-secondary">{fmtMoney(l.unit_cost)}</div>
+                        <div className="px-2 text-center number-fmt-primary text-sm text-text-primary">{fmtMoney(l.quantity * l.unit_cost)}</div>
                       </>
                     )}
                   </div>
@@ -223,7 +223,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
                 <span className="text-[1.8rem] number-fmt-primary tracking-tighter leading-none">{formatQty(totalQty)}</span>
               </div>
               {isReceive && changedCount > 0 && (
-                <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2">
+                <div className="flex items-center gap-2 bg-bg-surface/10 rounded-xl px-4 py-2">
                   <TrendingUp className="h-4 w-4 text-amber-300" />
                   <span className="text-[11px] font-bold text-amber-200">{changedCount} صنف تغير سعره</span>
                 </div>
@@ -236,7 +236,7 @@ function TransferDetailModal({ transfer, onClose, onEdit }) {
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <button onClick={onClose} className="rounded-[1.5rem] bg-slate-100 px-10 py-4 text-sm font-black text-slate-900 hover:bg-slate-200 transition-all active:scale-95">
+            <button onClick={onClose} className="rounded-[1.5rem] bg-bg-overlay px-10 py-4 text-sm font-black text-text-primary hover:bg-border-normal transition-all active:scale-95">
               إغلاق
             </button>
             <PermissionGate page="branch_transfer" action="edit">
@@ -452,7 +452,7 @@ export default function BranchTransferPage() {
         >
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-zinc-200 shadow-sm">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm">
                 <ArrowLeftRight className="w-5 h-5 text-emerald-500" />
               </div>
               <span className="text-[11px] font-black text-zinc-400 tracking-[0.2em] uppercase">العمليات الداخلية</span>
@@ -513,7 +513,7 @@ export default function BranchTransferPage() {
             <button
               onClick={() => { setActiveTab("transfers"); setSearchTerm(""); }}
               className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
-                activeTab === "transfers" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+                activeTab === "transfers" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
               }`}
             >
               سجل الحركات
@@ -521,7 +521,7 @@ export default function BranchTransferPage() {
             <button
               onClick={() => { setActiveTab("items"); setItemQuery(""); setSelectedItemFilter(null); setItemLookupResults([]); setItemRows([]); setItemSearched(false); }}
               className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
-                activeTab === "items" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+                activeTab === "items" ? "bg-bg-surface text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
               }`}
             >
               البحث التفصيلي بالأصناف
@@ -538,7 +538,7 @@ export default function BranchTransferPage() {
                     onKeyDown={e => handleKeyDown(e, { nextRef: userIdRef, prevRef: null })}
                     placeholder="البحث برقم الوصل أو الفرع..."
                     autoFocus
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all outline-none"
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pr-10 pl-4 py-3 text-sm font-bold text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-bg-surface transition-all outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0">
@@ -657,11 +657,11 @@ export default function BranchTransferPage() {
                 <div className="flex items-center gap-2 bg-zinc-50 rounded-2xl p-2 border border-zinc-200/50">
                   <input ref={itemDateFromRef} type="date" value={itemDateFrom} onChange={e => setItemDateFrom(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: itemDateToRef, prevRef: null })}
-                    className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                    className="rounded-xl bg-bg-surface px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
                   <ArrowLeftRight className="h-4 w-4 text-zinc-300 shrink-0" />
                   <input ref={itemDateToRef} type="date" value={itemDateTo} onChange={e => setItemDateTo(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: null, prevRef: itemDateFromRef })}
-                    className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
+                    className="rounded-xl bg-bg-surface px-3 py-2 text-xs font-bold text-zinc-600 outline-none border border-zinc-100 focus:border-emerald-300" />
                   {(itemDateFrom || itemDateTo) && (
                     <button onClick={() => { setItemDateFrom(""); setItemDateTo(""); }}
                       className="flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-100 transition-colors">
@@ -677,7 +677,7 @@ export default function BranchTransferPage() {
 
         {/* Results Area */}
         <motion.div initial="hidden" animate="visible" variants={FADE_UP}
-          className="flex flex-col bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
+          className="flex flex-col bg-bg-surface rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden min-h-[420px]"
         >
           {activeTab === "transfers" ? (
             loading ? (
@@ -728,7 +728,7 @@ export default function BranchTransferPage() {
                       const isReceive = row.type === "receive";
                       return (
                         <motion.div key={row.id} layout layoutId={`transfer-${row.id}`} variants={ROW_ANIMATION}
-                          className="group flex flex-col md:flex-row md:items-center justify-between gap-6 border border-zinc-100 rounded-[1.5rem] p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer bg-white"
+                          className="group flex flex-col md:flex-row md:items-center justify-between gap-6 border border-zinc-100 rounded-[1.5rem] p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer bg-bg-surface"
                           onClick={() => handleShowDetail(row)}
                         >
                           <div className="flex items-center gap-5 lg:w-[38%]">
@@ -776,7 +776,7 @@ export default function BranchTransferPage() {
                             <PermissionGate page="branch_transfer" action="print">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handlePrintClick(row); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-zinc-100 hover:border-zinc-300 hover:text-zinc-900 transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-surface border border-zinc-200 text-zinc-400 hover:bg-zinc-100 hover:border-zinc-300 hover:text-zinc-900 transition-all"
                                 title="طباعة"
                               >
                                 <Printer className="h-4 w-4" />
@@ -785,7 +785,7 @@ export default function BranchTransferPage() {
                             {canSendWhatsApp && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleWhatsAppClick(row); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-[#25D366]/10 hover:border-[#25D366]/30 hover:text-[#25D366] transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-surface border border-zinc-200 text-zinc-400 hover:bg-[#25D366]/10 hover:border-[#25D366]/30 hover:text-[#25D366] transition-all"
                                 title="إرسال عبر واتساب"
                               >
                                 <WhatsAppIcon className="h-4 w-4" />
@@ -794,7 +794,7 @@ export default function BranchTransferPage() {
                             <PermissionGate page="branch_transfer" action="edit">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleEdit(row.id); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-surface border border-zinc-200 text-zinc-400 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 transition-all"
                                 title="تعديل"
                               >
                                 <Pencil className="h-4 w-4" />
@@ -803,13 +803,13 @@ export default function BranchTransferPage() {
                             <PermissionGate page="branch_transfer" action="delete">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all"
+                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-surface border border-zinc-200 text-zinc-400 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all"
                                 title="حذف"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </PermissionGate>
-                            <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-zinc-200 text-zinc-400 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300">
+                            <button className="flex h-12 w-12 items-center justify-center rounded-xl bg-bg-surface border border-zinc-200 text-zinc-400 group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all duration-300">
                               <Eye className="h-5 w-5" />
                             </button>
                           </div>
@@ -821,12 +821,12 @@ export default function BranchTransferPage() {
                 {totalTransferPages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       <ChevronRight className="h-4 w-4" /> السابق
                     </button>
                     <span className="text-[11px] font-black text-zinc-400">{page} / {totalTransferPages}</span>
                     <button onClick={() => setPage(p => Math.min(totalTransferPages, p + 1))} disabled={page >= totalTransferPages}
-                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                      className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                       التالي <ChevronLeft className="h-4 w-4" />
                     </button>
                   </div>
@@ -914,12 +914,12 @@ export default function BranchTransferPage() {
               {totalItemPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-100 bg-zinc-50/50">
                   <button onClick={() => setItemPage(p => Math.max(1, p - 1))} disabled={itemPage <= 1}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     <ChevronRight className="h-4 w-4" /> السابق
                   </button>
                   <span className="text-[11px] font-black text-zinc-400">{itemPage} / {totalItemPages}</span>
                   <button onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))} disabled={itemPage >= totalItemPages}
-                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="flex items-center gap-2 text-xs font-black text-zinc-700 px-5 py-2.5 rounded-xl bg-bg-surface border border-zinc-200 shadow-sm hover:shadow-md transition-shadow disabled:opacity-30 disabled:cursor-not-allowed">
                     التالي <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
@@ -977,7 +977,7 @@ export default function BranchTransferPage() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
             <motion.div initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              className="relative w-full max-w-md bg-bg-surface rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
               <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-rose-400" />
               <div className="p-7">
                 <div className="flex items-start gap-4 mb-5">

@@ -61,15 +61,15 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 h-10 px-3 rounded-xl border transition-all outline-none ${
           open 
-            ? "bg-white border-rose-300 ring-4 ring-rose-500/10 shadow-sm" 
-            : "bg-slate-50/80 border-transparent hover:bg-slate-100 hover:border-slate-200"
+            ? "bg-bg-surface border-rose-300 ring-4 ring-rose-500/10 shadow-sm" 
+            : "bg-bg-overlay/80 border-transparent hover:bg-bg-overlay hover:border-border-normal"
         }`}
       >
-        {Icon && <Icon className="h-4 w-4 text-slate-400 shrink-0" />}
-        <span className={`text-2sm font-bold truncate max-w-[120px] ${selectedOption ? 'text-zinc-800' : 'text-slate-400'}`}>
+        {Icon && <Icon className="h-4 w-4 text-text-muted shrink-0" />}
+        <span className={`text-2sm font-bold truncate max-w-[120px] ${selectedOption ? 'text-zinc-800' : 'text-text-muted'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 text-text-muted shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       <AnimatePresence>
@@ -79,13 +79,13 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute left-0 top-[calc(100%+8px)] w-56 max-w-[calc(100vw-2rem)] bg-white/90 backdrop-blur-2xl rounded-2xl border border-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-1.5 z-[100]"
+            className="absolute left-0 top-[calc(100%+8px)] w-56 max-w-[calc(100vw-2rem)] bg-bg-surface/90 backdrop-blur-2xl rounded-2xl border border-border-normal shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-1.5 z-[100]"
           >
             <div className="max-h-[250px] overflow-y-auto no-scrollbar flex flex-col gap-0.5">
               <button
                 onClick={() => { onChange(""); setOpen(false); }}
                 className={`w-full text-right px-3 py-2 rounded-xl text-2sm font-bold transition-colors ${
-                  value === "" ? "bg-rose-50 text-rose-700" : "text-slate-600 hover:bg-slate-50"
+                  value === "" ? "bg-rose-50 text-rose-700" : "text-text-secondary hover:bg-bg-overlay"
                 }`}
               >
                 {placeholder}
@@ -95,7 +95,7 @@ function CustomSelect({ value, onChange, options, placeholder, icon: Icon }) {
                   key={opt.value}
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={`w-full text-right px-3 py-2 rounded-xl text-2sm font-bold transition-colors ${
-                    value === opt.value ? "bg-rose-50 text-rose-700" : "text-slate-600 hover:bg-slate-50"
+                    value === opt.value ? "bg-rose-50 text-rose-700" : "text-text-secondary hover:bg-bg-overlay"
                   }`}
                 >
                   {opt.label}
@@ -135,7 +135,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategor
     return () => clearTimeout(timer);
   }, []);
 
-  const fieldCls = "h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 hover:bg-slate-100/80 dark:hover:bg-zinc-900/80 focus:bg-white dark:focus:bg-zinc-950 border border-slate-200/60 dark:border-zinc-800/60 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 px-3.5 text-sm font-bold text-slate-800 dark:text-zinc-200 outline-none placeholder:text-slate-400 dark:placeholder:text-zinc-550 transition-all duration-200";
+  const fieldCls = "h-10 rounded-xl bg-bg-overlay/80 dark:bg-zinc-900/50 hover:bg-bg-overlay/80 dark:hover:bg-zinc-900/80 focus:bg-bg-surface dark:focus:bg-zinc-950 border border-border-normal/60 dark:border-zinc-800/60 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 px-3.5 text-sm font-bold text-text-primary dark:text-zinc-200 outline-none placeholder:text-text-muted dark:placeholder:text-zinc-550 transition-all duration-200";
 
   function handleDateChange(e) {
     const val = e.target.value;
@@ -168,7 +168,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategor
               onKeyDown={e => { if (e.key === "Enter") categoryRef.current?.focus(); }}
               className={`${fieldCls} w-28 number-fmt-primary pl-8 pr-3`}
             />
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 pointer-events-none">ج.م</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-text-muted pointer-events-none">ج.م</span>
           </div>
         </div>
 
@@ -197,7 +197,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategor
               <option value="" disabled>اختر...</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
           </div>
         </div>
 
@@ -213,7 +213,7 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategor
               <option value="cash">💵 نقدي</option>
               {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
             </select>
-            <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
           </div>
         </div>
 
@@ -234,14 +234,14 @@ function InlineAddForm({ categories, onSubmit, saving, canBackdate, onAddCategor
               {!canBackdate && <Lock className="h-2.5 w-2.5 opacity-50" />}
             </label>
             <div className="relative flex items-center cursor-pointer" onClick={() => dateRef.current?.showPicker?.() ?? dateRef.current?.focus()}>
-              <Calendar className="absolute right-3 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+              <Calendar className="absolute right-3 h-3.5 w-3.5 text-text-muted pointer-events-none" />
               <input
                 ref={dateRef}
                 type="date" value={form.created_at} max={today()} onChange={handleDateChange}
                 className={`${fieldCls} ${!isToday ? "border-rose-400 text-rose-600" : ""} pr-10 pl-10 [&::-webkit-calendar-picker-indicator]:hidden`}
               />
               {isToday && (
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-zinc-805 rounded px-1.5 py-0.5 pointer-events-none leading-tight">اليوم</span>
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-text-muted bg-bg-overlay dark:bg-zinc-805 rounded px-1.5 py-0.5 pointer-events-none leading-tight">اليوم</span>
               )}
             </div>
           </div>
@@ -316,18 +316,18 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-2xl bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-border-normal overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+        <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between bg-bg-surface">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-rose-100 text-rose-600">
               <Command className="h-4 w-4" />
             </div>
-            <span className="text-sm font-black text-slate-800 tracking-tight">
+            <span className="text-sm font-black text-text-primary tracking-tight">
               {initialData?.id ? 'تعديل سجل المصروف' : 'تسجيل مصروف جديد'}
             </span>
           </div>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors">
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-xl bg-bg-overlay text-text-muted hover:text-text-primary hover:bg-border-normal transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -338,15 +338,15 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
               ref={inputRef}
               type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})}
               onKeyDown={e => handleKeyDown(e, { nextRef: categoryRef })}
-              className="w-full bg-transparent text-5xl md:text-7xl number-fmt-primary text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-slate-100 focus:border-rose-500 transition-colors"
+              className="w-full bg-transparent text-5xl md:text-7xl number-fmt-primary text-zinc-900 placeholder:text-slate-200 outline-none pb-2 border-b-2 border-border-subtle focus:border-rose-500 transition-colors"
             />
-            <span className="absolute left-0 bottom-4 text-2xl font-black text-slate-300 pointer-events-none">EGP</span>
+            <span className="absolute left-0 bottom-4 text-2xl font-black text-text-muted pointer-events-none">EGP</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تصنيف المصروف <span className="text-rose-500">*</span></label>
+                <label className="text-[11px] font-black text-text-muted uppercase tracking-widest">تصنيف المصروف <span className="text-rose-500">*</span></label>
                 {canAddCategory && (
                   <button
                     type="button"
@@ -361,19 +361,19 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
                 ref={categoryRef}
                 value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}
                 onKeyDown={e => handleKeyDown(e, { nextRef: methodRef, prevRef: inputRef })}
-                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
+                className="w-full h-12 bg-bg-overlay border border-border-normal rounded-xl px-4 text-sm font-bold outline-none focus:bg-bg-surface focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
               >
                 <option value="" disabled>اختر التصنيف...</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">طريقة الدفع</label>
+              <label className="text-[11px] font-black text-text-muted uppercase tracking-widest">طريقة الدفع</label>
               <select 
                 ref={methodRef}
                 value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})}
                 onKeyDown={e => handleKeyDown(e, { nextRef: descRef, prevRef: categoryRef })}
-                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
+                className="w-full h-12 bg-bg-overlay border border-border-normal rounded-xl px-4 text-sm font-bold outline-none focus:bg-bg-surface focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 appearance-none"
               >
                 <option value="cash">💵 نقدي (Cash)</option>
                 {recordMethods.map(m => <option key={m.id} value={m.name}>{(m.icon || '💳') + ' ' + m.name}</option>)}
@@ -382,31 +382,31 @@ function CommandPalette({ isOpen, onClose, initialData, categories, onSubmit, sa
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">البيان / الوصف</label>
+            <label className="text-[11px] font-black text-text-muted uppercase tracking-widest">البيان / الوصف</label>
             <input 
               ref={descRef}
               placeholder="اكتب وصفاً مختصراً للمصروف..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}
               onKeyDown={e => handleKeyDown(e, { nextRef: notesRef, prevRef: methodRef })}
-              className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
+              className="w-full h-12 bg-bg-overlay border border-border-normal rounded-xl px-4 text-sm font-bold outline-none focus:bg-bg-surface focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ملاحظات إضافية</label>
+            <label className="text-[11px] font-black text-text-muted uppercase tracking-widest">ملاحظات إضافية</label>
             <textarea 
               ref={notesRef}
               placeholder="تفاصيل إضافية (اختياري)..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}
               onKeyDown={e => handleKeyDown(e, { prevRef: descRef, onEnter: () => { if (form.amount && form.category_id && !saving) onSubmit(form); } })}
-              className="w-full h-20 resize-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-2sm font-medium outline-none focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
+              className="w-full h-20 resize-none bg-bg-overlay border border-border-normal rounded-xl px-4 py-3 text-2sm font-medium outline-none focus:bg-bg-surface focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10"
             />
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
-            <span className="px-1.5 py-0.5 rounded border border-slate-200 bg-white">Ctrl</span>
+        <div className="px-6 py-4 border-t border-border-subtle bg-bg-overlay flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[11px] font-bold text-text-muted">
+            <span className="px-1.5 py-0.5 rounded border border-border-normal bg-bg-surface">Ctrl</span>
             <span>+</span>
-            <span className="px-1.5 py-0.5 rounded border border-slate-200 bg-white">Enter</span>
+            <span className="px-1.5 py-0.5 rounded border border-border-normal bg-bg-surface">Enter</span>
             <span className="ml-2">للحفظ السريع</span>
           </div>
           <button 
@@ -627,7 +627,7 @@ export default function ExpensesListPage() {
           <h1 className="text-4xl md:text-5xl font-black text-zinc-950 tracking-tighter">
             المصروفات
           </h1>
-          <p className="text-sm font-medium text-slate-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm font-medium text-text-secondary max-w-xl mx-auto leading-relaxed">
             دفتر تشغيلي لإدارة وتسجيل كافة النفقات والمدفوعات اليومية. استخدم نموذج الإدخال السريع أعلى القائمة لتسجيل مصروف جديد، أو الفلاتر للبحث وتحديد فترات زمنية.
           </p>
           <ChooserCard
@@ -656,14 +656,14 @@ export default function ExpensesListPage() {
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-1.5 cursor-default text-[12px]" title="إجمالي مصروفات اليوم فقط">
                     <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                    <span className="font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider text-[10px]">صرف اليوم:</span>
+                    <span className="font-black text-text-muted dark:text-zinc-500 uppercase tracking-wider text-[10px]">صرف اليوم:</span>
                     <span className="font-black text-rose-600 font-mono">{fmt(stats.todayAmt)} ج.م</span>
                   </div>
-                  <div className="h-3 w-px bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+                  <div className="h-3 w-px bg-border-normal dark:bg-zinc-800 hidden sm:block" />
                   <div className="flex items-center gap-1.5 cursor-default text-[12px]" title="إجمالي الفترة المحددة بالفلتر">
-                    <Database className="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
-                    <span className="font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider text-[10px]">إجمالي الفترة:</span>
-                    <span className="font-black text-slate-700 dark:text-zinc-300 font-mono">{fmt(stats.total)} ج.م</span>
+                    <Database className="h-3.5 w-3.5 text-text-muted dark:text-zinc-500 shrink-0" />
+                    <span className="font-black text-text-muted dark:text-zinc-500 uppercase tracking-wider text-[10px]">إجمالي الفترة:</span>
+                    <span className="font-black text-text-primary dark:text-zinc-300 font-mono">{fmt(stats.total)} ج.م</span>
                   </div>
                 </div>
                 {canAddCategory && (
@@ -682,16 +682,16 @@ export default function ExpensesListPage() {
               <div className="p-3 flex flex-col md:flex-row md:items-center gap-2.5">
                 {/* Search */}
                 <div className="relative flex-1 w-full min-w-[200px]">
-                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-zinc-500" />
+                  <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted dark:text-zinc-500" />
                   <input
                     value={query} onChange={e => setQuery(e.target.value)}
                     placeholder="ابحث في البيان أو التصنيف أو الملاحظات..." 
-                    className="w-full h-10 rounded-xl bg-slate-50/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-10 text-2sm font-bold text-zinc-800 dark:text-zinc-250 outline-none hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
+                    className="w-full h-10 rounded-xl bg-bg-overlay/80 dark:bg-zinc-900/50 border border-transparent pr-10 pl-10 text-2sm font-bold text-zinc-800 dark:text-zinc-250 outline-none hover:bg-bg-overlay dark:hover:bg-zinc-900 focus:bg-bg-surface dark:focus:bg-zinc-950 focus:border-rose-450 focus:ring-4 focus:ring-rose-500/10 transition-all placeholder:text-slate-450 dark:placeholder:text-zinc-550" 
                   />
                   {query && (
                     <button
                       onClick={() => setQuery("")}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors"
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md hover:bg-border-normal dark:hover:bg-zinc-700 text-text-muted hover:text-text-secondary dark:hover:text-zinc-300 transition-colors"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -727,8 +727,8 @@ export default function ExpensesListPage() {
             <div className="absolute -inset-0.5 bg-gradient-to-r from-rose-500/5 to-orange-500/5 rounded-[28px] blur-lg opacity-70 pointer-events-none" />
             
             <div className="relative flex flex-col rounded-[26px] bg-[var(--bg-surface)] border border-[var(--border-normal)] shadow-[var(--shadow-card)] overflow-hidden">
-              <div className="px-5 py-3 bg-slate-50/50 dark:bg-zinc-900/30 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between">
-                <span className="text-[11px] font-black text-slate-500 dark:text-zinc-400 tracking-widest uppercase flex items-center gap-1.5">
+              <div className="px-5 py-3 bg-bg-overlay/50 dark:bg-zinc-900/30 border-b border-border-subtle dark:border-zinc-800/80 flex items-center justify-between">
+                <span className="text-[11px] font-black text-text-secondary dark:text-zinc-400 tracking-widest uppercase flex items-center gap-1.5">
                   <Plus className="h-3.5 w-3.5 text-rose-500" />
                   لوحة الإدخال السريع للمصروفات
                 </span>
@@ -752,12 +752,12 @@ export default function ExpensesListPage() {
       {/* The Receipt Feed */}
       <main data-help="main-table" className="relative z-10 flex-1 w-full max-w-4xl mx-auto px-6 pb-32 flex flex-col gap-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
+          <div className="flex flex-col items-center justify-center py-20 text-text-muted gap-4">
             <RefreshCw className="h-8 w-8 animate-spin opacity-50" />
             <span className="text-[11px] font-black tracking-widest uppercase">جاري المزامنة...</span>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
+          <div className="flex flex-col items-center justify-center py-20 text-text-muted gap-4">
             <Database className="h-12 w-12 stroke-[1]" />
             <span className="text-sm font-black">لا توجد سجلات تطابق بحثك</span>
           </div>
@@ -767,10 +767,10 @@ export default function ExpensesListPage() {
               key={date} className="flex flex-col gap-3"
             >
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-black text-slate-500 font-mono tracking-widest shadow-sm">
+                <span className="px-3 py-1 rounded-full bg-bg-overlay border border-border-normal text-[11px] font-black text-text-secondary font-mono tracking-widest shadow-sm">
                   {date}
                 </span>
-                <div className="flex-1 h-px bg-slate-100" />
+                <div className="flex-1 h-px bg-bg-overlay" />
               </div>
               
               <div className="flex flex-col gap-2">
@@ -778,11 +778,11 @@ export default function ExpensesListPage() {
                   <div 
                     key={row.id} 
                     onClick={() => openEdit(row)}
-                    className="group relative bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                    className="group relative bg-bg-surface rounded-3xl p-5 border border-border-subtle shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-border-normal transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
                   >
                     {/* Left Side: Avatar + Details */}
                     <div className="flex items-start gap-4">
-                      <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-slate-50 text-slate-400 border border-slate-100 shrink-0">
+                      <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-bg-overlay text-text-muted border border-border-subtle shrink-0">
                         {row.payment_method === 'cash' ? <Banknote className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -791,21 +791,21 @@ export default function ExpensesListPage() {
                             <Highlight text={row.category_name || "غير مصنف"} query={query} />
                           </span>
                           {row.description && (
-                            <span className="text-sm font-medium text-slate-400">
+                            <span className="text-sm font-medium text-text-muted">
                               <Highlight text={row.description} query={query} />
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400 font-mono">
+                        <div className="flex items-center gap-3 text-[11px] font-bold text-text-muted font-mono">
                           <span>{row.doc_no || `EXP-${String(row.id).padStart(5, "0")}`}</span>
-                          <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                          <span className="w-1 h-1 rounded-full bg-border-strong shrink-0" />
                           <span className="font-sans font-medium">
                             {{ cash: "نقدي", bank_transfer: "تحويل بنكي", InstaPay: "إنستا باي" }[row.payment_method] || row.payment_method}
                           </span>
                           {row.notes && (
                             <>
-                              <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-                              <span className="truncate max-w-[200px] text-slate-500 font-sans"><Highlight text={row.notes} query={query} /></span>
+                              <span className="w-1 h-1 rounded-full bg-border-strong shrink-0" />
+                              <span className="truncate max-w-[200px] text-text-secondary font-sans"><Highlight text={row.notes} query={query} /></span>
                             </>
                           )}
                         </div>
@@ -819,7 +819,7 @@ export default function ExpensesListPage() {
                           <span className="text-xl number-fmt-primary text-rose-600 tracking-tighter">
                             -{fmt(row.amount)}
                           </span>
-                          <span className="text-[11px] font-black text-slate-300">EGP</span>
+                          <span className="text-[11px] font-black text-text-muted">EGP</span>
                         </div>
                       </div>
                       
@@ -831,22 +831,22 @@ export default function ExpensesListPage() {
                           <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             <PermissionGate page="expenses" action="edit">
                               {locked ? (
-                                <button disabled title="يحتاج صلاحية تعديل التواريخ السابقة" className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-300 cursor-not-allowed">
+                                <button disabled title="يحتاج صلاحية تعديل التواريخ السابقة" className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-overlay text-text-muted cursor-not-allowed">
                                   <Lock className="h-4 w-4" />
                                 </button>
                               ) : (
-                                <button onClick={() => openEdit(row)} title="تعديل" className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-zinc-900 hover:bg-slate-100 transition-all">
+                                <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} title="تعديل" className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-overlay text-text-muted hover:text-zinc-900 hover:bg-bg-overlay transition-all">
                                   <Pencil className="h-4 w-4" />
                                 </button>
                               )}
                             </PermissionGate>
                             <PermissionGate page="expenses" action="delete">
                               {locked ? (
-                                <button disabled title="يحتاج صلاحية تعديل التواريخ السابقة" className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-300 cursor-not-allowed">
+                                <button disabled title="يحتاج صلاحية تعديل التواريخ السابقة" className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-overlay text-text-muted cursor-not-allowed">
                                   <Lock className="h-4 w-4" />
                                 </button>
                               ) : (
-                                <button onClick={() => handleDelete(row.id)} title="حذف" className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all">
+                                <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }} title="حذف" className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-overlay text-text-muted hover:text-rose-600 hover:bg-rose-50 transition-all">
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               )}
@@ -943,20 +943,20 @@ function QuickCategoryModal({ isOpen, onClose, onSubmit, saving, title, colorThe
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative w-full max-w-md bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-white p-6 overflow-hidden flex flex-col"
+        className="relative w-full max-w-md bg-[var(--bg-surface)] rounded-3xl shadow-2xl border border-border-normal p-6 overflow-hidden flex flex-col"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <h3 className="text-md font-black text-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
+          <h3 className="text-md font-black text-text-primary">
             {title}
           </h3>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors">
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-xl bg-bg-overlay text-text-muted hover:text-text-primary hover:bg-border-normal transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) onSubmit(name.trim()); }} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">اسم القسم الجديد</label>
+            <label className="text-[11px] font-black text-text-muted uppercase tracking-widest">اسم القسم الجديد</label>
             <input 
               ref={inputRef}
               type="text"
@@ -964,7 +964,7 @@ function QuickCategoryModal({ isOpen, onClose, onSubmit, saving, title, colorThe
               placeholder="مثلاً: صيانة، كهرباء، رواتب..."
               value={name}
               onChange={e => setName(e.target.value)}
-              className={`w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white transition-all ${colorClasses.border}`}
+              className={`w-full h-11 bg-bg-overlay border border-border-normal rounded-xl px-4 text-sm font-bold outline-none focus:bg-bg-surface transition-all ${colorClasses.border}`}
             />
           </div>
 
@@ -972,7 +972,7 @@ function QuickCategoryModal({ isOpen, onClose, onSubmit, saving, title, colorThe
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 h-10 text-sm font-black text-slate-500 hover:bg-slate-50 transition-colors"
+              className="rounded-xl border border-border-normal px-4 h-10 text-sm font-black text-text-secondary hover:bg-bg-overlay transition-colors"
             >
               إلغاء
             </button>

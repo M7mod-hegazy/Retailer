@@ -5,6 +5,7 @@ import PageWrapper from "../../components/ui/PageWrapper";
 import { Tabs } from "../../components/ui/Tabs";
 import WarehousesPage from "../definitions/WarehousesPage";
 import TreasuriesPage from "../definitions/TreasuriesPage";
+import { usePageTour } from "../../hooks/usePageTour";
 
 const tabs = [
   { value: "warehouses", label: "المخازن", icon: Warehouse },
@@ -12,6 +13,7 @@ const tabs = [
 ];
 
 export default function ResourcesWorkspacePage() {
+  usePageTour('resources_workspace');
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabs.some((tab) => tab.value === searchParams.get("tab"))
     ? searchParams.get("tab")
@@ -24,14 +26,14 @@ export default function ResourcesWorkspacePage() {
   return (
     <PageWrapper className="mx-auto max-w-[1440px] px-4 py-4" data-help-root="resources_workspace">
       <section className="space-y-5">
-        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div className="rounded-[28px] border border-border-normal bg-bg-surface px-5 py-5 shadow-sm">
           <div className="flex items-center gap-3" data-help="workspace-header">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <Warehouse className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">البنية التشغيلية</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-black text-text-primary">البنية التشغيلية</h1>
+              <p className="mt-1 text-sm text-text-secondary">
                 تعريف موارد العمل الأساسية مثل المخازن والخزائن داخل مساحة تنظيمية واحدة.
               </p>
             </div>

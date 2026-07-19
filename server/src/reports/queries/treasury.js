@@ -101,9 +101,12 @@ function paymentMethodFlow(startDate, endDate, opts = {}) {
 
   const mergeMap = new Map();
   for (const row of [...nonMulti, ...multiSplits]) {
-    const key = `${row.payment_type}::${row.date}`;
+    let pt = row.payment_type || "cash";
+    if (pt === "نقدي" || pt.includes("نقدي -") || pt.includes("نقدي")) pt = "cash";
+    
+    const key = `${pt}::${row.date}`;
     if (!mergeMap.has(key)) {
-      mergeMap.set(key, { ...row, transaction_count: Number(row.transaction_count), total_amount: Number(row.total_amount) });
+      mergeMap.set(key, { ...row, payment_type: pt, transaction_count: Number(row.transaction_count), total_amount: Number(row.total_amount) });
     } else {
       const e = mergeMap.get(key);
       e.transaction_count += Number(row.transaction_count);

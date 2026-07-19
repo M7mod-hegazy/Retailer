@@ -23,7 +23,7 @@ export default function PermissionDeniedModal({ open, onClose, page, action }) {
           ليس لديك صلاحية <span className="text-rose-600">{actionLabel}</span>{" "}
           في <span className="text-rose-600">{pageLabel}</span>
         </p>
-        <p className="text-[11px] font-mono text-text-secondary bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+        <p className="text-[11px] font-mono text-text-secondary bg-bg-overlay px-3 py-1.5 rounded-lg border border-border-normal">
           {page}:{action}
         </p>
       </div>

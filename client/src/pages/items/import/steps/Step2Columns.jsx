@@ -21,11 +21,11 @@ export default function Step2Columns({ wizard }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-xl font-black text-slate-900 font-display">معاينة وربط أعمدة الملف</h3>
-              <p className="mt-1 text-sm font-medium text-slate-500 font-title">
+              <h3 className="text-xl font-black text-text-primary font-display">معاينة وربط أعمدة الملف</h3>
+              <p className="mt-1 text-sm font-medium text-text-secondary font-title">
                 راجع كل عمود قبل المتابعة. أي عمود تختار له "غير مستورد" لن يدخل في عملية الاستيراد.
               </p>
             </div>
@@ -41,19 +41,19 @@ export default function Step2Columns({ wizard }) {
 
           <div className="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-4">
             {[
-              ["الأعمدة", totalColumns, "text-slate-900"],
+              ["الأعمدة", totalColumns, "text-text-primary"],
               ["المربوط", mappedCount, "text-emerald-700"],
-              ["غير مستورد", ignoredColumns, "text-slate-500"],
+              ["غير مستورد", ignoredColumns, "text-text-secondary"],
               ["ثقة الربط", `${confidence}%`, "text-indigo-650"],
             ].map(([label, value, colorClass]) => (
-              <div key={label} className="rounded-xl border border-slate-150 bg-slate-50/60 p-4 transition-all duration-200 hover:bg-slate-50">
-                <div className="text-[10px] font-black text-slate-400 font-mono tracking-wider">{label}</div>
+              <div key={label} className="rounded-xl border border-slate-150 bg-bg-overlay/60 p-4 transition-all duration-200 hover:bg-bg-overlay">
+                <div className="text-[10px] font-black text-text-muted font-mono tracking-wider">{label}</div>
                 <div className={`mt-1.5 text-2xl font-black ${colorClass}`}>{value}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-5 relative h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-5 relative h-2 overflow-hidden rounded-full bg-bg-overlay">
             <div 
               className={`h-full rounded-full transition-all duration-500 ${mappedName ? "bg-gradient-to-r from-emerald-555 to-emerald-400" : "bg-gradient-to-r from-amber-500 to-amber-400"}`} 
               style={{ width: `${confidence}%` }} 
@@ -61,15 +61,15 @@ export default function Step2Columns({ wizard }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 shadow-inner">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-900 font-title">
-            <Eye className="h-4.5 w-4.5 text-slate-500" />
+        <div className="rounded-2xl border border-border-normal/80 bg-bg-overlay/50 p-5 shadow-inner">
+          <div className="flex items-center gap-2 text-sm font-black text-text-primary font-title">
+            <Eye className="h-4.5 w-4.5 text-text-secondary" />
             ملخص ما سيحدث
           </div>
           <div className="mt-4 space-y-3 text-sm font-semibold text-slate-650">
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">سيتم قراءة البيانات بعد صف العناوين رقم {(wizard.headerIndex || 0) + 1}.</div>
-            <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm">ربط عمود جديد بنفس الحقل ينقل الربط إليه تلقائيا ويزيل الربط القديم.</div>
-            <div className={`rounded-xl border px-4 py-3 shadow-sm transition-all duration-300 ${usefulIgnored ? "border-amber-250 bg-amber-50/70 text-amber-800" : "border-slate-200/60 bg-white"}`}>
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">سيتم قراءة البيانات بعد صف العناوين رقم {(wizard.headerIndex || 0) + 1}.</div>
+            <div className="rounded-xl border border-border-normal/60 bg-bg-surface px-4 py-3 shadow-sm">ربط عمود جديد بنفس الحقل ينقل الربط إليه تلقائيا ويزيل الربط القديم.</div>
+            <div className={`rounded-xl border px-4 py-3 shadow-sm transition-all duration-300 ${usefulIgnored ? "border-amber-250 bg-amber-50/70 text-amber-800" : "border-border-normal/60 bg-bg-surface"}`}>
               {usefulIgnored ? `${usefulIgnored} عمود يحتوي بيانات لكنه غير مستورد. راجعه قبل المتابعة.` : "لا توجد أعمدة ذات بيانات واضحة متروكة بدون ربط."}
             </div>
           </div>
@@ -93,25 +93,25 @@ export default function Step2Columns({ wizard }) {
           return (
             <div 
               key={`${header}-${index}`} 
-              className={`rounded-2xl border bg-white p-4.5 shadow-sm transition-all duration-300 ${
+              className={`rounded-2xl border bg-bg-surface p-4.5 shadow-sm transition-all duration-300 ${
                 field 
                   ? "border-emerald-250 ring-1 ring-emerald-50/40" 
                   : hasUsefulData 
                   ? "border-amber-250 ring-1 ring-amber-50/40" 
-                  : "border-slate-200 hover:border-slate-350"
+                  : "border-border-normal hover:border-slate-350"
               }`}
             >
               <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-black font-mono text-slate-500">عمود {index + 1}</span>
-                    <h4 className="truncate text-base font-black text-slate-900 font-display">{header || `بدون عنوان ${index + 1}`}</h4>
+                    <span className="rounded-lg bg-bg-overlay px-2.5 py-1 text-[10px] font-black font-mono text-text-secondary">عمود {index + 1}</span>
+                    <h4 className="truncate text-base font-black text-text-primary font-display">{header || `بدون عنوان ${index + 1}`}</h4>
                     {field ? (
                       <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200/50 shadow-sm">
                         <Link2 className="h-3.5 w-3.5" /> {selectedField?.label || field}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-bg-overlay px-2.5 py-1 text-xs font-black text-text-secondary">
                         <MinusCircle className="h-3.5 w-3.5" /> غير مستورد
                       </span>
                     )}
@@ -119,22 +119,22 @@ export default function Step2Columns({ wizard }) {
 
                   <div className="mt-4 grid gap-2.5 sm:grid-cols-4">
                     {samples.length ? samples.map((sample, sampleIndex) => (
-                      <div key={`${sampleIndex}-${sample}`} className="min-h-[44px] rounded-xl border border-slate-150 bg-slate-50/40 px-3 py-2.5 text-xs font-bold text-slate-650 transition hover:bg-slate-50">
-                        <div className="text-[9px] font-black text-slate-400 font-mono tracking-wide">عينة {sampleIndex + 1}</div>
-                        <div className="mt-1 truncate font-mono text-slate-700" title={String(sample)}>{String(sample)}</div>
+                      <div key={`${sampleIndex}-${sample}`} className="min-h-[44px] rounded-xl border border-slate-150 bg-bg-overlay/40 px-3 py-2.5 text-xs font-bold text-slate-650 transition hover:bg-bg-overlay">
+                        <div className="text-[9px] font-black text-text-muted font-mono tracking-wide">عينة {sampleIndex + 1}</div>
+                        <div className="mt-1 truncate font-mono text-text-primary" title={String(sample)}>{String(sample)}</div>
                       </div>
                     )) : (
-                      <div className="rounded-xl border border-slate-100 bg-slate-50/40 px-3 py-3 text-xs font-bold text-slate-400 md:col-span-4 text-center">لا توجد عينات واضحة في أول الصفوف.</div>
+                      <div className="rounded-xl border border-border-subtle bg-bg-overlay/40 px-3 py-3 text-xs font-bold text-text-muted md:col-span-4 text-center">لا توجد عينات واضحة في أول الصفوف.</div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col justify-center border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0 lg:border-r lg:pr-4">
-                  <label className="mb-1.5 block text-xs font-black text-slate-500 font-title">حقل النظام</label>
+                <div className="flex flex-col justify-center border-t border-border-subtle pt-3 lg:border-t-0 lg:pt-0 lg:border-r lg:pr-4">
+                  <label className="mb-1.5 block text-xs font-black text-text-secondary font-title">حقل النظام</label>
                   <select 
                     value={field} 
                     onChange={(event) => wizard.updateMapping(index, event.target.value)} 
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-350 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
+                    className="w-full rounded-xl border border-border-normal bg-bg-surface px-3.5 py-2.5 text-sm font-bold outline-none shadow-sm transition hover:border-slate-350 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
                   >
                     <option value="">غير مستورد</option>
                     {wizard.ITEM_FIELDS.map((itemField) => <option key={itemField.key} value={itemField.key}>{itemField.label}</option>)}
@@ -144,7 +144,7 @@ export default function Step2Columns({ wizard }) {
                       ? "bg-emerald-50/70 text-emerald-700 ring-emerald-100/50" 
                       : hasUsefulData 
                       ? "bg-amber-50/70 text-amber-700 ring-amber-100/50" 
-                      : "bg-slate-50 text-slate-400 ring-slate-100"
+                      : "bg-bg-overlay text-text-muted ring-slate-100"
                   }`}>
                     {field ? `سيستخدم كحقل: ${selectedField?.label || field}` : hasUsefulData ? "هذا العمود سيترك خارج الاستيراد." : "يمكن تركه خارج الاستيراد."}
                   </div>

@@ -8,8 +8,10 @@ import PageWrapper from "../../components/ui/PageWrapper";
 import Button from "../../components/ui/Button";
 import PermissionGate from "../../components/ui/PermissionGate";
 import { useFieldNavigation } from "../../hooks/useFieldNavigation";
+import { usePageTour } from "../../hooks/usePageTour";
 
 export default function EmployeeAdjustments() {
+  usePageTour('employee_adjustments');
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   
@@ -178,7 +180,7 @@ export default function EmployeeAdjustments() {
             rowKey="id"
             className="border-0"
             columns={[
-              { id: "id", header: "#", width: 80, sortable: true, cellClass: "font-mono font-bold text-slate-500" },
+              { id: "id", header: "#", width: 80, sortable: true, cellClass: "font-mono font-bold text-text-secondary" },
               { id: "created_at", header: "التاريخ", width: 150, sortable: true, render: r => new Date(r.created_at).toLocaleString("en-US") },
               { id: "adjustment_type", header: "النوع", width: 100, sortable: true, render: r => r.adjustment_type === 'incentive' ? <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-sm text-[11px]">حافز +</span> : <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-sm text-[11px]">جزاء -</span> },
               { id: "amount", header: "القيمة", width: 120, sortable: true, cellClass: "font-mono font-black" },

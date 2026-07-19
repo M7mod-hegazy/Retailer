@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { usePageTour } from "../../hooks/usePageTour";
 import {
   ArrowDownToLine, ArrowUpFromLine, ArrowLeft, Package, ImageIcon,
   Trash2, Warehouse, FileText, Settings, Printer, CheckCircle, ShoppingCart, Plus, CalendarClock,
@@ -47,6 +48,7 @@ function fmtDateTime(d) {
 
 
 export default function BranchTransferFormPage() {
+  usePageTour('branch_transfer_form');
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const [searchParams] = useSearchParams();
@@ -616,22 +618,22 @@ export default function BranchTransferFormPage() {
 
   const baseColumns = [
     {
-      id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-slate-400 border-l border-slate-100", sortable: false,
+      id: "index", header: "#", width: 40, headerClass: "text-center", cellClass: "text-center font-mono text-[11px] text-text-muted border-l border-border-subtle", sortable: false,
       render: (_, i) => i + 1,
     },
     {
-      id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-slate-500 border-l border-slate-100 text-center",
+      id: "code", header: "الكود", width: 100, sortable: true, headerClass: "text-center", cellClass: "font-mono text-[11px] font-black tracking-wider text-text-secondary border-l border-border-subtle text-center",
       render: (l) => l.code,
     },
     {
-      id: "name", header: "البيان", width: 200, sortable: true, cellClass: "font-black text-slate-800 border-l border-slate-100 px-2", headerClass: "text-right px-2",
+      id: "name", header: "البيان", width: 200, sortable: true, cellClass: "font-black text-text-primary border-l border-border-subtle px-2", headerClass: "text-right px-2",
       render: (l) => (
         <div className="flex items-center gap-2">
           {l.primary_image_url && (
             <img
               src={resolveImageUrl(l.primary_image_url)}
               alt="product"
-              className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-slate-200"
+              className="w-7 h-7 shrink-0 object-cover rounded-[6px] cursor-pointer hover:scale-110 transition-transform shadow-sm border border-border-normal"
               onClick={() => { setImagePreviewUrl(l.primary_image_url); setImageModalOpen(true); }}
             />
           )}
@@ -641,11 +643,11 @@ export default function BranchTransferFormPage() {
       sortValue: (l) => l.item_name,
     },
     {
-      id: "unit", header: "الوحدة", width: 80, sortable: false, headerClass: "text-center", cellClass: "text-center text-2sm font-bold text-slate-500 border-l border-slate-100",
+      id: "unit", header: "الوحدة", width: 80, sortable: false, headerClass: "text-center", cellClass: "text-center text-2sm font-bold text-text-secondary border-l border-border-subtle",
       render: (l) => l.unit_name || "—",
     },
     {
-      id: "warehouse", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      id: "warehouse", header: "المخزن", width: 130, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
       render: (l, i) => {
         const hasStock = l.warehouse_id ? (getVirtualStock(l.item_id, l.warehouse_id) || 0) > 0 : false;
         const isOut = !isReceive && l.warehouse_id && !hasStock && Number(l.quantity) > 0;
@@ -653,7 +655,7 @@ export default function BranchTransferFormPage() {
           <select value={l.warehouse_id}
             onChange={(e) => updateLineField(i, "warehouse_id", e.target.value)}
             className={`w-full h-[40px] text-center text-2sm font-bold outline-none border-0 ring-0 focus:ring-0 transition-colors cursor-pointer ${
-              isOut ? "bg-rose-50 text-rose-700" : "bg-transparent text-slate-600 focus:bg-indigo-50/50"
+              isOut ? "bg-rose-50 text-rose-700" : "bg-transparent text-text-secondary focus:bg-indigo-50/50"
             }`}
           >
             {warehouses.map(w => {
@@ -665,7 +667,7 @@ export default function BranchTransferFormPage() {
       },
     },
     {
-      id: "quantity", header: "الكمية", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      id: "quantity", header: "الكمية", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
       render: (l, i) => {
         const maxQ = getEffectiveMaxQty(l.item_id, l.warehouse_id);
         const hasLimit = maxQ !== Infinity;
@@ -685,7 +687,7 @@ export default function BranchTransferFormPage() {
               className={`w-[52px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 focus:bg-indigo-50/50 transition-colors ${atLimit ? "text-rose-600" : "bg-transparent"}`}
             />
             {hasLimit && (
-              <span className={`text-[9px] font-black leading-none shrink-0 ${atLimit ? "text-rose-500" : "text-slate-400"}`}>
+              <span className={`text-[9px] font-black leading-none shrink-0 ${atLimit ? "text-rose-500" : "text-text-muted"}`}>
                 {atLimit ? "نفد" : `+${remaining}`}
               </span>
             )}
@@ -697,7 +699,7 @@ export default function BranchTransferFormPage() {
 
   const extraColumns = [
     {
-      id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+      id: "unit_cost", header: "التكلفة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => {
           const changed = isReceive && Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0;
           const willUpdate = l.update_master_purchase_price !== false && l.update_master_purchase_price !== 0;
@@ -707,13 +709,13 @@ export default function BranchTransferFormPage() {
                 type="number" step="any"
                 value={l.unit_cost}
                 onChange={(e) => updateLineField(i, "unit_cost", Number(e.target.value))}
-                className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+                className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-text-primary"}`}
               />
               {changed && (
                 <div className="flex flex-col items-center gap-0.5 pb-0.5">
                   <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                    <span className="text-slate-400 number-fmt">{Number(l.original_purchase_price).toFixed(2)}</span>
-                    <span className="text-slate-300">→</span>
+                    <span className="text-text-muted number-fmt">{Number(l.original_purchase_price).toFixed(2)}</span>
+                    <span className="text-text-muted">→</span>
                     <span className={`number-fmt ${Number(l.unit_cost) > Number(l.original_purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.unit_cost).toFixed(2)}</span>
                   </span>
                   <button type="button"
@@ -734,7 +736,7 @@ export default function BranchTransferFormPage() {
       },
     ...(isReceive ? [
       {
-        id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        id: "selling_price", header: "سعر البيع", width: 110, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => {
           const changed = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
           const willUpdate = l.update_master_sale_price !== false && l.update_master_sale_price !== 0;
@@ -749,8 +751,8 @@ export default function BranchTransferFormPage() {
               {changed && (
                 <div className="flex flex-col items-center gap-0.5 pb-0.5">
                   <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                    <span className="text-slate-400 number-fmt">{Number(l.original_sale_price).toFixed(2)}</span>
-                    <span className="text-slate-300">→</span>
+                    <span className="text-text-muted number-fmt">{Number(l.original_sale_price).toFixed(2)}</span>
+                    <span className="text-text-muted">→</span>
                     <span className={`number-fmt ${Number(l.selling_price) > Number(l.original_sale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.selling_price).toFixed(2)}</span>
                   </span>
                   <button type="button"
@@ -770,7 +772,7 @@ export default function BranchTransferFormPage() {
         },
       },
       {
-        id: "profit_pct", header: "نسبة الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        id: "profit_pct", header: "نسبة الربح", width: 90, sortable: false, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => {
           const cost = Number(l.unit_cost) || 0;
           const price = Number(l.selling_price) || 0;
@@ -790,7 +792,7 @@ export default function BranchTransferFormPage() {
         },
       },
       {
-        id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        id: "wholesale_price", header: "جملة", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => {
           const changed = Number(l.wholesale_price) !== Number(l.original_wholesale_price) && Number(l.wholesale_price) > 0;
           const willUpdate = l.update_master_wholesale_price !== false && l.update_master_wholesale_price !== 0;
@@ -800,13 +802,13 @@ export default function BranchTransferFormPage() {
                 type="number" step="any"
                 value={l.wholesale_price ?? 0}
                 onChange={(e) => updateLineField(i, "wholesale_price", Number(e.target.value))}
-                className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-slate-700"}`}
+                className={`w-full h-[32px] text-center text-sm number-fmt-primary outline-none border-0 ring-0 focus:ring-0 transition-colors ${changed ? "bg-amber-50 text-amber-800" : "bg-transparent focus:bg-emerald-50/50 text-text-primary"}`}
               />
               {changed && (
                 <div className="flex flex-col items-center gap-0.5 pb-0.5">
                   <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                    <span className="text-slate-400 number-fmt">{Number(l.original_wholesale_price).toFixed(2)}</span>
-                    <span className="text-slate-300">→</span>
+                    <span className="text-text-muted number-fmt">{Number(l.original_wholesale_price).toFixed(2)}</span>
+                    <span className="text-text-muted">→</span>
                     <span className={`number-fmt ${Number(l.wholesale_price) > Number(l.original_wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(l.wholesale_price).toFixed(2)}</span>
                   </span>
                   <button type="button"
@@ -826,7 +828,7 @@ export default function BranchTransferFormPage() {
         },
       },
       {
-        id: "locks", header: "تحديث السعر", width: 100, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-slate-100",
+        id: "locks", header: "تحديث السعر", width: 100, sortable: false, headerClass: "text-center px-1 text-[10px]", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => {
           const costChanged = Number(l.unit_cost) !== Number(l.original_purchase_price) && Number(l.unit_cost) > 0;
           const saleChanged = Number(l.selling_price) !== Number(l.original_sale_price) && Number(l.selling_price) > 0;
@@ -857,7 +859,7 @@ export default function BranchTransferFormPage() {
       },
     ] : [
       {
-        id: "selling_price", header: "مستهلك", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-slate-100",
+        id: "selling_price", header: "مستهلك", width: 100, sortable: true, headerClass: "text-center", cellClass: "p-0 border-l border-border-subtle",
         render: (l, i) => (
           <input
             type="number" step="any"
@@ -869,7 +871,7 @@ export default function BranchTransferFormPage() {
       },
     ]),
     {
-      id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center number-fmt text-sm font-black text-slate-700 border-l border-slate-100",
+      id: "total_cost", header: "الإجمالي", width: 110, sortable: false, headerClass: "text-center", cellClass: "text-center number-fmt text-sm font-black text-text-primary border-l border-border-subtle",
       render: (l) => formatNumber(l.quantity * l.unit_cost),
     },
   ];
@@ -877,7 +879,7 @@ export default function BranchTransferFormPage() {
   const actionsColumn = {
     id: "actions", header: "", width: 45, sortable: false, headerClass: "text-center", cellClass: "p-0 text-center",
     render: (_, i) => (
-      <button onClick={() => removeLine(i)} className="flex h-[40px] w-full items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+      <button onClick={() => removeLine(i)} className="flex h-[40px] w-full items-center justify-center text-text-muted hover:bg-rose-50 hover:text-rose-600 transition-colors">
         <Trash2 className="h-4 w-4" />
       </button>
     ),
@@ -927,7 +929,7 @@ export default function BranchTransferFormPage() {
           : `خطأ غير معروف (تفاصيل: الأصناف=${lines.length}، الفرع=${partnerBranch || "فارغ"}، خطأ مخزون=${hasStockErrors ? "نعم" : "لا"})`;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 font-sans relative" dir="rtl">
+    <div className="min-h-screen bg-bg-overlay/50 p-4 font-sans relative" dir="rtl">
       {saveSuccess && (
         <InvoiceSaveSuccess
           invoiceNumber={saveSuccess.invoiceNumber}
@@ -941,7 +943,7 @@ export default function BranchTransferFormPage() {
       {/* Image zoom modal */}
       <Modal open={imageModalOpen} onClose={() => setImageModalOpen(false)} title="صورة المنتج" maxWidth="max-w-2xl" showDetach={false}>
         <div
-          className="flex items-center justify-center p-4 bg-slate-100/50 rounded-xl overflow-hidden min-h-[400px] relative"
+          className="flex items-center justify-center p-4 bg-bg-overlay/50 rounded-xl overflow-hidden min-h-[400px] relative"
           onWheel={(e) => setImageZoom(z => Math.max(0.5, Math.min(5, z + (e.deltaY > 0 ? -0.1 : 0.1))))}
           onMouseDown={e => { imgIsDragging.current = true; imgLastPos.current = { x: e.clientX, y: e.clientY }; }}
           onMouseMove={e => {
@@ -968,12 +970,12 @@ export default function BranchTransferFormPage() {
               className="max-w-full max-h-[60vh] object-contain rounded drop-shadow-sm"
             />
           )}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 p-2 rounded-full shadow-md border border-slate-200">
-            <button onClick={() => setImageZoom(z => Math.min(5, z + 0.25))} className="p-1.5 hover:bg-slate-100 rounded-full"><ZoomIn className="w-4 h-4 text-slate-600"/></button>
-            <span className="text-[11px] font-bold font-mono text-slate-600 min-w-[36px] text-center">{Math.round(imageZoom * 100)}%</span>
-            <button onClick={() => setImageZoom(z => Math.max(0.5, z - 0.25))} className="p-1.5 hover:bg-slate-100 rounded-full"><ZoomOut className="w-4 h-4 text-slate-600"/></button>
-            <div className="w-px h-4 bg-slate-300 mx-1"></div>
-            <button onClick={() => { setImageZoom(1); setImagePan({ x: 0, y: 0 }); }} className="p-1.5 hover:bg-slate-100 rounded-full"><Maximize className="w-4 h-4 text-slate-600"/></button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-bg-surface/90 p-2 rounded-full shadow-md border border-border-normal">
+            <button onClick={() => setImageZoom(z => Math.min(5, z + 0.25))} className="p-1.5 hover:bg-bg-overlay rounded-full"><ZoomIn className="w-4 h-4 text-text-secondary"/></button>
+            <span className="text-[11px] font-bold font-mono text-text-secondary min-w-[36px] text-center">{Math.round(imageZoom * 100)}%</span>
+            <button onClick={() => setImageZoom(z => Math.max(0.5, z - 0.25))} className="p-1.5 hover:bg-bg-overlay rounded-full"><ZoomOut className="w-4 h-4 text-text-secondary"/></button>
+            <div className="w-px h-4 bg-border-strong mx-1"></div>
+            <button onClick={() => { setImageZoom(1); setImagePan({ x: 0, y: 0 }); }} className="p-1.5 hover:bg-bg-overlay rounded-full"><Maximize className="w-4 h-4 text-text-secondary"/></button>
           </div>
         </div>
       </Modal>
@@ -997,15 +999,15 @@ export default function BranchTransferFormPage() {
             {(displayRef || displayDate) && (
               <div className="flex gap-1.5 items-center">
                 {displayRef && (
-                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-black text-slate-500">
-                    <Hash className="h-3.5 w-3.5 text-slate-400" />
+                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-border-normal bg-bg-overlay px-2 text-[11px] font-mono font-black text-text-secondary">
+                    <Hash className="h-3.5 w-3.5 text-text-muted" />
                     {displayRef}
-                    {isEditMode && <span className="text-slate-400 text-[11px]">• مقفل</span>}
+                    {isEditMode && <span className="text-text-muted text-[11px]">• مقفل</span>}
                   </div>
                 )}
                 {displayDate && (
-                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-200 bg-slate-100 px-2 text-[11px] font-mono font-bold text-slate-400">
-                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  <div className="flex h-7 items-center gap-1.5 rounded-sm border border-border-normal bg-bg-overlay px-2 text-[11px] font-mono font-bold text-text-muted">
+                    <Clock className="h-3.5 w-3.5 text-text-muted" />
                     {fmtDateTime(displayDate)}
                   </div>
                 )}
@@ -1082,15 +1084,15 @@ export default function BranchTransferFormPage() {
         <div className={`flex flex-col gap-5 ${panelEffectiveCollapsed ? "hidden" : ""}`} style={{ width: panelWidth, minWidth: panelWidth }}>
 
           {/* Partner branch */}
-          <div className="rounded-[20px] border border-white bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="rounded-[20px] border border-border-normal bg-bg-surface/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
             <div className="flex items-center gap-3 mb-5">
               <div className={`p-2 rounded-[10px] bg-${theme.primary}-100 text-${theme.primary}-600`}>
                 <Warehouse className="h-5 w-5" />
               </div>
-              <h3 className="text-[15px] font-black text-slate-800 tracking-tight">معلومات الحركة</h3>
+              <h3 className="text-[15px] font-black text-text-primary tracking-tight">معلومات الحركة</h3>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-2sm font-bold text-slate-500 mr-1">
+              <label className="text-2sm font-bold text-text-secondary mr-1">
                 {isReceive ? "الفرع المُرسل" : "الفرع المُستلم"}
               </label>
               <div className="flex gap-2">
@@ -1101,24 +1103,24 @@ export default function BranchTransferFormPage() {
                     value={partnerBranch}
                     onChange={e => setPartnerBranch(e.target.value)}
                     onKeyDown={e => handleFieldKeyDown(e, { nextRef: notesRef, prevRef: addBtnRef })}
-                    className={`w-full appearance-none rounded-[10px] border px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 ${
+                    className={`w-full appearance-none rounded-[10px] border px-4 py-3 text-sm font-bold text-text-primary focus:outline-none focus:ring-2 bg-bg-surface shadow-inner transition-all hover:border-border-strong ${
                       lines.length > 0 && !partnerBranch
                         ? "border-rose-500 ring-2 ring-rose-500/10 focus:border-rose-500 focus:ring-rose-500/20"
-                        : `border-slate-200/80 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20`
+                        : `border-border-normal/80 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20`
                     }`}
                   >
                     <option value="">اختر الفرع...</option>
                     {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                   </select>
-                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                 </div>
                 <button
                   type="button"
                   onClick={handleManageBranches}
                   title="إدارة الفروع"
-                  className="flex shrink-0 items-center justify-center w-[46px] rounded-[10px] border border-slate-200/80 bg-white hover:bg-slate-50 transition-colors shadow-inner"
+                  className="flex shrink-0 items-center justify-center w-[46px] rounded-[10px] border border-border-normal/80 bg-bg-surface hover:bg-bg-overlay transition-colors shadow-inner"
                 >
-                  <Settings className="w-4 h-4 text-slate-500" />
+                  <Settings className="w-4 h-4 text-text-secondary" />
                 </button>
               </div>
               {lines.length > 0 && !partnerBranch && (
@@ -1131,12 +1133,12 @@ export default function BranchTransferFormPage() {
           </div>
 
           {/* Notes */}
-          <div className="rounded-[20px] border border-white bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="rounded-[20px] border border-border-normal bg-bg-surface/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className={`p-2 rounded-[10px] bg-${theme.primary}-100 text-${theme.primary}-600`}>
                 <FileText className="h-5 w-5" />
               </div>
-              <h3 className="text-[15px] font-black text-slate-800 tracking-tight">ملاحظات وسبب الحركة</h3>
+              <h3 className="text-[15px] font-black text-text-primary tracking-tight">ملاحظات وسبب الحركة</h3>
             </div>
               <textarea
                 data-help="bt-form-notes"
@@ -1146,25 +1148,25 @@ export default function BranchTransferFormPage() {
                 onKeyDown={e => handleFieldKeyDown(e, { nextRef: itemInputRef, prevRef: partnerBranchRef })}
               placeholder="اكتب الملاحظات واسم المندوب..."
               rows={3}
-              className={`w-full resize-none rounded-[10px] border border-slate-200/80 px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 bg-white shadow-inner transition-all hover:border-slate-300 focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20 custom-scrollbar`}
+              className={`w-full resize-none rounded-[10px] border border-border-normal/80 px-4 py-3 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 bg-bg-surface shadow-inner transition-all hover:border-border-strong focus:border-${theme.primary}-500 focus:ring-${theme.primary}-500/20 custom-scrollbar`}
             />
           </div>
 
           {/* Totals & actions */}
-          <div className="rounded-[20px] bg-white p-6 shadow-[0_15px_40px_rgb(0,0,0,0.08)] border border-slate-100 flex flex-col gap-5">
-            <div className="flex flex-col gap-3 bg-slate-50/50 rounded-[14px] py-5 px-4 border border-slate-100 shadow-inner">
+          <div className="rounded-[20px] bg-bg-surface p-6 shadow-[0_15px_40px_rgb(0,0,0,0.08)] border border-border-subtle flex flex-col gap-5">
+            <div className="flex flex-col gap-3 bg-bg-overlay/50 rounded-[14px] py-5 px-4 border border-border-subtle shadow-inner">
               <div className="flex items-center justify-between">
-                <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي الكميات</span>
+                <span className="text-2sm font-black uppercase tracking-widest text-text-muted">إجمالي الكميات</span>
                 <span className={`text-3xl number-fmt-primary text-${theme.primary}-600`}>{formatNumber(totalQty, { decimals: 0 })}</span>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي التكلفة</span>
-                <span className="text-2xl number-fmt-primary text-slate-700">
+              <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+                <span className="text-2sm font-black uppercase tracking-widest text-text-muted">إجمالي التكلفة</span>
+                <span className="text-2xl number-fmt-primary text-text-primary">
                   {formatNumber(totalCost)}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                <span className="text-2sm font-black uppercase tracking-widest text-slate-400">إجمالي سعر البيع</span>
+              <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+                <span className="text-2sm font-black uppercase tracking-widest text-text-muted">إجمالي سعر البيع</span>
                 <span className="text-2xl number-fmt-primary text-amber-600">
                   {formatNumber(totalSell)}
                 </span>
@@ -1189,7 +1191,7 @@ export default function BranchTransferFormPage() {
                 
                 {selectedItem && (
                   <div
-                    className="w-14 h-14 mt-6 shrink-0 rounded-[12px] border-2 border-indigo-100 overflow-hidden shadow-md group relative bg-white flex items-center justify-center cursor-pointer"
+                    className="w-14 h-14 mt-6 shrink-0 rounded-[12px] border-2 border-indigo-100 overflow-hidden shadow-md group relative bg-bg-surface flex items-center justify-center cursor-pointer"
                     onClick={() => {
                       const img = selectedItem.primary_image_url || selectedItem.image_url || selectedItem.image;
                       if (img) { setImagePreviewUrl(img); setImageModalOpen(true); }
@@ -1203,14 +1205,14 @@ export default function BranchTransferFormPage() {
                         </div>
                       </>
                     ) : (
-                      <Package className="w-6 h-6 text-slate-300" />
+                      <Package className="w-6 h-6 text-text-muted" />
                     )}
                   </div>
                 )}
 
                   {/* Item search */}
                 <div className="relative flex-1 min-w-[240px] flex flex-col text-right">
-                  <label className="text-[11px] font-bold text-slate-500 mb-1.5 block">المادة / الصنف (بحث)</label>
+                  <label className="text-[11px] font-bold text-text-secondary mb-1.5 block">المادة / الصنف (بحث)</label>
                   <CategorySearchField
                     categories={categories}
                     value={listCategoryFilter}
@@ -1250,9 +1252,9 @@ export default function BranchTransferFormPage() {
                 {/* Warehouse table */}
                 <div data-help="bt-form-destination" className="flex flex-col gap-1.5 w-full md:w-[220px] shrink-0 text-right">
                   <div className="flex items-center justify-between px-1">
-                    <label className="text-[11px] font-bold text-slate-500">المخزن</label>
+                    <label className="text-[11px] font-bold text-text-secondary">المخزن</label>
                     {selectedItem && !isReceive && (
-                      <span className="text-[9px] font-black text-slate-400">
+                      <span className="text-[9px] font-black text-text-muted">
                         للإضافة: {(() => {
                           const inCart = lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0);
                           const avail = Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - inCart);
@@ -1264,7 +1266,7 @@ export default function BranchTransferFormPage() {
                   <div
                     ref={warehouseTableRef}
                     tabIndex={0}
-                    className="border border-slate-200 rounded-[10px] bg-slate-50/50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-inner"
+                    className="border border-border-normal rounded-[10px] bg-bg-overlay/50 overflow-y-auto outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-inner"
                     style={{ height: "80px" }}
                     onKeyDown={(e) => {
                       const idx = warehouses.findIndex(w => String(w.id) === String(staging.warehouseId));
@@ -1283,9 +1285,9 @@ export default function BranchTransferFormPage() {
                           const insufficient = !isReceive && selectedItem && Number(staging.quantity) > avail;
                           const isLow = avail > 0 && avail < 5;
                           const isEmpty = avail === 0;
-                          let stockColor = "text-slate-400";
+                          let stockColor = "text-text-muted";
                           if (insufficient) stockColor = "text-rose-600 font-black";
-                          else if (isEmpty) stockColor = "text-slate-300";
+                          else if (isEmpty) stockColor = "text-text-muted";
                           else if (isLow) stockColor = "text-amber-600 font-black";
                           else stockColor = "text-emerald-600 font-black";
                           let bgColor = "";
@@ -1294,9 +1296,9 @@ export default function BranchTransferFormPage() {
                           return (
                             <tr key={w.id}
                               onClick={() => { setStaging(s => ({ ...s, warehouseId: String(w.id) })); warehouseTableRef.current?.focus(); }}
-                              className={`cursor-pointer border-b border-slate-200 last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-slate-100")}`}
+                              className={`cursor-pointer border-b border-border-normal last:border-0 transition-colors ${bgColor || (isSelected ? "bg-indigo-50" : "hover:bg-bg-overlay")}`}
                             >
-                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
+                              <td className={`px-2 py-1 font-bold truncate ${isSelected ? "text-indigo-700" : "text-text-primary"} ${insufficient ? "line-through opacity-60" : ""}`}>{w.name}</td>
                               <td className={`px-2 py-1 number-fmt text-center tabular-nums ${stockColor}`}>{avail}</td>
                             </tr>
                           );
@@ -1322,12 +1324,12 @@ export default function BranchTransferFormPage() {
               </div>
 
               {/* Row 2: Pricing, Quantity & Add Button */}
-              <div className="flex flex-wrap items-end gap-3.5 border-t border-slate-100 pt-4 text-right">
+              <div className="flex flex-wrap items-end gap-3.5 border-t border-border-subtle pt-4 text-right">
                 
                 {/* Unit — auto-detected from item */}
                 <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
-                  <label className="text-[11px] font-bold text-slate-500">الوحدة</label>
-                  <div className="w-full h-11 flex items-center justify-center border border-slate-200 rounded-[10px] bg-slate-100/50 px-2 text-2sm font-bold text-slate-600 shadow-inner">
+                  <label className="text-[11px] font-bold text-text-secondary">الوحدة</label>
+                  <div className="w-full h-11 flex items-center justify-center border border-border-normal rounded-[10px] bg-bg-overlay/50 px-2 text-2sm font-bold text-text-secondary shadow-inner">
                     {selectedItem ? (selectedItem.unit_name || "أساسية") : "—"}
                   </div>
                 </div>
@@ -1335,7 +1337,7 @@ export default function BranchTransferFormPage() {
                 {/* Cost / Price */}
                 <div className="flex flex-col gap-1 w-[110px] shrink-0">
                   <div className="flex items-center gap-1">
-                    <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">{isReceive ? "التكلفة" : "السعر"}</label>
+                    <label className="text-[11px] font-bold text-text-secondary flex-1 min-w-0 truncate">{isReceive ? "التكلفة" : "السعر"}</label>
                     {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                       <button type="button"
                         onClick={() => setStagingLocks(l => ({ ...l, purchase: !l.purchase }))}
@@ -1348,7 +1350,7 @@ export default function BranchTransferFormPage() {
                     )}
                     <button type="button" onClick={() => setPriceHelpOpen(true)}
                       title="اعرف أكثر عن خيارات تحديث السعر"
-                      className="shrink-0 text-slate-400 hover:text-indigo-500 transition-colors">
+                      className="shrink-0 text-text-muted hover:text-indigo-500 transition-colors">
                       <Info size={11} />
                     </button>
                   </div>
@@ -1359,19 +1361,19 @@ export default function BranchTransferFormPage() {
                     onChange={e => setStaging(s => ({ ...s, unitCost: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: sellInputRef, prevRef: warehouseTableRef })}
-                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
+                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-text-primary outline-none transition-all shadow-inner text-center ${
                       isReceive && !stagingLocks.purchase
                         ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                         : isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price)
                           ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                          : `border-slate-200 bg-slate-50/50 focus:border-${theme.primary}-500 focus:bg-white focus:ring-4 focus:ring-${theme.primary}-500/10`
+                          : `border-border-normal bg-bg-overlay/50 focus:border-${theme.primary}-500 focus:bg-bg-surface focus:ring-4 focus:ring-${theme.primary}-500/10`
                     }`}
                     />
                     {isReceive && selectedItem && Number(staging.unitCost) > 0 && Number(staging.unitCost) !== Number(selectedItem.purchase_price) && (
                       <div className="flex flex-col items-center gap-0.5 -mt-1">
                         <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(selectedItem.purchase_price).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(staging.unitCost) > Number(selectedItem.purchase_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.unitCost).toFixed(2)}</span>
                         </span>
                       </div>
@@ -1381,7 +1383,7 @@ export default function BranchTransferFormPage() {
                 {/* Selling price */}
                 <div className="flex flex-col gap-1.5 w-[110px] shrink-0">
                   <div className="flex items-center gap-1">
-                    <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">{isReceive ? "سعر البيع" : "مستهلك"}</label>
+                    <label className="text-[11px] font-bold text-text-secondary flex-1 min-w-0 truncate">{isReceive ? "سعر البيع" : "مستهلك"}</label>
                     {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
                       <button type="button"
                         onClick={() => setStagingLocks(l => ({ ...l, sale: !l.sale }))}
@@ -1400,19 +1402,19 @@ export default function BranchTransferFormPage() {
                     onChange={e => setStaging(s => ({ ...s, sellingPrice: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: isReceive ? wholesaleInputRef : qtyInputRef, prevRef: costInputRef })}
-                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
+                    className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-text-primary outline-none transition-all shadow-inner text-center ${
                       isReceive && !stagingLocks.sale
                         ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                         : isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price)
                           ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                          : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
+                          : "border-border-normal bg-bg-overlay/50 focus:border-amber-400 focus:bg-bg-surface focus:ring-4 focus:ring-amber-400/10"
                     }`}
                     />
                     {isReceive && selectedItem && Number(staging.sellingPrice) > 0 && Number(staging.sellingPrice) !== Number(selectedItem.sale_price) && (
                       <div className="flex flex-col items-center gap-0.5 -mt-1">
                         <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(selectedItem.sale_price).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(selectedItem.sale_price).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(staging.sellingPrice) > Number(selectedItem.sale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.sellingPrice).toFixed(2)}</span>
                         </span>
                       </div>
@@ -1423,7 +1425,7 @@ export default function BranchTransferFormPage() {
                 {isReceive && (
                   <div className="flex flex-col gap-1 w-[110px] shrink-0">
                     <div className="flex items-center gap-1">
-                      <label className="text-[11px] font-bold text-slate-500 flex-1 min-w-0 truncate">جملة</label>
+                      <label className="text-[11px] font-bold text-text-secondary flex-1 min-w-0 truncate">جملة</label>
                       {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
                         <button type="button"
                           onClick={() => setStagingLocks(l => ({ ...l, wholesale: !l.wholesale }))}
@@ -1442,19 +1444,19 @@ export default function BranchTransferFormPage() {
                       onChange={e => setStaging(s => ({ ...s, wholesalePrice: e.target.value }))}
                       onFocus={e => e.target.select()}
                       onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: qtyInputRef, prevRef: sellInputRef })}
-                      className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-slate-800 outline-none transition-all shadow-inner text-center ${
+                      className={`w-full h-11 border rounded-[10px] px-1 text-sm number-fmt-primary text-text-primary outline-none transition-all shadow-inner text-center ${
                         !stagingLocks.wholesale
                           ? "border-amber-300 bg-amber-50/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                           : selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price)
                             ? "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-4 focus:ring-amber-400/10"
-                            : "border-slate-200 bg-slate-50/50 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"
+                            : "border-border-normal bg-bg-overlay/50 focus:border-amber-400 focus:bg-bg-surface focus:ring-4 focus:ring-amber-400/10"
                       }`}
                     />
                     {selectedItem && Number(staging.wholesalePrice) > 0 && Number(staging.wholesalePrice) !== Number(selectedItem.wholesale_price) && (
                       <div className="flex flex-col items-center gap-0.5 -mt-1">
                         <span className="text-[8px] text-center leading-none flex items-center gap-0.5">
-                          <span className="text-slate-400 number-fmt">{Number(selectedItem.wholesale_price).toFixed(2)}</span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-text-muted number-fmt">{Number(selectedItem.wholesale_price).toFixed(2)}</span>
+                          <span className="text-text-muted">→</span>
                           <span className={`number-fmt ${Number(staging.wholesalePrice) > Number(selectedItem.wholesale_price) ? "text-rose-500" : "text-emerald-600"}`}>{Number(staging.wholesalePrice).toFixed(2)}</span>
                         </span>
                       </div>
@@ -1464,9 +1466,9 @@ export default function BranchTransferFormPage() {
 
                 {/* Quantity */}
                 <div className="flex flex-col gap-1.5 w-[90px] shrink-0">
-                  <label className="text-[11px] font-bold text-slate-500">الكمية</label>
+                  <label className="text-[11px] font-bold text-text-secondary">الكمية</label>
                   {selectedItem && staging.warehouseId && (
-                    <span className="text-[9px] font-bold text-slate-400 text-center -mb-1">
+                    <span className="text-[9px] font-bold text-text-muted text-center -mb-1">
                       متاح: {Math.max(0, getStockQty(selectedItem.id, staging.warehouseId) - lines.filter(l => Number(l.item_id) === Number(selectedItem.id) && String(l.warehouse_id) === String(staging.warehouseId)).reduce((s, l) => s + Number(l.quantity), 0))}
                     </span>
                   )}
@@ -1477,7 +1479,7 @@ export default function BranchTransferFormPage() {
                     onChange={e => setStaging(s => ({ ...s, quantity: e.target.value }))}
                     onFocus={e => e.target.select()}
                     onKeyDown={(e) => handleFieldKeyDown(e, { nextRef: addBtnRef, prevRef: sellInputRef })}
-                    className="w-full h-11 border border-slate-200 rounded-[10px] bg-slate-50/50 px-1 text-sm number-fmt-primary text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
+                    className="w-full h-11 border border-border-normal rounded-[10px] bg-bg-overlay/50 px-1 text-sm number-fmt-primary text-text-primary outline-none focus:border-indigo-500 focus:bg-bg-surface focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner text-center"
                   />
                 </div>
 
@@ -1507,24 +1509,24 @@ export default function BranchTransferFormPage() {
 
           <div data-help="bt-form-items" className="rounded-2xl border p-3 shadow-sm" style={{ backgroundColor: "var(--primary-100)", borderColor: "var(--primary-200)" }}>
           <div className="flex items-center justify-between px-1 py-1.5 shrink-0">
-            <div className="text-2sm font-bold text-slate-500">الأصناف ({lines.length})</div>
+            <div className="text-2sm font-bold text-text-secondary">الأصناف ({lines.length})</div>
             <div ref={colSettingsRef} className="relative">
               <button onClick={() => setColSettingsOpen(p => !p)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                className="p-1.5 rounded-md text-text-muted hover:text-text-secondary hover:bg-bg-overlay transition-all"
                 title="تخصيص الأعمدة"
               >
                 <Settings2 className="h-4 w-4" />
               </button>
               {colSettingsOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl py-1">
-                  <div className="px-3 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">الأعمدة الظاهرة</div>
+                <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-xl border border-border-normal bg-bg-surface shadow-xl py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-black text-text-muted uppercase tracking-widest border-b border-border-subtle">الأعمدة الظاهرة</div>
                   {ALL_COLUMNS.filter(c => c !== "index" && c !== "actions").map(cid => {
                     const labels = { code: "الكود", name: "البيان", unit: "الوحدة", warehouse: "المخزن", quantity: "الكمية", unit_cost: "التكلفة", selling_price: "سعر البيع", profit_pct: "نسبة الربح", wholesale_price: "جملة", locks: "قفل", total_cost: "الإجمالي" };
                     return (
-                      <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-2sm font-bold text-slate-700">
+                      <label key={cid} className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-overlay cursor-pointer text-2sm font-bold text-text-primary">
                         <input type="checkbox" checked={visibleColumns.includes(cid)}
                           onChange={() => setVisibleColumns(p => p.includes(cid) ? p.filter(c => c !== cid) : [...p, cid])}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                          className="rounded border-border-strong text-indigo-600 focus:ring-indigo-300"
                         />
                         {labels[cid] || cid}
                       </label>
@@ -1539,9 +1541,9 @@ export default function BranchTransferFormPage() {
             data={lines}
             rowKey={(row, i) => `${row.item_id}-${i}`}
             emptyMessage="لا يوجد أصناف في مسودة المستند"
-            emptyIcon={<ShoppingCart className="h-12 w-12 mb-2 text-slate-300" />}
+            emptyIcon={<ShoppingCart className="h-12 w-12 mb-2 text-text-muted" />}
             className="border-0"
-            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-xl border border-slate-200 shadow-sm max-h-[440px]"
+            containerClass="flex-1 overflow-x-auto overflow-y-auto bg-bg-surface scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent rounded-xl border border-border-normal shadow-sm max-h-[440px]"
             rowClass={isReceive ? (l) => {
               const anyUnlocked = l.update_master_purchase_price === false || l.update_master_purchase_price === 0 ||
                                   l.update_master_sale_price === false || l.update_master_sale_price === 0 ||
@@ -1615,30 +1617,30 @@ export default function BranchTransferFormPage() {
       {/* Cancel transfer confirmation modal */}
       {cancelConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-[400px] flex flex-col gap-4">
+          <div className="bg-bg-surface rounded-2xl shadow-2xl p-6 w-[400px] flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
                 <Trash2 className="h-5 w-5 text-rose-600" />
               </div>
               <div>
-                <p className="text-[15px] font-black text-slate-800">إلغاء المستند</p>
-                <p className="text-2sm text-slate-500">سيتم عكس حركة المخزون بالكامل</p>
+                <p className="text-[15px] font-black text-text-primary">إلغاء المستند</p>
+                <p className="text-2sm text-text-secondary">سيتم عكس حركة المخزون بالكامل</p>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-2sm font-black text-slate-600">سبب الإلغاء *</label>
+              <label className="text-2sm font-black text-text-secondary">سبب الإلغاء *</label>
               <input
                 value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)}
                 placeholder="أدخل سبب الإلغاء..."
-                className="w-full rounded-[10px] border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                className="w-full rounded-[10px] border border-border-normal px-3 py-2.5 text-sm font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-rose-300"
                 autoFocus
               />
             </div>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => { setCancelConfirmOpen(false); setCancelReason(""); }}
-                className="flex-1 h-[44px] rounded-[10px] border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                className="flex-1 h-[44px] rounded-[10px] border border-border-normal text-sm font-bold text-text-secondary hover:bg-bg-overlay transition-all"
               >
                 تراجع
               </button>
@@ -1657,15 +1659,15 @@ export default function BranchTransferFormPage() {
       {/* Price Help Modal */}
       {priceHelpOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setPriceHelpOpen(false)}>
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="relative bg-bg-surface rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
                   <Info size={14} className="text-indigo-600" />
                 </div>
-                <span className="text-[13px] font-black text-slate-800">خيارات تحديث السعر</span>
+                <span className="text-[13px] font-black text-text-primary">خيارات تحديث السعر</span>
               </div>
-              <button onClick={() => setPriceHelpOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+              <button onClick={() => setPriceHelpOpen(false)} className="text-text-muted hover:text-text-secondary transition-colors"><X size={16} /></button>
             </div>
             <div className="p-5 flex flex-col gap-3">
               <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4">
@@ -1692,9 +1694,9 @@ export default function BranchTransferFormPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 text-center">تقدر تغيّر الخيار دة لكل سعر لوحده من خلال الزر الصغيّر جنب كل سعر</p>
+              <p className="text-[10px] text-text-secondary text-center">تقدر تغيّر الخيار دة لكل سعر لوحده من خلال الزر الصغيّر جنب كل سعر</p>
             </div>
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
+            <div className="px-5 py-3 border-t border-border-subtle flex justify-end">
               <button onClick={() => setPriceHelpOpen(false)} className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-[12px] font-bold hover:bg-indigo-700 transition-colors">فهمت</button>
             </div>
           </div>
@@ -1712,34 +1714,34 @@ export default function BranchTransferFormPage() {
           </div>
           {/* Badge legend */}
           <div className="flex items-center gap-4 px-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide">دلالة الألوان:</span>
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-wide">دلالة الألوان:</span>
             <span className="flex items-center gap-1.5">
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">يحدّث</span>
-              <span className="text-[10px] text-slate-500">السعر الجديد هيتغير لكل الفواتير الجاية</span>
+              <span className="text-[10px] text-text-secondary">السعر الجديد هيتغير لكل الفواتير الجاية</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">مستند بس</span>
-              <span className="text-[10px] text-slate-500">للمستند ده بس، السعر الأساسي ما يتغيرش</span>
+              <span className="text-[10px] text-text-secondary">للمستند ده بس، السعر الأساسي ما يتغيرش</span>
             </span>
           </div>
-          <div className="rounded-md border border-slate-200 overflow-hidden">
+          <div className="rounded-md border border-border-normal overflow-hidden">
             <table className="w-full text-2sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-bg-overlay border-b border-border-normal">
                 <tr>
-                  <th className="px-3 py-2 text-right font-black text-slate-500">الصنف</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">التكلفة (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">التكلفة (بعد)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">سعر البيع (بعد)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (قبل)</th>
-                  <th className="px-3 py-2 text-center font-black text-slate-500">جملة (بعد)</th>
+                  <th className="px-3 py-2 text-right font-black text-text-secondary">الصنف</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">التكلفة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">التكلفة (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">سعر البيع (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">سعر البيع (بعد)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">جملة (قبل)</th>
+                  <th className="px-3 py-2 text-center font-black text-text-secondary">جملة (بعد)</th>
                 </tr>
               </thead>
               <tbody>
                 {priceChangedLines.map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                     <td className="px-3 py-2 font-bold text-slate-800 max-w-[140px] whitespace-normal break-words leading-tight">{l.item_name}</td>
-                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
+                  <tr key={i} className="border-b border-border-subtle hover:bg-bg-overlay">
+                     <td className="px-3 py-2 font-bold text-text-primary max-w-[140px] whitespace-normal break-words leading-tight">{l.item_name}</td>
+                    <td className="px-3 py-2 text-center number-fmt text-text-muted">{Number(l.original_purchase_price) > 0 ? Number(l.original_purchase_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.unit_cost) > 0 && Number(l.unit_cost) !== Number(l.original_purchase_price) ? (
                         <div className="flex flex-col items-center gap-0.5">
@@ -1748,9 +1750,9 @@ export default function BranchTransferFormPage() {
                             {l.update_master_purchase_price !== false ? "يحدّث" : "مستند بس"}
                           </span>
                         </div>
-                      ) : <span className="text-slate-400">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
+                      ) : <span className="text-text-muted">{Number(l.unit_cost) > 0 ? Number(l.unit_cost).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt text-text-muted">{Number(l.original_sale_price) > 0 ? Number(l.original_sale_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.selling_price) > 0 && Number(l.selling_price) !== Number(l.original_sale_price) ? (
                         <div className="flex flex-col items-center gap-0.5">
@@ -1759,9 +1761,9 @@ export default function BranchTransferFormPage() {
                             {l.update_master_sale_price !== false ? "يحدّث" : "مستند بس"}
                           </span>
                         </div>
-                      ) : <span className="text-slate-400">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
+                      ) : <span className="text-text-muted">{Number(l.selling_price) > 0 ? Number(l.selling_price).toFixed(2) : "—"}</span>}
                     </td>
-                    <td className="px-3 py-2 text-center number-fmt text-slate-400">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
+                    <td className="px-3 py-2 text-center number-fmt text-text-muted">{Number(l.original_wholesale_price) > 0 ? Number(l.original_wholesale_price).toFixed(2) : "—"}</td>
                     <td className="px-3 py-2 text-center number-fmt-primary">
                       {Number(l.wholesale_price) > 0 && Number(l.wholesale_price) !== Number(l.original_wholesale_price) ? (
                         <div className="flex flex-col items-center gap-0.5">
@@ -1770,15 +1772,15 @@ export default function BranchTransferFormPage() {
                             {l.update_master_wholesale_price !== false ? "يحدّث" : "مستند بس"}
                           </span>
                         </div>
-                      ) : <span className="text-slate-400">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
+                      ) : <span className="text-text-muted">{Number(l.wholesale_price) > 0 ? Number(l.wholesale_price).toFixed(2) : "—"}</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
+            <button onClick={() => setPriceReportOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay transition-all active:scale-[0.98]">تراجع</button>
             <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin inline ml-1" /> جاري الحفظ...</> : "تأكيد وحفظ"}
             </button>
@@ -1790,20 +1792,20 @@ export default function BranchTransferFormPage() {
       <Modal open={saveConfirmOpen} onClose={() => setSaveConfirmOpen(false)} title={isEditMode ? "تأكيد تعديل المستند" : "تأكيد حفظ المستند"} showDetach={false}>
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-bg-overlay text-text-secondary">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">
+              <h3 className="text-sm font-black text-text-primary mb-1">
                 {isEditMode ? "هل تريد حفظ التعديلات؟" : "هل تريد حفظ هذا المستند؟"}
               </h3>
-              <p className="text-2sm font-bold text-slate-500 leading-relaxed">
+              <p className="text-2sm font-bold text-text-secondary leading-relaxed">
                 {lines.length} صنف — إجمالي الكميات: {formatNumber(totalQty, { decimals: 0 })}
               </p>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-slate-300 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">تراجع</button>
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
+            <button onClick={() => setSaveConfirmOpen(false)} className="rounded-sm border border-border-strong bg-bg-surface px-5 py-2 text-sm font-black text-text-primary hover:bg-bg-overlay transition-all active:scale-[0.98]">تراجع</button>
             <button onClick={doSave} disabled={isSaving} className="rounded-sm bg-emerald-600 px-5 py-2 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98]">
               {isSaving ? <><Loader2 className="w-4 h-4 animate-spin inline ml-1" /> جاري الحفظ...</> : "نعم، احفظ"}
             </button>

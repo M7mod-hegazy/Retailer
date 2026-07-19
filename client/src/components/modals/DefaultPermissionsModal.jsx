@@ -133,7 +133,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 z-[200] flex items-center justify-center p-2 md:p-4"
           >
-            <div className="bg-white rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col w-full max-w-5xl" dir="rtl">
+            <div className="bg-bg-surface rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col w-full max-w-5xl" dir="rtl">
               {/* Header */}
               <TitleBar title="إعدادات الصلاحيات الافتراضية" subtitle="تطبق على جميع المستخدمين الجدد فقط" onClose={onClose} onDetach={handleDetach} />
 
@@ -154,8 +154,8 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                   </div>
 
                   {/* Template selector */}
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-slate-200">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-600 whitespace-nowrap">
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-bg-surface border border-border-normal">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-text-secondary whitespace-nowrap">
                       قالب مسبق
                     </label>
                     <select
@@ -178,7 +178,7 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                           setPermissions(buildEmptyPermissions());
                         }
                       }}
-                      className="flex-1 h-9 bg-white rounded-lg px-2 text-xs font-bold text-zinc-900 outline-none border border-slate-200 focus:border-zinc-400"
+                      className="flex-1 h-9 bg-bg-surface rounded-lg px-2 text-xs font-bold text-zinc-900 outline-none border border-border-normal focus:border-zinc-400"
                     >
                       <option value="user">مستخدم (افتراضي)</option>
                       <option value="admin">مدير (الكل)</option>
@@ -188,21 +188,21 @@ export default function DefaultPermissionsModal({ open, onClose }) {
 
                   {/* Matrix */}
                   {loading ? (
-                    <div className="text-center py-16 text-sm font-bold text-slate-400">
+                    <div className="text-center py-16 text-sm font-bold text-text-muted">
                       جاري التحميل...
                     </div>
                   ) : (
-                    <div className="rounded-xl bg-white border border-slate-200 overflow-x-auto overflow-y-auto max-h-[55vh]">
+                    <div className="rounded-xl bg-bg-surface border border-border-normal overflow-x-auto overflow-y-auto max-h-[55vh]">
                       <table className="w-full text-xs">
-                        <thead className="bg-slate-50 sticky top-0 z-10">
+                        <thead className="bg-bg-overlay sticky top-0 z-10">
                           <tr>
-                            <th className="text-right p-2 text-[11px] font-black uppercase tracking-widest text-slate-600">
+                            <th className="text-right p-2 text-[11px] font-black uppercase tracking-widest text-text-secondary">
                               الصفحة
                             </th>
                             {ALL_ACTIONS.map((a) => (
                               <th
                                 key={a}
-                                className="text-center p-2 text-[11px] font-black uppercase tracking-widest text-slate-600 w-14"
+                                className="text-center p-2 text-[11px] font-black uppercase tracking-widest text-text-secondary w-14"
                               >
                                 <SmartTooltip side="bottom" fill content={ACTION_DESCRIPTIONS[a] || ""}>
                                   <div className="w-full text-center cursor-help">{ACTION_LABELS[a]}</div>
@@ -216,9 +216,9 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                             ([pageKey, meta]) => (
                               <tr
                                 key={pageKey}
-                                className="border-t border-slate-100 hover:bg-slate-50/60"
+                                className="border-t border-border-subtle hover:bg-bg-overlay/60"
                               >
-                                <td className="text-right p-2 text-2sm font-bold text-slate-800">
+                                <td className="text-right p-2 text-2sm font-bold text-text-primary">
                                   {meta.label}
                                 </td>
                                 {ALL_ACTIONS.map((a) => {
@@ -253,8 +253,8 @@ export default function DefaultPermissionsModal({ open, onClose }) {
                             const sourceKey = "report_" + source.id;
                             const enabled = (permissions[sourceKey] || []).includes("view");
                             return (
-                              <tr key={sourceKey} className="border-t border-slate-100 hover:bg-slate-50/60">
-                                <td className="text-right p-2 text-2sm font-bold text-slate-600">
+                              <tr key={sourceKey} className="border-t border-border-subtle hover:bg-bg-overlay/60">
+                                <td className="text-right p-2 text-2sm font-bold text-text-secondary">
                                   تقرير: {source.label}
                                 </td>
                                 {ALL_ACTIONS.map((a) => {
@@ -283,13 +283,13 @@ export default function DefaultPermissionsModal({ open, onClose }) {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-slate-100 bg-slate-50 px-6 py-3 flex items-center justify-end gap-3">
+              <div className="border-t border-border-subtle bg-bg-overlay px-6 py-3 flex items-center justify-end gap-3">
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={onClose}
                   disabled={saving}
-                  className="h-10 px-6 rounded-xl border border-slate-300 text-2sm font-black text-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
+                  className="h-10 px-6 rounded-xl border border-border-strong text-2sm font-black text-text-primary hover:bg-bg-overlay transition-all disabled:opacity-50"
                 >
                   إلغاء
                 </motion.button>

@@ -108,7 +108,7 @@ function ImageDiff({ localImages, ecomImages, hasDiff }) {
           {localImages && localImages.length > 0 ? (
             <div className="flex gap-1.5 flex-wrap">
               {localImages.slice(0, 4).map((url, i) => (
-                <div key={i} className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <div key={i} className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 bg-bg-surface">
                   <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
                 </div>
               ))}
@@ -125,7 +125,7 @@ function ImageDiff({ localImages, ecomImages, hasDiff }) {
           {ecomImages && ecomImages.length > 0 ? (
             <div className="flex gap-1.5 flex-wrap justify-end">
               {ecomImages.slice(0, 4).map((url, i) => (
-                <div key={i} className="w-14 h-14 rounded-lg overflow-hidden border border-amber-300 bg-white ring-1 ring-amber-200">
+                <div key={i} className="w-14 h-14 rounded-lg overflow-hidden border border-amber-300 bg-bg-surface ring-1 ring-amber-200">
                   <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
                 </div>
               ))}
@@ -193,7 +193,7 @@ function ChangeCard({ change, index, defaultExpanded, onExclude, currencySymbol,
 
   return (
     <div
-      className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-sm hover:border-gray-300 transition-all duration-300 bg-white"
+      className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-sm hover:border-gray-300 transition-all duration-300 bg-bg-surface"
       style={{ animationDelay: `${index * 40}ms` }}
     >
       {/* ── Header ── */}
@@ -561,7 +561,7 @@ export default function ReviewModal(props) {
           {/* Floating particles */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {[...Array(20)].map((_, i) => (
-              <div key={i} className="absolute w-1 h-1 bg-white/30 rounded-full animate-sync-float" style={{
+              <div key={i} className="absolute w-1 h-1 bg-bg-surface/30 rounded-full animate-sync-float" style={{
                 left: `${(i * 37 + 13) % 100}%`,
                 top: `${(i * 53 + 7) % 100}%`,
                 animationDelay: `${i * 0.4}s`,
@@ -587,10 +587,10 @@ export default function ReviewModal(props) {
                   className="animate-sync-circle" strokeLinecap="round" />
               </svg>
               {/* Middle ring */}
-              <div className="absolute inset-2 rounded-full border border-white/10 animate-sync-ping" />
-              <div className="absolute inset-4 rounded-full border border-white/20 animate-sync-ping" style={{ animationDelay: "0.8s" }} />
+              <div className="absolute inset-2 rounded-full border border-border-normal/10 animate-sync-ping" />
+              <div className="absolute inset-4 rounded-full border border-border-normal/20 animate-sync-ping" style={{ animationDelay: "0.8s" }} />
               {/* Inner icon */}
-              <div className="absolute inset-6 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl shadow-primary-500/30">
+              <div className="absolute inset-6 rounded-full bg-bg-surface/10 backdrop-blur-md flex items-center justify-center shadow-2xl shadow-primary-500/30">
                 <ArrowLeftRight className="h-10 w-10 text-white animate-sync-spin" />
               </div>
             </div>
@@ -602,14 +602,14 @@ export default function ReviewModal(props) {
             {/* Dots */}
             <div className="flex items-center gap-2">
               {[0,1,2,3,4].map((i) => (
-                <div key={i} className="w-2.5 h-2.5 rounded-full bg-white/80 animate-sync-dot" style={{
+                <div key={i} className="w-2.5 h-2.5 rounded-full bg-bg-surface/80 animate-sync-dot" style={{
                   animationDelay: `${i * 0.18}s`,
                   boxShadow: '0 0 6px rgba(255,255,255,0.3)',
                 }} />
               ))}
             </div>
             {/* Progress bar */}
-            <div className="w-72 h-1 rounded-full bg-white/10 overflow-hidden shadow-inner">
+            <div className="w-72 h-1 rounded-full bg-bg-surface/10 overflow-hidden shadow-inner">
               <div className="h-full rounded-full bg-gradient-to-r from-primary-400 via-white to-primary-400 animate-sync-progress shadow-lg shadow-primary-500/30" />
             </div>
             <p className="text-[11px] text-white/30 font-medium">يجري تحضير البيانات...</p>
@@ -619,7 +619,7 @@ export default function ReviewModal(props) {
 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={handleBackdropClick} />
-        <div className="relative bg-white rounded-3xl shadow-modal border border-gray-200 w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-up">
+        <div className="relative bg-bg-surface rounded-3xl shadow-modal border border-gray-200 w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-up">
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -643,19 +643,19 @@ export default function ReviewModal(props) {
         {/* ── STATS ROW ── */}
         <div className="px-6 py-3 bg-gray-50/30 border-b border-gray-200">
           <div className="grid grid-cols-4 gap-3">
-            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-white border border-gray-200">
+            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-bg-surface border border-gray-200">
               <span className="text-xl font-black text-text-primary">{stats.total}</span>
               <span className="text-[10px] font-bold text-text-muted">{t("sync.review.totalProducts")}</span>
             </div>
-            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-white border border-gray-200">
+            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-bg-surface border border-gray-200">
               <span className="text-xl font-black text-success-text">{stats.new}</span>
               <span className="text-[10px] font-bold text-text-muted">{t("sync.review.newProducts")}</span>
             </div>
-            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-white border border-gray-200">
+            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-bg-surface border border-gray-200">
               <span className="text-xl font-black text-info-text">{stats.updated}</span>
               <span className="text-[10px] font-bold text-text-muted">{t("sync.review.updatedProducts")}</span>
             </div>
-            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-white border border-gray-200">
+            <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl bg-bg-surface border border-gray-200">
               <span className="text-xl font-black text-amber-600">{stats.withImages}</span>
               <span className="text-[10px] font-bold text-text-muted">{t("sync.review.withImages")}</span>
             </div>
@@ -712,7 +712,7 @@ export default function ReviewModal(props) {
                 value={reviewSearch}
                 onChange={(e) => setReviewSearch(e.target.value)}
                 placeholder={t("sync.review.searchPlaceholder")}
-                className="w-full pr-8 pl-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pr-8 pl-2.5 py-1.5 bg-bg-surface border border-gray-200 rounded-lg text-[11px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -727,7 +727,7 @@ export default function ReviewModal(props) {
                     className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all whitespace-nowrap ${
                       activeFilter === f.key
                         ? "bg-primary text-white border-primary"
-                        : "bg-white text-text-secondary border-gray-200 hover:border-gray-300"
+                        : "bg-bg-surface text-text-secondary border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     {t(f.labelKey)}
@@ -741,7 +741,7 @@ export default function ReviewModal(props) {
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setSortOpen((v) => !v)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-200 bg-white text-text-secondary hover:border-gray-300 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-200 bg-bg-surface text-text-secondary hover:border-gray-300 transition-colors"
               >
                 <ListFilter className="h-3 w-3" />
                 {sortOptions.find((o) => o.key === sortBy)?.label}
@@ -750,7 +750,7 @@ export default function ReviewModal(props) {
               {sortOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-xl shadow-elevated py-1 min-w-[140px]">
+                  <div className="absolute left-0 top-full mt-1 z-20 bg-bg-surface border border-gray-200 rounded-xl shadow-elevated py-1 min-w-[140px]">
                     {sortOptions.map((opt) => (
                       <button
                         key={opt.key}

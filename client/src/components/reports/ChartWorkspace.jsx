@@ -270,7 +270,7 @@ export default function ChartWorkspace({ rows, columns, isLoading, title = "" })
   }
 
   const containerCls = fullscreen
-    ? "fixed inset-0 z-[9999] bg-white flex flex-col"
+    ? "fixed inset-0 z-[9999] bg-bg-surface flex flex-col"
     : "flex-1 flex flex-col";
 
   if (isLoading) {
@@ -416,7 +416,7 @@ export default function ChartWorkspace({ rows, columns, isLoading, title = "" })
             const active = chartType === ct.id;
             return (
               <button key={ct.id} onClick={() => setChartType(ct.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${active ? "bg-white text-emerald-600 shadow-sm border border-emerald-200" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 border border-transparent"}`}>
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${active ? "bg-bg-surface text-emerald-600 shadow-sm border border-emerald-200" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 border border-transparent"}`}>
                 <Icon size={14} /> {ct.label}
               </button>
             );
@@ -443,7 +443,7 @@ export default function ChartWorkspace({ rows, columns, isLoading, title = "" })
       {/* Controls Panel */}
       <AnimatePresence>
         {controlsOpen && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-zinc-200 bg-white">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-zinc-200 bg-bg-surface">
             <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-6">
               {/* X-Axis */}
               <div className="space-y-2">

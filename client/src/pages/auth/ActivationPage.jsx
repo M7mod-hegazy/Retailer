@@ -142,13 +142,13 @@ export default function ActivationPage({ status, onActivated }) {
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
             <CheckCircle2 className="w-11 h-11 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900">{t("license.success.title")}</h2>
+          <h2 className="text-2xl font-black text-text-primary">{t("license.success.title")}</h2>
           {info?.issuedTo || status?.issuedTo ? (
-            <p className="text-slate-500 font-bold">
+            <p className="text-text-secondary font-bold">
               {t("license.success.welcome", { name: info?.issuedTo || status?.issuedTo })}
             </p>
           ) : null}
-          <p className="text-slate-400 text-sm">{t("license.success.opening")}</p>
+          <p className="text-text-muted text-sm">{t("license.success.opening")}</p>
         </div>
       </div>
     );
@@ -156,29 +156,29 @@ export default function ActivationPage({ status, onActivated }) {
 
   return (
     <div
-      className="fixed inset-0 overflow-y-auto bg-[var(--bg-base)] text-slate-800 font-sans"
+      className="fixed inset-0 overflow-y-auto bg-[var(--bg-base)] text-text-primary font-sans"
       dir="rtl"
     >
       <div className="flex min-h-full items-center justify-center p-6">
-      <div className="w-full max-w-[560px] bg-white rounded-[2rem] border border-slate-200/70 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.10)] p-8 md:p-10">
+      <div className="w-full max-w-[560px] bg-bg-surface rounded-[2rem] border border-border-normal/70 shadow-[0_20px_60px_-10px_rgba(15,23,42,0.10)] p-8 md:p-10">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl text-emerald-600 mb-5">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-[26px] font-black text-slate-900 mb-2">{t("license.title")}</h1>
-          <p className="text-[15px] text-slate-500 font-medium leading-relaxed">
+          <h1 className="text-[26px] font-black text-text-primary mb-2">{t("license.title")}</h1>
+          <p className="text-[15px] text-text-secondary font-medium leading-relaxed">
             {isExpiredLock ? t("license.subtitle.expired") : t("license.subtitle.locked")}
           </p>
         </div>
 
         {/* Machine code block */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 mb-6">
-          <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">
+        <div className="rounded-2xl border border-border-normal bg-bg-overlay/70 p-5 mb-6">
+          <div className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-2">
             {t("license.machineCode")}
           </div>
           {machineCode ? (
-            <div className="font-mono text-lg font-bold text-slate-900 break-all leading-relaxed" dir="ltr">
+            <div className="font-mono text-lg font-bold text-text-primary break-all leading-relaxed" dir="ltr">
               {machineCode}
             </div>
           ) : (
@@ -191,7 +191,7 @@ export default function ActivationPage({ status, onActivated }) {
               type="button"
               onClick={copyCode}
               disabled={!machineCode}
-              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 hover:text-emerald-700 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-bg-surface border border-border-normal hover:border-emerald-300 hover:text-emerald-700 transition-colors disabled:opacity-40"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               {copied ? t("license.copied") : t("license.copy")}
@@ -200,7 +200,7 @@ export default function ActivationPage({ status, onActivated }) {
               type="button"
               onClick={() => setShowQr((v) => !v)}
               disabled={!info?.qrDataUrl}
-              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 hover:text-emerald-700 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-bg-surface border border-border-normal hover:border-emerald-300 hover:text-emerald-700 transition-colors disabled:opacity-40"
             >
               <QrCode className="w-4 h-4" />
               {t("license.showQr")}
@@ -212,23 +212,23 @@ export default function ActivationPage({ status, onActivated }) {
               <img
                 src={info.qrDataUrl}
                 alt={t("license.machineCode")}
-                className="w-44 h-44 rounded-xl border border-slate-200 bg-white p-2"
+                className="w-44 h-44 rounded-xl border border-border-normal bg-bg-surface p-2"
               />
             </div>
           ) : null}
 
-          <p className="text-[13px] text-slate-500 font-medium mt-4 leading-relaxed">
+          <p className="text-[13px] text-text-secondary font-medium mt-4 leading-relaxed">
             {t("license.instructions")}
           </p>
         </div>
 
         {/* Activation input */}
         <div
-          className="rounded-2xl border border-slate-200 p-5 mb-6"
+          className="rounded-2xl border border-border-normal p-5 mb-6"
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
-          <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">
+          <div className="text-[11px] font-black uppercase tracking-widest text-text-muted mb-3">
             {t("license.activateSection")}
           </div>
           <p className="text-[13px] text-emerald-700 font-semibold mb-3 leading-relaxed">
@@ -240,18 +240,18 @@ export default function ActivationPage({ status, onActivated }) {
             rows={3}
             dir="ltr"
             placeholder={t("license.pastePlaceholder")}
-            className="w-full rounded-xl border-2 border-slate-200 focus:border-emerald-500 bg-slate-50/80 focus:bg-white p-3 font-mono text-[13px] text-slate-800 focus:outline-none resize-none transition-colors"
+            className="w-full rounded-xl border-2 border-border-normal focus:border-emerald-500 bg-bg-overlay/80 focus:bg-bg-surface p-3 font-mono text-[13px] text-text-primary focus:outline-none resize-none transition-colors"
           />
           <div className="flex items-center gap-2 mt-3">
             <button
               type="button"
               onClick={pickFile}
-              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 hover:text-emerald-700 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl bg-bg-surface border border-border-normal hover:border-emerald-300 hover:text-emerald-700 transition-colors"
             >
               <FileKey className="w-4 h-4" />
               {t("license.chooseFile")}
             </button>
-            <span className="text-[12px] text-slate-400 font-medium">{t("license.orDrop")}</span>
+            <span className="text-[12px] text-text-muted font-medium">{t("license.orDrop")}</span>
           </div>
         </div>
 
@@ -281,7 +281,7 @@ export default function ActivationPage({ status, onActivated }) {
         </button>
 
         {/* Contact footnote */}
-        <p className="text-center text-slate-400 text-[13px] font-semibold mt-6">
+        <p className="text-center text-text-muted text-[13px] font-semibold mt-6">
           {t("license.contact")}
         </p>
       </div>

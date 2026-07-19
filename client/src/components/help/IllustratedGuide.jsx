@@ -121,6 +121,7 @@ export default function IllustratedGuide({ guide, onClose }) {
 
         <div className="p-6 min-h-[300px] max-h-[62vh] overflow-y-auto flex flex-col">
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            {step.illustration && <div className="w-full">{step.illustration}</div>}
             <GuideIconFlow items={step.icons} accent={accent} />
             {step.caption && (
               <p className="text-sm font-bold text-text-secondary text-center leading-relaxed max-w-sm">{step.caption}</p>
