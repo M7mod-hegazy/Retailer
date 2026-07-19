@@ -16,6 +16,7 @@ const EVENT_TYPES = {
   DAILY_CLOSE: "daily_close",
   LARGE_INVOICE: "large_invoice",
   LARGE_DISCOUNT: "large_discount",
+  BELOW_COST_SALE: "below_cost_sale",
   SALES_RETURN: "sales_return",
   INVOICE_VOIDED: "invoice_voided",
   PURCHASE_CREATED: "purchase_created",
@@ -284,7 +285,10 @@ function isEventEnabledForRecipient(recipient, eventType) {
     case EVENT_TYPES.DAILY_CLOSE:
     case EVENT_TYPES.SHIFT_CLOSE: return recipient.notifyDailyClose;
     case EVENT_TYPES.LARGE_INVOICE:
-    case EVENT_TYPES.LARGE_DISCOUNT: return recipient.notifyLargeAmounts;
+    case EVENT_TYPES.LARGE_DISCOUNT:
+    // Money-risk bucket: selling below cost rides the same per-recipient toggle
+    // as large amounts, so no schema change is needed.
+    case EVENT_TYPES.BELOW_COST_SALE: return recipient.notifyLargeAmounts;
     case EVENT_TYPES.SALES_RETURN:
     case EVENT_TYPES.INVOICE_VOIDED: return recipient.notifyReturnsVoids;
     case EVENT_TYPES.RETURN_PAYMENT: return recipient.notifyReturnPayment;
@@ -1451,6 +1455,18 @@ function buildMessage(eventType, data = {}, db = null, presetLabel = null) {
         `الكمية الحالية: *${data.currentQuantity}*\n` +
         `الحد الأدنى: *${data.minQuantity}*`;
 
+    case EVENT_TYPES.BELOW_COST_SALE: {
+      const items = Array.isArray(data.items) ? data.items : [];
+      const list = items.slice(0, 6).map((l) =>
+        `• ${l.name || "—"}: بيع بـ *${formatMoney(l.unitPrice, currency)}* والتكلفة *${formatMoney(l.cost, currency)}* (×${l.quantity})`
+      ).join("\n");
+      return `${header}🚨 بيع تحت التكلفة — فاتورة #${data.invoiceNo || data.id || "—"}\n` +
+        `${list}\n` +
+        `إجمالي الخسارة التقديرية: *${formatMoney(data.totalLoss, currency)}*\n` +
+        `${data.userName ? `البائع: *${data.userName}*\n` : ""}` +
+        `⚠️ راجع السعر فوراً — قد يكون خطأ تسعير أو تلاعب.`;
+    }
+
     case EVENT_TYPES.BACKUP_RESULT:
       return `${header}${data.success ? "✅ نسخة احتياطية ناجحة" : "❌ فشل النسخ الاحتياطي"}\n` +
         `السبب: *${data.reason || "غير محدد"}*\n` +
@@ -1652,7 +1668,8 @@ async function notifyOwner(eventType, data = {}, dbArg) {
       case EVENT_TYPES.DAILY_CLOSE:
       case EVENT_TYPES.SHIFT_CLOSE: return legacy.notifyDailyClose;
       case EVENT_TYPES.LARGE_INVOICE:
-      case EVENT_TYPES.LARGE_DISCOUNT: return legacy.notifyLargeAmounts;
+      case EVENT_TYPES.LARGE_DISCOUNT:
+      case EVENT_TYPES.BELOW_COST_SALE: return legacy.notifyLargeAmounts;
       case EVENT_TYPES.SALES_RETURN:
       case EVENT_TYPES.INVOICE_VOIDED:
       case EVENT_TYPES.RETURN_PAYMENT: return legacy.notifyReturnsVoids;

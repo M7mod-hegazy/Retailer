@@ -19,6 +19,19 @@ function setOverrideEnabled(enabled) {
   }
 }
 
+// Push the active theme's base colour to the native Electron window so there is
+// never a white edge/flash behind a dark or tinted theme. No-op in the browser
+// (web build) where electronAPI is absent.
+function syncWindowBgColor(hex) {
+  try {
+    if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) {
+      window.electronAPI?.setWindowBgColor?.(hex);
+    }
+  } catch {
+    /* not in Electron — ignore */
+  }
+}
+
 export function applyColorTheme(settings = {}) {
   // Normalise unknown/removed theme ids (e.g. a retired palette still saved in
   // settings) back to the default so they render the clean native theme rather
@@ -42,6 +55,7 @@ export function applyColorTheme(settings = {}) {
     ALL_VAR_KEYS.forEach((key) => root.style.removeProperty(key));
     setOverrideEnabled(false);
     root.dataset.colorTheme = DEFAULT_THEME;
+    syncWindowBgColor(DEFAULT_THEME_VARS["--bg-base"]);
     // "global" (not "light") so the index.css [data-theme="light"] remaps stay
     // dormant — the default theme renders with native Tailwind colours. Setting
     // "light" here would activate `[data-theme="light"] .text-white → text-primary`
@@ -71,4 +85,5 @@ export function applyColorTheme(settings = {}) {
   root.dataset.theme = (themeName === "custom")
     ? (settings.custom_theme_mode || preset.mode || "light")
     : (preset.mode || "light");
+  syncWindowBgColor(vars["--bg-base"]);
 }

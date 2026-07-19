@@ -1,42 +1,63 @@
 // Central registration file for all modals that support the detach feature.
 // Eagerly imported from main.jsx so registrations are available in both the
 // main window and child (detached) windows before any modal renders.
+//
+// PERF: every component here is registered as React.lazy. The registry's
+// components are ONLY rendered by DetachedModalHost (inside a child window),
+// so eager imports would drag ~35 heavy modals — plus the whole print,
+// purchases and returns dependency trees — into the entry bundle that weak
+// devices must parse before the login screen can paint. Lazy registration
+// keeps registration itself instant; the actual code loads on first render of
+// a detached window, behind DetachedModalHost's Suspense spinner.
+import { lazy } from "react";
 import { registerModal, defaultDeserialize } from "./modalRegistry";
-import ConfirmDialog from "../ui/ConfirmDialog";
-import DeleteImpactModal from "../ui/DeleteImpactModal";
-import DetachedCustomerForm from "../modals/DetachedCustomerForm";
-import DetachedSupplierForm from "../modals/DetachedSupplierForm";
-import SupplierInfoModal from "../modals/SupplierInfoModal";
-import CustomerInfoModal from "../modals/CustomerInfoModal";
-import DefaultPermissionsModal from "../modals/DefaultPermissionsModal";
-import ExpenseFormModal from "../../pages/expenses/ExpenseFormModal";
-import RevenueFormModal from "../../pages/expenses/RevenueFormModal";
-import GeneralPurchaseReturnModal from "../../components/returns/GeneralPurchaseReturnModal";
-import GeneralReturnModal from "../../components/returns/GeneralReturnModal";
-import QuickReturnModal from "../../components/returns/QuickReturnModal";
-import PurchaseProfitModal from "../../components/purchases/PurchaseProfitModal";
-import PosCashCheckoutModal from "../../components/pos/PosCashCheckoutModal";
-import { DramaticDeleteConfirm } from "../../components/ui/DramaticDeleteConfirm";
-import ShortcutCheatsheetModal from "../../shortcuts/ShortcutCheatsheetModal";
-import PayInPayOutModal from "../../pages/pos/PayInPayOutModal";
-import SupervisorPINModal from "../../components/auth/SupervisorPINModal";
-import PermissionDeniedModal from "../../components/ui/PermissionDeniedModal";
-import PrintPreviewModal from "../../components/print/PrintPreviewModal";
-import PDFExportDialog from "../../components/print/PDFExportDialog";
-import LineConfigModal from "../../components/pos/LineConfigModal";
-import GalleryModal from "../../pages/pos/parts/GalleryModal";
-import HeldDropdown from "../../pages/pos/parts/HeldDropdown";
-import POSTodayModal from "../../components/pos/POSTodayModal";
-import InvoicePreviewModal from "../../components/pos/InvoicePreviewModal";
-import TodayPurchasesModal, { PurchasePreviewModal } from "../../components/purchases/TodayPurchasesModal";
-import PurchasePickerTodayModal from "../../components/purchases/PurchasePickerTodayModal";
-import PurchaseReturnTodayModal, { ReturnPreviewModal as PurchaseReturnPreviewModal } from "../../components/purchases/PurchaseReturnTodayModal";
-import InvoicePickerTodayModal from "../../components/sales/InvoicePickerTodayModal";
-import SalesReturnTodayModal, { ReturnPreviewModal as SalesReturnPreviewModal } from "../../components/sales/SalesReturnTodayModal";
-import BranchTransferTodayModal from "../../components/operations/BranchTransferTodayModal";
-import AdvancedSearchModal from "../../components/pos/AdvancedSearchModal";
-import ShiftOpenModal from "../../pages/pos/ShiftOpenModal";
-import ShiftCloseModal from "../../pages/pos/ShiftCloseModal";
+
+const ConfirmDialog = lazy(() => import("../ui/ConfirmDialog"));
+const DeleteImpactModal = lazy(() => import("../ui/DeleteImpactModal"));
+const DetachedCustomerForm = lazy(() => import("../modals/DetachedCustomerForm"));
+const DetachedSupplierForm = lazy(() => import("../modals/DetachedSupplierForm"));
+const SupplierInfoModal = lazy(() => import("../modals/SupplierInfoModal"));
+const CustomerInfoModal = lazy(() => import("../modals/CustomerInfoModal"));
+const DefaultPermissionsModal = lazy(() => import("../modals/DefaultPermissionsModal"));
+const ExpenseFormModal = lazy(() => import("../../pages/expenses/ExpenseFormModal"));
+const RevenueFormModal = lazy(() => import("../../pages/expenses/RevenueFormModal"));
+const GeneralPurchaseReturnModal = lazy(() => import("../../components/returns/GeneralPurchaseReturnModal"));
+const GeneralReturnModal = lazy(() => import("../../components/returns/GeneralReturnModal"));
+const QuickReturnModal = lazy(() => import("../../components/returns/QuickReturnModal"));
+const PurchaseProfitModal = lazy(() => import("../../components/purchases/PurchaseProfitModal"));
+const PosCashCheckoutModal = lazy(() => import("../../components/pos/PosCashCheckoutModal"));
+const DramaticDeleteConfirm = lazy(() =>
+  import("../../components/ui/DramaticDeleteConfirm").then((m) => ({ default: m.DramaticDeleteConfirm })),
+);
+const ShortcutCheatsheetModal = lazy(() => import("../../shortcuts/ShortcutCheatsheetModal"));
+const PayInPayOutModal = lazy(() => import("../../pages/pos/PayInPayOutModal"));
+const SupervisorPINModal = lazy(() => import("../../components/auth/SupervisorPINModal"));
+const PermissionDeniedModal = lazy(() => import("../../components/ui/PermissionDeniedModal"));
+const PrintPreviewModal = lazy(() => import("../../components/print/PrintPreviewModal"));
+const PDFExportDialog = lazy(() => import("../../components/print/PDFExportDialog"));
+const LineConfigModal = lazy(() => import("../../components/pos/LineConfigModal"));
+const GalleryModal = lazy(() => import("../../pages/pos/parts/GalleryModal"));
+const HeldDropdown = lazy(() => import("../../pages/pos/parts/HeldDropdown"));
+const POSTodayModal = lazy(() => import("../../components/pos/POSTodayModal"));
+const InvoicePreviewModal = lazy(() => import("../../components/pos/InvoicePreviewModal"));
+const TodayPurchasesModal = lazy(() => import("../../components/purchases/TodayPurchasesModal"));
+const PurchasePreviewModal = lazy(() =>
+  import("../../components/purchases/TodayPurchasesModal").then((m) => ({ default: m.PurchasePreviewModal })),
+);
+const PurchasePickerTodayModal = lazy(() => import("../../components/purchases/PurchasePickerTodayModal"));
+const PurchaseReturnTodayModal = lazy(() => import("../../components/purchases/PurchaseReturnTodayModal"));
+const PurchaseReturnPreviewModal = lazy(() =>
+  import("../../components/purchases/PurchaseReturnTodayModal").then((m) => ({ default: m.ReturnPreviewModal })),
+);
+const InvoicePickerTodayModal = lazy(() => import("../../components/sales/InvoicePickerTodayModal"));
+const SalesReturnTodayModal = lazy(() => import("../../components/sales/SalesReturnTodayModal"));
+const SalesReturnPreviewModal = lazy(() =>
+  import("../../components/sales/SalesReturnTodayModal").then((m) => ({ default: m.ReturnPreviewModal })),
+);
+const BranchTransferTodayModal = lazy(() => import("../../components/operations/BranchTransferTodayModal"));
+const AdvancedSearchModal = lazy(() => import("../../components/pos/AdvancedSearchModal"));
+const ShiftOpenModal = lazy(() => import("../../pages/pos/ShiftOpenModal"));
+const ShiftCloseModal = lazy(() => import("../../pages/pos/ShiftCloseModal"));
 
 // ── add-customer ──────────────────────────────────────────────────────────
 registerModal(

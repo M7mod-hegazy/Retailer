@@ -1025,9 +1025,19 @@ export default function DailyTreasuryPage() {
               <Calendar className="h-3.5 w-3.5" /> اليوم
             </motion.button>
 
-            <div className={`flex items-center gap-1.5 h-10 px-3 rounded-xl border ${isClosed ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700"}`}>
+            {/* Status pill uses the mode-aware success/danger tokens directly
+                (not emerald/rose utilities, which remap to the primary colour and
+                render dark-on-dark on dark themes). */}
+            <div
+              className="flex items-center gap-1.5 h-10 px-3 rounded-xl border text-sm font-black"
+              style={{
+                backgroundColor: isClosed ? "var(--danger-bg)" : "var(--success-bg)",
+                borderColor: isClosed ? "var(--danger-border)" : "var(--success-border)",
+                color: isClosed ? "var(--danger-text)" : "var(--success-text)",
+              }}
+            >
               {isClosed ? <Lock className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-              <span className="text-sm font-black">{isClosed ? "مغلق" : "مفتوح"}</span>
+              <span>{isClosed ? "مغلق" : "مفتوح"}</span>
             </div>
 
             <label className="flex items-center gap-1.5 h-10 cursor-pointer rounded-xl border border-[var(--border-normal)] px-3 text-[11px] font-black text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors select-none">
@@ -1046,7 +1056,9 @@ export default function DailyTreasuryPage() {
               onClick={() => { setHistoryOpen(true); loadPastSessions(); }}
               className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-white hover:bg-primary-600 transition-colors shadow-md shadow-slate-900/10"
             >
-              <History className="h-3.5 w-3.5 text-emerald-400" /> الأيام السابقة
+              {/* Icon inherits the button's white text — a fixed emerald icon
+                  vanished on non-green primaries (e.g. amber Ocean theme). */}
+              <History className="h-3.5 w-3.5" /> الأيام السابقة
             </motion.button>
 
             <motion.button

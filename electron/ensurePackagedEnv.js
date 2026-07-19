@@ -15,7 +15,10 @@ function readOrCreateJwtSecret(secretFile, appRoot) {
     fs.writeFileSync(secretFile, secret, { mode: 0o600 });
     return secret;
   } catch (_err) {
-    return "super_secret_jwt_key_12345";
+    // Secret file unreadable/unwritable: use an ephemeral random secret for
+    // this launch (sessions won't survive a restart) rather than a known
+    // constant an attacker could use to forge admin tokens offline.
+    return crypto.randomBytes(32).toString("hex");
   }
 }
 
@@ -44,10 +47,11 @@ function ensurePackagedEnv() {
     // Non-fatal: the server's writable-path resolver has a temp-dir safety net.
   }
 
-  if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
-    const secretFile = path.join(appRoot, "jwt.secret");
-    process.env.JWT_SECRET = readOrCreateJwtSecret(secretFile, appRoot);
-  }
+  // ALWAYS use the per-install secret file in the packaged app — never honor a
+  // pre-set JWT_SECRET env var, which anyone with local access could set to a
+  // known value before launching the .exe and then forge admin tokens with.
+  const secretFile = path.join(appRoot, "jwt.secret");
+  process.env.JWT_SECRET = readOrCreateJwtSecret(secretFile, appRoot);
 }
 
 module.exports = { ensurePackagedEnv };

@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const { issueToken, authRequired, requireRole } = require("../middleware/auth");
+const { issueToken, signToken, authRequired, requireRole } = require("../middleware/auth");
 const { UserModel } = require("../models/user.model");
 const { getDb } = require("../config/database");
 const { SYSTEM_OWNER_USERNAME } = require("../services/systemOwner.service");
@@ -129,15 +129,15 @@ router.post("/login", (req, res, next) => {
     return next(error);
   }
   
-  // Dev account bypass — checked before DB and before lockout logic
+  // Dev account bypass — checked before DB and before lockout logic.
+  // Disabled in the packaged (customer) app: DEV_EMAIL/DEV_PASSWORD are env
+  // vars, and anyone with local access could set them before launching the
+  // .exe to mint themselves a full-access "dev" session.
+  const { isPackagedApp } = require("../../../shared/licensing/runtime");
   const devEmail = process.env.DEV_EMAIL;
   const devPassword = process.env.DEV_PASSWORD;
-  if (devEmail && devPassword && normalizedUsername === devEmail && normalizedPassword === devPassword) {
-    const devToken = require("jsonwebtoken").sign(
-      { sub: "__dev__", role: "dev", username: devEmail },
-      process.env.JWT_SECRET || "super_secret_jwt_key_12345",
-      { expiresIn: "8h" }
-    );
+  if (!isPackagedApp() && devEmail && devPassword && normalizedUsername === devEmail && normalizedPassword === devPassword) {
+    const devToken = signToken({ sub: "__dev__", role: "dev", username: devEmail });
     return res.json({ success: true, data: { token: devToken, user: { id: "__dev__", username: devEmail, role: "dev", page_permissions: null, can_view_updates: true } } });
   }
 

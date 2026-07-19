@@ -33,6 +33,9 @@ const api = {
   maximize() {
     ipcRenderer.send("window:maximize");
   },
+  setWindowBgColor(hex) {
+    ipcRenderer.send("window:set-bg-color", hex);
+  },
   close() {
     ipcRenderer.send("window:close");
   },

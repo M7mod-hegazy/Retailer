@@ -272,6 +272,7 @@ export function useTelegramConnect(onSaved) {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [sendingInsights, setSendingInsights] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [qrData, setQrData] = useState(null);
@@ -560,6 +561,25 @@ export function useTelegramConnect(onSaved) {
     finally { setTesting(false); }
   }
 
+  // Build + send the smart-decisions report (تقرير القرارات الذكية) on demand to
+  // all enabled recipients. Server returns {empty:true} when nothing actionable.
+  async function sendInsightsNow() {
+    setSendingInsights(true);
+    try {
+      const res = await api.post("/api/telegram/insights/send", {});
+      const data = res.data?.data || {};
+      if (data.empty) {
+        toast(t("telegram.insightsEmpty", "لا توجد توصيات حالياً — كل المؤشرات سليمة ✅"), { icon: "✅" });
+      } else {
+        toast.success(t("telegram.insightsSent", `تم إرسال تقرير القرارات الذكية (${data.sent} مستلم)`));
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || t("telegram.insightsError", "تعذّر إرسال التقرير"));
+    } finally {
+      setSendingInsights(false);
+    }
+  }
+
   function createRecipient() {
     return {
       name: "",
@@ -769,5 +789,6 @@ export function useTelegramConnect(onSaved) {
     pairing, startPairing, cancelPairing,
     history, loadingHistory, fetchHistory,
     detectChatId, generateDeepLink, save, sendTest, disconnect,
+    sendInsightsNow, sendingInsights,
   };
 }

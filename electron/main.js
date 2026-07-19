@@ -169,26 +169,29 @@ function destroySplash() {
   }
 }
 
+function windowStateFile() {
+  return path.join(app.getPath("userData"), "window-state.json");
+}
+
 function loadWindowState() {
   try {
-    const stateFile = path.join(app.getPath("userData"), "window-state.json");
     const fs = require("fs");
-    if (fs.existsSync(stateFile)) return JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    if (fs.existsSync(windowStateFile())) return JSON.parse(fs.readFileSync(windowStateFile(), "utf8"));
   } catch (_) {}
   return { maximized: true };
 }
 
 function saveWindowState(win) {
   try {
-    const stateFile = path.join(app.getPath("userData"), "window-state.json");
     const fs = require("fs");
+    const prev = loadWindowState();
     const maximized = win.isMaximized();
-    const state = { maximized };
+    const state = { maximized, bgColor: prev.bgColor };
     if (!maximized) {
       const b = win.getBounds();
       state.x = b.x; state.y = b.y; state.width = b.width; state.height = b.height;
     }
-    fs.writeFileSync(stateFile, JSON.stringify(state));
+    fs.writeFileSync(windowStateFile(), JSON.stringify(state));
   } catch (_) {}
 }
 
@@ -205,6 +208,10 @@ function createMainWindow() {
     show: false,
     title: "ElHegazi Retailer",
     autoHideMenuBar: true,
+    // Paint the native window in the last theme's base colour (default: the
+    // emerald light base). Electron's default is opaque white, which showed as a
+    // white edge/flash around every dark or tinted theme during paint & resize.
+    backgroundColor: winState.bgColor || "#f1f5f9",
     icon: path.join(__dirname, "assets", process.platform === "win32" ? "icon.ico" : "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

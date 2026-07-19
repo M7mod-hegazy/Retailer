@@ -8,6 +8,7 @@ const logger = require("../config/logger");
 const { getDb } = require("../config/database");
 const { getTelegramConfig, getTelegramRecipients, getLegacyTelegramConfig, isDigestEnabledForRecipient, sendTelegramMessage, enqueueNotification, logSentNotification } = require("../services/telegramService");
 const { completedPeriodBounds, buildDigest } = require("../services/telegramDigest");
+const { buildInsightsMessage } = require("../services/telegramInsights");
 
 const PERIODS = [
   { type: "weekly", col: "telegram_notify_weekly" },
@@ -108,6 +109,35 @@ function runDueDigests(dbArg) {
     // next tick; on failure we hand the message to the existing retry queue.
     markSent(db, p.type, bounds.key);
     sendDigestToRecipients(db, config, text, p.type);
+  }
+
+  runDueInsights(db, config, { currency, branch });
+}
+
+// Weekly "smart decisions" report (تقرير القرارات الذكية) — reorder alerts,
+// dead stock, weak margins, rising products. Rides the weekly-digest opt-in
+// (anyone getting the weekly digest gets the insights too) and the same
+// exactly-once log under its own period_type, so it can never double-send.
+function runDueInsights(db, config, { currency, branch }) {
+  try {
+    const recipients = getTelegramRecipients(db);
+    const legacy = recipients.length === 0 ? getLegacyTelegramConfig(db) : null;
+    const anyEnabled = recipients.length > 0
+      ? recipients.some((r) => r.enabled && isDigestEnabledForRecipient(r, "weekly"))
+      : Boolean(legacy && legacy.enabled && legacy.notifyWeekly);
+    if (!anyEnabled) return;
+
+    const bounds = completedPeriodBounds("weekly");
+    if (alreadySent(db, "insights", bounds.key)) return;
+
+    const text = buildInsightsMessage(db, { currencySymbol: currency, branch });
+    // Nothing actionable this week — still mark the period so we don't rebuild
+    // the (multi-query) report every 6-hour tick.
+    markSent(db, "insights", bounds.key);
+    if (!text) return;
+    sendDigestToRecipients(db, config, text, "weekly");
+  } catch (e) {
+    logger.warn({ message: "Telegram insights build failed", error: e.message });
   }
 }
 

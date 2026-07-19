@@ -756,6 +756,31 @@ router.post("/", requirePagePermission("pos", "add"), async (req, res) => {
       }
     }
   } catch (_) {}
+  // Smart alert: any line sold below its WACC cost (pricing error or tampering).
+  try {
+    const lines = Array.isArray(invoice?.lines) ? invoice.lines : [];
+    const belowCost = [];
+    let totalLoss = 0;
+    for (const l of lines) {
+      const qty = Number(l.quantity || 0);
+      const cost = Number(l.cost_wacc || 0);
+      if (qty <= 0 || cost <= 0) continue;
+      const unitNet = Number(l.line_total || 0) / qty; // after line discount
+      if (unitNet < cost - 0.005) {
+        belowCost.push({ name: l.item_name_ar || l.item_name_en || l.barcode, unitPrice: unitNet, cost, quantity: qty });
+        totalLoss += (cost - unitNet) * qty;
+      }
+    }
+    if (belowCost.length && invoice?.id) {
+      notifyOwner(TG.BELOW_COST_SALE, {
+        id: invoice.id,
+        invoiceNo: invoice.invoice_no,
+        items: belowCost,
+        totalLoss,
+        userName: req.user?.full_name || req.user?.username,
+      });
+    }
+  } catch (_) {}
   res.status(201).json({ success: true, data: invoice, telegramStatus: _tgStatus });
 });
 

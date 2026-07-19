@@ -154,6 +154,25 @@ function setupIpc(window) {
   });
   ipcMain.on("window:close", () => window.close());
 
+  // Live-sync the native window background to the active theme's base colour so
+  // there is never a white edge behind a dark/tinted theme (paint, resize,
+  // scroll rubber-band). Also persisted for a flash-free next launch.
+  ipcMain.on("window:set-bg-color", (_e, hex) => {
+    const clean = typeof hex === "string" && /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : null;
+    if (!clean) return;
+    try { window.setBackgroundColor(clean); } catch (_) {}
+    // Persist into window-state.json so the NEXT launch paints this colour from
+    // the first frame (self-contained here to avoid a circular require on main).
+    try {
+      const fs = require("fs");
+      const stateFile = require("path").join(require("electron").app.getPath("userData"), "window-state.json");
+      let state = {};
+      try { state = JSON.parse(fs.readFileSync(stateFile, "utf8")) || {}; } catch (_) {}
+      state.bgColor = clean;
+      fs.writeFileSync(stateFile, JSON.stringify(state));
+    } catch (_) {}
+  });
+
   ipcMain.handle("backup:create", async () => {
     const filePath = performBackup();
     return { success: true, file_path: filePath };

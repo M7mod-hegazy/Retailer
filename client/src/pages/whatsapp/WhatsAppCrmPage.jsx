@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   MessageSquare, Wifi, WifiOff, Smartphone, RefreshCw, Link, Unlink, Send, Users,
-  BarChart3, Inbox, Megaphone, FileText, ChevronDown, ChevronUp,
+  Sparkles, BarChart3, Inbox, Megaphone, FileText, ChevronDown, ChevronUp,
   Search, X, CheckCircle, Clock, Zap, Info, Archive,
   MessageCircle, UserPlus, Mail, Globe,
   Bot, Check, Loader2, Image, Settings,
@@ -134,6 +134,12 @@ function EmptyState({ icon: Icon, title, description, action }) {
 function ChannelCard({ icon: Icon, title, desc, status, statusText, accent, actionLabel, actionIcon: ActionIcon, onAction, actionDanger, extra, unavailable, unavailableHint, features, disabled }) {
   const isOn = status === "connected";
   const isPending = status === "pending";
+  // Connected state as a THEME-AWARE tinted surface: the accent colours the
+  // border/icon/status/checks, while the card body stays a proper themed surface
+  // and text keeps --text-primary/secondary. The old design filled the card with
+  // the bright `-text` accent token and put white text on it → washed-out and
+  // unreadable on dark themes (the light-blue Telegram / mint WhatsApp cards).
+  const tint = (pct) => `color-mix(in srgb, ${accent} ${pct}%, transparent)`;
   return (
     <div className={`relative overflow-hidden rounded-2xl transition-all duration-300 group flex flex-col ${
       isOn
@@ -141,37 +147,38 @@ function ChannelCard({ icon: Icon, title, desc, status, statusText, accent, acti
         : isPending
         ? "border border-warning-border/40 bg-warning-bg/15 hover:shadow-elevated"
         : "border border-border-normal bg-bg-surface hover:shadow-elevated"
-    }`} style={isOn ? { backgroundColor: accent, border: `1px solid ${accent}` } : undefined}>
-      {isOn && <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 via-transparent to-black/10 pointer-events-none" />}
+    }`} style={isOn ? { backgroundColor: `color-mix(in srgb, ${accent} 10%, var(--bg-surface))`, border: `1px solid ${tint(38)}` } : undefined}>
+      {/* Accent rail marks the connected card without washing it out. */}
+      {isOn && <div className="absolute top-0 bottom-0 right-0 w-1" style={{ backgroundColor: accent }} />}
 
       <div className="p-5 flex flex-col flex-1 relative z-10">
         <div className="flex items-start gap-3 mb-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-            style={isOn ? { backgroundColor: "rgba(255,255,255,0.2)", color: "white" } : isPending ? { backgroundColor: "var(--warning-bg)", borderColor: "var(--warning-border)", color: "var(--warning-text)", border: "2px solid var(--warning-border)" } : { backgroundColor: "var(--bg-base)", borderColor: "var(--border-normal)", color: "var(--text-muted)", border: "2px solid var(--border-normal)" }}>
+            style={isOn ? { backgroundColor: tint(16), color: accent, border: `2px solid ${tint(35)}` } : isPending ? { backgroundColor: "var(--warning-bg)", borderColor: "var(--warning-border)", color: "var(--warning-text)", border: "2px solid var(--warning-border)" } : { backgroundColor: "var(--bg-base)", borderColor: "var(--border-normal)", color: "var(--text-muted)", border: "2px solid var(--border-normal)" }}>
             <Icon className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-black tracking-tight" style={isOn ? { color: "white" } : { color: "var(--text-primary)" }}>{title}</h3>
+              <h3 className="text-sm font-black tracking-tight" style={{ color: "var(--text-primary)" }}>{title}</h3>
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full"
-                style={isOn ? { backgroundColor: "rgba(255,255,255,0.25)", color: "white", border: "1px solid rgba(255,255,255,0.3)" } : isPending ? { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" } : { backgroundColor: "var(--bg-base)", color: "var(--text-muted)", border: "1px solid var(--border-normal)" }}>
+                style={isOn ? { backgroundColor: tint(16), color: accent, border: `1px solid ${tint(35)}` } : isPending ? { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" } : { backgroundColor: "var(--bg-base)", color: "var(--text-muted)", border: "1px solid var(--border-normal)" }}>
                 {isOn ? statusText : isPending ? "انتظار" : "متوقف"}
               </span>
             </div>
-            <p className="text-[11px] font-bold mt-1 leading-relaxed" style={isOn ? { color: "rgba(255,255,255,0.75)" } : { color: "var(--text-muted)" }}>{desc}</p>
+            <p className="text-[11px] font-bold mt-1 leading-relaxed" style={{ color: isOn ? "var(--text-secondary)" : "var(--text-muted)" }}>{desc}</p>
             {extra}
           </div>
         </div>
 
         {features && features.length > 0 && (
           <div className="mb-3 px-3 py-2.5 rounded-xl"
-            style={isOn ? { backgroundColor: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)" } : { backgroundColor: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
-            <p className="text-[9px] font-black mb-1.5" style={isOn ? { color: "rgba(255,255,255,0.8)" } : { color: "var(--text-muted)" }}>استخدامات هذه القناة:</p>
+            style={isOn ? { backgroundColor: "var(--bg-base)", border: `1px solid ${tint(22)}` } : { backgroundColor: "var(--bg-base)", border: "1px solid var(--border-subtle)" }}>
+            <p className="text-[9px] font-black mb-1.5" style={{ color: "var(--text-muted)" }}>استخدامات هذه القناة:</p>
             <div className="space-y-1">
               {features.map((f, i) => (
                 <div key={i} className="flex items-start gap-1.5">
-                  <span className="shrink-0 mt-0.5" style={isOn ? { color: "white" } : { color: "var(--text-muted)" }}>{isOn ? "✓" : "○"}</span>
-                  <span className="text-[10px] font-bold leading-relaxed" style={isOn ? { color: "rgba(255,255,255,0.85)" } : { color: "var(--text-muted)" }}>{f}</span>
+                  <span className="shrink-0 mt-0.5" style={{ color: isOn ? accent : "var(--text-muted)" }}>{isOn ? "✓" : "○"}</span>
+                  <span className="text-[10px] font-bold leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f}</span>
                 </div>
               ))}
             </div>
@@ -183,12 +190,12 @@ function ChannelCard({ icon: Icon, title, desc, status, statusText, accent, acti
 
         <div className="mt-3">
           <button onClick={onAction} disabled={disabled}
-            className={`w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[11px] font-black transition-all active:scale-[0.97] ${
-              disabled ? "border border-border-normal bg-bg-base text-text-muted cursor-not-allowed opacity-50"
-              : actionDanger && isOn ? "border border-white/30 bg-white/15 text-white hover:bg-white/25"
-              : isOn ? "border border-white/30 bg-white/15 text-white hover:bg-white/25"
-              : "bg-primary text-white shadow-sm hover:opacity-90"
-            }`}>
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[11px] font-black transition-all active:scale-[0.97]"
+            style={
+              disabled ? { border: "1px solid var(--border-normal)", backgroundColor: "var(--bg-base)", color: "var(--text-muted)", cursor: "not-allowed", opacity: 0.5 }
+              : isOn ? { border: `1px solid ${tint(40)}`, backgroundColor: tint(12), color: accent }
+              : { backgroundColor: "var(--primary)", color: "#fff" }
+            }>
             <ActionIcon className="h-3.5 w-3.5" /> {actionLabel}
           </button>
         </div>
@@ -3887,6 +3894,7 @@ function TelegramTab({ telegramEnabled, onConfigChanged, perms }) {
     botInfo, validating,
     history, loadingHistory, fetchHistory,
     generateDeepLink, save, sendTest, disconnect,
+    sendInsightsNow, sendingInsights,
   } = useTelegramConnect(onConfigChanged);
 
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -4561,6 +4569,37 @@ function TelegramTab({ telegramEnabled, onConfigChanged, perms }) {
           <p className="mt-3 text-[11px] font-bold text-text-muted">{t("telegram.step4Hint")}</p>
         )}
       </div>
+
+      {/* Smart decisions report — build & send the reorder / dead-stock /
+          weak-margin / rising-products analytics to all recipients on demand.
+          Sits with the weekly digest concept but fires instantly. */}
+      {isBotConnected && (
+        <div className="rounded-2xl border border-border-normal bg-bg-surface p-5 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-info-bg text-info-text">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-black text-text-primary">تقرير القرارات الذكية</p>
+                <p className="text-[11px] font-bold text-text-muted leading-relaxed">
+                  اقتراحات الشراء، البضاعة الراكدة، الهوامش الضعيفة، والمنتجات الصاعدة — يُرسل تلقائياً أسبوعياً، أو أرسله الآن.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={sendInsightsNow}
+              disabled={sendingInsights || !config.telegram_enabled}
+              title={!config.telegram_enabled ? "فعّل تيليجرام أولاً" : undefined}
+              className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
+            >
+              {sendingInsights ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sendingInsights ? "جاري الإرسال..." : "إرسال التقرير الآن"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sticky save bar */}
       {(dirty || saving) && (

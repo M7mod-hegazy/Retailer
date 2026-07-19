@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { getModalRegistration } from "./modalRegistry";
@@ -115,7 +115,10 @@ export default function DetachedModalHost() {
   return (
     <DetachedProviders>
       <div className="h-dvh w-dvw overflow-auto bg-slate-50" dir="rtl">
-        <Component {...props} />
+        {/* Registered components are React.lazy — loaded on first render. */}
+        <Suspense fallback={<LoadingSpinner />}>
+          <Component {...props} />
+        </Suspense>
       </div>
     </DetachedProviders>
   );

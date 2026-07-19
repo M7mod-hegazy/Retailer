@@ -273,6 +273,52 @@ router.post("/test", requireAnyPagePermission(["settings", "whatsapp_crm"], "edi
   }
 });
 
+// On-demand smart insights (تقرير القرارات الذكية): builds the reorder /
+// dead-stock / weak-margin / rising-products report NOW and sends it to all
+// enabled recipients (or returns it as preview_only without sending).
+router.post("/insights/send", requireAnyPagePermission(["settings", "whatsapp_crm"], "edit"), async (req, res) => {
+  try {
+    const db = getDb();
+    const { buildInsightsMessage } = require("../services/telegramInsights");
+    let settings = null;
+    try { settings = db.prepare("SELECT * FROM settings WHERE id = 1").get(); } catch (_) {}
+    const text = buildInsightsMessage(db, {
+      currencySymbol: settings?.currency_symbol || "ج",
+      branch: settings?.store_name || settings?.shop_name || settings?.company_name || "",
+    });
+    if (!text) {
+      return res.json({ success: true, data: { sent: 0, empty: true }, message: "لا توجد توصيات حالياً — كل المؤشرات سليمة ✅" });
+    }
+    if (req.body?.preview_only) {
+      return res.json({ success: true, data: { text, sent: 0 } });
+    }
+
+    const config = getTelegramConfig(db);
+    if (!config || !config.enabled) {
+      return res.status(400).json({ success: false, message: "إعدادات Telegram غير مكتملة — أدخل التوكن وفعّل الإشعارات" });
+    }
+    const recipients = getTelegramRecipients(db);
+    let sent = 0;
+    if (recipients.length > 0) {
+      for (const recipient of recipients) {
+        if (!recipient.enabled) continue;
+        await sendTelegramMessage(config, recipient.chatId, text);
+        logSentNotification(db, "insights_manual", recipient.chatId, text);
+        sent++;
+      }
+    } else {
+      const legacy = getLegacyTelegramConfig(db);
+      if (!legacy) return res.status(400).json({ success: false, message: "لا يوجد مستلم — أضف Chat ID أولاً" });
+      await sendTelegramMessage(legacy, legacy.chatId, text);
+      logSentNotification(db, "insights_manual", legacy.chatId, text);
+      sent++;
+    }
+    res.json({ success: true, data: { sent, text } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // Auto-detect chat_id from the bot's recent messages — lets the owner paste
 // only the bot token and click a button instead of reading raw getUpdates JSON.
 // Returns 200 with { found: false } when no chat is available yet (instead of

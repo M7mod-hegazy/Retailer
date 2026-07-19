@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState, useCallback } from "react";
-import WelcomeWizard from "./components/welcome/WelcomeWizard";
+// PERF: lazy — only shown on first login, keep it out of the entry bundle.
+const WelcomeWizard = lazy(() => import("./components/welcome/WelcomeWizard"));
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { motion, MotionConfig } from "framer-motion";
 import { usePerformanceStore } from "./stores/performanceStore";
@@ -17,7 +18,7 @@ function ScrollToTop() {
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./stores/authStore";
 import ScreenLock from "./components/auth/ScreenLock";
-import GlobalSearchPage from "./pages/search/GlobalSearchPage";
+const GlobalSearchPage = lazy(() => import("./pages/search/GlobalSearchPage"));
 import FullPageLoader from "./components/ui/FullPageLoader";
 import { useCanView } from "./hooks/usePermission";
 import { useShortcut } from "./shortcuts/useShortcut";
@@ -25,8 +26,8 @@ import { useUpdateStore } from "./stores/updateStore";
 import { useQuitOrLogoutStore } from "./stores/quitOrLogoutStore";
 import QuitOrLogoutModal from "./components/ui/QuitOrLogoutModal";
 import DetachedModalHost from "./components/detached/DetachedModalHost";
-import AssistantDrawer from "./components/assistant/AssistantDrawer";
-import AssistantLauncher from "./components/assistant/AssistantLauncher";
+const AssistantDrawer = lazy(() => import("./components/assistant/AssistantDrawer"));
+const AssistantLauncher = lazy(() => import("./components/assistant/AssistantLauncher"));
 import { useAssistantStore } from "./stores/assistantStore";
 
 import api from "./services/api";
@@ -414,12 +415,22 @@ export default function App() {
       <ServerDownOverlay />
       <Toaster position="top-center" toastOptions={{ duration: 3000, style: { fontSize: "13px", fontWeight: 700, fontFamily: "inherit" } }} containerStyle={{ marginTop: "64px" }} />
       <ScreenLock />
-      <GlobalSearchPage />
+      {/* Local Suspense (fallback null): these lazy chunks load after first
+          paint and must never flash the top-level full-page loader. */}
+      <Suspense fallback={null}>
+        <GlobalSearchPage />
+      </Suspense>
       <QuitOrLogoutModal />
       <DetachedModalHost />
-      <AssistantDrawer />
-      <AssistantLauncher />
-      {showWelcome && <WelcomeWizard onClose={() => setShowWelcome(false)} />}
+      <Suspense fallback={null}>
+        <AssistantDrawer />
+        <AssistantLauncher />
+      </Suspense>
+      {showWelcome && (
+        <Suspense fallback={null}>
+          <WelcomeWizard onClose={() => setShowWelcome(false)} />
+        </Suspense>
+      )}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<NotFoundPage />} />
