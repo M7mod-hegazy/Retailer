@@ -19,7 +19,7 @@ function buildOpts(query = {}) {
     cost_method, q, status, payment_type, movement_type, action, resource, user_id, role, is_active,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
-    employee_id, deduction_type, bonus_type, tx_type,
+    employee_id, deduction_type, bonus_type, tx_type, variance_only,
   } = query;
 
   // If caller didn't specify a cost method, fall back to the active setting
@@ -38,7 +38,7 @@ function buildOpts(query = {}) {
     q, status, payment_type, movement_type, action, resource, user_id, role, is_active,
     customer_id, supplier_id, period2_start, period2_end, warehouse_id, scope_type, scope_values,
     category_id, item_id, cashier_id, treasury_id, bank_id, method_id, direction, doc_type, party_type, amount_min, amount_max, tax_type,
-    employee_id, deduction_type, bonus_type, tx_type,
+    employee_id, deduction_type, bonus_type, tx_type, variance_only,
     cost_method: activeCostMethod,
   };
 }
@@ -67,6 +67,49 @@ function applyRowFilters(rows, opts = {}) {
     }
     return true;
   });
+}
+
+// ── Server-side Arabic cell values ─────────────────────────────────────────
+// Report cells must never reach the user (table, chart, print, Excel/PDF/Word)
+// with raw machine enums like "cash" / "paid" / "transfer_in". Translation runs
+// AFTER applyRowFilters (filters compare raw values) and only on columns known
+// to hold enums, so real names/codes are never touched.
+const ENUM_CELL_KEYS = new Set([
+  "status", "payment_type", "payment_method", "method", "raw_method",
+  // NOTE: "type" is deliberately absent — account-statement renderers branch on
+  // its raw values (invoice/payment/...) and translate for display themselves.
+  "direction", "doc_type", "party_type", "role", "movement_type", "tx_type",
+  "action", "resource", "source", "source_group", "refund_method",
+  "settlement_method", "tax_type", "exception_type", "deduction_type",
+  "bonus_type", "cost_method", "method_category", "method_type", "period",
+  "velocity_status", "stock_status", "priority",
+]);
+function translateEnumValue(value) {
+  return VALUE_TRANSLATIONS[value] || VALUE_TRANSLATIONS[String(value).toLowerCase()] || value;
+}
+// "cash:150.5 / card:49.5" → "نقدي: 150.5 / بطاقة: 49.5"
+function translatePaymentComposite(value) {
+  return String(value).split(" / ").map((part) => {
+    const idx = part.indexOf(":");
+    if (idx === -1) return translateEnumValue(part.trim());
+    const method = part.slice(0, idx).trim();
+    const amount = part.slice(idx + 1).trim();
+    return `${translateEnumValue(method)}: ${amount}`;
+  }).join(" / ");
+}
+function translateReportRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    for (const key of Object.keys(row)) {
+      const value = row[key];
+      if (typeof value !== "string" || value === "") continue;
+      if (key === "payment_methods") { row[key] = translatePaymentComposite(value); continue; }
+      if (ENUM_CELL_KEYS.has(key)) row[key] = translateEnumValue(value);
+    }
+    if (Array.isArray(row._items)) translateReportRows(row._items);
+  }
+  return rows;
 }
 
 function normalizeReportPayload(data) {
@@ -121,9 +164,17 @@ function requireReportAccess(sourceKeyOrParam) {
 
     const reportKey = "report_" + sourceKey;
     if (perms[reportKey]?.includes("view")) return next();
+    if (hasLegacySourceGrant(perms, sourceKey)) return next();
 
     return res.status(403).json({ error: "permission_denied", page: reportKey, action: "view" });
   };
+}
+
+// The merged "profit" source replaced profit-loader + net-profit; honor grants
+// issued under either legacy key so existing users keep their access.
+const LEGACY_SOURCE_GRANTS = { profit: ["report_profit-loader", "report_net-profit"] };
+function hasLegacySourceGrant(perms, sourceKey) {
+  return (LEGACY_SOURCE_GRANTS[sourceKey] || []).some((key) => perms[key]?.includes("view"));
 }
 
 function requireReportExportAccess(sourceKeyOrParam) {
@@ -144,6 +195,7 @@ function requireReportExportAccess(sourceKeyOrParam) {
 
     const reportKey = "report_" + sourceKey;
     if (perms[reportKey]?.includes("view")) return next();
+    if (hasLegacySourceGrant(perms, sourceKey)) return next();
 
     return res.status(403).json({ error: "permission_denied", page: reportKey, action: "view" });
   };
@@ -229,7 +281,7 @@ router.get("/run/:slug", (req, res, next) => {
     const p = Math.max(1, parseInt(page) || 1);
     // Allow up to 10,000 rows for print preview / full-export requests
     const ps = Math.min(10000, Math.max(1, parseInt(pageSize) || 50));
-    const paginated = rows.slice((p - 1) * ps, p * ps);
+    const paginated = translateReportRows(rows.slice((p - 1) * ps, p * ps));
     const columns = getReportColumns(slug, rows.length ? rows : paginated);
 
     // Compute full-dataset aggregates for totals row
@@ -268,7 +320,7 @@ router.get("/export-slug/:slug", (req, res, next) => {
     const opts = buildOpts(req.query);
     const data = listRows(slug, start_date, end_date, opts);
     const normalized = normalizeReportPayload(data);
-    const rows = normalized.rows;
+    const rows = translateReportRows(normalized.rows);
     const requestedColumns = parseColumnsParam(req.query.columns);
     const columns = requestedColumns?.length ? requestedColumns : getReportColumns(slug, rows);
     const reportDef = REPORT_REGISTRY.reports.find(r => r.slug === slug);
@@ -376,7 +428,7 @@ router.get("/export-slug/:slug", (req, res, next) => {
 router.get("/export-rows-stream", requirePagePermission("reports", "print"), async (req, res, next) => {
   try {
     const { rows: rawRows, format, title, columns } = req.query;
-    const rows = rawRows ? JSON.parse(rawRows) : [];
+    const rows = translateReportRows(rawRows ? JSON.parse(rawRows) : []);
     const cols = columns ? JSON.parse(columns) : buildColumnsFromRows(rows);
     const fmt = (format || "excel").toLowerCase();
     let filePath;
@@ -438,7 +490,7 @@ router.get("/source/:sourceKey/run", requireReportAccess(true), (req, res, next)
     const p = Math.max(1, parseInt(page) || 1);
     // Allow up to 10,000 rows for print preview / full-export requests
     const ps = Math.min(10000, Math.max(1, parseInt(pageSize) || 50));
-    const paginated = rows.slice((p - 1) * ps, p * ps);
+    const paginated = translateReportRows(rows.slice((p - 1) * ps, p * ps));
     // Resolve the report identity (columns/title/desc) from the query that actually
     // ran for this mode — summary mode used to inherit the detailed query's title
     // and hidden-column sets.

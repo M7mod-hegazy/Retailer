@@ -21,9 +21,10 @@ import ReportViaLayout from "../../components/print/templates/ReportViaLayout";
 import AccountStatementLedger from "./templates/AccountStatementLedger";
 import api from "../../services/api";
 import ProgressBar from "../../components/ui/ProgressBar";
-import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector } from "./reportsCenterParts";
+import { ClassificationSelector, DataModeToggle, MultiSelectCheckboxes, LookupEntityFilter, ScopeSelector, DATE_PRESETS } from "./reportsCenterParts";
 import { fmtDate, getReportDescription, formatReportCellValue, useReportsConfig } from "../../hooks/useReportsConfig";
 import { formatNumber } from "../../utils/currency";
+import { usePageTour } from '../../hooks/usePageTour';
 
 // All display labels (classifications, filters, options, columns) come from the
 // server registry/config — the single source of truth. `a` survives only as an
@@ -37,7 +38,7 @@ const LINK_CELLS = {
   customers: new Set(["customer_name"]),
   suppliers: new Set(["supplier_name"]),
   items: new Set(["item_name", "item_code"]),
-  "profit-loader": new Set(["item_name", "item_code"]),
+  profit: new Set(["item_name", "item_code"]),
 };
 const ID_TO_NAME_COLUMNS = new Set(["warehouse_id", "supplier_id", "customer_id", "cashier_id", "user_id", "category_id"]);
 
@@ -69,20 +70,12 @@ function resolveRowLink(sourceKey, classificationId, row) {
     return { href: `/reports/source/customers/statement/detailed?customer_id=${row.customer_id}`, label: `كشف حساب ${row.customer_name || "العميل"}` };
   if (sourceKey === "suppliers" && classificationId !== "statement" && row.supplier_id)
     return { href: `/reports/source/suppliers/statement/detailed?supplier_id=${row.supplier_id}`, label: `كشف حساب ${row.supplier_name || "المورد"}` };
-  if ((sourceKey === "items" || sourceKey === "profit-loader") && row.item_id)
+  if ((sourceKey === "items" || sourceKey === "profit") && row.item_id)
     return { href: `/definitions/items/${row.item_id}`, label: `بطاقة الصنف ${row.item_name || ""}` };
   return null;
 }
 
 const CHART_COLORS = ["#059669", "#2563EB", "#7C3AED", "#D97706", "#DC2626", "#0891B2", "#F59E0B", "#EC4899"];
-
-const DATE_PRESETS = [
-  { label: "اليوم", days: 0 },
-  { label: "أمس", days: 1 },
-  { label: "الأسبوع", days: 7 },
-  { label: "الشهر", days: 30 },
-  { label: "الربع", days: 90 },
-];
 
 // Mirror print template constants so workspace pagination matches print pages exactly
 const PRINT_HEADER_MM = 22;
@@ -171,8 +164,8 @@ function StatementEmptyPreview({ partyType }) {
 
 const EXPORT_CONFIGS = {
   pdf: { label: "PDF", icon: FileImage, color: "#DC2626", bg: "rgba(220,38,38,0.08)" },
-  excel: { label: "Excel", icon: FileSpreadsheet, color: "#059669", bg: "rgba(5,150,105,0.08)" },
-  word: { label: "Word", icon: FileText, color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
+  excel: { label: "إكسل", icon: FileSpreadsheet, color: "#059669", bg: "rgba(5,150,105,0.08)" },
+  word: { label: "وورد", icon: FileText, color: "#2563EB", bg: "rgba(37,99,235,0.08)" },
   print: { label: "طباعة", icon: Printer, color: "#475569", bg: "rgba(71,85,105,0.08)" },
 };
 
@@ -229,7 +222,7 @@ function ExportPill({ format, onExport }) {
       className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2sm font-bold transition-all duration-200 border bg-bg-surface shadow-sm hover:shadow-md active:scale-95"
       style={{ color: status === "ready" ? "#047857" : status === "error" ? "#b91c1c" : cfg.color, borderColor: status === "ready" ? "#6ee7b7" : status === "error" ? "#fca5a5" : "#e4e4e7" }}>
       {status === "loading" ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
-      <span>{status === "loading" ? "جاري..." : status === "ready" ? "تم ✓" : status === "error" ? "خطأ" : cfg.label}</span>
+      <span>{status === "loading" ? "ثواني..." : status === "ready" ? "تم ✓" : status === "error" ? "حصلت مشكلة" : cfg.label}</span>
     </button>
   );
 }
@@ -276,7 +269,22 @@ function FilterInput({ filter, value, onChange, dynamicOptions }) {
 
 
 
+// Old source/classification URLs that survive in saved views, recents, and
+// browser bookmarks after the profit merge + treasury consolidation.
+const LEGACY_WORKSPACE_REDIRECTS = {
+  "profit-loader": (cls, mode) => `/reports/source/profit/${cls === "by-category" ? "by-category" : cls}/${mode || "detailed"}`,
+  "net-profit": (cls, mode) => `/reports/source/profit/${cls}/${mode || "detailed"}`,
+};
+const LEGACY_CLS_REDIRECTS = {
+  "sales.margin": "/reports/source/profit/by-item/detailed",
+  "treasury.daily-sessions": "/reports/source/treasury/reconciliation/detailed",
+  "treasury.reconciliation-exceptions": "/reports/source/treasury/reconciliation/detailed?variance_only=1",
+  "treasury.payment-method-flow": "/reports/source/payment-flow/payment-flow-summary/summary",
+  "employees.shifts": "/reports/source/treasury/reconciliation/detailed",
+};
+
 export default function SourceWorkspacePage() {
+  usePageTour('source_workspace');
   const { sourceKey, classificationId, dataMode } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -286,6 +294,17 @@ export default function SourceWorkspacePage() {
   const setCostMethodAction = useReportsStore((s) => s.setCostMethod);
   const store = useReportsStore();
   const { data: config, isLoading: configLoading, error: configError } = useReportsConfig();
+
+  // Redirect retired report URLs to their merged replacements (keeps query string).
+  useEffect(() => {
+    const legacySource = LEGACY_WORKSPACE_REDIRECTS[sourceKey];
+    const legacyCls = LEGACY_CLS_REDIRECTS[`${sourceKey}.${classificationId}`];
+    const target = legacyCls || (legacySource ? legacySource(classificationId, dataMode) : null);
+    if (target) {
+      const qs = location.search && !target.includes("?") ? location.search : "";
+      navigate(target + qs, { replace: true });
+    }
+  }, [sourceKey, classificationId, dataMode, navigate, location.search]);
 
   const prefKey = buildPrefKey(sourceKey, classificationId, dataMode);
 
@@ -381,6 +400,12 @@ export default function SourceWorkspacePage() {
     setColumnOrderState(savedOrd || []);
     setShowAllColumns(false);
   }, [prefKey, getStorePreference]);
+
+  // Every visit counts as a "recent" (the hub links here directly now)
+  const pushRecent = useReportsStore((s) => s.pushRecent);
+  useEffect(() => {
+    if (clsDef) pushRecent(prefKey);
+  }, [prefKey, clsDef, pushRecent]);
 
   // Set topbar breadcrumb to show the current report name
   const setDynamicBreadcrumb = useUiStore((s) => s.setDynamicBreadcrumb);
@@ -703,6 +728,52 @@ export default function SourceWorkspacePage() {
     setCostMethod("wacc");
   }
 
+  // Chips for every filter currently shaping the numbers — visible even when the
+  // tray is closed, so the user always knows WHY the table looks the way it does.
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    if (clsDef?.supportsDates && filters.from && filters.to) {
+      const preset = DATE_PRESETS.find((p) => { const r = p.get(); return r.from === filters.from && r.to === filters.to; });
+      const isDefault = filters.from === defaultFrom && filters.to === defaultTo;
+      chips.push({
+        key: "__dates",
+        label: preset ? `الفترة: ${preset.label}` : `الفترة: ${filters.from} ← ${filters.to}`,
+        clear: isDefault ? null : () => setFilters((c) => ({ ...c, from: defaultFrom, to: defaultTo })),
+      });
+    }
+    if (filters.q) chips.push({ key: "q", label: `بحث: ${filters.q}`, clear: () => setFilters((c) => ({ ...c, q: "" })) });
+    effectiveFilters.forEach((f) => {
+      const v = filters[f.key];
+      if (v == null || v === "" || (Array.isArray(v) && !v.length)) return;
+      const name = f.label || f.label_key || f.key;
+      let display;
+      if (f.type === "select") {
+        const opt = (f.options || []).find((o) => String(o.value) === String(v));
+        display = opt?.label || String(v);
+      } else if (f.type === "lookup") {
+        display = "مفعّل";
+      } else {
+        display = String(v);
+      }
+      chips.push({ key: f.key, label: `${name}: ${display}`, clear: () => setFilters((c) => ({ ...c, [f.key]: "" })) });
+    });
+    (clsDef?.multiSelectFilters || []).forEach((msf) => {
+      const vals = filters[msf.key];
+      if (!Array.isArray(vals) || !vals.length) return;
+      chips.push({ key: msf.key, label: `${msf.label || msf.key}: ${vals.length} مختارين`, clear: () => setFilters((c) => ({ ...c, [msf.key]: [] })) });
+    });
+    if (scope.type !== "all" && scope.values?.length) {
+      const scopeNames = { category: "فئة", product: "صنف", customer: "عميل", supplier: "مورد", warehouse: "مخزن" };
+      chips.push({ key: "__scope", label: `النطاق: ${scopeNames[scope.type] || scope.type} محدد`, clear: () => setScope({ type: "all", values: [] }) });
+    }
+    if (clsDef?.hasProfit && costMethod !== "wacc") {
+      const m = (config?.costMethods || []).find((x) => x.value === costMethod);
+      chips.push({ key: "__cost", label: `التكلفة: ${m?.label || costMethod}`, clear: () => setCostMethod("wacc") });
+    }
+    return chips;
+  }, [clsDef, filters, effectiveFilters, scope, costMethod, config?.costMethods, defaultFrom, defaultTo]);
+  const clearableChips = activeFilterChips.filter((c) => c.clear);
+
   function handlePageChange(page) {
     setAppliedParams((prev) => ({ ...prev, page: Math.max(1, Math.min(page, totalPages)) }));
   }
@@ -792,7 +863,7 @@ export default function SourceWorkspacePage() {
       <div className="flex h-screen w-full items-center justify-center bg-[var(--bg-base)]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={32} className="animate-spin text-primary" />
-          <p className="text-sm font-medium text-text-secondary">جاري تحميل التقرير...</p>
+          <p className="text-sm font-medium text-text-secondary">ثواني... بنجهّز التقرير</p>
         </div>
       </div>
     );
@@ -804,8 +875,8 @@ export default function SourceWorkspacePage() {
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="h-20 w-20 rounded-3xl bg-bg-overlay flex items-center justify-center text-text-muted shadow-inner"><LayoutTemplate size={36} /></div>
           <div>
-            <h1 className="text-2xl font-black text-text-primary mb-2">المصدر غير متاح</h1>
-            <p className="text-sm text-text-secondary">مصدر التقرير غير معروف.</p>
+            <h1 className="text-2xl font-black text-text-primary mb-2">التقرير ده مش موجود</h1>
+            <p className="text-sm text-text-secondary">يمكن الرابط قديم أو التقرير اتنقل مكان تاني — ارجع لمركز التقارير وهتلاقيه هناك.</p>
           </div>
           <Link to="/reports/center" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:bg-primary-600 transition-colors shadow-lg">
             <ArrowLeft size={16} /> العودة إلى مركز التقارير
@@ -848,19 +919,18 @@ export default function SourceWorkspacePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 bg-bg-surface p-1 rounded-xl border border-border/60 shadow-sm">
-            <select
-              value={classificationId}
-              onChange={(e) => {
-                const cls = classifications.find((c) => c.id === e.target.value);
-                const mode = cls?.availableModes?.[0] || "detailed";
-                navigate(`/reports/source/${sourceKey}/${e.target.value}/${mode}`);
-              }}
-              className="h-9 px-4 rounded-lg border-none bg-transparent text-sm font-semibold text-text-primary focus:outline-none focus:ring-0 transition-all cursor-pointer"
-            >
-              {classifications.map((cls) => (
-                <option key={cls.id} value={cls.id}>{cls.label || a(cls.label_key)}</option>
-              ))}
-            </select>
+            <div className="w-64">
+              <ClassificationSelector
+                classifications={classifications}
+                value={classificationId}
+                onChange={(clsId) => {
+                  const cls = classifications.find((c) => c.id === clsId);
+                  const mode = cls?.availableModes?.[0] || "detailed";
+                  navigate(`/reports/source/${sourceKey}/${clsId}/${mode}`);
+                }}
+                formatLabel={a}
+              />
+            </div>
             <div className="w-px h-5 bg-border hidden sm:block" />
             <DataModeToggle
               availableModes={clsDef?.availableModes || ["detailed"]}
@@ -878,7 +948,7 @@ export default function SourceWorkspacePage() {
             <button onClick={() => setFiltersOpen(!filtersOpen)}
               className={`h-9 px-4 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${filtersOpen ? "bg-primary text-white shadow-sm" : "bg-bg-surface text-text-secondary hover:bg-bg-overlay border border-border"}`}>
               <SlidersHorizontal size={14} />
-              <span>فلاتر متقدمة</span>
+              <span>الفلاتر</span>
               <ChevronDown size={14} className={`transition-transform duration-300 ${filtersOpen ? "rotate-180" : ""}`} />
             </button>
             <button onClick={() => refetch()} className="h-9 px-4 rounded-lg bg-bg-surface border border-border text-text-secondary hover:bg-bg-overlay hover:text-text-primary text-sm font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-sm">
@@ -901,6 +971,29 @@ export default function SourceWorkspacePage() {
             {exportFormats.map((fmt) => <ExportPill key={fmt} format={fmt} onExport={handleExport} />)}
           </div>
         </div>
+
+        {/* Row 2.5: Active-filter chips — the "why does the table look like this" strip */}
+        {activeFilterChips.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap px-5 pb-3 bg-bg-surface">
+            {activeFilterChips.map((chip) => (
+              <span key={chip.key} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                chip.clear ? "bg-primary/5 border-primary/30 text-primary" : "bg-bg-base border-border text-text-secondary"
+              }`}>
+                {chip.label}
+                {chip.clear && (
+                  <button onClick={chip.clear} className="hover:bg-primary/10 rounded-full p-0.5 transition-colors" title="شيل الفلتر ده">
+                    <X size={11} />
+                  </button>
+                )}
+              </span>
+            ))}
+            {clearableChips.length > 1 && (
+              <button onClick={handleResetFilters} className="text-[11px] font-bold text-text-muted hover:text-danger-text transition-colors px-1.5">
+                امسح الكل
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Row 3: Filters Tray (Collapsible) */}
         <AnimatePresence>
@@ -926,14 +1019,19 @@ export default function SourceWorkspacePage() {
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold text-text-secondary flex justify-between items-center">
                         <span>الفترة الزمنية</span>
-                        <div className="flex gap-1">
-                          {DATE_PRESETS.map((p) => (
-                            <button key={p.label} onClick={() => {
-                              const end = new Date(); const start = new Date();
-                              if (p.days > 0) start.setDate(end.getDate() - p.days);
-                              setFilters((c) => ({ ...c, from: formatDate(start), to: formatDate(end) }));
-                            }} className="text-[11px] text-text-secondary hover:text-text-primary transition-colors bg-bg-surface hover:bg-bg-overlay px-2 py-0.5 rounded border border-border">{p.label}</button>
-                          ))}
+                        <div className="flex gap-1 flex-wrap">
+                          {DATE_PRESETS.map((p) => {
+                            const range = p.get();
+                            const isActive = filters.from === range.from && filters.to === range.to;
+                            return (
+                              <button key={p.label} onClick={() => setFilters((c) => ({ ...c, from: range.from, to: range.to }))}
+                                className={`text-[11px] transition-colors px-2 py-0.5 rounded border ${
+                                  isActive
+                                    ? "bg-primary text-white border-primary"
+                                    : "text-text-secondary hover:text-text-primary bg-bg-surface hover:bg-bg-overlay border-border"
+                                }`}>{p.label}</button>
+                            );
+                          })}
                         </div>
                       </label>
                       <div className="flex items-center bg-bg-surface border border-border rounded-xl shadow-sm h-10 overflow-hidden focus-within:border-border-strong focus-within:ring-2 focus-within:ring-bg-overlay transition-all">
@@ -980,13 +1078,13 @@ export default function SourceWorkspacePage() {
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center gap-2 rounded-full bg-bg-overlay/50 px-3 py-1 text-[11px] font-medium text-text-secondary border border-border/60">
                       <motion.span animate={{ scale: isFetching ? [1, 1.2, 1] : 1, opacity: isFetching ? [1, 0.5, 1] : 1 }} transition={{ duration: 0.8, repeat: isFetching ? Infinity : 0, ease: "easeInOut" }} className="w-2 h-2 rounded-full bg-primary" />
-                      {isFetching ? "جاري التحديث..." : "تحديث تلقائي"}
+                      {isFetching ? "بنحدّث الأرقام..." : "الفلاتر بتتطبق أول ما تغيّرها"}
                     </span>
-                    {invalidRange && <span className="text-[11px] font-medium text-danger-text bg-danger-bg border border-danger-border px-3 py-1 rounded-full">تاريخ البداية يجب أن يكون قبل تاريخ النهاية</span>}
+                    {invalidRange && <span className="text-[11px] font-medium text-danger-text bg-danger-bg border border-danger-border px-3 py-1 rounded-full">تاريخ البداية لازم يكون قبل تاريخ النهاية</span>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-base hover:text-text-primary transition-colors">إعادة تعيين</button>
-                    <button ref={closeFilterRef} onClick={() => setFiltersOpen(false)} onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => closeFilterRef.current?.click() })} className="h-9 px-5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-600 transition-colors active:scale-95 shadow-sm">تطبيق الفلاتر</button>
+                    <button onClick={handleResetFilters} className="h-9 px-4 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-base hover:text-text-primary transition-colors">امسح الفلاتر</button>
+                    <button ref={closeFilterRef} onClick={() => setFiltersOpen(false)} onKeyDown={e => handleKeyDown(e, { prevRef: costMethodRef, onEnter: () => closeFilterRef.current?.click() })} className="h-9 px-5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-600 transition-colors active:scale-95 shadow-sm">تمام، اقفل الفلاتر</button>
                   </div>
                 </div>
               </div>
@@ -1035,8 +1133,28 @@ export default function SourceWorkspacePage() {
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center py-24 bg-bg-base/50">
             <div className="h-16 w-16 rounded-3xl bg-bg-surface border border-border flex items-center justify-center text-text-muted mb-4 shadow-sm"><Search size={28} /></div>
-            <h3 className="text-[16px] font-black text-text-primary mb-1">لا توجد بيانات</h3>
-            <p className="text-sm text-text-secondary max-w-xs">يرجى تغيير الفلاتر أو اختيار تصنيف آخر.</p>
+            <h3 className="text-[16px] font-black text-text-primary mb-1">مفيش بيانات هنا</h3>
+            <p className="text-sm text-text-secondary max-w-sm mb-5">
+              {clsDef?.supportsDates
+                ? "الفترة اللي مختارها مفيهاش أي حركة مسجّلة. وسّع الفترة شوية أو شيل فلتر من اللي مفعّلينه."
+                : "لسه مفيش بيانات تتعرض في التقرير ده — أول ما يتسجل شغل هيظهر هنا."}
+            </p>
+            <div className="flex items-center gap-2">
+              {clsDef?.supportsDates && (
+                <button
+                  onClick={() => {
+                    const t = new Date(); const s = new Date(t); s.setDate(t.getDate() - 90);
+                    setFilters((c) => ({ ...c, from: formatDate(s), to: formatDate(t) }));
+                  }}
+                  className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary-600 transition-colors">
+                  وسّع لآخر 90 يوم
+                </button>
+              )}
+              <button onClick={handleResetFilters}
+                className="h-9 px-4 rounded-lg border border-border bg-bg-surface text-sm font-bold text-text-secondary hover:bg-bg-overlay transition-colors">
+                امسح كل الفلاتر
+              </button>
+            </div>
           </div>
         ) : activeTab === "table" ? (
           <div className="flex flex-col">
@@ -1047,7 +1165,7 @@ export default function SourceWorkspacePage() {
                   transition={{ duration: 0.3 }}
                   className="text-sm font-black text-text-primary"
                 >
-                  {isFetching ? "جاري التحديث..." : "البيانات"}
+                  {isFetching ? "بنحدّث الأرقام..." : "البيانات"}
                 </motion.span>
                 <span className="text-[11px] font-bold text-text-secondary bg-bg-surface border border-border rounded-full px-2.5 py-0.5 shadow-sm">{formatNumber(totalRows, { decimals: 0 })} صف</span>
               </div>
@@ -1123,8 +1241,10 @@ export default function SourceWorkspacePage() {
                       const num = Number(raw);
                       if (!isNaN(num) && String(raw).trim() !== "") {
                         const suffix = c.type === "percent" ? "%" : "";
+                        // Negative money/percent (عجز، خسارة، فرق بالسالب) reads in danger color at a glance
+                        const toneClass = num < 0 ? "text-danger-text" : "text-text-primary";
                         return (
-                          <span className="tabular-nums text-sm font-bold text-text-primary" dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
+                          <span className={`tabular-nums text-sm font-bold ${toneClass}`} dir="ltr" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>
                             {formatNumber(num)}{suffix}
                           </span>
                         );
@@ -1174,7 +1294,9 @@ export default function SourceWorkspacePage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-bg-base/50 shrink-0">
                 <div className="flex items-center gap-2 text-2sm font-bold text-text-secondary">
-                  <span>إجمالي الصفحات: {formatNumber(totalPages, { decimals: 0 })}</span>
+                  <span>
+                    بتشوف {formatNumber((currentPage - 1) * currentPageSize + 1, { decimals: 0 })}–{formatNumber(Math.min(currentPage * currentPageSize, totalRows), { decimals: 0 })} من {formatNumber(totalRows, { decimals: 0 })} صف
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="p-1.5 rounded-lg border border-border bg-bg-surface hover:bg-bg-overlay disabled:opacity-30"><ChevronRight size={16} /></button>

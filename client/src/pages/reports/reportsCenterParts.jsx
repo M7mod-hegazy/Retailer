@@ -155,11 +155,13 @@ export function RDate({ value, onChange }) {
 // ─── Date Preset Chips ────────────────────────────────────────────────────────
 const fmtD = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 export const DATE_PRESETS = [
-  { label: "اليوم",     get: () => { const t = new Date(); return { from: fmtD(t), to: fmtD(t) }; } },
-  { label: "هذا الأسبوع", get: () => { const t = new Date(), s = new Date(t); s.setDate(t.getDate() - t.getDay()); return { from: fmtD(s), to: fmtD(t) }; } },
-  { label: "هذا الشهر", get: () => { const t = new Date(); return { from: fmtD(new Date(t.getFullYear(), t.getMonth(), 1)), to: fmtD(t) }; } },
-  { label: "آخر ٣ أشهر", get: () => { const t = new Date(), s = new Date(t); s.setMonth(s.getMonth() - 3); return { from: fmtD(s), to: fmtD(t) }; } },
-  { label: "هذا العام", get: () => { const t = new Date(); return { from: fmtD(new Date(t.getFullYear(), 0, 1)), to: fmtD(t) }; } },
+  { label: "النهارده",  get: () => { const t = new Date(); return { from: fmtD(t), to: fmtD(t) }; } },
+  { label: "إمبارح",    get: () => { const y = new Date(); y.setDate(y.getDate() - 1); return { from: fmtD(y), to: fmtD(y) }; } },
+  { label: "آخر 7 أيام", get: () => { const t = new Date(), s = new Date(t); s.setDate(t.getDate() - 6); return { from: fmtD(s), to: fmtD(t) }; } },
+  { label: "الشهر ده",  get: () => { const t = new Date(); return { from: fmtD(new Date(t.getFullYear(), t.getMonth(), 1)), to: fmtD(t) }; } },
+  { label: "الشهر اللي فات", get: () => { const t = new Date(); return { from: fmtD(new Date(t.getFullYear(), t.getMonth() - 1, 1)), to: fmtD(new Date(t.getFullYear(), t.getMonth(), 0)) }; } },
+  { label: "آخر 3 شهور", get: () => { const t = new Date(), s = new Date(t); s.setMonth(s.getMonth() - 3); return { from: fmtD(s), to: fmtD(t) }; } },
+  { label: "السنة دي",  get: () => { const t = new Date(); return { from: fmtD(new Date(t.getFullYear(), 0, 1)), to: fmtD(t) }; } },
 ];
 
 export function DatePresets({ activeFrom, activeTo, onApply }) {

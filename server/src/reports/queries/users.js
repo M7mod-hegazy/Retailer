@@ -65,9 +65,7 @@ function loginHistory(startDate, endDate, opts = {}) {
   const { user_id } = opts;
   return db.prepare(`
     SELECT al.id, al.user_id, u.full_name,
-      al.action, al.created_at AS date,
-      al.payload_json AS details,
-      al.resource
+      al.action, al.created_at AS date
     FROM audit_logs al
     LEFT JOIN users u ON u.id = al.user_id
     WHERE al.action IN ('login', 'logout', 'login_failed')

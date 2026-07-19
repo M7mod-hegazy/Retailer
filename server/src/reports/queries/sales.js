@@ -808,17 +808,17 @@ function marginByItem(startDate, endDate, opts = {}) {
       it.name AS item_name,
       COALESCE(c.name, 'غير مصنف') AS category_name,
       SUM(il.quantity) AS quantity_sold,
-      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) AS revenue,
+      SUM(il.line_total * (i.total - COALESCE(i.tax_amount, 0)) / NULLIF(inv_sums.line_sum, 0)) AS revenue,
       SUM(il.quantity * ${costCol}) AS cost,
       COALESCE(MAX(ret.return_revenue), 0) AS returns_amount,
-      SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
+      SUM(il.line_total * (i.total - COALESCE(i.tax_amount, 0)) / NULLIF(inv_sums.line_sum, 0))
         - SUM(il.quantity * ${costCol})
         - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0) AS gross_profit,
-      CASE WHEN SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
-        THEN ROUND(((SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0))
+      CASE WHEN SUM(il.line_total * (i.total - COALESCE(i.tax_amount, 0)) / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0) > 0
+        THEN ROUND(((SUM(il.line_total * (i.total - COALESCE(i.tax_amount, 0)) / NULLIF(inv_sums.line_sum, 0))
           - SUM(il.quantity * ${costCol})
           - COALESCE(MAX(ret.return_revenue), 0) + COALESCE(MAX(ret.return_cost), 0)) /
-          (SUM(il.line_total * i.total / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
+          (SUM(il.line_total * (i.total - COALESCE(i.tax_amount, 0)) / NULLIF(inv_sums.line_sum, 0)) - COALESCE(MAX(ret.return_revenue), 0))) * 100, 1)
         ELSE 0 END AS margin_percent,
       SUM(il.line_total) AS selling_total,
       ROUND(SUM(il.line_total) * 1.0 / NULLIF(SUM(il.quantity), 0), 2) AS avg_unit_price,
@@ -835,7 +835,7 @@ function marginByItem(startDate, endDate, opts = {}) {
     ) inv_sums ON inv_sums.invoice_id = il.invoice_id
     LEFT JOIN (
       SELECT srl.item_id,
-        SUM(srl.line_total * sr.total / NULLIF(srsum.line_sum, 0)) AS return_revenue,
+        SUM(srl.line_total * (sr.total - COALESCE(sr.tax_amount, 0)) / NULLIF(srsum.line_sum, 0)) AS return_revenue,
         SUM(srl.quantity * ${getReturnCostColumn(opts.cost_method)}) AS return_cost
       FROM sales_return_lines srl
       JOIN sales_returns sr ON sr.id = srl.sales_return_id AND sr.status = 'active'

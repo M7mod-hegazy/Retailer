@@ -42,8 +42,7 @@ const SOURCE_META = {
   revenues: { label: "الإيرادات الأخرى", color: "#10b981" },
   treasury: { label: "الخزينة", color: "#06b6d4" },
   "payment-flow": { label: "سجل التدفقات المالية", color: "#0f766e" },
-  "profit-loader": { label: "مجمل ربح المبيعات", color: "#d946ef" },
-  "net-profit": { label: "صافي الربح", color: "#1e40af" },
+  profit: { label: "الأرباح", color: "#d946ef" },
   expiry: { label: "انتهاء الصلاحية", color: "#d97706" },
   "owner-statement": { label: "لوحة صاحب المحل", color: "#0f172a" },
   tax: { label: "الضرائب", color: "var(--error-DEFAULT,#ef4444)" },
@@ -130,9 +129,9 @@ export function fmtDate(d) {
 
 /** Get report description by classification ID */
 export function getReportDescription(classificationId) {
-  if (!classificationId) return "تقرير تحليلي يستعرض بيانات ومؤشرات العمليات التشغيلية والمالية في النظام.";
+  if (!classificationId) return "تقرير بيجمعلك أرقام شغلك في مكان واحد عشان تاخد قرارك بسرعة.";
   const descs = _configCache?.reportDescriptions || {};
-  return descs[classificationId] || descs["cls_" + classificationId] || "تقرير تحليلي تفصيلي لمتابعة وتقييم مؤشرات أداء النشاط التجاري.";
+  return descs[classificationId] || descs["cls_" + classificationId] || "تقرير بيوريك تفاصيل الحركة في الجزء ده من شغلك.";
 }
 
 /** Format/translate a cell value for display */

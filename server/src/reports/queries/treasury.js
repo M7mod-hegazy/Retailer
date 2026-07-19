@@ -51,11 +51,15 @@ function treasury(startDate, endDate, opts = {}) {
 function cashConsistency(startDate, endDate, opts = {}) {
   const db = getDb();
   const params = [];
+  // variance_only: keep only shifts whose counted cash differs from expected
+  // (absorbed the old reconciliation-exceptions report as a filter here).
+  const varianceClause = opts.variance_only ? "HAVING ABS(cash_variance) > 0.01" : "";
   return db.prepare(`
     SELECT DATE(s.opened_at) AS date, s.id AS shift_id,
       u.full_name AS cashier,
       s.opening_cash, s.closing_cash,
       COALESCE(SUM(i.total), 0) AS sales_total,
+      COALESCE(SUM(i.discount), 0) AS total_discount,
       (s.opening_cash + COALESCE(SUM(i.total), 0)) AS expected_cash,
       COALESCE(s.closing_cash, 0) - s.opening_cash - COALESCE(SUM(i.total), 0) AS cash_variance,
       COUNT(DISTINCT i.id) AS invoice_count,
@@ -65,6 +69,7 @@ function cashConsistency(startDate, endDate, opts = {}) {
     LEFT JOIN invoices i ON i.shift_id = s.id AND i.status != 'cancelled'
     WHERE 1=1 ${addDateFilter("s.opened_at", startDate, endDate, params)}
     GROUP BY s.id
+    ${varianceClause}
     ORDER BY s.opened_at DESC
   `).all(...params);
 }

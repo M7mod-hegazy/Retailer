@@ -7,6 +7,7 @@ import DataGrid from "../../components/ui/DataGrid";
 import PrintPreviewModal from "../../components/print/PrintPreviewModal";
 import ReportViaLayout from "../../components/print/templates/ReportViaLayout";
 import { formatNumber } from "../../utils/currency";
+import { usePageTour } from '../../hooks/usePageTour';
 
 const STATUS_TABS = [
   { key: "all", label: "الكل" },
@@ -17,6 +18,7 @@ const STATUS_TABS = [
 ];
 
 export default function ExpiryReportPage() {
+  usePageTour('expiry_report');
   const [searchParams] = useSearchParams();
   const [data, setData] = useState([]);
   const [stats, setStats] = useState(null);
