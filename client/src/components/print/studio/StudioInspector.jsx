@@ -9,7 +9,7 @@ import { PLACEHOLDER_KEYS } from "../blocks/placeholders";
 import { g } from "../blocks/blockUtils";
 import { COMPUTED_FIELDS } from "../blocks/CustomFieldBlock";
 import { PRINT_FONT_FAMILIES } from "../../../services/printFonts";
-import { COLUMN_CATALOG, BLOCK_DOC_SCOPES } from "./studioData";
+import { COLUMN_CATALOG, PHYSICAL_COUNT_COLUMN_CATALOG, BLOCK_DOC_SCOPES } from "./studioData";
 import { defaultReportColumns } from "../layout/layoutModel";
 
 const BLOCK_VARIANTS = {
@@ -291,6 +291,31 @@ const BLOCK_VARIANTS = {
     { value: "card", label: "كرت بحدود وظل" },
     { value: "banner", label: "بنر ممتد بالكامل" },
   ],
+  // Physical count blocks
+  physical_count_header: [
+    { value: "standard", label: "قياسي" },
+    { value: "boxed", label: "مؤطر بحدود" },
+    { value: "minimal", label: "صغير وبسيط" },
+  ],
+  physical_count_metrics: [
+    { value: "standard", label: "بطاقات KPI بحدود علوية" },
+    { value: "compact", label: "مضغوط بحد سفلي" },
+    { value: "minimal", label: "أعمدة مركزيّة بحد" },
+    { value: "boxed", label: "صواني بحدود ملونة" },
+  ],
+  physical_count_items_table: [
+    { value: "standard", label: "جدول تقليدي" },
+    { value: "variance-only", label: "فروقات فقط" },
+    { value: "grouped-by-warehouse", label: "مُجمّع حسب المستودع" },
+    { value: "grouped-by-category", label: "مُجمّع حسب الفئة" },
+    { value: "color-coded", label: "ملون حسب الفرق" },
+  ],
+  physical_count_signatures: [
+    { value: "two-line", label: "سطرين" },
+    { value: "three-line", label: "ثلاثة خطوط" },
+    { value: "with-stamps", label: "مع ختم" },
+    { value: "minimal", label: "سطر واحد" },
+  ],
   bank_details: [
     { value: "standard", label: "بطاقة محاطة بحدود" },
     { value: "inline", label: "سطر مدمج" },
@@ -553,7 +578,9 @@ export default function StudioInspector({ st }) {
   const isBlockSel = !!selected && !selOverlay && (selInOrder || selInsert);
   const selType = selInsert ? selInsert.type : selected;
   const selOv = isBlockSel ? st.ov(selected) : {};
-  const tblKey = selected === "report_table" ? "report_table" : "items_table";
+  const tblKey = selected === "report_table" ? "report_table"
+    : selected === "physical_count_items_table" ? "physical_count_items_table"
+    : "items_table";
   const isAbs = isBlockSel && selOv.abs && selOv.abs.xMm != null;
   const isNudged = isBlockSel && selOv.rel && (selOv.rel.dxMm || selOv.rel.dyMm);
   const hasTypography = isBlockSel && !NO_TYPOGRAPHY.has(selType);
@@ -1229,7 +1256,7 @@ export default function StudioInspector({ st }) {
             </Section>
           )}
 
-          {(selected === "items_table" || selected === "report_table") && (
+          {(selected === "items_table" || selected === "report_table" || selected === "physical_count_items_table") && (
             <Section title="أعمدة الجدول">
               <div className="space-y-0.5">
                 {st.columns.map((c, i) => (
@@ -1262,7 +1289,9 @@ export default function StudioInspector({ st }) {
                 ))}
               </div>
               {(() => {
-                const catalog = selected === "report_table" ? defaultReportColumns(st.scope) : COLUMN_CATALOG;
+                const catalog = selected === "report_table" ? defaultReportColumns(st.scope)
+                  : selected === "physical_count_items_table" ? PHYSICAL_COUNT_COLUMN_CATALOG
+                  : COLUMN_CATALOG;
                 const unadded = catalog.filter((c) => !st.columns.some((x) => x.key === c.key));
                 if (unadded.length === 0) return null;
                 return (

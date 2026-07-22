@@ -18,6 +18,8 @@ export default function ConsequencePreview({
   consequences = [],
   confirmLabel = "تأكيد",
   cancelLabel = "إلغاء",
+  secondaryLabel,
+  onSecondary,
   danger = false,
   loading = false,
   onConfirm,
@@ -66,6 +68,15 @@ export default function ConsequencePreview({
           >
             {cancelLabel}
           </button>
+          {secondaryLabel && onSecondary && (
+            <button
+              onClick={onSecondary}
+              disabled={loading}
+              className="rounded-2xl px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-bg-base border border-border-normal transition-colors"
+            >
+              {secondaryLabel}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             disabled={loading}

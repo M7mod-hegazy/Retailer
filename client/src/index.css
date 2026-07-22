@@ -1936,6 +1936,15 @@ select {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   GLASS-ELEVATED — frosted raised surface for dropdowns, drawers, sheets
+   ═══════════════════════════════════════════════════════════════════════ */
+.glass-elevated {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar {

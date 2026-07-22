@@ -73,7 +73,12 @@ const SCOPE_ALLOWED_BLOCKS = {
     "logo", "company_name", "branch", "address", "tax_id", "receipt_header_text",
     "doc_title", "doc_number", "doc_date", "report_table",
     "notes", "footer_text", "signature_lines", "vendor_branding",
-  ])
+  ]),
+  physical_count_report: new Set([
+    "logo", "company_name", "branch", "address", "tax_id",
+    "physical_count_header", "physical_count_metrics", "physical_count_items_table",
+    "notes", "physical_count_signatures", "footer_text", "vendor_branding",
+  ]),
 };
 
 const INVOICE_ALLOWED_BLOCKS = new Set([

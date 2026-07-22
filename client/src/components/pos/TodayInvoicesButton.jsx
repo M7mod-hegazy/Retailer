@@ -114,7 +114,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, { nextRef: dateToRef })}
-                  className="rounded-lg border border-border-normal px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
+                  className="rounded-lg border border-border-normal bg-bg-surface px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -125,7 +125,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
                   onKeyDown={e => handleKeyDown(e, { nextRef: userSelectRef, prevRef: dateFromRef })}
-                  className="rounded-lg border border-border-normal px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
+                  className="rounded-lg border border-border-normal bg-bg-surface px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400"
                 />
               </div>
               {usersList.length > 0 && (
@@ -133,7 +133,7 @@ export default function TodayInvoicesButton({ variant = "default" }) {
                   <span className="text-[11px] font-black text-text-secondary">المستخدم:</span>
                   <select ref={userSelectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
                     onKeyDown={e => handleKeyDown(e, { nextRef: submitBtnRef, prevRef: dateToRef })}
-                    className="rounded-lg border border-border-normal px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400">
+                    className="rounded-lg border border-border-normal bg-bg-surface px-3 py-1.5 text-2sm font-bold outline-none focus:border-emerald-400">
                     <option value="">الكل</option>
                     {usersList.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                   </select>

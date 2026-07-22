@@ -18,6 +18,7 @@ export const REPORT_SOURCES = [
   { id: "expiry", label: "انتهاء الصلاحية" },
   { id: "owner-statement", label: "لوحة صاحب المحل" },
   { id: "tax", label: "الضرائب" },
+  { id: "physical-count", label: "سجل الجرد" },
 ];
 
 export const REPORT_SOURCE_KEYS = REPORT_SOURCES.map(s => "report_" + s.id);

@@ -49,6 +49,9 @@ import {
   OwnerDashboardMetricsBlock, OwnerRevenueBreakdownBlock, OwnerExpenseCategoriesBlock, OwnerNetProfitBlock, OwnerPeriodComparisonBlock,
   OwnerAssetsLiabilitiesBlock, OwnerPaymentFlowBlock
 } from "./OwnerStatementBlocks";
+import {
+  PhysicalCountHeaderBlock, PhysicalCountMetricsBlock, PhysicalCountItemsTableBlock, PhysicalCountSignaturesBlock
+} from "./PhysicalCountBlocks";
 
 const ALL = ["roll", "page"];
 
@@ -122,5 +125,11 @@ export const BLOCK_REGISTRY = {
   owner_payment_flow:        { component: OwnerPaymentFlowBlock,        label: "تدفقات وسائل الدفع للمالك", group: "body",   families: ["page"] },
   owner_net_profit:          { component: OwnerNetProfitBlock,          label: "صافي الربح",             group: "totals", families: ["page"] },
   owner_period_comparison:   { component: OwnerPeriodComparisonBlock,   label: "مقارنة الفترات",         group: "body",   families: ["page"] },
+
+  // Physical count blocks
+  physical_count_header:     { component: PhysicalCountHeaderBlock,     label: "ترويسة تقرير الجرد",     group: "dochead", families: ["page"] },
+  physical_count_metrics:    { component: PhysicalCountMetricsBlock,    label: "ملخص الجرد",             group: "body",   families: ["page"] },
+  physical_count_items_table:{ component: PhysicalCountItemsTableBlock, label: "جدول أصناف الجرد",       group: "body",   families: ["page"] },
+  physical_count_signatures: { component: PhysicalCountSignaturesBlock, label: "توقيعات الجرد",          group: "foot",   families: ["page"] },
 };
 

@@ -11,7 +11,7 @@ import LayoutRenderer from "../LayoutRenderer";
 import { BLOCK_REGISTRY } from "../blocks/registry";
 import {
   ensureLayout, seedFamilyLayout, resolveEffectiveLayout, defaultColumns,
-  defaultReportColumns, SHOW_KEY, newInsertId, normalizeLayout,
+  defaultReportColumns, defaultPhysicalCountColumns, SHOW_KEY, newInsertId, normalizeLayout,
 } from "../layout/layoutModel";
 import { printContent, getPrinterForPageSize, buildPrintDocument, isElectronPrint } from "../../../services/printService";
 import { resolveCalibration, withCalibration } from "../../../services/printCalibration";
@@ -423,10 +423,14 @@ export default function PrintStudio({ open = true, onClose, initialScope = "_glo
   };
 
   // ── items-table or report-table columns ──────
-  const columnBlockKey = selected === "report_table" ? "report_table" : "items_table";
+  const columnBlockKey = selected === "report_table" ? "report_table"
+    : selected === "physical_count_items_table" ? "physical_count_items_table"
+    : "items_table";
   const columns = ((fam.perBlock || {})[columnBlockKey] || {}).columns
     || (fam.columns && fam.columns[columnBlockKey])
-    || (columnBlockKey === "report_table" ? defaultReportColumns(scope) : defaultColumns(family));
+    || (columnBlockKey === "report_table" ? defaultReportColumns(scope)
+      : columnBlockKey === "physical_count_items_table" ? defaultPhysicalCountColumns()
+      : defaultColumns(family));
   const setColumns = (cols) => setFamLayout((c) => ({
     perBlock: { ...(c.perBlock || {}), [columnBlockKey]: { ...((c.perBlock || {})[columnBlockKey] || {}), columns: cols } },
   }));

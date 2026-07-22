@@ -16,10 +16,12 @@ router.use(auditMutation);
 function getSessionWithLines(db, sessionId) {
   const session = db
     .prepare(
-      `SELECT pcs.*, w.name AS warehouse_name, ic.name AS category_name
+      `SELECT pcs.*, w.name AS warehouse_name, ic.name AS category_name,
+              cb.full_name AS completed_by_name
        FROM physical_count_sessions pcs
        LEFT JOIN warehouses w ON w.id = pcs.warehouse_id
        LEFT JOIN item_categories ic ON ic.id = pcs.category_id
+       LEFT JOIN users cb ON cb.id = pcs.completed_by
        WHERE pcs.id = ?`,
     )
     .get(sessionId);
@@ -30,12 +32,14 @@ function getSessionWithLines(db, sessionId) {
               i.name AS item_name, i.barcode, i.code AS item_code,
               u.name AS unit_name,
               ic.name AS category_name,
-              w.name AS warehouse_name
+              w.name AS warehouse_name,
+              cb.full_name AS counted_by_name
        FROM physical_count_lines pcl
        LEFT JOIN items i ON i.id = pcl.item_id
        LEFT JOIN units u ON u.id = i.unit_id
        LEFT JOIN item_categories ic ON ic.id = i.category_id
        LEFT JOIN warehouses w ON w.id = pcl.warehouse_id
+       LEFT JOIN users cb ON cb.id = pcl.counted_by
        WHERE pcl.session_id = ?
        ORDER BY i.name ASC`,
     )
@@ -415,12 +419,15 @@ router.get("/physical-count/sessions", requirePagePermission("stock_transfer", "
     const sessions = db
       .prepare(
         `SELECT pcs.*, w.name AS warehouse_name, ic.name AS category_name,
+                cb.full_name AS completed_by_name,
                 COUNT(pcl.id) AS total_lines,
                 SUM(CASE WHEN pcl.touched = 1 THEN 1 ELSE 0 END) AS counted_lines,
-                SUM(CASE WHEN pcl.variance != 0 THEN 1 ELSE 0 END) AS variance_count
+                SUM(CASE WHEN pcl.variance != 0 THEN 1 ELSE 0 END) AS variance_count,
+                SUM(CASE WHEN pcl.status = 'completed' THEN 1 ELSE 0 END) AS completed_lines
          FROM physical_count_sessions pcs
          LEFT JOIN warehouses w ON w.id = pcs.warehouse_id
          LEFT JOIN item_categories ic ON ic.id = pcs.category_id
+         LEFT JOIN users cb ON cb.id = pcs.completed_by
          LEFT JOIN physical_count_lines pcl ON pcl.session_id = pcs.id
          GROUP BY pcs.id
          ORDER BY pcs.updated_at DESC, pcs.created_at DESC`,
@@ -438,14 +445,23 @@ router.post("/physical-count/sessions", requirePagePermission("stock_transfer", 
   try {
     const session = db.transaction(() => {
       const payload = req.body || {};
-      const scope = payload.scope || "warehouse";
+      const sessionType = payload.type === "complete" ? "complete" : "standard";
+      const scope = sessionType === "complete" ? "complete" : (payload.scope || "warehouse");
       const sessionName = payload.name || null;
       const warehouseId = payload.warehouse_id ? Number(payload.warehouse_id) : null;
       const categoryId = payload.category_id ? Number(payload.category_id) : null;
       const itemIds = Array.isArray(payload.item_ids) ? payload.item_ids.map(Number) : null;
 
-      // Check for existing in-progress session for same warehouse (warehouse scope only)
-      if (scope === "warehouse" && warehouseId) {
+      if (sessionType === "complete") {
+        const existing = db
+          .prepare("SELECT id FROM physical_count_sessions WHERE type = 'complete' AND status = 'in_progress'")
+          .get();
+        if (existing) {
+          const error = new Error("يوجد جرد شامل جارٍ بالفعل");
+          error.status = 400;
+          throw error;
+        }
+      } else if (scope === "warehouse" && warehouseId) {
         const existing = db
           .prepare("SELECT id FROM physical_count_sessions WHERE warehouse_id = ? AND status = 'in_progress'")
           .get(warehouseId);
@@ -458,16 +474,25 @@ router.post("/physical-count/sessions", requirePagePermission("stock_transfer", 
 
       const created = db
         .prepare(
-          `INSERT INTO physical_count_sessions (warehouse_id, category_id, scope, name, status, notes)
-           VALUES (?, ?, ?, ?, 'in_progress', ?)`,
+          `INSERT INTO physical_count_sessions (warehouse_id, category_id, scope, name, status, notes, type)
+           VALUES (?, ?, ?, ?, 'in_progress', ?, ?)`,
         )
-        .run(warehouseId, categoryId, scope, sessionName, payload.notes || null);
+        .run(warehouseId, categoryId, scope, sessionName, payload.notes || null, sessionType);
       const sessionId = created.lastInsertRowid;
 
       let itemRows = [];
 
-      if (scope === "warehouse" && warehouseId) {
-        // All active items with their stock in this warehouse
+      if (sessionType === "complete") {
+        itemRows = db
+          .prepare(
+            `SELECT i.id AS item_id, COALESCE(sl.quantity, 0) AS qty, sl.warehouse_id AS wh_id
+             FROM items i
+             LEFT JOIN stock_levels sl ON sl.item_id = i.id
+             WHERE i.is_active = 1
+             ORDER BY i.name ASC, sl.warehouse_id ASC`,
+          )
+          .all();
+      } else if (scope === "warehouse" && warehouseId) {
         itemRows = db
           .prepare(
             `SELECT i.id AS item_id, COALESCE(sl.quantity, 0) AS qty, ? AS wh_id
@@ -478,7 +503,6 @@ router.post("/physical-count/sessions", requirePagePermission("stock_transfer", 
           )
           .all(warehouseId, warehouseId);
       } else if (scope === "category" && categoryId) {
-        // All active items in category × all warehouses they have stock in (or once with null if no stock)
         itemRows = db
           .prepare(
             `SELECT i.id AS item_id, COALESCE(sl.quantity, 0) AS qty, sl.warehouse_id AS wh_id
@@ -489,7 +513,6 @@ router.post("/physical-count/sessions", requirePagePermission("stock_transfer", 
           )
           .all(categoryId);
       } else if (scope === "custom" && itemIds && itemIds.length) {
-        // Selected items × all warehouses they have stock in (or once with null if no stock)
         const placeholders = itemIds.map(() => "?").join(",");
         itemRows = db
           .prepare(
@@ -545,15 +568,61 @@ router.delete("/physical-count/sessions/:id", requirePagePermission("stock_trans
       error.status = 404;
       throw error;
     }
-    if (session.status !== "in_progress") {
-      const error = new Error("يمكن إلغاء الجلسات الجارية فقط");
-      error.status = 400;
-      throw error;
+
+    if (session.status === "in_progress") {
+      db.prepare("UPDATE physical_count_sessions SET status = 'cancelled', updated_at = ? WHERE id = ?")
+        .run(nowSql(), sessionId);
+      return res.json({ success: true, action: "cancelled" });
     }
-    db.prepare(
-      "UPDATE physical_count_sessions SET status = 'cancelled', updated_at = ? WHERE id = ?",
-    ).run(nowSql(), sessionId);
-    res.json({ success: true });
+
+    if (session.status === "completed") {
+      const hasStockAdjustments = db.prepare(
+        "SELECT 1 FROM stock_movements WHERE reference_type = 'physical_count_session' AND reference_id = ? AND deleted_at IS NULL LIMIT 1"
+      ).get(sessionId);
+      const hasCompletedLines = db.prepare(
+        "SELECT 1 FROM physical_count_lines WHERE session_id = ? AND (touched = 1 OR status = 'completed') LIMIT 1"
+      ).get(sessionId);
+
+      if (hasStockAdjustments || hasCompletedLines) {
+        let reason = "";
+        if (hasStockAdjustments && hasCompletedLines) {
+          reason = "تمت تسوية أرصدة المخزون وتم عدّ بعض المنتجات";
+        } else if (hasStockAdjustments) {
+          reason = "تمت تسوية أرصدة المخزون بناءً على هذا الجرد";
+        } else {
+          reason = "تم عدّ بعض المنتجات في هذا الجرد";
+        }
+        const error = new Error(`لا يمكن حذف هذا الجرد: ${reason}`);
+        error.status = 400;
+        throw error;
+      }
+
+      const lines = db.prepare("SELECT * FROM physical_count_lines WHERE session_id = ?").all(sessionId);
+      for (const line of lines) {
+        if (line.variance !== 0) {
+          const whId = line.warehouse_id || session.warehouse_id;
+          adjustStock({
+            item_id: line.item_id,
+            warehouse_id: whId,
+            quantityDelta: -line.variance,
+            movement_type: "physical_count_reversal",
+            reference_type: "physical_count_session",
+            reference_id: sessionId,
+            notes: "التباطع عن جرد مكتمل",
+            user_id: req.user?.id || null,
+          });
+        }
+      }
+
+      db.prepare("DELETE FROM physical_count_lines WHERE session_id = ?").run(sessionId);
+      db.prepare("DELETE FROM physical_count_sessions WHERE id = ?").run(sessionId);
+
+      return res.json({ success: true, action: "deleted_with_reversal" });
+    }
+
+    db.prepare("UPDATE physical_count_sessions SET status = 'cancelled', updated_at = ? WHERE id = ?")
+      .run(nowSql(), sessionId);
+    res.json({ success: true, action: "cancelled" });
   } catch (error) {
     next(error);
   }
@@ -574,10 +643,15 @@ router.post("/physical-count/sessions/:id/lines", requirePagePermission("stock_t
     const itemId = Number(payload.item_id || 0);
     const warehouseId = payload.warehouse_id ? Number(payload.warehouse_id) : null;
     const countedQty = Number(payload.counted_quantity ?? 0);
+    const notes = payload.notes || null;
+    const completeNow = !!payload.complete;
+    const userId = req.user?.id || null;
 
     const line = db
       .prepare("SELECT * FROM physical_count_lines WHERE session_id = ? AND item_id = ? AND COALESCE(warehouse_id, 0) = COALESCE(?, 0)")
       .get(session.id, itemId, warehouseId);
+
+    const variance = line ? countedQty - line.system_quantity : 0;
 
     if (!line) {
       const current = db
@@ -586,30 +660,41 @@ router.post("/physical-count/sessions/:id/lines", requirePagePermission("stock_t
       const systemQty = current?.quantity || 0;
       db.prepare(
         `INSERT INTO physical_count_lines
-           (session_id, item_id, warehouse_id, system_quantity, counted_quantity, variance, touched, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
-      ).run(session.id, itemId, warehouseId, systemQty, countedQty, countedQty - systemQty, nowSql());
+           (session_id, item_id, warehouse_id, system_quantity, counted_quantity, variance, touched, status, notes, counted_at, counted_by, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      ).run(
+        session.id, itemId, warehouseId, systemQty, countedQty, countedQty - systemQty,
+        completeNow ? "completed" : "pending",
+        notes,
+        completeNow ? nowSql() : null,
+        completeNow ? userId : null,
+        nowSql(),
+      );
     } else {
+      const newVariance = countedQty - line.system_quantity;
       db.prepare(
         `UPDATE physical_count_lines
-         SET counted_quantity = ?, variance = ?, touched = 1, updated_at = ?
+         SET counted_quantity = ?, variance = ?, touched = 1, notes = COALESCE(?, notes),
+             status = CASE WHEN ? THEN 'completed' ELSE status END,
+             counted_at = CASE WHEN ? AND counted_at IS NULL THEN ? ELSE counted_at END,
+             counted_by = CASE WHEN ? AND counted_by IS NULL THEN ? ELSE counted_by END,
+             updated_at = ?
          WHERE session_id = ? AND item_id = ? AND COALESCE(warehouse_id, 0) = COALESCE(?, 0)`,
-      ).run(countedQty, countedQty - line.system_quantity, nowSql(), session.id, itemId, warehouseId);
+      ).run(countedQty, newVariance, notes, completeNow ? 1 : 0, completeNow ? 1 : 0, nowSql(), completeNow ? 1 : 0, userId, nowSql(), session.id, itemId, warehouseId);
     }
 
-    // Update session updated_at so "last saved" is fresh
     db.prepare("UPDATE physical_count_sessions SET updated_at = ? WHERE id = ?").run(nowSql(), session.id);
 
-    // Return lightweight response (just line stats) to avoid re-sending all lines
     const stats = db
       .prepare(
         `SELECT COUNT(*) AS total_lines,
                 SUM(CASE WHEN touched = 1 THEN 1 ELSE 0 END) AS counted_lines,
-                SUM(CASE WHEN variance != 0 THEN 1 ELSE 0 END) AS variance_count
+                SUM(CASE WHEN variance != 0 THEN 1 ELSE 0 END) AS variance_count,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_lines
          FROM physical_count_lines WHERE session_id = ?`,
       )
       .get(session.id);
-    res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, counted_quantity: countedQty, ...stats } });
+    res.json({ success: true, data: { item_id: itemId, warehouse_id: warehouseId, counted_quantity: countedQty, notes, complete: completeNow, ...stats } });
   } catch (error) {
     next(error);
   }
@@ -633,9 +718,12 @@ router.post("/physical-count/sessions/:id/confirm", requirePagePermission("stock
         .all(sessionId);
 
       for (const line of lines) {
+        // Lines completed individually via the per-line "اعتماد" action already
+        // had their stock delta applied at that moment — re-applying here would
+        // double-count the adjustment.
+        if (line.status === "completed") continue;
         if (line.variance !== 0) {
           const whId = line.warehouse_id || currentSession.warehouse_id;
-          // Apply variance once via adjustStock (updates stock_levels + logs stock_movements).
           adjustStock({
             item_id: line.item_id,
             warehouse_id: whId,
@@ -643,13 +731,14 @@ router.post("/physical-count/sessions/:id/confirm", requirePagePermission("stock
             movement_type: "physical_count",
             reference_type: "physical_count_session",
             reference_id: sessionId,
+            user_id: req.user?.id || null,
           });
         }
       }
 
       db.prepare(
-        "UPDATE physical_count_sessions SET status = 'completed', updated_at = ? WHERE id = ?",
-      ).run(nowSql(), sessionId);
+        "UPDATE physical_count_sessions SET status = 'completed', updated_at = ?, completed_at = ?, completed_by = ? WHERE id = ?",
+      ).run(nowSql(), nowSql(), req.user?.id || null, sessionId);
 
       return getSessionWithLines(db, sessionId);
     })();
@@ -669,6 +758,270 @@ router.post("/physical-count/sessions/:id/confirm", requirePagePermission("stock
     } catch (_) {}
 
     res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Complete a single product line ──────────────────────────────────────────
+
+router.post("/physical-count/sessions/:id/lines/:lineId/complete", requirePagePermission("stock_transfer", "add"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const session = db.prepare("SELECT * FROM physical_count_sessions WHERE id = ?").get(Number(req.params.id));
+    if (!session || session.status !== "in_progress") {
+      const error = new Error("Active physical count session not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const lineId = Number(req.params.lineId);
+    const line = db.prepare("SELECT * FROM physical_count_lines WHERE id = ? AND session_id = ?").get(lineId, session.id);
+    if (!line) {
+      const error = new Error("Line not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (line.status === "completed") {
+      const error = new Error("هذا الصنف معتمد بالفعل");
+      error.status = 400;
+      throw error;
+    }
+
+    const payload = req.body || {};
+    const countedQty = payload.counted_quantity !== undefined ? Number(payload.counted_quantity) : line.counted_quantity;
+    const notes = payload.notes || line.notes || null;
+    const userId = req.user?.id || null;
+    const variance = countedQty - line.system_quantity;
+
+    db.transaction(() => {
+      db.prepare(
+        `UPDATE physical_count_lines
+         SET counted_quantity = ?, variance = ?, touched = 1, status = 'completed',
+             notes = COALESCE(?, notes), counted_at = ?, counted_by = ?, updated_at = ?
+         WHERE id = ?`,
+      ).run(countedQty, variance, notes, nowSql(), userId || line.counted_by, nowSql(), lineId);
+
+      // Apply this single item's stock delta immediately — per-line "اعتماد"
+      // commits that item's real count right away instead of waiting for the
+      // whole (potentially huge, multi-warehouse) session to be confirmed.
+      if (variance !== 0) {
+        const whId = line.warehouse_id || session.warehouse_id;
+        adjustStock({
+          item_id: line.item_id,
+          warehouse_id: whId,
+          quantityDelta: variance,
+          movement_type: "physical_count",
+          reference_type: "physical_count_session",
+          reference_id: session.id,
+          user_id: userId,
+        });
+      }
+    })();
+
+    db.prepare("UPDATE physical_count_sessions SET updated_at = ? WHERE id = ?").run(nowSql(), session.id);
+
+    const updatedLine = db.prepare(
+      `SELECT pcl.*, i.name AS item_name, i.barcode, i.code AS item_code,
+              u.name AS unit_name, ic.name AS category_name, w.name AS warehouse_name,
+              cb.full_name AS counted_by_name
+       FROM physical_count_lines pcl
+       LEFT JOIN items i ON i.id = pcl.item_id
+       LEFT JOIN units u ON u.id = i.unit_id
+       LEFT JOIN item_categories ic ON ic.id = i.category_id
+       LEFT JOIN warehouses w ON w.id = pcl.warehouse_id
+       LEFT JOIN users cb ON cb.id = pcl.counted_by
+       WHERE pcl.id = ?`,
+    ).get(lineId);
+
+    const stats = db
+      .prepare(
+        `SELECT COUNT(*) AS total_lines,
+                SUM(CASE WHEN touched = 1 THEN 1 ELSE 0 END) AS counted_lines,
+                SUM(CASE WHEN variance != 0 THEN 1 ELSE 0 END) AS variance_count,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_lines
+         FROM physical_count_lines WHERE session_id = ?`,
+      )
+      .get(session.id);
+
+    res.json({ success: true, data: { line: updatedLine, ...stats } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Stock changes polling (live awareness) ──────────────────────────────────
+
+router.get("/physical-count/sessions/:id/stock-changes", requirePagePermission("stock_transfer", "view"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const sessionId = Number(req.params.id);
+    const session = db.prepare("SELECT * FROM physical_count_sessions WHERE id = ?").get(sessionId);
+    if (!session) {
+      const error = new Error("Session not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const since = String(req.query.since || "");
+    if (!since) {
+      return res.json({ success: true, data: { changes: [], last_checked: nowSql() } });
+    }
+
+    const changes = db
+      .prepare(
+        `SELECT sm.item_id, i.name AS item_name, sm.warehouse_id,
+                sm.before_qty AS old_system_qty, sm.after_qty AS new_system_qty,
+                sm.quantity AS delta, sm.movement_type, sm.reference_type, sm.reference_id,
+                sm.created_at AS occurred_at
+         FROM stock_movements sm
+         JOIN items i ON i.id = sm.item_id
+         JOIN physical_count_lines pcl ON pcl.item_id = sm.item_id
+           AND pcl.session_id = ?
+           AND COALESCE(pcl.warehouse_id, 0) = COALESCE(sm.warehouse_id, 0)
+         WHERE sm.created_at > ?
+           AND sm.deleted_at IS NULL
+           AND sm.movement_type IN ('sale', 'purchase', 'sale_return', 'purchase_return',
+               'transfer_out', 'transfer_in', 'manual_adjustment', 'void_sale', 'cancel_sale')
+         ORDER BY sm.created_at DESC`,
+      )
+      .all(sessionId, since);
+
+    res.json({ success: true, data: { changes, last_checked: nowSql() } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Apply stock changes to session lines ────────────────────────────────────
+
+router.post("/physical-count/sessions/:id/apply-stock-changes", requirePagePermission("stock_transfer", "add"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const sessionId = Number(req.params.id);
+    const session = db.prepare("SELECT * FROM physical_count_sessions WHERE id = ?").get(sessionId);
+    if (!session || session.status !== "in_progress") {
+      const error = new Error("Active physical count session not found");
+      error.status = 404;
+      throw error;
+    }
+
+    // Refresh system_quantity for anything not yet اعتماد'd — both untouched
+    // lines and ones the user already typed a count into but hasn't confirmed,
+    // so "النظام" never sits stale against a completed sale/purchase/transfer.
+    const lines = db.prepare("SELECT * FROM physical_count_lines WHERE session_id = ? AND status != 'completed'").all(sessionId);
+    let updatedCount = 0;
+
+    for (const line of lines) {
+      const whId = line.warehouse_id || session.warehouse_id;
+      const current = db.prepare("SELECT quantity FROM stock_levels WHERE item_id = ? AND warehouse_id = ?").get(line.item_id, whId);
+      const newSystemQty = current?.quantity ?? 0;
+      if (newSystemQty !== line.system_quantity) {
+        db.prepare(
+          `UPDATE physical_count_lines SET system_quantity = ?, variance = counted_quantity - ?, updated_at = ? WHERE id = ?`,
+        ).run(newSystemQty, newSystemQty, nowSql(), line.id);
+        updatedCount++;
+      }
+    }
+
+    db.prepare("UPDATE physical_count_sessions SET updated_at = ? WHERE id = ?").run(nowSql(), sessionId);
+
+    res.json({ success: true, data: { updated: updatedCount } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Users who counted in session ────────────────────────────────────────────
+
+router.get("/physical-count/sessions/:id/users", requirePagePermission("stock_transfer", "view"), (req, res, next) => {
+  const db = getDb();
+  try {
+    const sessionId = Number(req.params.id);
+    const users = db
+      .prepare(
+        `SELECT pcl.counted_by AS user_id, u.full_name AS name,
+                COUNT(*) AS counted_items,
+                MAX(pcl.updated_at) AS last_active
+         FROM physical_count_lines pcl
+         JOIN users u ON u.id = pcl.counted_by
+         WHERE pcl.session_id = ? AND pcl.counted_by IS NOT NULL
+         GROUP BY pcl.counted_by`,
+      )
+      .all(sessionId);
+    res.json({ success: true, data: users });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Export session as PDF/Excel/Word ────────────────────────────────────────
+
+router.get("/physical-count/sessions/:id/export", requirePagePermission("stock_transfer", "view"), async (req, res, next) => {
+  try {
+    const db = getDb();
+    const sessionId = Number(req.params.id);
+    const session = getSessionWithLines(db, sessionId);
+    if (!session) {
+      const error = new Error("Session not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const { exportRowsToExcelV2, exportRowsToDocx, exportRowsToPdfV3 } = require("../services/exportService");
+    const fmt = String(req.query.format || "excel").toLowerCase();
+    const title = session.name || `جرد #${sessionId}`;
+
+    const columns = [
+      { key: "item_code", label: "كود الصنف" },
+      { key: "item_name", label: "اسم الصنف" },
+      { key: "category_name", label: "الفئة" },
+      { key: "warehouse_name", label: "المخزن" },
+      { key: "system_quantity", label: "كمية النظام" },
+      { key: "counted_quantity", label: "الكمية الفعلية" },
+      { key: "variance", label: "الفرق" },
+      { key: "status", label: "الحالة" },
+      { key: "notes", label: "ملاحظات" },
+      { key: "counted_by_name", label: "عدّاء" },
+      { key: "counted_at", label: "تاريخ العد" },
+    ];
+
+    const rows = (session.lines || []).map(l => ({
+      ...l,
+      status: l.status === "completed" ? "مكتمل" : l.touched ? "مُعدّ" : "لم يُعد",
+    }));
+
+    const companyName = (() => { try { return db.prepare("SELECT company_name FROM settings WHERE id=1").get()?.company_name || ""; } catch { return ""; } })();
+
+    if (fmt === "excel") {
+      const filePath = await exportRowsToExcelV2({ rows, worksheetName: title, columns, rtl: true });
+      const fs = require("fs");
+      const buffer = fs.readFileSync(filePath);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(title)}-${Date.now()}.xlsx"`);
+      res.setHeader("Content-Length", buffer.length);
+      res.send(buffer);
+      res.on("finish", () => { try { fs.unlinkSync(filePath); } catch {} });
+    } else if (fmt === "word") {
+      const filePath = await exportRowsToDocx({ rows, title, columns, rtl: true, companyName });
+      const fs = require("fs");
+      const buffer = fs.readFileSync(filePath);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(title)}-${Date.now()}.docx"`);
+      res.setHeader("Content-Length", buffer.length);
+      res.send(buffer);
+      res.on("finish", () => { try { fs.unlinkSync(filePath); } catch {} });
+    } else {
+      const filePath = await exportRowsToPdfV3({ rows, title, columns, rtl: true, companyName });
+      const fs = require("fs");
+      const buffer = fs.readFileSync(filePath);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(title)}-${Date.now()}.pdf"`);
+      res.setHeader("Content-Length", buffer.length);
+      res.send(buffer);
+      res.on("finish", () => { try { fs.unlinkSync(filePath); } catch {} });
+    }
   } catch (error) {
     next(error);
   }

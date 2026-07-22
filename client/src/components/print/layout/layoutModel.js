@@ -51,6 +51,18 @@ export function defaultColumns(family, size = "80mm") {
   ];
 }
 
+export function defaultPhysicalCountColumns() {
+  return [
+    { key: "item_name",        label: "الصنف",           visible: true, align: "right" },
+    { key: "item_code",        label: "الكود",           visible: true, align: "center" },
+    { key: "system_quantity",  label: "كمية النظام",     visible: true, align: "center" },
+    { key: "counted_quantity", label: "الكمية الفعلية",   visible: true, align: "center" },
+    { key: "variance",         label: "الفرق",           visible: true, align: "center" },
+    { key: "status",           label: "الحالة",          visible: true, align: "center" },
+    { key: "notes",            label: "ملاحظات",         visible: true, align: "right" },
+  ];
+}
+
 // Block types the simple panel exposes as show_* toggles. Hiding these writes
 // the shared field (two-way sync); other blocks are hidden by dropping them
 // from the family order.

@@ -198,12 +198,12 @@ export default function ScreenLock() {
   if (!token || !isLocked) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-bg-overlay/70 px-4 text-text-primary backdrop-blur-[32px] transition-all duration-700">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-black/60 px-4 text-text-primary backdrop-blur-[32px] transition-all duration-700">
       
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-emerald-400/20 rounded-full blur-[140px] pointer-events-none opacity-80" />
       <div className="absolute top-1/2 left-1/2 translate-x-[-10%] translate-y-[-60%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none opacity-60" />
 
-      <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-bg-surface/70 p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-border-normal/50">
+      <div className="relative z-10 w-full max-w-[440px] rounded-[40px] bg-bg-surface p-12 text-center shadow-[0_24px_80px_-12px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-3xl border border-border-normal/50">
         
         <div className="mx-auto flex h-24 w-24 relative items-center justify-center rounded-[32px] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20 shadow-[0_8px_30px_-6px_var(--primary-glow)]">
           <div className="absolute inset-0 rounded-[32px] bg-emerald-400/20 blur-xl mix-blend-multiply" />

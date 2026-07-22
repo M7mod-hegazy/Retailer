@@ -51,6 +51,7 @@ const REPORT_REGISTRY = {
     { id: "owner-statement", label_key: "source_owner_statement", label: "لوحة صاحب المحل", cat: "accounts", icon: "ClipboardCheck" },
     { id: "tax", label_key: "source_tax", label: "الضرائب", cat: "tax", icon: "FileText" },
     { id: "users", label_key: "source_users", label: "المستخدمين", cat: "individuals", icon: "Users" },
+    { id: "physical-count", label_key: "source_physical_count", label: "سجل الجرد", cat: "inventory", icon: "ClipboardCheck" },
   ],
 
   // ── Filter Dimensions Pool (shared per source) ────────────────
@@ -155,6 +156,11 @@ const REPORT_REGISTRY = {
     users: [
       { key: "user_id", type: "lookup", entity: "user", label_key: "user", label: "المستخدم" },
       { key: "role", type: "select", label_key: "role", label: "الصلاحية", options: [{ value: "admin", label_key: "admin", label: "مدير النظام" }, { value: "cashier", label_key: "cashier", label: "كاشير" }, { value: "manager", label_key: "manager", label: "مشرف" }] },
+    ],
+    "physical-count": [
+      { key: "warehouse_id", type: "lookup", entity: "warehouse", label_key: "warehouse", label: "المخزن" },
+      { key: "status", type: "select", label_key: "status", label: "الحالة", options: [{ value: "in_progress", label: "جارٍ التنفيذ" }, { value: "completed", label: "مكتمل" }, { value: "cancelled", label: "ملغي" }] },
+      { key: "type", type: "select", label_key: "type", label: "النوع", options: [{ value: "standard", label: "قياسي" }, { value: "complete", label: "شامل" }] },
     ],
   },
 
@@ -317,6 +323,10 @@ const REPORT_REGISTRY = {
       { id: "vat-filing-summary", label_key: "cls_tax_vat_filing", label: "ملخص إقرار الضريبة", detailedQuery: null, summaryQuery: "vat-filing-summary", availableModes: ["summary"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id", "status", "payment_type", "tax_type"], filters: [], multiSelectFilters: [] },
       { id: "returns-tax-effect", label_key: "cls_tax_returns_effect", label: "أثر المرتجعات على الضريبة", detailedQuery: "returns-tax-effect", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["customer_id"], filters: [], multiSelectFilters: [] },
     ],
+    // ── سجل الجرد (Physical Count) ──
+    "physical-count": [
+      { id: "history", label_key: "cls_pc_history", label: "سجل جرد المخزون", detailedQuery: "physical-count-history", summaryQuery: null, availableModes: ["detailed"], supportsDates: true, hasProfit: false, supportsScope: false, dimensions: ["warehouse_id", "status", "type"], filters: [], multiSelectFilters: [] },
+    ],
   },
 
   // Setup backward-compatible source -> classification -> slug resolution
@@ -368,6 +378,7 @@ const slugSourceMap = {
   "cost-method-comparison": "items",
   "item-lifecycle": "items",
   "inventory-turnover": "items",
+  "physical-count-history": "physical-count",
   "stock-adjustment-audit": "warehouses",
   // Accounts
   "profit-loss": "profit",
@@ -448,38 +459,7 @@ const clsMap = {
   "item-lifecycle": { classification: "item-lifecycle", dataMode: "detailed" },
   "inventory-turnover": { classification: "inventory-turnover", dataMode: "detailed" },
   "stock-adjustment-audit": { classification: "stock-adjustment-audit", dataMode: "detailed" },
-  "profit-loss": { classification: "income-statement", dataMode: "summary" },
-  "customer-statement": { classification: "statement", dataMode: "detailed" },
-  "supplier-statement": { classification: "statement", dataMode: "detailed" },
-  "daily-owner-snapshot": { classification: "daily-owner-snapshot", dataMode: "summary" },
-  "ar-aging": { classification: "aging", dataMode: "detailed" },
-  "ap-aging": { classification: "aging", dataMode: "detailed" },
-  "top-customers": { classification: "top-customers", dataMode: "detailed" },
-  "collection-efficiency": { classification: "collection-efficiency", dataMode: "detailed" },
-  "customer-loyalty": { classification: "loyalty", dataMode: "detailed" },
-  "supplier-reliability": { classification: "reliability", dataMode: "detailed" },
-  "cash-flow": { classification: "cash-flow", dataMode: "detailed" },
-  "treasury": { classification: "balances", dataMode: "summary" },
-  "cash-consistency": { classification: "reconciliation", dataMode: "detailed" },
-  "daily-sessions": { classification: "reconciliation", dataMode: "detailed" },
-  "payment-method-flow": { classification: "payment-flow-summary", dataMode: "summary" },
-  "payment-flow-summary": { classification: "payment-flow-summary", dataMode: "summary" },
-  "payment-flow-ledger": { classification: "payment-flow-ledger", dataMode: "detailed" },
-  "payment-flow-by-doc-type": { classification: "payment-flow-by-doc-type", dataMode: "detailed" },
-  "payment-flow-by-direction": { classification: "payment-flow-by-direction", dataMode: "detailed" },
-  "payment-flow-running": { classification: "payment-flow-running", dataMode: "detailed" },
-  "reconciliation-exceptions": { classification: "reconciliation", dataMode: "detailed" },
-  "vat": { classification: "vat", dataMode: "detailed" },
-  "output-vat": { classification: "output-vat", dataMode: "detailed" },
-  "input-vat": { classification: "input-vat", dataMode: "detailed" },
-  "vat-filing-summary": { classification: "vat-filing-summary", dataMode: "summary" },
-  "returns-tax-effect": { classification: "returns-tax-effect", dataMode: "detailed" },
-  "exceptions": { classification: "reconciliation", dataMode: "detailed" },
-  "audit-log": { classification: "user-activity", dataMode: "detailed" },
-  "user-activity": { classification: "user-activity", dataMode: "detailed" },
-  "user-list": { classification: "user-list", dataMode: "detailed" },
-  "user-performance": { classification: "performance", dataMode: "detailed" },
-  "login-history": { classification: "login-history", dataMode: "detailed" },
+  "physical-count-history": { classification: "history", dataMode: "detailed" },
 };
 
 // Register backward-compat maps
@@ -697,6 +677,12 @@ REPORT_REGISTRY.reports = [
   ]},
   { id: "R71", cat: "accounts", slug: "supplier-reliability", title_key: "r71_title", desc_key: "r71_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
     { key: "supplier_id", type: "lookup", label_key: "supplier", entity: "supplier" },
+  ]},
+  // Physical Count
+  { id: "R80", cat: "inventory", slug: "physical-count-history", title_key: "r80_title", desc_key: "r80_desc", supportsDates: true, hasProfit: false, exportFormats: ["pdf", "excel", "word", "print"], filters: [
+    { key: "warehouse_id", type: "lookup", label_key: "warehouse", entity: "warehouse" },
+    { key: "status", type: "select", label_key: "status", options: [{ value: "in_progress", label: "جارٍ التنفيذ" }, { value: "completed", label: "مكتمل" }, { value: "cancelled", label: "ملغي" }] },
+    { key: "type", type: "select", label_key: "type", options: [{ value: "standard", label: "قياسي" }, { value: "complete", label: "شامل" }] },
   ]},
 ];
 

@@ -200,6 +200,7 @@ export const BLOCK_DOCS = new Set([
   "bank_statement", "ajal_statement", "ajal_schedule", "ajal_full_statement",
   "cheque_register", "payment_methods_report", "daily_treasury", "reports_generic",
   "account_statement", "kitchen_ticket", "owner_statement",
+  "physical_count_report",
 ]);
 
 /**
@@ -227,6 +228,7 @@ export const INHERITABLE_SCOPES = new Set([...BLOCK_DOC_SCOPES]);
 // Valid paper sizes per doc type + system default (user can override).
 // Shared between DocPreviewGallery and PrintingSettingsPanel.
 export const DOC_PAPER_CONFIG = {
+  physical_count_report:  { sizes: ["A5","A4"],                   defaultSize: "A4"   },
   pos_receipt:            { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
   purchase_order:         { sizes: ["80mm","A5","A4"],            defaultSize: "80mm" },
   sales_return:           { sizes: ["58mm","80mm","A5","A4"],     defaultSize: "80mm" },
@@ -279,6 +281,7 @@ export const STUDIO_SCOPES = [
   { key: "account_statement",      label: "كشف حساب (عميل / مورد)", group: "تقارير" },
   { key: "kitchen_ticket",         label: "تيكت المطبخ",           group: "مطعم" },
   { key: "owner_statement",        label: "لوحة صاحب المحل",       group: "تقارير" },
+  { key: "physical_count_report",  label: "تقرير جرد المخزون",     group: "مخزون" },
 ];
 
 export function scopeLabel(key) {
@@ -2236,9 +2239,116 @@ export const SCOPE_PRESETS = {
       }
     },
   ],
+  physical_count_report: [
+    {
+      id: "count_classic",
+      label: "تقرير جرد رسمي كلاسيكي",
+      family: "page",
+      isTemplate: true,
+      tags: ["classic", "formal"],
+      flat: { accent_color: "#1e40af", print_font: "Cairo", item_font_size: 11, header_style: "classic", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "branch", "address", "tax_id", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "notes", "physical_count_signatures", "footer_text", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+          physical_count_header: { variant: "standard" },
+          physical_count_metrics: { variant: "standard" },
+          physical_count_items_table: { variant: "standard" },
+          physical_count_signatures: { variant: "three-line" },
+        }
+      }
+    },
+    {
+      id: "count_modern",
+      label: "تقرير جرد عصري",
+      family: "page",
+      isTemplate: true,
+      tags: ["modern", "simple"],
+      flat: { accent_color: "#0f172a", print_font: "Tajawal", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "physical_count_signatures", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "ribbon" },
+          physical_count_header: { variant: "minimal" },
+          physical_count_metrics: { variant: "compact" },
+          physical_count_items_table: { variant: "standard" },
+          physical_count_signatures: { variant: "two-line" },
+        }
+      }
+    },
+    {
+      id: "count_variance",
+      label: "تقرير فروقات الجرد الملون",
+      family: "page",
+      isTemplate: true,
+      tags: ["variance", "color-coded"],
+      flat: { accent_color: "#dc2626", print_font: "Tajawal", item_font_size: 11, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "physical_count_signatures", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+          physical_count_header: { variant: "boxed" },
+          physical_count_metrics: { variant: "boxed" },
+          physical_count_items_table: { variant: "variance-only" },
+          physical_count_signatures: { variant: "two-line" },
+        }
+      }
+    },
+    {
+      id: "count_grouped",
+      label: "تقرير جرد مُجمّع حسب المستودع",
+      family: "page",
+      isTemplate: true,
+      tags: ["grouped", "warehouse"],
+      flat: { accent_color: "#059669", print_font: "Cairo", item_font_size: 11, header_style: "band", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "physical_count_signatures", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "badge" },
+          physical_count_header: { variant: "standard" },
+          physical_count_metrics: { variant: "standard" },
+          physical_count_items_table: { variant: "grouped-by-warehouse" },
+          physical_count_signatures: { variant: "three-line" },
+        }
+      }
+    },
+    {
+      id: "count_minimal",
+      label: "تقرير جرد مبسّط",
+      family: "page",
+      isTemplate: true,
+      tags: ["minimal", "whitespace"],
+      flat: { accent_color: "#475569", print_font: "Cairo", item_font_size: 10, header_style: "minimal", page_layout_type: "standard" },
+      layout: {
+        order: ["doc_title", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "minimal" },
+          physical_count_header: { variant: "minimal" },
+          physical_count_metrics: { variant: "minimal" },
+          physical_count_items_table: { variant: "standard" },
+        }
+      }
+    },
+    {
+      id: "count_color_coded",
+      label: "تقرير جرد ملوّن بالكامل",
+      family: "page",
+      isTemplate: true,
+      tags: ["color-coded", "visual"],
+      flat: { accent_color: "#7c3aed", print_font: "Tajawal", item_font_size: 11, header_style: "centered", page_layout_type: "standard" },
+      layout: {
+        order: ["logo", "company_name", "doc_title", "physical_count_header", "physical_count_metrics", "physical_count_items_table", "notes", "physical_count_signatures", "vendor_branding"],
+        perBlock: {
+          vendor_branding: { variant: "stamp" },
+          physical_count_header: { variant: "boxed" },
+          physical_count_metrics: { variant: "boxed" },
+          physical_count_items_table: { variant: "color-coded" },
+          physical_count_signatures: { variant: "with-stamps" },
+        }
+      }
+    },
+  ],
 };
-
-
 
 const now = () => new Date().toISOString();
 
@@ -2790,6 +2900,18 @@ export const COLUMN_CATALOG = [
   { key: "price",    label: "سعر" },
   { key: "discount", label: "الخصم" },
   { key: "total",    label: "إجمالي" },
+];
+
+export const PHYSICAL_COUNT_COLUMN_CATALOG = [
+  { key: "item_name",           label: "الصنف" },
+  { key: "item_code",           label: "الكود" },
+  { key: "warehouse_name",      label: "المخزن" },
+  { key: "category_name",       label: "الفئة" },
+  { key: "system_quantity",     label: "كمية النظام" },
+  { key: "counted_quantity",    label: "الكمية الفعلية" },
+  { key: "variance",            label: "الفرق" },
+  { key: "status",              label: "الحالة" },
+  { key: "notes",               label: "ملاحظات" },
 ];
 
 export function getPagedDocumentHtml(sourceNode, pageHmm, pxPerMm = PX_PER_MM) {

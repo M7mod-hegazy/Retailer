@@ -122,5 +122,17 @@ export const DEFAULT_ORDER = {
       "notes", "footer_text", "signature_lines", "vendor_branding",
     ],
   },
+
+  physical_count_report: {
+    page: [
+      "watermark", "logo", "company_name", "branch", "address", "tax_id",
+      "physical_count_header",
+      "physical_count_metrics",
+      "physical_count_items_table",
+      "notes",
+      "physical_count_signatures",
+      "footer_text", "vendor_branding",
+    ],
+  },
 };
 

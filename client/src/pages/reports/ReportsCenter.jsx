@@ -27,6 +27,7 @@ const SOURCE_CAT_MAP = {
   "owner-statement": "accounts",
   profit: "profitability",
   expiry: "inventory",
+  "physical-count": "inventory",
   tax: "tax",
 };
 

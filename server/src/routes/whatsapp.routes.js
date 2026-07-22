@@ -121,7 +121,7 @@ router.post("/find-or-create-customer", requirePagePermission("pos", "add"), (re
 });
 
 // Enqueue a WhatsApp message
-router.post("/enqueue", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), (req, res) => {
+router.post("/enqueue", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns", "stock_transfer"], "send"), (req, res) => {
   try {
     const db = getDb();
     const { recipient_phone, customer_id, kind = "receipt", payload = {}, scheduled_at } = req.body;
@@ -230,7 +230,7 @@ router.post("/check-exists", requireAnyPagePermission(["whatsapp_receipt", "pos"
 });
 
 // Send a WhatsApp message directly (bypass outbox) with confirmation
-router.post("/send-direct", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns"], "send"), async (req, res) => {
+router.post("/send-direct", requireAnyPagePermission(["whatsapp_receipt", "pos", "sales_returns", "stock_transfer"], "send"), async (req, res) => {
   try {
     if (!engine) return res.status(503).json({ success: false, message: "engine not available" });
     const { recipient_phone, customer_id, kind = "receipt", payload = {} } = req.body;
@@ -240,7 +240,10 @@ router.post("/send-direct", requireAnyPagePermission(["whatsapp_receipt", "pos",
     if (es.status !== "connected") return res.status(400).json({ success: false, message: "WhatsApp not connected" });
 
     const jid = normalized + "@s.whatsapp.net";
-    if (payload.image) {
+    if (payload.pdf) {
+      const buf = Buffer.from(payload.pdf, "base64");
+      await engine.sendDocument(jid, buf, payload.fileName || "document.pdf", payload.caption || "");
+    } else if (payload.image) {
       const buf = Buffer.from(payload.image, "base64");
       await engine.sendImage(jid, buf, payload.caption || "");
     } else {

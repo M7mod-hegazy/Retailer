@@ -73,6 +73,12 @@ const CLASSIFICATIONS = [
         pages: ["تحويلات الفروع"],
         description: "سند نقل مخزني بين فروع الشركة",
       },
+      {
+        key: "physical_count_report",
+        label: "تقرير جرد المخزون",
+        pages: ["جرد المخزون"],
+        description: "تقرير شامل لعملية جرد المخزون مع فروقات وتوقيعات",
+      },
     ],
   },
   {

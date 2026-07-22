@@ -1397,10 +1397,10 @@ export default function POSDetailedView({ vm }) {
         <div className="flex flex-col gap-3 animate-modal-enter">
           <input type="text" value={detailedSearchQuery} onChange={(e) => setDetailedSearchQuery(e.target.value)}
             placeholder="ابحث بالاسم أو الكود أو الباركود أو الفئة..."
-            className="w-full rounded-sm border border-border-normal px-3 py-2.5 outline-none focus:border-slate-800" />
+            className="w-full rounded-sm border border-border-normal bg-bg-surface px-3 py-2.5 outline-none focus:border-slate-800" />
           <div className="flex items-center gap-2">
             <select value={detailedCategoryFilter} onChange={(e) => setDetailedCategoryFilter(e.target.value)}
-              className="rounded-sm border border-border-normal px-2 py-2 text-sm outline-none focus:border-slate-800">
+              className="rounded-sm border border-border-normal bg-bg-surface px-2 py-2 text-sm outline-none focus:border-slate-800">
               {detailedCategories.map((cat) => <option key={cat} value={cat}>{cat === "all" ? "كل الفئات" : cat}</option>)}
             </select>
           </div>

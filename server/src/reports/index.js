@@ -14,6 +14,7 @@ const warehouses = require("./queries/warehouses");
 const employees = require("./queries/employees");
 const profit = require("./queries/profit");
 const customers = require("./queries/customers");
+const physicalCount = require("./queries/physicalCount");
 
 const dispatcher = {
   // Sales
@@ -154,6 +155,9 @@ const dispatcher = {
   "user-list": users.userList,
   "user-performance": users.userPerformance,
   "login-history": users.loginHistory,
+
+  // Physical Count
+  "physical-count-history": physicalCount.physicalCountHistory,
 };
 
 function listRows(slug, startDate, endDate, opts = {}) {

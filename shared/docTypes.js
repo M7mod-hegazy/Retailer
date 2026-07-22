@@ -7,6 +7,7 @@ const DOC_TYPES = [
   "payment_methods_report", "reports_generic", "owner_statement",
   "kitchen_ticket",
   "account_statement",
+  "physical_count_report",
 ];
 
 

@@ -666,6 +666,7 @@
 .bg-black\/50 { background-color: rgba(0, 0, 0, 0.55) !important; }
 .bg-black\/60 { background-color: rgba(0, 0, 0, 0.62) !important; }
 .bg-black\/75 { background-color: rgba(0, 0, 0, 0.72) !important; }
+.bg-black\/90 { background-color: rgba(0, 0, 0, 0.88) !important; }
 
 [data-theme="light"] .text-white { color: var(--bg-surface) !important; }
 [data-theme="dark"] .text-white { color: var(--text-primary) !important; }

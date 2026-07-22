@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize, XCircle, MessageSquare, ChevronDown, Search } from "lucide-react";
+import { Copy, ExternalLink, Send, AlertCircle, RefreshCw, Check, Wifi, WifiOff, Smartphone, Image as ImageIcon, Download, ZoomIn, ZoomOut, Maximize, XCircle, MessageSquare, ChevronDown, Search, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal";
 import api from "../../services/api";
@@ -257,7 +257,7 @@ function getPaperDimsMm(size) {
   return { w: PAGE_W_MM[size] || 210, h: PAGE_H_MM[size] || 297 };
 }
 
-export default function WhatsAppSendModal({ open, onClose, invoice, kind = "receipt", title, onBeforeSend }) {
+export default function WhatsAppSendModal({ open, onClose, invoice, kind = "receipt", title, onBeforeSend, pdfEndpoint, pdfFileName }) {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const wa = useWhatsAppStatus(8000);
@@ -279,6 +279,11 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   const existsCacheRef = useRef(new Map());
   const existsTimerRef = useRef(null);
   const captureRef = useRef(null);
+  const showPdfOption = Boolean(pdfEndpoint);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const pdfBlobUrlRef = useRef(null);
 
   const docType = KIND_DOC_TYPE[kind] || null;
   const showImageOption = Boolean(docType);
@@ -310,7 +315,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     if (open) {
       // Show local display format (e.g. "01032440775" for Egypt) in the input
       setLocalPhone(rawE164ToLocal(rawPhone, selectedCountry));
-      setSendMode("text");
+      setSendMode(showPdfOption && !showImageOption ? "pdf" : "text");
       setActivePaperSize(printTemplate || "80mm");
       setWaExists(null);
       setWaChecking(false);
@@ -323,6 +328,32 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
   useEffect(() => {
     if (sendChannel === "sms" && sendMode === "image") setSendMode("text");
   }, [sendChannel, sendMode]);
+
+  // Fetch PDF blob for preview when sendMode === "pdf"
+  useEffect(() => {
+    if (!open) {
+      if (pdfBlobUrlRef.current) { URL.revokeObjectURL(pdfBlobUrlRef.current); pdfBlobUrlRef.current = null; }
+      setPdfBlobUrl(null); setPdfLoading(false); return;
+    }
+    if (sendMode !== "pdf" || !pdfEndpoint) {
+      if (pdfBlobUrlRef.current) { URL.revokeObjectURL(pdfBlobUrlRef.current); pdfBlobUrlRef.current = null; }
+      setPdfBlobUrl(null); return;
+    }
+    let cancelled = false;
+    setPdfLoading(true);
+    api.get(pdfEndpoint, { responseType: "blob" })
+      .then((r) => {
+        if (cancelled) return;
+        const blob = new Blob([r.data], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        if (pdfBlobUrlRef.current) URL.revokeObjectURL(pdfBlobUrlRef.current);
+        pdfBlobUrlRef.current = url;
+        if (!cancelled) setPdfBlobUrl(url);
+      })
+      .catch(() => { if (!cancelled) setPdfBlobUrl(null); })
+      .finally(() => { if (!cancelled) setPdfLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, sendMode, pdfEndpoint]);
 
   // Debounced WhatsApp existence check (skip for SMS channel)
   useEffect(() => {
@@ -545,7 +576,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
     setSending(true);
     try {
       if (sendChannel === "sms") {
-        if (sendMode === "image") { toast.error(t("whatsapp.smsNoImage") || "لا يمكن إرسال صورة عبر SMS"); return; }
+        if (sendMode === "image" || sendMode === "pdf") { toast.error(t("whatsapp.smsNoImage") || "لا يمكن إرسال صورة أو ملف عبر SMS"); return; }
         await api.post("/api/whatsapp/send-sms-direct", { recipient_phone: fullPhone, text: message });
         toast.success(t("whatsapp.sentSuccessfully") || "تم الإرسال بنجاح");
         onClose?.();
@@ -553,7 +584,22 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
       }
 
       let payload;
-      if (sendMode === "image") {
+      if (sendMode === "pdf" && pdfEndpoint) {
+        setPdfGenerating(true);
+        try {
+          const pdfRes = await api.get(pdfEndpoint, { responseType: "blob" });
+          const blob = new Blob([pdfRes.data]);
+          const base64 = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result.split(",")[1]);
+            r.onerror = reject;
+            r.readAsDataURL(blob);
+          });
+          payload = { pdf: base64, fileName: pdfFileName || "تقرير-جرد.pdf", caption: "" };
+        } finally {
+          setPdfGenerating(false);
+        }
+      } else if (sendMode === "image") {
         const el = captureRef.current;
         const canvas = await html2canvas(el, {
           useCORS: true,
@@ -722,16 +768,26 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
           </div>
         ) : (
           <>
-            {showImageOption && sendChannel !== "sms" && (
+            {(showImageOption || showPdfOption) && sendChannel !== "sms" && (
               <div className="flex gap-1.5">
-                <button type="button" onClick={() => setSendMode("text")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${sendMode === "text" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"}`}>
-                  {t("whatsapp.sendModeText")}
-                </button>
+                {!showPdfOption && (
+                  <button type="button" onClick={() => setSendMode("text")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${sendMode === "text" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"}`}>
+                    {t("whatsapp.sendModeText")}
+                  </button>
+                )}
+                {showImageOption && (
                 <button type="button" onClick={() => setSendMode("image")}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${sendMode === "image" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"}`}>
                   <ImageIcon className="h-3.5 w-3.5" /> {t("whatsapp.sendModeImage")}
                 </button>
+                )}
+                {showPdfOption && (
+                  <button type="button" onClick={() => setSendMode("pdf")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black border transition-all active:scale-95 ${sendMode === "pdf" ? "bg-primary text-white border-primary" : "bg-bg-surface text-text-secondary border-border-normal hover:border-primary hover:text-primary"}`}>
+                    <FileText className="h-3.5 w-3.5" /> PDF
+                  </button>
+                )}
               </div>
             )}
 
@@ -874,7 +930,7 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
               )
             )}
 
-            {sendMode !== "image" && (
+            {sendMode === "text" && (
               <div>
                 <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.recipient")}</label>
                 <PhoneInputField
@@ -915,13 +971,76 @@ export default function WhatsAppSendModal({ open, onClose, invoice, kind = "rece
               </div>
             )}
 
-            <div className={`grid gap-2 pt-1 ${sendMode === "image" ? "grid-cols-2" : "grid-cols-3"}`}>
+            {sendMode === "pdf" && (
+              <>
+                {/* Phone input — above preview so always visible */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-black text-text-secondary">{t("whatsapp.recipient")}</label>
+                  <PhoneInputField
+                    country={selectedCountry}
+                    value={localPhone}
+                    onChange={setLocalPhone}
+                    onCountryChange={(c) => { setSelectedCountry(c); setLocalPhone(""); setWaExists(null); }}
+                  />
+                  <PhoneProgressRow
+                    localPhone={localPhone}
+                    country={selectedCountry}
+                    checking={waChecking}
+                    exists={waExists}
+                    showExists={sendChannel === "whatsapp"}
+                  />
+                </div>
+
+                {pdfLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-xs font-bold text-text-muted">
+                    <RefreshCw className="h-4 w-4 animate-spin" /> جاري تحميل المعاينة...
+                  </div>
+                ) : pdfBlobUrl ? (
+                  <>
+                    {/* PDF Preview */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-black text-text-secondary">معاينة PDF</label>
+                      <div className="rounded-lg border border-border-normal overflow-hidden" style={{ height: "420px" }}>
+                        <iframe
+                          src={pdfBlobUrl}
+                          className="w-full h-full border-0"
+                          title="PDF Preview"
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Fallback: file info card when PDF couldn't be loaded */
+                  <div className="rounded-lg border border-border-normal bg-bg-surface p-4 flex items-center gap-3">
+                    <div className="w-12 h-14 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-text-primary truncate">{pdfFileName || "تقرير جرد.pdf"}</p>
+                      <p className="text-[11px] font-bold text-text-muted mt-0.5">سيتم إرسال الملف كـ PDF عبر واتساب</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* File info row */}
+                <div className="flex items-center gap-2 text-[11px] font-bold text-text-muted">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="truncate">{pdfFileName || "تقرير-جرد.pdf"}</span>
+                  {pdfGenerating && <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />}
+                </div>
+              </>
+            )}
+
+            <div className={`grid gap-2 pt-1 ${(sendMode === "image" || sendMode === "pdf") ? "grid-cols-2" : "grid-cols-3"}`}>
               <button onClick={handleSend}
                 disabled={(() => {
                   if (savingFirst || sending || !localPhone) return true;
-                  if (sendMode === "text" ? !message : printSettingsLoading) return true;
-                  if (sendChannel === "sms") return sendMode === "image";
-                  return !wa.isConnected || waExists === false || waChecking;
+                  if (sendMode === "text" && !message) return true;
+                  if (sendMode === "image" && printSettingsLoading) return true;
+                  if (sendMode === "pdf" && pdfGenerating) return true;
+                  if (sendChannel === "sms" && (sendMode === "image" || sendMode === "pdf")) return true;
+                  if (sendChannel === "whatsapp" && (!wa.isConnected || waExists === false || waChecking)) return true;
+                  return false;
                 })()}
                 className="col-span-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-black text-white hover:opacity-90 disabled:opacity-50 transition-all active:scale-95"
                 title={sendChannel === "whatsapp" ? (!wa.isConnected ? (t("whatsapp.notConnected") || "واتساب غير متصل") : waExists === false ? (t("whatsapp.notOnWhatsApp") || "الرقم غير موجود على واتساب") : undefined) : undefined}>
